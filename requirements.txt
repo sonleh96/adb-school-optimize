@@ -1,0 +1,41 @@
+# Core analysis
+numpy
+pandas
+dask[dataframe]
+
+# Notebook runtime
+notebook
+
+# Geospatial and raster processing
+geopandas
+shapely
+rasterio
+rasterstats
+pyproj
+osmnx
+GDAL
+
+# Mapping and visualization
+matplotlib
+seaborn
+plotly
+folium
+branca
+
+# Data access and utilities
+requests
+pytz
+tqdm
+rapidfuzz
+pycountry
+googlemaps
+geopy
+
+# Optimization and modeling
+pyomo
+scikit-learn
+
+# Earth Engine and geospatial helpers
+earthengine-api
+geemap
+gadm
