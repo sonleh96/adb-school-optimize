@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+psycopg[binary]
+pandas
+shapely
+openpyxl
+python-multipart
+
+[dev]
+pytest
+httpx

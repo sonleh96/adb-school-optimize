@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: rise-png-api
+Version: 0.1.0
+Summary: FastAPI backend for the RISE-PNG dashboard.
+Requires-Python: >=3.10
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: psycopg[binary]
+Requires-Dist: pandas
+Requires-Dist: shapely
+Requires-Dist: openpyxl
+Requires-Dist: python-multipart
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: httpx; extra == "dev"

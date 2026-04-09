@@ -13,7 +13,7 @@ rasterio
 rasterstats
 pyproj
 osmnx
-GDAL
+osgeo
 
 # Mapping and visualization
 matplotlib
