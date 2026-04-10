@@ -24,6 +24,7 @@ from .queries import (
     SCENARIOS_SQL,
     SCHOOL_DETAIL_SQL,
     SCHOOLS_SQL,
+    VECTOR_LAYER_FEATURES_SQL,
 )
 from .settings import get_settings
 
@@ -92,6 +93,47 @@ def fetch_layers(connection) -> list[dict[str, Any]]:
         if source_path:
             row["source_path"] = source_path
     return rows
+
+
+def fetch_vector_layer_features(
+    connection,
+    layer_key: str,
+    province: str | None = None,
+    district: str | None = None,
+    limit: int = 5000,
+) -> dict[str, Any]:
+    layers = fetch_layers(connection)
+    layer = next((item for item in layers if item.get("layer_key") == layer_key), None)
+    if not layer:
+        raise ApiError(
+            "Layer not found.",
+            status_code=404,
+            code="layer_not_found",
+            details={"layer_key": layer_key},
+        )
+    if layer.get("layer_type") != "vector":
+        raise ApiError(
+            "Layer is not a vector layer.",
+            status_code=400,
+            code="layer_not_vector",
+            details={"layer_key": layer_key, "layer_type": layer.get("layer_type")},
+        )
+
+    items = fetch_all(
+        connection,
+        VECTOR_LAYER_FEATURES_SQL,
+        {
+            "layer_key": layer_key,
+            "province": province,
+            "district": district,
+            "limit": limit,
+        },
+    )
+    return {
+        "layer": layer,
+        "count": len(items),
+        "items": items,
+    }
 
 
 def fetch_indicators() -> list[str]:
