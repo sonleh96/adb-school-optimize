@@ -56,4 +56,6 @@ def test_clip_raster_for_district_uses_cache(monkeypatch, tmp_path):
 
     assert first.content == b"cached-png"
     assert second.content == b"cached-png"
+    assert first.cache_status == "miss"
+    assert second.cache_status == "hit"
     assert call_count["value"] == 1
