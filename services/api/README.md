@@ -27,3 +27,15 @@ This service is the boundary between the UI and the data/scoring stack.
 5. Run `python -m app.ingestion.load_core_data`.
 6. Run `python -m app.ingestion.seed_default_scenario`.
 7. Start the API with `uvicorn app.main:app --reload`.
+
+## Local Frontend CORS
+
+The API now allows these frontend origins by default:
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+
+Override them with:
+
+```env
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```

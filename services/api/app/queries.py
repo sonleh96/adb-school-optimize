@@ -22,7 +22,7 @@ order by province
 DISTRICTS_SQL = """
 select district_id, province, district
 from districts
-where (%(province)s is null or province = %(province)s)
+where (%(province)s::text is null or province = %(province)s::text)
 order by province, district
 """
 
@@ -48,8 +48,8 @@ select district_id, province, district,
        rate_grade_7_progressed_to_grade_10_pct,
        school_aged_population, conflict_events, conflict_fatalities, conflict_population_exposure
 from districts
-where (%(province)s is null or province = %(province)s)
-  and (%(district)s is null or district = %(district)s)
+where (%(province)s::text is null or province = %(province)s::text)
+  and (%(district)s::text is null or district = %(district)s::text)
 order by province, district
 """
 
@@ -72,8 +72,8 @@ from schools s
 left join school_scores sc
   on sc.school_id = s.school_id
  and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
-where (%(province)s is null or s.province = %(province)s)
-  and (%(district)s is null or s.district = %(district)s)
+where (%(province)s::text is null or s.province = %(province)s::text)
+  and (%(district)s::text is null or s.district = %(district)s::text)
 order by coalesce(sc.rank_priority, 999999), s.school_name
 limit %(limit)s
 """.format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
@@ -132,4 +132,3 @@ join schools s on s.school_id = sc.school_id
 where sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
 order by sc.rank_priority, sc.rank_need, s.school_name
 """.format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
-
