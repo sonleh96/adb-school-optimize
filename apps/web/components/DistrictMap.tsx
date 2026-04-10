@@ -3,6 +3,7 @@
 import { LatLngBounds } from "leaflet";
 import { useEffect } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+import type { Feature, Geometry } from "geojson";
 
 import { choroplethColor, scaleValue } from "@/lib/color";
 import type { DistrictRecord } from "@/lib/types";
@@ -52,19 +53,20 @@ export function DistrictMap({
         const normalized = scaleValue(Number.isFinite(value) ? value : null, min, max);
         const fillColor = choroplethColor(normalized);
         const isSelected = selectedDistrictId === feature.district_id;
+        const geoJsonFeature: Feature<Geometry> = {
+          type: "Feature",
+          geometry: feature.geometry as unknown as Geometry,
+          properties: {
+            district: feature.district,
+            province: feature.province,
+            value,
+          },
+        };
 
         return (
           <GeoJSON
             key={feature.district_id}
-            data={{
-              type: "Feature",
-              geometry: feature.geometry,
-              properties: {
-                district: feature.district,
-                province: feature.province,
-                value,
-              },
-            }}
+            data={geoJsonFeature}
             style={{
               color: isSelected ? "#17211f" : "rgba(23, 33, 31, 0.5)",
               weight: isSelected ? 2.8 : 1,

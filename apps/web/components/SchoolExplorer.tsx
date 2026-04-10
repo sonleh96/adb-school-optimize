@@ -14,6 +14,20 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 
 const DEFAULT_DISTRICT = "National Capital District";
 
+type LayerToggle = {
+  key: "roads" | "flood" | "landcover" | "air_quality" | "access";
+  label: string;
+  active: boolean;
+};
+
+const INITIAL_LAYERS: LayerToggle[] = [
+  { key: "roads", label: "Roads", active: false },
+  { key: "flood", label: "Flood Raster", active: false },
+  { key: "landcover", label: "Land Cover Raster", active: false },
+  { key: "air_quality", label: "Air Quality", active: false },
+  { key: "access", label: "Access Grids", active: false },
+];
+
 export function SchoolExplorer() {
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
   const [districtOptions, setDistrictOptions] = useState<Array<{ district_id: string; province: string; district: string }>>([]);
@@ -23,15 +37,7 @@ export function SchoolExplorer() {
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [layers] = useState([
-    { key: "schools", label: "Schools", active: true },
-    { key: "roads", label: "Roads", active: false },
-    { key: "flood", label: "Flood Raster", active: false },
-    { key: "land", label: "Land Cover Raster", active: false },
-    { key: "air", label: "Air Quality", active: false },
-    { key: "access", label: "Access Grids", active: false },
-  ]);
+  const [layers, setLayers] = useState<LayerToggle[]>(INITIAL_LAYERS);
 
   useEffect(() => {
     fetchDistrictOptions()
@@ -83,6 +89,19 @@ export function SchoolExplorer() {
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
     [schools, selectedSchoolId]
   );
+
+  const selectedDistrictOption = useMemo(
+    () => districtOptions.find((option) => option.district === district) ?? null,
+    [districtOptions, district]
+  );
+
+  const selectedProvince = selectedDistrictOption?.province;
+
+  const toggleLayer = (layerKey: LayerToggle["key"]) => {
+    setLayers((current) =>
+      current.map((layer) => (layer.key === layerKey ? { ...layer, active: !layer.active } : layer))
+    );
+  };
 
   return (
     <section className="panel">
@@ -149,20 +168,28 @@ export function SchoolExplorer() {
                     selectedSchoolId={selectedSchoolId}
                     onSelectSchool={setSelectedSchoolId}
                     scoreField={scoreField}
+                    district={district}
+                    province={selectedProvince}
+                    layers={layers}
                   />
                 )}
               </div>
               <div className="layer-strip">
                 {layers.map((layer) => (
-                  <span className="layer-chip" key={layer.key} data-active={layer.active}>
+                  <button
+                    className="layer-chip"
+                    key={layer.key}
+                    type="button"
+                    data-active={layer.active}
+                    onClick={() => toggleLayer(layer.key)}
+                  >
                     {layer.label}
-                  </span>
+                  </button>
                 ))}
               </div>
               <p className="status-note">
-                Raster and auxiliary layer toggles are scaffolded here. The current backend already
-                exposes the placeholder raster routes, but clipping/rendering still needs to be
-                implemented on Cloud Run.
+                Toggle vector and raster layers to load them from the backend for the selected
+                district context.
               </p>
             </div>
           </div>
@@ -192,9 +219,9 @@ export function SchoolExplorer() {
                     {schools.map((school) => (
                       <tr
                         className="data-row"
-                        key={school.school_id}
+                        key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
                         data-selected={school.school_id === selectedSchoolId}
-                        onClick={() => setSelectedSchoolId(school.school_id)}
+                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
                       >
                         <td>{school.school_name}</td>
                         <td>{school.district}</td>
