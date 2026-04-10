@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from ..errors import ApiError, ConfigurationError, DependencyError
@@ -20,6 +24,73 @@ class RasterClipResult:
     source_uri: str
     width: int
     height: int
+
+
+def _cache_key(payload: dict[str, object]) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _cache_entry_dir(settings, cache_key: str) -> Path:
+    return Path(settings.raster_cache_dir) / cache_key
+
+
+def _serialize_result(result: RasterClipResult) -> dict[str, object]:
+    return {
+        "media_type": result.media_type,
+        "filename": result.filename,
+        "bounds_4326": list(result.bounds_4326),
+        "district": result.district,
+        "province": result.province,
+        "layer": result.layer,
+        "source_uri": result.source_uri,
+        "width": result.width,
+        "height": result.height,
+    }
+
+
+def _deserialize_result(metadata: dict[str, object], content: bytes) -> RasterClipResult:
+    bounds = metadata["bounds_4326"]
+    return RasterClipResult(
+        content=content,
+        media_type=str(metadata["media_type"]),
+        filename=str(metadata["filename"]),
+        bounds_4326=(float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])),
+        district=str(metadata["district"]),
+        province=str(metadata["province"]),
+        layer=str(metadata["layer"]),
+        source_uri=str(metadata["source_uri"]),
+        width=int(metadata["width"]),
+        height=int(metadata["height"]),
+    )
+
+
+def _load_cached_result(settings, cache_key: str) -> RasterClipResult | None:
+    entry_dir = _cache_entry_dir(settings, cache_key)
+    metadata_path = entry_dir / "metadata.json"
+    content_path = entry_dir / "content.bin"
+    if not metadata_path.exists() or not content_path.exists():
+        return None
+
+    ttl_seconds = max(0, settings.raster_cache_ttl_seconds)
+    if ttl_seconds:
+        age_seconds = time.time() - metadata_path.stat().st_mtime
+        if age_seconds > ttl_seconds:
+            return None
+
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        content = content_path.read_bytes()
+    except Exception:
+        return None
+    return _deserialize_result(metadata, content)
+
+
+def _store_cached_result(settings, cache_key: str, result: RasterClipResult) -> None:
+    entry_dir = _cache_entry_dir(settings, cache_key)
+    entry_dir.mkdir(parents=True, exist_ok=True)
+    (entry_dir / "metadata.json").write_text(json.dumps(_serialize_result(result), sort_keys=True), encoding="utf-8")
+    (entry_dir / "content.bin").write_bytes(result.content)
 
 
 def _import_raster_dependencies():
@@ -137,7 +208,7 @@ def _encode_geotiff(clipped, profile, deps) -> bytes:
         return memfile.read()
 
 
-def clip_raster_for_district(
+def _build_raster_clip_result(
     connection,
     *,
     layer: str,
@@ -263,6 +334,46 @@ def clip_raster_for_district(
         width=clipped.shape[2],
         height=clipped.shape[1],
     )
+
+
+def clip_raster_for_district(
+    connection,
+    *,
+    layer: str,
+    district: str,
+    province: str | None = None,
+    output_format: str = "png",
+) -> RasterClipResult:
+    settings = get_settings()
+    cache_key = _cache_key(
+        {
+            "layer": layer.lower(),
+            "district": district,
+            "province": province or "",
+            "output_format": output_format.lower(),
+            "bucket": settings.gcs_bucket or "",
+            "source_path": settings.raster_source_path(layer) or "",
+            "declared_crs": {
+                "flood": settings.gcs_flood_raster_crs,
+                "landcover": settings.gcs_landcover_raster_crs,
+            }.get(layer.lower())
+            or "",
+        }
+    )
+
+    cached = _load_cached_result(settings, cache_key)
+    if cached is not None:
+        return cached
+
+    result = _build_raster_clip_result(
+        connection,
+        layer=layer,
+        district=district,
+        province=province,
+        output_format=output_format,
+    )
+    _store_cached_result(settings, cache_key, result)
+    return result
 
 
 def build_raster_headers(result: RasterClipResult, *, opacity: float) -> dict[str, str]:

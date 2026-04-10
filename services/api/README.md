@@ -53,6 +53,7 @@ Set:
 - either `GCS_FLOOD_RASTER_PATH` and `GCS_LANDCOVER_RASTER_PATH`
 - or `GCS_RASTER_PREFIX` and let the API resolve `flood` and `landcover` under that prefix
 - optionally `GCS_FLOOD_RASTER_CRS` and `GCS_LANDCOVER_RASTER_CRS` if a source TIFF has bad or missing CRS metadata
+- optionally `RASTER_CACHE_DIR` and `RASTER_CACHE_TTL_SECONDS` to control local raster clip caching
 
 For local auth, use either:
 - `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
