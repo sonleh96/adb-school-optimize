@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -63,6 +64,8 @@ class Settings:
     gcs_landcover_raster_path: str | None
     gcs_flood_raster_crs: str | None
     gcs_landcover_raster_crs: str | None
+    raster_cache_dir: str
+    raster_cache_ttl_seconds: int
     cors_origins_raw: str | None
 
     @classmethod
@@ -81,6 +84,8 @@ class Settings:
             gcs_landcover_raster_path=_normalize_path(os.getenv("GCS_LANDCOVER_RASTER_PATH")),
             gcs_flood_raster_crs=os.getenv("GCS_FLOOD_RASTER_CRS"),
             gcs_landcover_raster_crs=os.getenv("GCS_LANDCOVER_RASTER_CRS"),
+            raster_cache_dir=os.getenv("RASTER_CACHE_DIR", str(Path(tempfile.gettempdir()) / "rise-png-raster-cache")),
+            raster_cache_ttl_seconds=int(os.getenv("RASTER_CACHE_TTL_SECONDS", "3600")),
             cors_origins_raw=os.getenv(
                 "CORS_ORIGINS",
                 "http://localhost:3000,http://127.0.0.1:3000",
