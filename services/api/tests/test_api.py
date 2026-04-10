@@ -33,6 +33,38 @@ def test_meta_indicators_returns_defaults(client, monkeypatch):
     }
 
 
+def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch):
+    captured = {}
+
+    def fake_fetch(connection, layer_key, province=None, district=None, limit=5000):
+        captured.update(layer_key=layer_key, province=province, district=district, limit=limit)
+        return {
+            "layer": {"layer_key": layer_key, "layer_type": "vector"},
+            "count": 1,
+            "items": [{"source_feature_id": "123"}],
+        }
+
+    monkeypatch.setattr(meta, "fetch_vector_layer_features", fake_fetch)
+
+    response = client.get(
+        "/api/v1/meta/layers/roads/features",
+        params={"province": "NCD", "district": "National Capital District", "limit": 100},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "layer": {"layer_key": "roads", "layer_type": "vector"},
+        "count": 1,
+        "items": [{"source_feature_id": "123"}],
+    }
+    assert captured == {
+        "layer_key": "roads",
+        "province": "NCD",
+        "district": "National Capital District",
+        "limit": 100,
+    }
+
+
 def test_meta_api_error_uses_structured_handler(client, monkeypatch):
     monkeypatch.setattr(
         meta,
@@ -44,6 +76,27 @@ def test_meta_api_error_uses_structured_handler(client, monkeypatch):
 
     assert response.status_code == 418
     assert response.json() == {"error": {"code": "bad_metadata", "message": "Bad metadata."}}
+
+
+def test_meta_layer_features_structured_error(client, monkeypatch):
+    monkeypatch.setattr(
+        meta,
+        "fetch_vector_layer_features",
+        lambda connection, **kwargs: (_ for _ in ()).throw(
+            ApiError("Layer not found.", status_code=404, code="layer_not_found", details={"layer_key": "roads"})
+        ),
+    )
+
+    response = client.get("/api/v1/meta/layers/roads/features")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": {
+            "code": "layer_not_found",
+            "message": "Layer not found.",
+            "details": {"layer_key": "roads"},
+        }
+    }
 
 
 def test_list_schools_forwards_filters(client, fake_connection, monkeypatch):

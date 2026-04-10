@@ -6,21 +6,103 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from psycopg.types.json import Json
 from shapely.geometry import MultiPolygon, shape
 from shapely.wkt import dumps
 
 from ..db import get_db
+from .mappings import AUXILIARY_VECTOR_SOURCES
 from ..settings import get_settings
 
 
 ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_SCHOOLS_PATH = ROOT / "datasets" / "png_curated_sec_schools_access_v3_clean.csv"
 DEFAULT_DISTRICTS_PATH = ROOT / "datasets" / "aggregated_district_data.geojson"
+DEFAULT_AUXILIARY_SOURCE_PATHS = {key: ROOT / relative_path for key, relative_path in AUXILIARY_VECTOR_SOURCES.items()}
 
 
 def _load_geojson(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["features"]
+
+
+def _string_or_none(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _jsonable_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, float) and pd.isna(value):
+        return None
+    if pd.isna(value):
+        return None
+    return value
+
+
+def _feature_name(properties: dict[str, Any]) -> str | None:
+    for key in ("name", "Name", "location", "NAM_2", "NAM_1", "NAM_0", "ref"):
+        value = _string_or_none(properties.get(key))
+        if value:
+            return value
+    return None
+
+
+def _feature_geometry_wkt(feature_geometry: dict[str, Any]) -> str:
+    geometry = shape(feature_geometry)
+    if geometry.geom_type == "Polygon":
+        geometry = MultiPolygon([geometry])
+    return dumps(geometry)
+
+
+def _geojson_vector_records(layer_key: str, path: Path) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for index, feature in enumerate(_load_geojson(path)):
+        properties = feature.get("properties", {})
+        records.append(
+            {
+                "layer_key": layer_key,
+                "source_feature_id": _string_or_none(
+                    properties.get("ID")
+                    or properties.get("id")
+                    or properties.get("osm_id")
+                    or properties.get("ADM2CD_c")
+                    or properties.get("ADM1CD_c")
+                    or index
+                ),
+                "feature_name": _feature_name(properties),
+                "province": _string_or_none(properties.get("NAM_1") or properties.get("Province")),
+                "district": _string_or_none(properties.get("NAM_2") or properties.get("District")),
+                "properties": Json({key: _jsonable_value(value) for key, value in properties.items()}),
+                "geom_wkt": _feature_geometry_wkt(feature["geometry"]),
+            }
+        )
+    return records
+
+
+def _csv_point_vector_records(layer_key: str, path: Path) -> list[dict[str, Any]]:
+    df = pd.read_csv(path)
+    records: list[dict[str, Any]] = []
+    for row in df.to_dict(orient="records"):
+        xcoord = row.get("xcoord")
+        ycoord = row.get("ycoord")
+        records.append(
+            {
+                "layer_key": layer_key,
+                "source_feature_id": _string_or_none(row.get("ID")),
+                "feature_name": None,
+                "province": _string_or_none(row.get("NAM_1")),
+                "district": _string_or_none(row.get("NAM_2")),
+                "properties": Json({key: _jsonable_value(value) for key, value in row.items()}),
+                "geom_wkt": f"POINT ({xcoord} {ycoord})",
+            }
+        )
+    return records
 
 
 def _school_records(df: pd.DataFrame) -> list[dict[str, Any]]:
@@ -327,19 +409,78 @@ def load_districts(connection, path: Path) -> int:
     return len(records)
 
 
+def load_vector_layer_features(connection, layer_key: str, records: list[dict[str, Any]]) -> int:
+    if not records:
+        return 0
+
+    delete_query = "delete from vector_layer_features where layer_key = %(layer_key)s"
+    insert_query = """
+    insert into vector_layer_features (
+        layer_key, source_feature_id, feature_name, province, district, properties, geom
+    )
+    values (
+        %(layer_key)s, %(source_feature_id)s, %(feature_name)s, %(province)s, %(district)s, %(properties)s,
+        st_setsrid(st_geomfromtext(%(geom_wkt)s), 4326)
+    )
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(delete_query, {"layer_key": layer_key})
+        cursor.executemany(insert_query, records)
+    connection.commit()
+    return len(records)
+
+
+def load_auxiliary_layers(connection, auxiliary_paths: dict[str, Path] | None = None) -> dict[str, int]:
+    auxiliary_paths = auxiliary_paths or DEFAULT_AUXILIARY_SOURCE_PATHS
+    counts: dict[str, int] = {}
+
+    geojson_layers = {
+        "roads",
+        "air_quality",
+        "country_boundary",
+        "province_boundaries",
+        "district_boundaries_ref",
+    }
+    csv_point_layers = {
+        "pop_access_walk",
+        "pop_no_walk",
+        "pop_access_cycle",
+        "pop_no_cycle",
+        "pop_access_drive",
+        "pop_no_drive",
+    }
+
+    for layer_key, path in auxiliary_paths.items():
+        if not path.exists():
+            counts[layer_key] = 0
+            continue
+        if layer_key in geojson_layers:
+            records = _geojson_vector_records(layer_key, path)
+        elif layer_key in csv_point_layers:
+            records = _csv_point_vector_records(layer_key, path)
+        else:
+            raise ValueError(f"Unsupported auxiliary layer key: {layer_key}")
+        counts[layer_key] = load_vector_layer_features(connection, layer_key, records)
+
+    return counts
+
+
 def load_default_layers(connection) -> None:
     settings = get_settings()
     layers = [
         ("schools", "Schools", "school_explorer", "vector", "supabase", "schools", "school_name", "point", True, False),
         ("districts", "Districts", "district_explorer", "vector", "supabase", "districts", "province+district", "polygon", True, False),
-        ("roads", "Roads", "school_explorer", "vector", "supabase", "roads_intersect_2026_2", "NAM_1+NAM_2", "linestring", False, False),
-        ("air_quality", "Air Quality", "school_explorer", "vector", "supabase", "air_quality", "NAM_1+NAM_2", "polygon", False, False),
-        ("pop_access_walk", "Population Within Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "pop_access_walk_v2", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_walk", "Population Without Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "pop_no_walk_v2", "NAM_1+NAM_2", "point", False, False),
-        ("pop_access_cycle", "Population Within Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "pop_access_cycle_v2", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_cycle", "Population Without Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "pop_no_cycle_v2", "NAM_1+NAM_2", "point", False, False),
-        ("pop_access_drive", "Population Within Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "pop_access_drive_v2", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_drive", "Population Without Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "pop_no_drive_v2", "NAM_1+NAM_2", "point", False, False),
+        ("roads", "Roads", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "linestring", False, False),
+        ("air_quality", "Air Quality", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "polygon", False, False),
+        ("pop_access_walk", "Population Within Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("pop_no_walk", "Population Without Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("pop_access_cycle", "Population Within Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("pop_no_cycle", "Population Without Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("pop_access_drive", "Population Within Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("pop_no_drive", "Population Without Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
+        ("country_boundary", "Country Boundary", "reference", "vector", "supabase", "vector_layer_features", "country", "polygon", False, False),
+        ("province_boundaries", "Province Boundaries", "reference", "vector", "supabase", "vector_layer_features", "NAM_1", "polygon", False, False),
+        ("district_boundaries_ref", "District Boundaries Reference", "reference", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "polygon", False, False),
         (
             "flood",
             "Flood inundation",
@@ -392,15 +533,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Load core school and district data into PostGIS.")
     parser.add_argument("--schools", type=Path, default=DEFAULT_SCHOOLS_PATH)
     parser.add_argument("--districts", type=Path, default=DEFAULT_DISTRICTS_PATH)
+    parser.add_argument("--skip-auxiliary-layers", action="store_true")
     args = parser.parse_args()
 
     settings = get_settings()
     with get_db(settings) as connection:
         district_count = load_districts(connection, args.districts)
         school_count = load_schools(connection, args.schools)
+        auxiliary_counts = {} if args.skip_auxiliary_layers else load_auxiliary_layers(connection)
         load_default_layers(connection)
 
-    print(f"Loaded {district_count} districts and {school_count} schools.")
+    if auxiliary_counts:
+        summary = ", ".join(f"{layer}={count}" for layer, count in sorted(auxiliary_counts.items()))
+        print(f"Loaded {district_count} districts, {school_count} schools, and auxiliary layers: {summary}.")
+    else:
+        print(f"Loaded {district_count} districts and {school_count} schools.")
 
 
 if __name__ == "__main__":

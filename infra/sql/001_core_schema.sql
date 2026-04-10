@@ -180,6 +180,25 @@ create table if not exists layer_catalog (
     updated_at timestamptz not null default now()
 );
 
+create table if not exists vector_layer_features (
+    vector_feature_id uuid primary key default gen_random_uuid(),
+    layer_key text not null,
+    source_feature_id text,
+    feature_name text,
+    province text,
+    district text,
+    properties jsonb not null default '{}'::jsonb,
+    geom geometry(geometry, 4326) not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create unique index if not exists vector_layer_features_layer_feature_uidx
+    on vector_layer_features (layer_key, source_feature_id);
+create index if not exists vector_layer_features_layer_idx on vector_layer_features (layer_key);
+create index if not exists vector_layer_features_admin_idx on vector_layer_features (province, district);
+create index if not exists vector_layer_features_geom_gix on vector_layer_features using gist (geom);
+
 create or replace view ranked_school_scores_latest as
 select
     ss.scenario_id,

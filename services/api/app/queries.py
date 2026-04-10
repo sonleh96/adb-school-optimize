@@ -13,6 +13,17 @@ from layer_catalog
 order by layer_group, layer_name
 """
 
+VECTOR_LAYER_FEATURES_SQL = """
+select vector_feature_id, layer_key, source_feature_id, feature_name, province, district,
+       properties, st_asgeojson(geom)::json as geometry
+from vector_layer_features
+where layer_key = %(layer_key)s
+  and (%(province)s::text is null or province = %(province)s::text)
+  and (%(district)s::text is null or district = %(district)s::text)
+order by province nulls first, district nulls first, feature_name nulls first, source_feature_id nulls first
+limit %(limit)s
+"""
+
 PROVINCES_SQL = """
 select distinct province
 from districts
