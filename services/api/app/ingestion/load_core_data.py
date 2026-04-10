@@ -10,7 +10,7 @@ from shapely.geometry import MultiPolygon, shape
 from shapely.wkt import dumps
 
 from ..db import get_db
-from ..settings import Settings
+from ..settings import get_settings
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -328,6 +328,7 @@ def load_districts(connection, path: Path) -> int:
 
 
 def load_default_layers(connection) -> None:
+    settings = get_settings()
     layers = [
         ("schools", "Schools", "school_explorer", "vector", "supabase", "schools", "school_name", "point", True, False),
         ("districts", "Districts", "district_explorer", "vector", "supabase", "districts", "province+district", "polygon", True, False),
@@ -339,8 +340,30 @@ def load_default_layers(connection) -> None:
         ("pop_no_cycle", "Population Without Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "pop_no_cycle_v2", "NAM_1+NAM_2", "point", False, False),
         ("pop_access_drive", "Population Within Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "pop_access_drive_v2", "NAM_1+NAM_2", "point", False, False),
         ("pop_no_drive", "Population Without Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "pop_no_drive_v2", "NAM_1+NAM_2", "point", False, False),
-        ("flood", "Flood inundation", "school_explorer", "raster", "gcs", "PNG_flood_JRC.tif", "district clip", "raster", False, True),
-        ("land_cover", "Land cover", "school_explorer", "raster", "gcs", "Dynamic World LULC.tif", "district clip", "raster", False, True),
+        (
+            "flood",
+            "Flood inundation",
+            "school_explorer",
+            "raster",
+            "gcs",
+            settings.raster_source_path("flood") or "PNG_flood_JRC.tif",
+            "district clip",
+            "raster",
+            False,
+            True,
+        ),
+        (
+            "land_cover",
+            "Land cover",
+            "school_explorer",
+            "raster",
+            "gcs",
+            settings.raster_source_path("landcover") or "Dynamic World LULC.tif",
+            "district clip",
+            "raster",
+            False,
+            True,
+        ),
     ]
     query = """
     insert into layer_catalog (
@@ -371,7 +394,7 @@ def main() -> None:
     parser.add_argument("--districts", type=Path, default=DEFAULT_DISTRICTS_PATH)
     args = parser.parse_args()
 
-    settings = Settings()
+    settings = get_settings()
     with get_db(settings) as connection:
         district_count = load_districts(connection, args.districts)
         school_count = load_schools(connection, args.schools)

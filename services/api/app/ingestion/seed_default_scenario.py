@@ -4,7 +4,7 @@ import argparse
 
 from ..db import get_db
 from ..repository import run_and_persist_scenario
-from ..settings import Settings
+from ..settings import get_settings
 
 
 def main() -> None:
@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("--created-by", default="system")
     args = parser.parse_args()
 
-    settings = Settings()
+    settings = get_settings()
     with get_db(settings) as connection:
         result = run_and_persist_scenario(
             connection,

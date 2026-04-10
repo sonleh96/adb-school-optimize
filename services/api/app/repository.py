@@ -11,8 +11,10 @@ from psycopg.types.json import Json
 from school_scoring import ScoringConfig, get_default_config, run_scoring
 from school_scoring.explainability import build_score_breakdown
 
+from .errors import ApiError
 from .queries import (
     DEFAULT_SCENARIO_SQL,
+    DISTRICT_GEOMETRY_SQL,
     DISTRICTS_CHOROPLETH_SQL,
     DISTRICTS_SQL,
     LAYERS_SQL,
@@ -23,6 +25,7 @@ from .queries import (
     SCHOOL_DETAIL_SQL,
     SCHOOLS_SQL,
 )
+from .settings import get_settings
 
 
 INDICATOR_OPTIONS = [
@@ -74,7 +77,21 @@ def _json_safe(value: Any) -> Any:
 
 
 def fetch_layers(connection) -> list[dict[str, Any]]:
-    return fetch_all(connection, LAYERS_SQL)
+    settings = get_settings()
+    rows = fetch_all(connection, LAYERS_SQL)
+    raster_paths = {
+        "flood": settings.raster_source_path("flood"),
+        "landcover": settings.raster_source_path("landcover"),
+    }
+    for row in rows:
+        if row.get("source_kind") != "gcs":
+            continue
+        layer_key = str(row.get("layer_key") or "").lower()
+        normalized_key = "landcover" if layer_key == "land_cover" else layer_key
+        source_path = raster_paths.get(normalized_key)
+        if source_path:
+            row["source_path"] = source_path
+    return rows
 
 
 def fetch_indicators() -> list[str]:
@@ -87,6 +104,25 @@ def fetch_provinces(connection) -> list[dict[str, Any]]:
 
 def fetch_districts(connection, province: str | None = None) -> list[dict[str, Any]]:
     return fetch_all(connection, DISTRICTS_SQL, {"province": province})
+
+
+def fetch_district_geometry(connection, district: str, province: str | None = None) -> dict[str, Any]:
+    rows = fetch_all(connection, DISTRICT_GEOMETRY_SQL, {"district": district, "province": province})
+    if not rows:
+        raise ApiError(
+            "District not found.",
+            status_code=404,
+            code="district_not_found",
+            details={"district": district, "province": province},
+        )
+    if province is None and len(rows) > 1:
+        raise ApiError(
+            "District name is ambiguous across provinces. Provide the province parameter.",
+            status_code=400,
+            code="district_ambiguous",
+            details={"district": district, "matches": [row["province"] for row in rows]},
+        )
+    return rows[0]
 
 
 def fetch_district_choropleth(

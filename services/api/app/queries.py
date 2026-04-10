@@ -26,6 +26,14 @@ where (%(province)s::text is null or province = %(province)s::text)
 order by province, district
 """
 
+DISTRICT_GEOMETRY_SQL = """
+select district_id, province, district, st_asgeojson(geom)::json as geometry
+from districts
+where district = %(district)s::text
+  and (%(province)s::text is null or province = %(province)s::text)
+order by province, district
+"""
+
 DISTRICTS_CHOROPLETH_SQL = """
 select district_id, province, district,
        st_asgeojson(geom)::json as geometry,
