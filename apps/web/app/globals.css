@@ -293,12 +293,18 @@ textarea {
   background: rgba(255, 255, 255, 0.72);
   color: var(--muted);
   font-size: 0.85rem;
+  cursor: pointer;
+  transition: 120ms ease;
 }
 
 .layer-chip[data-active="true"] {
   background: rgba(217, 119, 6, 0.12);
   color: #8a4d04;
   border-color: rgba(217, 119, 6, 0.3);
+}
+
+.layer-chip:hover {
+  transform: translateY(-1px);
 }
 
 .status-note {

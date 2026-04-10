@@ -2,9 +2,11 @@ import type {
   DistrictRecord,
   IndicatorsResponse,
   LayersResponse,
+  RasterMetadataResponse,
   ScenarioRecord,
   ScoringRunResponse,
   SchoolRecord,
+  VectorLayerFeaturesResponse,
 } from "@/lib/types";
 
 const API_BASE_URL =
@@ -42,6 +44,48 @@ export async function fetchLayers(): Promise<LayersResponse[]> {
 
 export async function fetchDistrictOptions(): Promise<Array<{ district_id: string; province: string; district: string }>> {
   return apiFetch<Array<{ district_id: string; province: string; district: string }>>("/api/v1/meta/districts");
+}
+
+export async function fetchLayerFeatures(params: {
+  layerKey: string;
+  province?: string;
+  district?: string;
+  limit?: number;
+}): Promise<VectorLayerFeaturesResponse> {
+  const search = new URLSearchParams();
+  if (params.province) search.set("province", params.province);
+  if (params.district) search.set("district", params.district);
+  if (params.limit) search.set("limit", String(params.limit));
+  const suffix = search.toString() ? `?${search.toString()}` : "";
+  return apiFetch<VectorLayerFeaturesResponse>(`/api/v1/meta/layers/${params.layerKey}/features${suffix}`);
+}
+
+export async function fetchRasterMetadata(params: {
+  layer: "flood" | "landcover";
+  district: string;
+  province?: string;
+  opacity?: number;
+}): Promise<RasterMetadataResponse> {
+  const search = new URLSearchParams();
+  search.set("district", params.district);
+  if (params.province) search.set("province", params.province);
+  if (params.opacity != null) search.set("opacity", String(params.opacity));
+  return apiFetch<RasterMetadataResponse>(`/api/v1/rasters/${params.layer}/metadata?${search.toString()}`);
+}
+
+export function buildRasterOverlayUrl(params: {
+  layer: "flood" | "landcover";
+  district: string;
+  province?: string;
+  opacity?: number;
+  format?: "png" | "geotiff";
+}): string {
+  const search = new URLSearchParams();
+  search.set("district", params.district);
+  if (params.province) search.set("province", params.province);
+  if (params.opacity != null) search.set("opacity", String(params.opacity));
+  if (params.format) search.set("format", params.format);
+  return `${API_BASE_URL}/api/v1/rasters/${params.layer}/overlay?${search.toString()}`;
 }
 
 export async function fetchSchools(params: {

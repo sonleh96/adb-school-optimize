@@ -73,6 +73,35 @@ export type LayersResponse = {
   runtime_clip: boolean;
 };
 
+export type VectorLayerFeature = {
+  vector_feature_id: string;
+  layer_key: string;
+  source_feature_id?: string | null;
+  feature_name?: string | null;
+  province?: string | null;
+  district?: string | null;
+  properties: Record<string, unknown>;
+  geometry: GeoJsonGeometry;
+};
+
+export type VectorLayerFeaturesResponse = {
+  layer: LayersResponse;
+  count: number;
+  items: VectorLayerFeature[];
+};
+
+export type RasterMetadataResponse = {
+  layer: string;
+  district: string;
+  province: string;
+  opacity: number;
+  bounds_4326: [number, number, number, number];
+  source_uri: string;
+  width: number;
+  height: number;
+  cache_status?: "hit" | "miss";
+};
+
 export type IndicatorsResponse = {
   default: string;
   items: string[];
