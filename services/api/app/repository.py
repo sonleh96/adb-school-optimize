@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from io import BytesIO
 from typing import Any
 
@@ -48,13 +49,28 @@ INDICATOR_OPTIONS = [
 def fetch_all(connection, query: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     with connection.cursor() as cursor:
         cursor.execute(query, params or {})
-        return list(cursor.fetchall())
+        return [_json_safe(row) for row in cursor.fetchall()]
 
 
 def fetch_one(connection, query: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
     with connection.cursor() as cursor:
         cursor.execute(query, params or {})
-        return cursor.fetchone()
+        row = cursor.fetchone()
+        return _json_safe(row) if row is not None else None
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_json_safe(item) for item in value)
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+    return value
 
 
 def fetch_layers(connection) -> list[dict[str, Any]]:
@@ -288,7 +304,7 @@ def run_and_persist_scenario(
             "scenario": None,
             "summary": result.summary,
             "warnings": result.warnings,
-            "top_rows": result.scored_data.head(25).to_dict(orient="records"),
+            "top_rows": _serialize_preview_rows(result.scored_data),
         }
 
     scenario_payload = {
@@ -356,8 +372,23 @@ def run_and_persist_scenario(
         "scenario": scenario,
         "summary": result.summary,
         "warnings": result.warnings,
-        "top_rows": result.scored_data.head(25).to_dict(orient="records"),
+        "top_rows": _serialize_preview_rows(result.scored_data),
     }
+
+
+def _serialize_preview_rows(df: pd.DataFrame) -> list[dict[str, Any]]:
+    preview = []
+    for record in df.head(25).to_dict(orient="records"):
+        preview.append(
+            {
+                "school_name": record.get("School Name"),
+                "province": record.get("Province"),
+                "district": record.get("District"),
+                "priority": record.get("Priority"),
+                "need": record.get("Need"),
+            }
+        )
+    return preview
 
 
 def export_ranked_csv(connection, scenario_id: str | None = None) -> bytes:
