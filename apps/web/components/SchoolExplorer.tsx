@@ -163,6 +163,16 @@ export function SchoolExplorer() {
               </div>
             </div>
             <div className="panel-body">
+              <div className="inline-marker-legend">
+                <span className="legend-swatch" style={{ background: "#93c5fd" }} />
+                <span className="small-copy">Low</span>
+                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
+                <span className="small-copy">Moderate</span>
+                <span className="legend-swatch" style={{ background: "#2563eb" }} />
+                <span className="small-copy">High</span>
+                <span className="legend-swatch" style={{ background: "#1d4ed8" }} />
+                <span className="small-copy">Very high</span>
+              </div>
               <div className="map-frame">
                 {loading ? (
                   <div className="loading">Loading schools…</div>
@@ -212,7 +222,7 @@ export function SchoolExplorer() {
               </div>
             </div>
             <div className="panel-body">
-              <div className="table-wrap">
+              <div className="table-wrap table-wrap-tall">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -252,7 +262,7 @@ export function SchoolExplorer() {
           </div>
         </div>
 
-        <div className="two-up" style={{ marginTop: 16 }}>
+        <div className="two-up school-explorer-bottom" style={{ marginTop: 16 }}>
           <article className="panel">
             <div className="panel-head">
               <div>
@@ -294,27 +304,6 @@ export function SchoolExplorer() {
               ) : (
                 <div className="empty">Pick a school on the map or in the table.</div>
               )}
-            </div>
-          </article>
-
-          <article className="panel">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Map Legend</h3>
-                <p className="panel-subtitle">Marker color currently reflects the chosen score dimension.</p>
-              </div>
-            </div>
-            <div className="panel-body">
-              <div className="legend">
-                <span className="legend-swatch" style={{ background: "#93c5fd" }} />
-                <span className="small-copy">Low</span>
-                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
-                <span className="small-copy">Moderate</span>
-                <span className="legend-swatch" style={{ background: "#2563eb" }} />
-                <span className="small-copy">High</span>
-                <span className="legend-swatch" style={{ background: "#1d4ed8" }} />
-                <span className="small-copy">Very high</span>
-              </div>
             </div>
           </article>
         </div>
