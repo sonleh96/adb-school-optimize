@@ -28,3 +28,4 @@ rise_png_api.egg-info/SOURCES.txt
 rise_png_api.egg-info/dependency_links.txt
 rise_png_api.egg-info/requires.txt
 rise_png_api.egg-info/top_level.txt
+tests/test_api.py
