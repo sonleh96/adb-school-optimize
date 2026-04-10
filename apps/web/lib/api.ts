@@ -51,11 +51,18 @@ export async function fetchLayerFeatures(params: {
   province?: string;
   district?: string;
   limit?: number;
+  bbox4326?: [number, number, number, number];
 }): Promise<VectorLayerFeaturesResponse> {
   const search = new URLSearchParams();
   if (params.province) search.set("province", params.province);
   if (params.district) search.set("district", params.district);
   if (params.limit) search.set("limit", String(params.limit));
+  if (params.bbox4326) {
+    search.set("min_lon", String(params.bbox4326[0]));
+    search.set("min_lat", String(params.bbox4326[1]));
+    search.set("max_lon", String(params.bbox4326[2]));
+    search.set("max_lat", String(params.bbox4326[3]));
+  }
   const suffix = search.toString() ? `?${search.toString()}` : "";
   return apiFetch<VectorLayerFeaturesResponse>(`/api/v1/meta/layers/${params.layerKey}/features${suffix}`);
 }

@@ -1,12 +1,12 @@
 "use client";
 
 import L, { LatLngBounds } from "leaflet";
-import { useEffect, useMemo, useState } from "react";
-import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
 import { scoreToColor } from "@/lib/color";
-import type { RasterMetadataResponse, SchoolRecord, VectorLayerFeature } from "@/lib/types";
+import type { RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
 
 type LayerToggle = {
   key: "roads" | "flood" | "landcover" | "air_quality" | "access";
@@ -22,6 +22,12 @@ type LayerState = {
   landcover: RasterMetadataResponse | null;
 };
 
+type Bbox4326 = [number, number, number, number];
+type LayerCacheValue = VectorLayerFeaturesResponse | RasterMetadataResponse;
+
+const VECTOR_LIMIT_DEFAULT = 30000;
+const ACCESS_POINTS_MAX_RENDER = 16000;
+
 function FitSchools({ schools }: { schools: SchoolRecord[] }) {
   const map = useMap();
   useEffect(() => {
@@ -31,6 +37,20 @@ function FitSchools({ schools }: { schools: SchoolRecord[] }) {
     );
     map.fitBounds(bounds.pad(0.18));
   }, [map, schools]);
+
+  return null;
+}
+
+function ViewportBoundsWatcher({ onChange }: { onChange: (bbox: Bbox4326) => void }) {
+  const map = useMap();
+  useMapEvents({
+    moveend: () => onChange(boundsToBbox4326(map.getBounds())),
+    zoomend: () => onChange(boundsToBbox4326(map.getBounds())),
+  });
+
+  useEffect(() => {
+    onChange(boundsToBbox4326(map.getBounds()));
+  }, [map, onChange]);
 
   return null;
 }
@@ -61,6 +81,23 @@ function rasterBounds(metadata: RasterMetadataResponse): [[number, number], [num
   ];
 }
 
+function boundsToBbox4326(bounds: LatLngBounds): Bbox4326 {
+  const southWest = bounds.getSouthWest();
+  const northEast = bounds.getNorthEast();
+  return [southWest.lng, southWest.lat, northEast.lng, northEast.lat];
+}
+
+function thinByStride(features: VectorLayerFeature[], maxPoints: number): VectorLayerFeature[] {
+  if (features.length <= maxPoints) return features;
+  const step = Math.ceil(features.length / maxPoints);
+  return features.filter((_, index) => index % step === 0);
+}
+
+function cacheKey(prefix: string, district: string, province: string | undefined, bbox4326: Bbox4326 | null): string {
+  const bboxPart = bbox4326 ? bbox4326.map((value) => value.toFixed(5)).join(",") : "none";
+  return `${prefix}|province=${province ?? ""}|district=${district}|bbox=${bboxPart}`;
+}
+
 export function SchoolMap({
   schools,
   selectedSchoolId,
@@ -86,8 +123,48 @@ export function SchoolMap({
     landcover: null,
   });
   const [layerStatus, setLayerStatus] = useState<string>("");
+  const [viewportBbox, setViewportBbox] = useState<Bbox4326 | null>(null);
+  const [debouncedViewportBbox, setDebouncedViewportBbox] = useState<Bbox4326 | null>(null);
+  const cacheRef = useRef<Map<string, LayerCacheValue>>(new Map());
 
   const activeLayers = useMemo(() => new Set(layers.filter((layer) => layer.active).map((layer) => layer.key)), [layers]);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedViewportBbox(viewportBbox);
+    }, 220);
+    return () => window.clearTimeout(handle);
+  }, [viewportBbox]);
+
+  const loadVectorLayer = useCallback(
+    async (layerKey: string, limit: number): Promise<VectorLayerFeaturesResponse> => {
+      const key = cacheKey(`vector:${layerKey}:limit=${limit}`, district, province, debouncedViewportBbox);
+      const cached = cacheRef.current.get(key);
+      if (cached) return cached as VectorLayerFeaturesResponse;
+      const response = await fetchLayerFeatures({
+        layerKey,
+        province,
+        district,
+        limit,
+        bbox4326: debouncedViewportBbox ?? undefined,
+      });
+      cacheRef.current.set(key, response);
+      return response;
+    },
+    [debouncedViewportBbox, district, province]
+  );
+
+  const loadRasterLayer = useCallback(
+    async (layer: "flood" | "landcover", opacity: number): Promise<RasterMetadataResponse> => {
+      const key = cacheKey(`raster:${layer}:opacity=${opacity}`, district, province, null);
+      const cached = cacheRef.current.get(key);
+      if (cached) return cached as RasterMetadataResponse;
+      const response = await fetchRasterMetadata({ layer, district, province, opacity });
+      cacheRef.current.set(key, response);
+      return response;
+    },
+    [district, province]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -102,17 +179,18 @@ export function SchoolMap({
 
       try {
         const jobs: Promise<void>[] = [];
+        let accessThinned = false;
 
         if (activeLayers.has("roads")) {
           jobs.push(
-            fetchLayerFeatures({ layerKey: "roads", province, district, limit: 120000 }).then((response) => {
+            loadVectorLayer("roads", VECTOR_LIMIT_DEFAULT).then((response) => {
               next.roads = response.items;
             })
           );
         }
         if (activeLayers.has("air_quality")) {
           jobs.push(
-            fetchLayerFeatures({ layerKey: "air_quality", province, district, limit: 120000 }).then((response) => {
+            loadVectorLayer("air_quality", VECTOR_LIMIT_DEFAULT).then((response) => {
               next.air_quality = response.items;
             })
           );
@@ -120,27 +198,29 @@ export function SchoolMap({
         if (activeLayers.has("access")) {
           jobs.push(
             Promise.all([
-              fetchLayerFeatures({ layerKey: "pop_access_walk", province, district, limit: 120000 }),
-              fetchLayerFeatures({ layerKey: "pop_no_walk", province, district, limit: 120000 }),
-              fetchLayerFeatures({ layerKey: "pop_access_cycle", province, district, limit: 120000 }),
-              fetchLayerFeatures({ layerKey: "pop_no_cycle", province, district, limit: 120000 }),
-              fetchLayerFeatures({ layerKey: "pop_access_drive", province, district, limit: 120000 }),
-              fetchLayerFeatures({ layerKey: "pop_no_drive", province, district, limit: 120000 }),
+              loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_walk", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_cycle", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_drive", VECTOR_LIMIT_DEFAULT),
             ]).then((responses) => {
-              next.access = responses.flatMap((response) => response.items);
+              const allAccess = responses.flatMap((response) => response.items);
+              accessThinned = allAccess.length > ACCESS_POINTS_MAX_RENDER;
+              next.access = thinByStride(allAccess, ACCESS_POINTS_MAX_RENDER);
             })
           );
         }
         if (activeLayers.has("flood")) {
           jobs.push(
-            fetchRasterMetadata({ layer: "flood", district, province, opacity: 0.55 }).then((response) => {
+            loadRasterLayer("flood", 0.55).then((response) => {
               next.flood = response;
             })
           );
         }
         if (activeLayers.has("landcover")) {
           jobs.push(
-            fetchRasterMetadata({ layer: "landcover", district, province, opacity: 0.75 }).then((response) => {
+            loadRasterLayer("landcover", 0.75).then((response) => {
               next.landcover = response;
             })
           );
@@ -158,7 +238,7 @@ export function SchoolMap({
         await Promise.all(jobs);
         if (!cancelled) {
           setLayerState(next);
-          setLayerStatus("");
+          setLayerStatus(accessThinned ? "Showing sampled access points to keep map rendering responsive." : "");
         }
       } catch (error) {
         if (cancelled) return;
@@ -171,7 +251,7 @@ export function SchoolMap({
     return () => {
       cancelled = true;
     };
-  }, [activeLayers, district, province]);
+  }, [activeLayers, district, loadRasterLayer, loadVectorLayer, province]);
 
   return (
     <>
@@ -181,6 +261,7 @@ export function SchoolMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitSchools schools={schools} />
+        <ViewportBoundsWatcher onChange={setViewportBbox} />
 
         {activeLayers.has("roads") && layerState.roads.length > 0 ? (
           <GeoJSON

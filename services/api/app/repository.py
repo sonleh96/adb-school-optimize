@@ -101,6 +101,7 @@ def fetch_vector_layer_features(
     province: str | None = None,
     district: str | None = None,
     limit: int = 5000,
+    bbox_4326: tuple[float, float, float, float] | None = None,
 ) -> dict[str, Any]:
     layers = fetch_layers(connection)
     layer = next((item for item in layers if item.get("layer_key") == layer_key), None)
@@ -127,6 +128,10 @@ def fetch_vector_layer_features(
             "province": province,
             "district": district,
             "limit": limit,
+            "min_lon": bbox_4326[0] if bbox_4326 else None,
+            "min_lat": bbox_4326[1] if bbox_4326 else None,
+            "max_lon": bbox_4326[2] if bbox_4326 else None,
+            "max_lat": bbox_4326[3] if bbox_4326 else None,
         },
     )
     return {
