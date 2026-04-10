@@ -24,6 +24,7 @@ class RasterClipResult:
     source_uri: str
     width: int
     height: int
+    cache_status: str = "miss"
 
 
 def _cache_key(payload: dict[str, object]) -> str:
@@ -62,6 +63,7 @@ def _deserialize_result(metadata: dict[str, object], content: bytes) -> RasterCl
         source_uri=str(metadata["source_uri"]),
         width=int(metadata["width"]),
         height=int(metadata["height"]),
+        cache_status="hit",
     )
 
 
@@ -333,6 +335,7 @@ def _build_raster_clip_result(
         source_uri=f"gs://{bucket_name}/{source_path}",
         width=clipped.shape[2],
         height=clipped.shape[1],
+        cache_status="miss",
     )
 
 
@@ -387,6 +390,7 @@ def build_raster_headers(result: RasterClipResult, *, opacity: float) -> dict[st
         "X-Raster-Source": result.source_uri,
         "X-Raster-Width": str(result.width),
         "X-Raster-Height": str(result.height),
+        "X-Raster-Cache": result.cache_status,
     }
 
 
@@ -400,4 +404,5 @@ def build_raster_metadata(result: RasterClipResult, *, opacity: float) -> dict[s
         "source_uri": result.source_uri,
         "width": result.width,
         "height": result.height,
+        "cache_status": result.cache_status,
     }

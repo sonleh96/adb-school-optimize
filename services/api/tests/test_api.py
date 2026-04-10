@@ -253,6 +253,7 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
         source_uri="gs://adb-school-optimize/rise-png/rasters/flood/PNG_flood_JRC.tif",
         width=321,
         height=232,
+        cache_status="hit",
     )
 
     monkeypatch.setattr(rasters, "clip_raster_for_district", lambda connection, **kwargs: clip_result)
@@ -268,6 +269,7 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
             "source_uri": result.source_uri,
             "width": result.width,
             "height": result.height,
+            "cache_status": result.cache_status,
         },
     )
     monkeypatch.setattr(
@@ -276,6 +278,7 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
         lambda result, opacity: {
             "X-Raster-Layer": result.layer,
             "X-Raster-Opacity": str(opacity),
+            "X-Raster-Cache": result.cache_status,
             "Content-Disposition": f'inline; filename="{result.filename}"',
         },
     )
@@ -299,10 +302,12 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
         "source_uri": "gs://adb-school-optimize/rise-png/rasters/flood/PNG_flood_JRC.tif",
         "width": 321,
         "height": 232,
+        "cache_status": "hit",
     }
 
     assert overlay_response.status_code == 200
     assert overlay_response.content == b"png-bytes"
     assert overlay_response.headers["x-raster-layer"] == "flood"
     assert overlay_response.headers["x-raster-opacity"] == "0.55"
+    assert overlay_response.headers["x-raster-cache"] == "hit"
     assert overlay_response.headers["content-disposition"] == 'inline; filename="flood_demo.png"'
