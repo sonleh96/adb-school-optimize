@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 import { DistrictExplorer } from "@/components/DistrictExplorer";
@@ -31,6 +32,22 @@ export function DashboardShell() {
 
   return (
     <main className="page-shell">
+      <header className="site-header">
+        <div className="site-header-main">
+          <div className="brand-block">
+            <Image
+              src="/adb-logo.png"
+              alt="Asian Development Bank"
+              width={960}
+              height={960}
+              priority
+              className="adb-logo-image"
+            />
+            <span className="brand-copy">Asian Development Bank</span>
+          </div>
+        </div>
+      </header>
+
       <section className="hero">
         <span className="hero-topline">RISE-PNG Decision Support</span>
         <div className="hero-grid">
