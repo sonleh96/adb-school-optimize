@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Pane, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
+import { scoreToColor } from "@/lib/color";
 import type { RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
 
 export type SchoolLayerKey =
@@ -141,14 +142,6 @@ function airQualityCategory(value: number | null): string {
   if (value <= 200) return "Unhealthy";
   if (value <= 300) return "Very Unhealthy";
   return "Hazardous";
-}
-
-function schoolMarkerColor(value?: number | null): string {
-  if (value == null || Number.isNaN(value)) return "#94a3b8";
-  if (value >= 0.75) return "#1d4ed8";
-  if (value >= 0.6) return "#2563eb";
-  if (value >= 0.45) return "#3b82f6";
-  return "#93c5fd";
 }
 
 function accessLayerColor(layerKey: string): string {
@@ -452,7 +445,7 @@ export function SchoolMap({
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {schools.map((school) => {
             const score = scoreField === "priority" ? school.priority : school.need;
-            const color = schoolMarkerColor(score);
+            const color = scoreToColor(score);
             const isSelected = school.school_id === selectedSchoolId;
 
             return (

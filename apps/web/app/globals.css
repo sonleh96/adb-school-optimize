@@ -296,6 +296,7 @@ textarea {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(360px, 0.85fr);
   gap: 16px;
+  align-items: stretch;
 }
 
 .split-layout-country {
@@ -303,14 +304,18 @@ textarea {
 }
 
 .map-card {
-  min-height: 620px;
+  height: 100%;
 }
 
 .map-frame {
-  height: 680px;
+  height: 760px;
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--line);
+}
+
+.map-score-legend {
+  margin-top: 12px;
 }
 
 .school-map-root {
@@ -513,16 +518,10 @@ textarea {
   max-height: 940px;
 }
 
-.inline-marker-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.school-explorer-bottom {
-  grid-template-columns: 1fr;
+.sidebar-stack {
+  display: grid;
+  align-content: start;
+  gap: 16px;
 }
 
 .data-table {
@@ -536,6 +535,13 @@ textarea {
   border-bottom: 1px solid rgba(29, 42, 40, 0.08);
   text-align: left;
   white-space: nowrap;
+}
+
+.school-name-cell {
+  white-space: normal;
+  min-width: 180px;
+  max-width: 280px;
+  line-height: 1.35;
 }
 
 .data-table th {
@@ -570,6 +576,7 @@ textarea {
   border-radius: 999px;
   background: rgba(10, 46, 115, 0.08);
   color: var(--accent);
+  border: 1px solid rgba(10, 46, 115, 0.12);
   font-family: var(--font-display), sans-serif;
 }
 
@@ -581,6 +588,10 @@ textarea {
 
 .detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-grid-compact {
+  grid-template-columns: 1fr;
 }
 
 .two-up {
@@ -612,10 +623,21 @@ textarea {
   flex-wrap: wrap;
 }
 
+.legend-score {
+  gap: 12px;
+}
+
+.legend-score-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .legend-swatch {
   width: 14px;
   height: 14px;
   border-radius: 999px;
+  border: 1px solid rgba(11, 31, 69, 0.16);
 }
 
 .empty,
@@ -651,7 +673,7 @@ textarea {
   }
 
   .map-card {
-    min-height: 520px;
+    height: auto;
   }
 
   .map-frame {
