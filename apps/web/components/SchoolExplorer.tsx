@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools, getApiBaseUrl } from "@/lib/api";
 import { scoreToColor } from "@/lib/color";
 import type { SchoolRecord } from "@/lib/types";
+import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -14,18 +15,15 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 
 const DEFAULT_DISTRICT = "National Capital District";
 
-type LayerToggle = {
-  key: "roads" | "flood" | "landcover" | "air_quality" | "access";
-  label: string;
-  active: boolean;
-};
-
-const INITIAL_LAYERS: LayerToggle[] = [
-  { key: "roads", label: "Roads", active: false },
-  { key: "flood", label: "Flood Raster", active: false },
-  { key: "landcover", label: "Land Cover Raster", active: false },
-  { key: "air_quality", label: "Air Quality", active: false },
-  { key: "access", label: "Access Grids", active: false },
+const INITIAL_LAYERS: SchoolLayerToggle[] = [
+  { key: "roads", label: "Road segments", active: false },
+  { key: "air_quality_mean", label: "Average AQI", active: false },
+  { key: "air_quality_max", label: "Maximum AQI", active: false },
+  { key: "access_walk", label: "Population Access (Walking - 4km)", active: false },
+  { key: "access_cycle", label: "Population Access (Cycling - 7km)", active: false },
+  { key: "access_drive", label: "Population Access (Driving - 10km)", active: false },
+  { key: "landcover", label: "Land cover", active: false },
+  { key: "flood", label: "Flood inundation", active: false },
 ];
 
 export function SchoolExplorer() {
@@ -37,7 +35,7 @@ export function SchoolExplorer() {
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [layers, setLayers] = useState<LayerToggle[]>(INITIAL_LAYERS);
+  const [layers, setLayers] = useState<SchoolLayerToggle[]>(INITIAL_LAYERS);
 
   useEffect(() => {
     fetchDistrictOptions()
@@ -97,10 +95,16 @@ export function SchoolExplorer() {
 
   const selectedProvince = selectedDistrictOption?.province;
 
-  const toggleLayer = (layerKey: LayerToggle["key"]) => {
-    setLayers((current) =>
-      current.map((layer) => (layer.key === layerKey ? { ...layer, active: !layer.active } : layer))
-    );
+  const toggleLayer = (layerKey: SchoolLayerKey) => {
+    setLayers((current) => {
+      const isAirLayer = layerKey === "air_quality_mean" || layerKey === "air_quality_max";
+      return current.map((layer) => {
+        if (layer.key === layerKey) return { ...layer, active: !layer.active };
+        if (!isAirLayer) return layer;
+        if (layer.key === "air_quality_mean" || layer.key === "air_quality_max") return { ...layer, active: false };
+        return layer;
+      });
+    });
   };
 
   return (
@@ -174,22 +178,26 @@ export function SchoolExplorer() {
                   />
                 )}
               </div>
-              <div className="layer-strip">
+              <div className="layer-control-box">
+                <p className="layer-control-title">Layer control</p>
+                <label className="layer-control-item layer-control-item-fixed">
+                  <input type="checkbox" checked disabled />
+                  <span>Schools</span>
+                </label>
                 {layers.map((layer) => (
-                  <button
-                    className="layer-chip"
-                    key={layer.key}
-                    type="button"
-                    data-active={layer.active}
-                    onClick={() => toggleLayer(layer.key)}
-                  >
-                    {layer.label}
-                  </button>
+                  <label className="layer-control-item" key={layer.key}>
+                    <input
+                      type="checkbox"
+                      checked={layer.active}
+                      onChange={() => toggleLayer(layer.key)}
+                    />
+                    <span>{layer.label}</span>
+                  </label>
                 ))}
               </div>
               <p className="status-note">
-                Toggle vector and raster layers to load them from the backend for the selected
-                district context.
+                Layer overlays load from backend. Air Quality is exclusive between Average and
+                Maximum AQI.
               </p>
             </div>
           </div>
@@ -298,13 +306,13 @@ export function SchoolExplorer() {
             </div>
             <div className="panel-body">
               <div className="legend">
-                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
+                <span className="legend-swatch" style={{ background: "#93c5fd" }} />
                 <span className="small-copy">Low</span>
-                <span className="legend-swatch" style={{ background: "#0f766e" }} />
+                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
                 <span className="small-copy">Moderate</span>
-                <span className="legend-swatch" style={{ background: "#d97706" }} />
+                <span className="legend-swatch" style={{ background: "#2563eb" }} />
                 <span className="small-copy">High</span>
-                <span className="legend-swatch" style={{ background: "#b42318" }} />
+                <span className="legend-swatch" style={{ background: "#1d4ed8" }} />
                 <span className="small-copy">Very high</span>
               </div>
             </div>

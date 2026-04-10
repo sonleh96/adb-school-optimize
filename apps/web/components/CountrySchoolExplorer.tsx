@@ -6,17 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchSchoolDetail, fetchSchools, getApiBaseUrl } from "@/lib/api";
 import { scoreToColor } from "@/lib/color";
 import type { SchoolRecord } from "@/lib/types";
+import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
   loading: () => <div className="loading">Loading school map…</div>,
 });
 
-const EMPTY_LAYERS: Array<{
-  key: "roads" | "flood" | "landcover" | "air_quality" | "access";
-  label: string;
-  active: boolean;
-}> = [];
+const EMPTY_LAYERS: SchoolLayerToggle[] = [];
 
 export function CountrySchoolExplorer() {
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
@@ -143,6 +140,7 @@ export function CountrySchoolExplorer() {
                     <tr>
                       <th>School</th>
                       <th>District</th>
+                      <th>Province</th>
                       <th>Priority</th>
                       <th>Need</th>
                       <th>Rank</th>
@@ -158,6 +156,7 @@ export function CountrySchoolExplorer() {
                       >
                         <td>{school.school_name}</td>
                         <td>{school.district}</td>
+                        <td>{school.province}</td>
                         <td>
                           <span
                             className="score-pill"
@@ -233,13 +232,13 @@ export function CountrySchoolExplorer() {
             </div>
             <div className="panel-body">
               <div className="legend">
-                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
+                <span className="legend-swatch" style={{ background: "#93c5fd" }} />
                 <span className="small-copy">Low</span>
-                <span className="legend-swatch" style={{ background: "#0f766e" }} />
+                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
                 <span className="small-copy">Moderate</span>
-                <span className="legend-swatch" style={{ background: "#d97706" }} />
+                <span className="legend-swatch" style={{ background: "#2563eb" }} />
                 <span className="small-copy">High</span>
-                <span className="legend-swatch" style={{ background: "#b42318" }} />
+                <span className="legend-swatch" style={{ background: "#1d4ed8" }} />
                 <span className="small-copy">Very high</span>
               </div>
             </div>

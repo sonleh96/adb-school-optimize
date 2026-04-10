@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { CountrySchoolExplorer } from "@/components/CountrySchoolExplorer";
 import { DistrictExplorer } from "@/components/DistrictExplorer";
@@ -21,16 +21,6 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 
 export function DashboardShell() {
   const [activeTab, setActiveTab] = useState<TabKey>("country_schools");
-
-  const metrics = useMemo(
-    () => [
-      { label: "Primary Decision", value: "50-60 Schools" },
-      { label: "Default District", value: "NCD" },
-      { label: "Default Indicator", value: "Average AQI" },
-      { label: "Selection Mode", value: "Single Select" },
-    ],
-    []
-  );
 
   return (
     <main className="page-shell">
@@ -60,14 +50,6 @@ export function DashboardShell() {
               running locally. The initial scaffold focuses on the two core decision surfaces:
               school-level exploration and district-level context comparison.
             </p>
-          </div>
-          <div className="hero-metrics">
-            {metrics.map((metric) => (
-              <article className="metric-card" key={metric.label}>
-                <p className="metric-label">{metric.label}</p>
-                <p className="metric-value">{metric.value}</p>
-              </article>
-            ))}
           </div>
         </div>
       </section>

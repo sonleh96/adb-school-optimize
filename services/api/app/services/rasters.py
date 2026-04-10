@@ -11,6 +11,20 @@ from ..errors import ApiError, ConfigurationError, DependencyError
 from ..repository import fetch_district_geometry
 from ..settings import get_settings
 
+RASTER_RENDER_VERSION = "v3_landcover_classes"
+
+LANDCOVER_CLASS_COLORS: dict[int, tuple[int, int, int]] = {
+    0: (65, 155, 223),   # Water #419bdf
+    1: (57, 125, 73),    # Trees #397d49
+    2: (136, 176, 83),   # Grass #88b053
+    3: (122, 135, 198),  # Flooded Vegetation #7a87c6
+    4: (228, 150, 53),   # Crops #e49635
+    5: (223, 195, 90),   # Shrub #dfc35a
+    6: (196, 40, 27),    # Built-up #c4281b
+    7: (165, 155, 143),  # Bare #a59b8f
+    8: (179, 159, 225),  # Snow/Ice #b39fe1
+}
+
 
 @dataclass
 class RasterClipResult:
@@ -173,22 +187,86 @@ def _is_wgs84_like(crs: object) -> bool:
     return value in {"EPSG:4326", "OGC:CRS84", "CRS84", "WGS84"}
 
 
-def _encode_png(clipped, profile, deps) -> bytes:
+def _encode_png(clipped, profile, deps, *, layer: str, src_nodata: float | int | None = None) -> bytes:
     np = deps["np"]
     MemoryFile = deps["MemoryFile"]
 
-    count, height, width = clipped.shape
-    if count >= 3:
-        data = clipped[:3]
+    # rasterio.mask(..., filled=False) returns a masked array. Preserve mask as PNG alpha.
+    is_masked = np.ma.isMaskedArray(clipped)
+    raw = clipped.data if is_masked else clipped
+    base_mask = np.ma.getmaskarray(clipped) if is_masked else np.zeros_like(raw, dtype=bool)
+
+    count, height, width = raw.shape
+    nodata_mask = np.zeros((height, width), dtype=bool)
+    if src_nodata is not None:
+        nodata_mask = np.any(np.isclose(raw, src_nodata), axis=0)
+
+    masked_pixels = np.any(base_mask, axis=0) | nodata_mask
+
+    # Flood overlays should render only inundation signal and keep background transparent.
+    if layer.lower() == "flood":
+        band = raw[0].astype("float32")
+        invalid = masked_pixels | (~np.isfinite(band)) | (band <= 0)
+        valid = ~invalid
+
+        rgb = np.zeros((3, height, width), dtype="uint8")
+        alpha = np.zeros((height, width), dtype="uint8")
+
+        if valid.any():
+            values = band.copy()
+            upper = float(np.nanpercentile(values[valid], 98))
+            if upper <= 0:
+                upper = 1.0
+            normalized = np.clip(values / upper, 0.0, 1.0)
+
+            # Blue flood ramp similar to reference map style.
+            red = (214.0 - 184.0 * normalized).clip(30, 220)
+            green = (234.0 - 132.0 * normalized).clip(60, 240)
+            blue = (255.0 - 18.0 * normalized).clip(130, 255)
+
+            rgb[0] = red.astype("uint8")
+            rgb[1] = green.astype("uint8")
+            rgb[2] = blue.astype("uint8")
+            alpha[valid] = (80.0 + 170.0 * normalized[valid]).astype("uint8")
+
+        data = np.concatenate([rgb, alpha[np.newaxis, :, :]], axis=0)
+    elif layer.lower() == "landcover":
+        band = raw[0].astype("float32")
+        class_values = np.rint(band).astype("int16")
+        valid_classes = np.isin(class_values, np.array(list(LANDCOVER_CLASS_COLORS.keys()), dtype="int16"))
+        invalid = masked_pixels | (~np.isfinite(band)) | (~valid_classes)
+
+        rgb = np.zeros((3, height, width), dtype="uint8")
+        alpha = np.zeros((height, width), dtype="uint8")
+
+        for klass, (r, g, b) in LANDCOVER_CLASS_COLORS.items():
+            klass_mask = (class_values == klass) & (~invalid)
+            if not klass_mask.any():
+                continue
+            rgb[0][klass_mask] = r
+            rgb[1][klass_mask] = g
+            rgb[2][klass_mask] = b
+
+        alpha[~invalid] = 190
+        data = np.concatenate([rgb, alpha[np.newaxis, :, :]], axis=0)
     else:
-        grayscale = _normalize_to_uint8(np, clipped[0])
-        data = np.stack([grayscale, grayscale, grayscale])
+        if count >= 3:
+            r = _normalize_to_uint8(np, raw[0])
+            g = _normalize_to_uint8(np, raw[1])
+            b = _normalize_to_uint8(np, raw[2])
+            rgb = np.stack([r, g, b])
+        else:
+            grayscale = _normalize_to_uint8(np, raw[0])
+            rgb = np.stack([grayscale, grayscale, grayscale])
+
+        alpha = np.where(masked_pixels, 0, 255).astype("uint8")
+        data = np.concatenate([rgb, alpha[np.newaxis, :, :]], axis=0)
 
     png_profile = {
         "driver": "PNG",
         "height": height,
         "width": width,
-        "count": data.shape[0],
+        "count": 4,
         "dtype": "uint8",
     }
 
@@ -271,7 +349,7 @@ def _build_raster_clip_result(
                     geometry_for_raster = geometry
                 else:
                     geometry_for_raster = transform_geom("EPSG:4326", raster_crs, geometry)
-                clipped, transform = mask(src, [geometry_for_raster], crop=True, filled=True)
+                clipped, transform = mask(src, [geometry_for_raster], crop=True, filled=False)
                 if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
                     raise ApiError(
                         "District clip produced an empty raster.",
@@ -296,11 +374,20 @@ def _build_raster_clip_result(
 
                 output_format = output_format.lower()
                 if output_format == "png":
-                    content = _encode_png(clipped, profile, deps)
+                    content = _encode_png(
+                        clipped,
+                        profile,
+                        deps,
+                        layer=layer,
+                        src_nodata=src.nodata,
+                    )
                     media_type = "image/png"
                     filename = f"{layer}_{province_name}_{district}.png".replace(" ", "_")
                 elif output_format in {"tif", "tiff", "geotiff"}:
-                    content = _encode_geotiff(clipped, profile, deps)
+                    clipped_filled = clipped.filled(src.nodata if src.nodata is not None else 0)
+                    if src.nodata is None:
+                        profile["nodata"] = 0
+                    content = _encode_geotiff(clipped_filled, profile, deps)
                     media_type = "image/tiff"
                     filename = f"{layer}_{province_name}_{district}.tif".replace(" ", "_")
                 else:
@@ -361,6 +448,7 @@ def clip_raster_for_district(
                 "landcover": settings.gcs_landcover_raster_crs,
             }.get(layer.lower())
             or "",
+            "render_version": RASTER_RENDER_VERSION,
         }
     )
 
