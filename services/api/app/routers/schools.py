@@ -11,7 +11,7 @@ router = APIRouter(prefix="/api/v1/schools", tags=["schools"])
 @router.get("")
 def list_schools(
     province: str | None = None,
-    district: str | None = "National Capital District",
+    district: str | None = None,
     scenario_id: str | None = None,
     limit: int = 500,
 ):
@@ -42,4 +42,3 @@ def explain_school(school_id: str, scenario_id: str | None = None):
         "rank_priority": row.get("rank_priority"),
         "rank_need": row.get("rank_need"),
     }
-

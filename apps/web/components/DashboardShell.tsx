@@ -3,14 +3,16 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 
+import { CountrySchoolExplorer } from "@/components/CountrySchoolExplorer";
 import { DistrictExplorer } from "@/components/DistrictExplorer";
 import { MethodologyPanel } from "@/components/MethodologyPanel";
 import { ScenarioPanel } from "@/components/ScenarioPanel";
 import { SchoolExplorer } from "@/components/SchoolExplorer";
 
-type TabKey = "schools" | "districts" | "scenarios" | "methodology";
+type TabKey = "country_schools" | "schools" | "districts" | "scenarios" | "methodology";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "country_schools", label: "All Schools" },
   { key: "schools", label: "School Explorer" },
   { key: "districts", label: "District Explorer" },
   { key: "scenarios", label: "Scenario Lab" },
@@ -18,7 +20,7 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 ];
 
 export function DashboardShell() {
-  const [activeTab, setActiveTab] = useState<TabKey>("schools");
+  const [activeTab, setActiveTab] = useState<TabKey>("country_schools");
 
   const metrics = useMemo(
     () => [
@@ -85,6 +87,7 @@ export function DashboardShell() {
       </nav>
 
       <section className="dashboard-grid">
+        {activeTab === "country_schools" ? <CountrySchoolExplorer /> : null}
         {activeTab === "schools" ? <SchoolExplorer /> : null}
         {activeTab === "districts" ? <DistrictExplorer /> : null}
         {activeTab === "scenarios" ? <ScenarioPanel /> : null}

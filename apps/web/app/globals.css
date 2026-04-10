@@ -355,6 +355,10 @@ textarea {
   background: rgba(255, 255, 255, 0.65);
 }
 
+.table-wrap-scroll {
+  max-height: 560px;
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
