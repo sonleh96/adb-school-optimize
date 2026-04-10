@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools, getApiBaseUrl } from "@/lib/api";
-import { scoreToColor } from "@/lib/color";
+import { scoreToPillStyle } from "@/lib/color";
+import { ScoreLegend } from "@/components/ScoreLegend";
 import type { SchoolRecord } from "@/lib/types";
 import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
 
@@ -160,19 +161,12 @@ export function SchoolExplorer() {
                 <p className="panel-subtitle">
                   Click a school marker to sync selection into the table and detail cards.
                 </p>
+                <div className="map-score-legend">
+                  <ScoreLegend scoreField={scoreField} />
+                </div>
               </div>
             </div>
             <div className="panel-body">
-              <div className="inline-marker-legend">
-                <span className="legend-swatch" style={{ background: "#93c5fd" }} />
-                <span className="small-copy">Low</span>
-                <span className="legend-swatch" style={{ background: "#3b82f6" }} />
-                <span className="small-copy">Moderate</span>
-                <span className="legend-swatch" style={{ background: "#2563eb" }} />
-                <span className="small-copy">High</span>
-                <span className="legend-swatch" style={{ background: "#1d4ed8" }} />
-                <span className="small-copy">Very high</span>
-              </div>
               <div className="map-frame">
                 {loading ? (
                   <div className="loading">Loading schools…</div>
@@ -212,100 +206,99 @@ export function SchoolExplorer() {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Ranked School Table</h3>
-                <p className="panel-subtitle">
-                  Current district slice with seeded default scenario scores.
-                </p>
-              </div>
-            </div>
-            <div className="panel-body">
-              <div className="table-wrap table-wrap-tall">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>School</th>
-                      <th>District</th>
-                      <th>Priority</th>
-                      <th>Need</th>
-                      <th>Rank</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schools.map((school) => (
-                      <tr
-                        className="data-row"
-                        key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                        data-selected={school.school_id === selectedSchoolId}
-                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                      >
-                        <td>{school.school_name}</td>
-                        <td>{school.district}</td>
-                        <td>
-                          <span
-                            className="score-pill"
-                            style={{ background: `${scoreToColor(school.priority)}20`, color: scoreToColor(school.priority) }}
-                          >
-                            {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                          </span>
-                        </td>
-                        <td>{school.need != null ? (school.need * 100).toFixed(1) : "n/a"}</td>
-                        <td>{school.rank_priority ?? "n/a"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="two-up school-explorer-bottom" style={{ marginTop: 16 }}>
-          <article className="panel">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Selected School Snapshot</h3>
-                <p className="panel-subtitle">Decision-ready summary for the current single selection.</p>
-              </div>
-            </div>
-            <div className="panel-body">
-              {selectedSchool ? (
-                <div className="detail-grid">
-                  <div className="detail-card">
-                    <h4>{selectedSchool.school_name}</h4>
-                    <p>{selectedSchool.district}, {selectedSchool.province}</p>
-                  </div>
-                  <div className="detail-card">
-                    <h4>Priority / Need</h4>
-                    <p>
-                      {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                      {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
-                    </p>
-                  </div>
-                  <div className="detail-card">
-                    <h4>Teachers / Classrooms</h4>
-                    <p>
-                      {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
-                      {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
-                    </p>
-                  </div>
-                  <div className="detail-card">
-                    <h4>Confidence / Stage 1</h4>
-                    <p>
-                      {selectedSchool.data_confidence != null
-                        ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
-                        : "n/a"}{" "}
-                      / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
-                    </p>
-                  </div>
+          <div className="sidebar-stack">
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <h3 className="panel-title">Ranked School Table</h3>
+                  <p className="panel-subtitle">
+                    Current district slice with seeded default scenario scores.
+                  </p>
                 </div>
-              ) : (
-                <div className="empty">Pick a school on the map or in the table.</div>
-              )}
-            </div>
-          </article>
+              </div>
+              <div className="panel-body">
+                <div className="table-wrap table-wrap-tall">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>School Name</th>
+                        <th>Priority</th>
+                        <th>Need</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {schools.map((school) => (
+                        <tr
+                          className="data-row"
+                          key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                          data-selected={school.school_id === selectedSchoolId}
+                          onClick={() => setSelectedSchoolId(school.school_id ?? null)}
+                        >
+                          <td>{school.rank_priority ?? "n/a"}</td>
+                          <td className="school-name-cell">{school.school_name}</td>
+                          <td>
+                            <span className="score-pill" style={scoreToPillStyle(school.priority)}>
+                              {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="score-pill" style={scoreToPillStyle(school.need)}>
+                              {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <h3 className="panel-title">Selected School Snapshot</h3>
+                  <p className="panel-subtitle">Decision-ready summary for the current single selection.</p>
+                </div>
+              </div>
+              <div className="panel-body">
+                {selectedSchool ? (
+                  <div className="detail-grid detail-grid-compact">
+                    <div className="detail-card">
+                      <h4>{selectedSchool.school_name}</h4>
+                      <p>{selectedSchool.district}, {selectedSchool.province}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Priority / Need</h4>
+                      <p>
+                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
+                        {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                      </p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Teachers / Classrooms</h4>
+                      <p>
+                        {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
+                        {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
+                      </p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Confidence / Stage 1</h4>
+                      <p>
+                        {selectedSchool.data_confidence != null
+                          ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
+                          : "n/a"}{" "}
+                        / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="empty">Pick a school on the map or in the table.</div>
+                )}
+              </div>
+            </article>
+          </div>
         </div>
       </div>
     </section>
