@@ -55,7 +55,7 @@ Notes:
 
 ### 4. Configure local development
 
-Set environment variables locally, for example in `.env`:
+Set environment variables locally, for example in `services/api/.env`:
 
 ```env
 DATABASE_URL=postgresql://postgres:<password>@<host>:5432/postgres
@@ -63,7 +63,16 @@ SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 GCS_BUCKET=<bucket-name>
+GCS_FLOOD_RASTER_PATH=rise-png/rasters/flood
+GCS_LANDCOVER_RASTER_PATH=rise-png/rasters/landcover
 ```
+
+The API now auto-loads `.env` and `.env.local` from both the repo root and `services/api`, so shell `export` is no longer required for normal local development.
+
+For Google Cloud auth:
+- local development can use `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
+- or Application Default Credentials if you have already authenticated locally
+- Cloud Run should use workload identity instead of a JSON key file
 
 ### 5. Configure Cloud Run
 

@@ -2,9 +2,12 @@ fastapi
 uvicorn
 psycopg[binary]
 pandas
+numpy
 shapely
 openpyxl
 python-multipart
+google-cloud-storage
+rasterio
 
 [dev]
 pytest

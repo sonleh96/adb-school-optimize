@@ -12,9 +12,12 @@ dependencies = [
     "uvicorn",
     "psycopg[binary]",
     "pandas",
+    "numpy",
     "shapely",
     "openpyxl",
     "python-multipart",
+    "google-cloud-storage",
+    "rasterio",
 ]
 
 [project.optional-dependencies]
@@ -23,4 +26,3 @@ dev = ["pytest", "httpx"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
-
