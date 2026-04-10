@@ -36,6 +36,11 @@ app.include_router(exports_router)
 app.include_router(rasters_router)
 
 
+@app.get("/", response_model=HealthResponse, tags=["health"])
+def root() -> HealthResponse:
+    return HealthResponse(status="ok")
+
+
 @app.get("/healthz", response_model=HealthResponse, tags=["health"])
 def healthz() -> HealthResponse:
     return HealthResponse(status="ok")
