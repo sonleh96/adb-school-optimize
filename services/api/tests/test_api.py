@@ -36,8 +36,8 @@ def test_meta_indicators_returns_defaults(client, monkeypatch):
 def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch):
     captured = {}
 
-    def fake_fetch(connection, layer_key, province=None, district=None, limit=5000):
-        captured.update(layer_key=layer_key, province=province, district=district, limit=limit)
+    def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
+        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
         return {
             "layer": {"layer_key": layer_key, "layer_type": "vector"},
             "count": 1,
@@ -62,7 +62,54 @@ def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch
         "province": "NCD",
         "district": "National Capital District",
         "limit": 100,
+        "bbox_4326": None,
     }
+
+
+def test_meta_layer_features_accepts_bbox(client, monkeypatch):
+    captured = {}
+
+    def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
+        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
+        return {
+            "layer": {"layer_key": layer_key, "layer_type": "vector"},
+            "count": 0,
+            "items": [],
+        }
+
+    monkeypatch.setattr(meta, "fetch_vector_layer_features", fake_fetch)
+    response = client.get(
+        "/api/v1/meta/layers/roads/features",
+        params={"min_lon": "146.7", "min_lat": "-9.2", "max_lon": "147.4", "max_lat": "-8.8"},
+    )
+
+    assert response.status_code == 200
+    assert captured["bbox_4326"] == (146.7, -9.2, 147.4, -8.8)
+
+
+def test_meta_layer_features_rejects_incomplete_bbox(client):
+    response = client.get(
+        "/api/v1/meta/layers/roads/features",
+        params={"min_lon": "146.7", "min_lat": "-9.2"},
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": {
+            "code": "invalid_bbox",
+            "message": "Incomplete bbox parameters. Provide min_lon, min_lat, max_lon, and max_lat together.",
+        }
+    }
+
+
+def test_meta_layer_features_rejects_invalid_bbox_ranges(client):
+    response = client.get(
+        "/api/v1/meta/layers/roads/features",
+        params={"min_lon": "147.5", "min_lat": "-9.2", "max_lon": "147.0", "max_lat": "-8.8"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_bbox"
 
 
 def test_meta_api_error_uses_structured_handler(client, monkeypatch):

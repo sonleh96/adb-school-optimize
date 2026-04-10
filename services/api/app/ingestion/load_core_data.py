@@ -412,6 +412,16 @@ def load_districts(connection, path: Path) -> int:
 def load_vector_layer_features(connection, layer_key: str, records: list[dict[str, Any]]) -> int:
     if not records:
         return 0
+    deduped_records: list[dict[str, Any]] = []
+    seen_source_ids: set[str] = set()
+    for record in records:
+        source_feature_id = _string_or_none(record.get("source_feature_id"))
+        if source_feature_id is not None:
+            if source_feature_id in seen_source_ids:
+                continue
+            seen_source_ids.add(source_feature_id)
+            record["source_feature_id"] = source_feature_id
+        deduped_records.append(record)
 
     delete_query = "delete from vector_layer_features where layer_key = %(layer_key)s"
     insert_query = """
@@ -425,9 +435,9 @@ def load_vector_layer_features(connection, layer_key: str, records: list[dict[st
     """
     with connection.cursor() as cursor:
         cursor.execute(delete_query, {"layer_key": layer_key})
-        cursor.executemany(insert_query, records)
+        cursor.executemany(insert_query, deduped_records)
     connection.commit()
-    return len(records)
+    return len(deduped_records)
 
 
 def load_auxiliary_layers(connection, auxiliary_paths: dict[str, Path] | None = None) -> dict[str, int]:
