@@ -9,6 +9,7 @@ from typing import Any
 
 from ..errors import ApiError, ConfigurationError, DependencyError
 from ..repository import fetch_district_geometry
+from ..raster_keys import build_district_raster_object_key
 from ..settings import get_settings
 
 RASTER_RENDER_VERSION = "v3_landcover_classes"
@@ -315,7 +316,8 @@ def _build_raster_clip_result(
     geometry = district_row["geometry"]
 
     bucket_name = str(layer_status["bucket"])
-    source_path = str(layer_status["source_path"])
+    preclipped_source_path = settings.raster_district_clip_path(layer, province_name, district, extension="tif")
+    source_path = preclipped_source_path or str(layer_status["source_path"])
     raster_bytes = _download_gcs_bytes(bucket_name, source_path)
 
     try:
@@ -345,26 +347,44 @@ def _build_raster_clip_result(
                         },
                     )
 
-                if _is_wgs84_like(raster_crs):
-                    geometry_for_raster = geometry
-                else:
-                    geometry_for_raster = transform_geom("EPSG:4326", raster_crs, geometry)
-                clipped, transform = mask(src, [geometry_for_raster], crop=True, filled=False)
-                if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
-                    raise ApiError(
-                        "District clip produced an empty raster.",
-                        status_code=422,
-                        code="empty_raster_clip",
-                        details={"district": district, "province": province_name, "layer": layer},
+                if preclipped_source_path:
+                    clipped = src.read(masked=True)
+                    if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
+                        raise ApiError(
+                            "District raster asset is empty.",
+                            status_code=422,
+                            code="empty_raster_clip",
+                            details={"district": district, "province": province_name, "layer": layer},
+                        )
+                    transform = src.transform
+                    profile = src.profile.copy()
+                    profile.update(
+                        height=clipped.shape[1],
+                        width=clipped.shape[2],
+                        transform=transform,
+                        count=clipped.shape[0],
                     )
+                else:
+                    if _is_wgs84_like(raster_crs):
+                        geometry_for_raster = geometry
+                    else:
+                        geometry_for_raster = transform_geom("EPSG:4326", raster_crs, geometry)
+                    clipped, transform = mask(src, [geometry_for_raster], crop=True, filled=False)
+                    if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
+                        raise ApiError(
+                            "District clip produced an empty raster.",
+                            status_code=422,
+                            code="empty_raster_clip",
+                            details={"district": district, "province": province_name, "layer": layer},
+                        )
 
-                profile = src.profile.copy()
-                profile.update(
-                    height=clipped.shape[1],
-                    width=clipped.shape[2],
-                    transform=transform,
-                    count=clipped.shape[0],
-                )
+                    profile = src.profile.copy()
+                    profile.update(
+                        height=clipped.shape[1],
+                        width=clipped.shape[2],
+                        transform=transform,
+                        count=clipped.shape[0],
+                    )
 
                 bounds_native = array_bounds(clipped.shape[1], clipped.shape[2], transform)
                 if _is_wgs84_like(raster_crs):
@@ -382,14 +402,17 @@ def _build_raster_clip_result(
                         src_nodata=src.nodata,
                     )
                     media_type = "image/png"
-                    filename = f"{layer}_{province_name}_{district}.png".replace(" ", "_")
+                    filename = build_district_raster_object_key(layer, province_name, district, extension="png").replace("/", "__")
                 elif output_format in {"tif", "tiff", "geotiff"}:
-                    clipped_filled = clipped.filled(src.nodata if src.nodata is not None else 0)
-                    if src.nodata is None:
-                        profile["nodata"] = 0
-                    content = _encode_geotiff(clipped_filled, profile, deps)
+                    if preclipped_source_path:
+                        content = raster_bytes
+                    else:
+                        clipped_filled = clipped.filled(src.nodata if src.nodata is not None else 0)
+                        if src.nodata is None:
+                            profile["nodata"] = 0
+                        content = _encode_geotiff(clipped_filled, profile, deps)
                     media_type = "image/tiff"
-                    filename = f"{layer}_{province_name}_{district}.tif".replace(" ", "_")
+                    filename = build_district_raster_object_key(layer, province_name, district, extension="tif").replace("/", "__")
                 else:
                     raise ApiError(
                         "Unsupported raster output format.",
@@ -443,6 +466,7 @@ def clip_raster_for_district(
             "output_format": output_format.lower(),
             "bucket": settings.gcs_bucket or "",
             "source_path": settings.raster_source_path(layer) or "",
+            "district_clip_path": settings.raster_district_clip_path(layer, province or "", district, extension="tif") or "",
             "declared_crs": {
                 "flood": settings.gcs_flood_raster_crs,
                 "landcover": settings.gcs_landcover_raster_crs,

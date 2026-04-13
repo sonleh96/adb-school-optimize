@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import io
+
+import openpyxl
+
 from app.errors import ApiError
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
+from app import repository
 from app.services.rasters import RasterClipResult
 
 
@@ -10,6 +15,24 @@ def test_healthz(client):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_export_helpers_drop_header_like_rows(monkeypatch):
+    monkeypatch.setattr(
+        repository,
+        "fetch_all",
+        lambda *args, **kwargs: [
+            {"School Name": "School Name", "Province": "Province"},
+            {"School Name": "Demo School", "Province": "NCD"},
+        ],
+    )
+
+    csv_bytes = repository.export_ranked_csv(connection=object())
+    assert csv_bytes.decode("utf-8").splitlines() == ["School Name,Province", "Demo School,NCD"]
+
+    workbook = openpyxl.load_workbook(io.BytesIO(repository.export_ranked_xlsx(connection=object())))
+    rows = list(workbook["ranked_schools"].iter_rows(values_only=True))
+    assert rows == [("School Name", "Province"), ("Demo School", "NCD")]
 
 
 def test_meta_layers_returns_repository_rows(client, fake_connection, monkeypatch):

@@ -63,7 +63,7 @@ export function DistrictExplorer() {
   }, [features, indicator]);
 
   return (
-    <section className="panel">
+    <section className="panel district-explorer">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">District Explorer</h2>
@@ -86,10 +86,10 @@ export function DistrictExplorer() {
         </div>
       </div>
 
-      <div className="panel-body">
+      <div className="panel-body district-explorer-body">
         {error ? <div className="error">{error}</div> : null}
-        <div className="split-layout">
-          <div className="panel map-card">
+        <div className="split-layout district-split-layout">
+          <div className="panel map-card district-map-card">
             <div className="panel-body">
               <div className="map-frame">
                 {loading ? (
@@ -106,7 +106,7 @@ export function DistrictExplorer() {
             </div>
           </div>
 
-          <div className="panel">
+          <div className="panel district-summary-card">
             <div className="panel-head">
               <div>
                 <h3 className="panel-title">Indicator Summary</h3>

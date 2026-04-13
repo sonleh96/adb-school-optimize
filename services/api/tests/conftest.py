@@ -34,11 +34,13 @@ def fake_settings():
         gcs_bucket="adb-school-optimize",
         gcs_project="adb-sr",
         google_application_credentials="/tmp/service-account.json",
+        raster_district_clip_path=lambda layer, province, district, extension="tif": None,
         raster_layer_status=lambda layer: {
             "layer": layer,
             "configured": True,
             "bucket": "adb-school-optimize",
             "source_path": f"rise-png/rasters/{layer}/example.tif",
+            "district_clip_prefix": None,
             "gcs_uri": f"gs://adb-school-optimize/rise-png/rasters/{layer}/example.tif",
             "declared_crs": "EPSG:4326",
             "credentials_mode": "service_account_file",

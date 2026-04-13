@@ -52,8 +52,28 @@ Set:
 - `GCS_BUCKET`
 - either `GCS_FLOOD_RASTER_PATH` and `GCS_LANDCOVER_RASTER_PATH`
 - or `GCS_RASTER_PREFIX` and let the API resolve `flood` and `landcover` under that prefix
+- optionally `GCS_DISTRICT_CLIP_PREFIX` or the layer-specific `GCS_FLOOD_DISTRICT_CLIP_PREFIX` / `GCS_LANDCOVER_DISTRICT_CLIP_PREFIX` to serve preclipped district COGs
 - optionally `GCS_FLOOD_RASTER_CRS` and `GCS_LANDCOVER_RASTER_CRS` if a source TIFF has bad or missing CRS metadata
 - optionally `RASTER_CACHE_DIR` and `RASTER_CACHE_TTL_SECONDS` to control local raster clip caching
+
+If you use preclipped district assets, the backend now expects this object key convention under the configured prefix:
+
+```text
+<prefix>/<layer>/<province_norm>/<district_norm>.tif
+```
+
+Where:
+- `province_norm` mirrors the database `normalize_join_key(...)` intent and is then filename-slugged
+- `district_norm` follows the same rule
+
+Example:
+
+```text
+rise-png/rasters/district-clips/flood/eastern-highlands/goroka.tif
+rise-png/rasters/district-clips/landcover/eastern-highlands/goroka.tif
+```
+
+This keeps district names deterministic, collision-safe across provinces, and easy for the backend to resolve from the existing `province` + `district` request parameters.
 
 For local auth, use either:
 - `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`

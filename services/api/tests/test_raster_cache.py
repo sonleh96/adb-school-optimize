@@ -2,8 +2,18 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from app.raster_keys import build_district_raster_object_key
 from app.services import rasters
 from app.services.rasters import RasterClipResult
+
+
+def test_build_district_raster_object_key_uses_normalized_admin_names():
+    assert build_district_raster_object_key(
+        "landcover",
+        "West New Britain",
+        "Talasea / Hoskins",
+        extension="tif",
+    ) == "landcover/west-new-britain/talasea-hoskins.tif"
 
 
 def test_clip_raster_for_district_uses_cache(monkeypatch, tmp_path):
@@ -17,6 +27,7 @@ def test_clip_raster_for_district_uses_cache(monkeypatch, tmp_path):
             raster_cache_dir=str(tmp_path),
             raster_cache_ttl_seconds=3600,
             raster_source_path=lambda layer: "rise-png/rasters/flood/PNG_flood_JRC.tif",
+            raster_district_clip_path=lambda layer, province, district, extension="tif": None,
             gcs_flood_raster_crs="EPSG:4326",
             gcs_landcover_raster_crs="EPSG:4326",
         ),
