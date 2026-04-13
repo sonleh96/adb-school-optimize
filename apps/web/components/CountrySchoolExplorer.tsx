@@ -99,7 +99,7 @@ export function CountrySchoolExplorer() {
       <div className="panel-body">
         {error ? <div className="error">{error}</div> : null}
         <div className="split-layout split-layout-country">
-          <div className="panel map-card">
+          <div className="panel map-card map-card-country">
             <div className="panel-head">
               <div>
                 <h3 className="panel-title">National School Map</h3>
