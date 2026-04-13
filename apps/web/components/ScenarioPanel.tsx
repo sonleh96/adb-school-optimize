@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchScenarios, runScenario } from "@/lib/api";
+import { fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
 import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
 
 const DEFAULT_OVERRIDES = {
@@ -70,6 +70,14 @@ export function ScenarioPanel() {
             Run persisted scoring scenarios against the seeded school dataset. This initial UI uses
             JSON overrides so the full scoring surface can be exercised immediately.
           </p>
+        </div>
+        <div className="header-action-stack">
+          <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.xlsx`}>
+            Download XLSX
+          </a>
+          <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.csv`}>
+            Download CSV
+          </a>
         </div>
       </div>
 

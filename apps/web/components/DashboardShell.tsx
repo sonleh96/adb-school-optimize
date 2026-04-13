@@ -40,24 +40,6 @@ export function DashboardShell() {
         </div>
       </header>
 
-      <section className="hero">
-        <span className="hero-topline">RISE-PNG Decision Support</span>
-        <div className="hero-grid">
-          <div>
-            <h1>Prioritize the secondary schools where RISE-PNG investment will have the greatest impact.</h1>
-            <p>
-              RISE-PNG will refurbish and expand existing secondary schools in Papua New Guinea by
-              adding classrooms, dormitories, and WASH facilities. Because the project focuses on
-              upgrading existing Grades 7 to 10 schools rather than building new greenfield sites,
-              the core decision is which schools should be prioritized. This tool is designed to
-              identify and rank a shortlist of roughly 50 to 60 schools where ADB investment can
-              most effectively expand access, reduce dropout, and support learning quality and
-              gender equity outcomes.
-            </p>
-          </div>
-        </div>
-      </section>
-
       <nav className="tabs" aria-label="Dashboard sections">
         {TABS.map((tab) => (
           <button
