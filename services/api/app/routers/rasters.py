@@ -54,6 +54,8 @@ def raster_status():
         "layers": [
             settings.raster_layer_status("flood"),
             settings.raster_layer_status("landcover"),
+            settings.raster_layer_status("luminosity"),
+            settings.raster_layer_status("elevation"),
         ],
     }
 
@@ -86,3 +88,33 @@ def landcover_overlay(
     format: str = "png",
 ):
     return _raster_overlay_response("landcover", district, province, opacity, format)
+
+
+@router.get("/luminosity/metadata")
+def luminosity_metadata(district: str, province: str | None = None, opacity: float = 0.7):
+    return _raster_metadata_response("luminosity", district, province, opacity)
+
+
+@router.get("/luminosity/overlay")
+def luminosity_overlay(
+    district: str,
+    province: str | None = None,
+    opacity: float = 0.7,
+    format: str = "png",
+):
+    return _raster_overlay_response("luminosity", district, province, opacity, format)
+
+
+@router.get("/elevation/metadata")
+def elevation_metadata(district: str, province: str | None = None, opacity: float = 0.7):
+    return _raster_metadata_response("elevation", district, province, opacity)
+
+
+@router.get("/elevation/overlay")
+def elevation_overlay(
+    district: str,
+    province: str | None = None,
+    opacity: float = 0.7,
+    format: str = "png",
+):
+    return _raster_overlay_response("elevation", district, province, opacity, format)

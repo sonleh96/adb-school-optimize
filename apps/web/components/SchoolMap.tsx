@@ -12,6 +12,8 @@ export type SchoolLayerKey =
   | "roads"
   | "flood"
   | "landcover"
+  | "elevation"
+  | "luminosity"
   | "air_quality_mean"
   | "air_quality_max"
   | "access_walk"
@@ -32,6 +34,8 @@ type LayerState = {
   access_drive: VectorLayerFeature[];
   flood: RasterMetadataResponse | null;
   landcover: RasterMetadataResponse | null;
+  elevation: RasterMetadataResponse | null;
+  luminosity: RasterMetadataResponse | null;
 };
 
 type Bbox4326 = [number, number, number, number];
@@ -182,6 +186,8 @@ export function SchoolMap({
     access_drive: [],
     flood: null,
     landcover: null,
+    elevation: null,
+    luminosity: null,
   });
   const [layerStatus, setLayerStatus] = useState<string>("");
   const [showLayerLegend, setShowLayerLegend] = useState(true);
@@ -220,7 +226,7 @@ export function SchoolMap({
   );
 
   const loadRasterLayer = useCallback(
-    async (layer: "flood" | "landcover", opacity: number): Promise<RasterMetadataResponse> => {
+    async (layer: "flood" | "landcover" | "elevation" | "luminosity", opacity: number): Promise<RasterMetadataResponse> => {
       const key = cacheKey(`raster:${layer}:opacity=${opacity}`, district, province, null);
       const cached = cacheRef.current.get(key);
       if (cached) return cached as RasterMetadataResponse;
@@ -242,6 +248,8 @@ export function SchoolMap({
         access_drive: [],
         flood: null,
         landcover: null,
+        elevation: null,
+        luminosity: null,
       };
 
       try {
@@ -312,6 +320,22 @@ export function SchoolMap({
           jobs.push(
             loadRasterLayer("landcover", 0.75).then((response) => {
               next.landcover = response;
+            })
+          );
+        }
+
+        if (activeLayers.has("elevation")) {
+          jobs.push(
+            loadRasterLayer("elevation", 0.7).then((response) => {
+              next.elevation = response;
+            })
+          );
+        }
+
+        if (activeLayers.has("luminosity")) {
+          jobs.push(
+            loadRasterLayer("luminosity", 0.7).then((response) => {
+              next.luminosity = response;
             })
           );
         }
@@ -442,6 +466,28 @@ export function SchoolMap({
           </Pane>
         ) : null}
 
+        {activeLayers.has("elevation") && layerState.elevation ? (
+          <Pane name="elevation-layer" style={{ zIndex: 417 }}>
+            <ImageOverlay
+              url={buildRasterOverlayUrl({ layer: "elevation", district, province, opacity: layerState.elevation.opacity, format: "png" })}
+              bounds={rasterBounds(layerState.elevation)}
+              opacity={layerState.elevation.opacity}
+              interactive={false}
+            />
+          </Pane>
+        ) : null}
+
+        {activeLayers.has("luminosity") && layerState.luminosity ? (
+          <Pane name="luminosity-layer" style={{ zIndex: 418 }}>
+            <ImageOverlay
+              url={buildRasterOverlayUrl({ layer: "luminosity", district, province, opacity: layerState.luminosity.opacity, format: "png" })}
+              bounds={rasterBounds(layerState.luminosity)}
+              opacity={layerState.luminosity.opacity}
+              interactive={false}
+            />
+          </Pane>
+        ) : null}
+
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {schools.map((school) => {
             const score = scoreField === "priority" ? school.priority : school.need;
@@ -521,6 +567,22 @@ export function SchoolMap({
                     <span className="legend-dot" style={{ background: "#b39fe1" }} />
                     <span className="small-copy">Snow/Ice</span>
                   </div>
+                </div>
+              ) : null}
+
+              {activeLayers.has("elevation") ? (
+                <div className="layer-legend-item">
+                  <p className="layer-legend-title">Elevation</p>
+                  <div className="legend-gradient grayscale-gradient" />
+                  <p className="layer-legend-note">Lower elevation to higher elevation</p>
+                </div>
+              ) : null}
+
+              {activeLayers.has("luminosity") ? (
+                <div className="layer-legend-item">
+                  <p className="layer-legend-title">Nighttime Luminosity</p>
+                  <div className="legend-gradient grayscale-gradient" />
+                  <p className="layer-legend-note">Lower luminosity to higher luminosity</p>
                 </div>
               ) : null}
 

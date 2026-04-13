@@ -68,7 +68,7 @@ export async function fetchLayerFeatures(params: {
 }
 
 export async function fetchRasterMetadata(params: {
-  layer: "flood" | "landcover";
+  layer: "flood" | "landcover" | "luminosity" | "elevation";
   district: string;
   province?: string;
   opacity?: number;
@@ -81,7 +81,7 @@ export async function fetchRasterMetadata(params: {
 }
 
 export function buildRasterOverlayUrl(params: {
-  layer: "flood" | "landcover";
+  layer: "flood" | "landcover" | "luminosity" | "elevation";
   district: string;
   province?: string;
   opacity?: number;

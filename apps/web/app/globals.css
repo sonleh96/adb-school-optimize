@@ -687,6 +687,10 @@ textarea {
   background: linear-gradient(90deg, #14532d 0%, #65a30d 32%, #eab308 64%, #92400e 100%);
 }
 
+.grayscale-gradient {
+  background: linear-gradient(90deg, #000000 0%, #ffffff 100%);
+}
+
 .layer-legend-note {
   margin: 0;
   color: var(--muted);

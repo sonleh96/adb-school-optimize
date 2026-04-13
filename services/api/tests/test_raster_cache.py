@@ -30,6 +30,8 @@ def test_clip_raster_for_district_uses_cache(monkeypatch, tmp_path):
             raster_district_clip_path=lambda layer, province, district, extension="tif": None,
             gcs_flood_raster_crs="EPSG:4326",
             gcs_landcover_raster_crs="EPSG:4326",
+            gcs_luminosity_raster_crs="EPSG:4326",
+            gcs_elevation_raster_crs="EPSG:4326",
         ),
     )
 
