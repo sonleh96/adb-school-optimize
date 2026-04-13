@@ -305,6 +305,15 @@ textarea {
 
 .map-card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-card .panel-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .map-frame {
@@ -312,6 +321,16 @@ textarea {
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--line);
+}
+
+.map-card .map-frame {
+  flex: 1;
+  height: auto;
+  min-height: 760px;
+}
+
+.map-card-country .map-frame {
+  min-height: 0;
 }
 
 .map-score-legend {

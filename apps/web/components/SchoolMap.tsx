@@ -454,7 +454,7 @@ export function SchoolMap({
                 center={[school.latitude, school.longitude]}
                 radius={isSelected ? 10 : 7}
                 pathOptions={{
-                  color,
+                  color: "#000000",
                   fillColor: color,
                   fillOpacity: isSelected ? 0.95 : 0.78,
                   weight: isSelected ? 3 : 1,
