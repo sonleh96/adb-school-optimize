@@ -21,6 +21,12 @@ DEFAULT_DISTRICTS_PATH = ROOT / "datasets" / "aggregated_district_data.geojson"
 DEFAULT_AUXILIARY_SOURCE_PATHS = {key: ROOT / relative_path for key, relative_path in AUXILIARY_VECTOR_SOURCES.items()}
 
 
+def _drop_header_like_school_rows(df: pd.DataFrame) -> pd.DataFrame:
+    if "School Name" not in df.columns:
+        return df
+    return df[df["School Name"].astype(str).str.strip() != "School Name"].copy()
+
+
 def _load_geojson(path: Path) -> list[dict[str, Any]]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["features"]
@@ -224,6 +230,7 @@ def _district_records(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def load_schools(connection, path: Path) -> int:
     df = pd.read_csv(path)
+    df = _drop_header_like_school_rows(df)
     for column in ["School Name", "Province", "District", "Locality", "Power Source", "Water Source", "Toilets"]:
         if column in df.columns:
             df[column] = df[column].map(lambda value: value.strip() if isinstance(value, str) else value)

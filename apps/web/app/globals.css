@@ -303,6 +303,25 @@ textarea {
   grid-template-columns: minmax(0, 2.05fr) minmax(270px, 0.65fr);
 }
 
+.district-explorer {
+  min-height: calc(100vh - 190px);
+  display: flex;
+  flex-direction: column;
+}
+
+.district-explorer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.district-split-layout {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
+}
+
 .map-card {
   height: 100%;
   display: flex;
@@ -331,6 +350,22 @@ textarea {
 
 .map-card-country .map-frame {
   min-height: 0;
+}
+
+.district-map-card .map-frame {
+  min-height: 0;
+  height: 100%;
+}
+
+.district-summary-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.district-summary-card .panel-body {
+  flex: 1;
+  overflow: auto;
 }
 
 .map-score-legend {
@@ -771,6 +806,14 @@ textarea {
 
   .map-frame {
     height: 500px;
+  }
+
+  .district-explorer {
+    min-height: auto;
+  }
+
+  .district-split-layout {
+    grid-template-columns: 1fr;
   }
 }
 

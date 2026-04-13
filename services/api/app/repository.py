@@ -474,13 +474,25 @@ def _serialize_preview_rows(df: pd.DataFrame) -> list[dict[str, Any]]:
     return preview
 
 
+def _drop_header_like_export_rows(df: pd.DataFrame) -> pd.DataFrame:
+    if "School Name" not in df.columns:
+        return df
+    return df[df["School Name"].astype(str).str.strip() != "School Name"].copy()
+
+
+def _fetch_ranked_export_dataframe(connection, scenario_id: str | None = None) -> pd.DataFrame:
+    rows = fetch_all(connection, RANKED_EXPORT_SQL, {"scenario_id": scenario_id})
+    df = pd.DataFrame(rows)
+    return _drop_header_like_export_rows(df)
+
+
 def export_ranked_csv(connection, scenario_id: str | None = None) -> bytes:
-    df = pd.read_sql(RANKED_EXPORT_SQL, connection, params={"scenario_id": scenario_id})
+    df = _fetch_ranked_export_dataframe(connection, scenario_id=scenario_id)
     return df.to_csv(index=False).encode("utf-8")
 
 
 def export_ranked_xlsx(connection, scenario_id: str | None = None) -> bytes:
-    df = pd.read_sql(RANKED_EXPORT_SQL, connection, params={"scenario_id": scenario_id})
+    df = _fetch_ranked_export_dataframe(connection, scenario_id=scenario_id)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="ranked_schools")

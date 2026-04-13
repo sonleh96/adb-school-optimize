@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 
-from app.ingestion.load_core_data import _csv_point_vector_records, _geojson_vector_records
+import pandas as pd
+
+from app.ingestion.load_core_data import _csv_point_vector_records, _drop_header_like_school_rows, _geojson_vector_records
 
 
 def test_geojson_vector_records_extract_admin_fields(tmp_path):
@@ -57,3 +59,16 @@ def test_csv_point_vector_records_build_point_geometry(tmp_path):
     assert records[0]["province"] == "NCD"
     assert records[0]["district"] == "National Capital District"
     assert records[0]["geom_wkt"] == "POINT (147.1 -9.5)"
+
+
+def test_drop_header_like_school_rows_removes_repeated_header_rows():
+    df = pd.DataFrame(
+        [
+            {"School Name": "School Name", "Province": "Province"},
+            {"School Name": "Demo School", "Province": "NCD"},
+        ]
+    )
+
+    cleaned = _drop_header_like_school_rows(df)
+
+    assert cleaned.to_dict(orient="records") == [{"School Name": "Demo School", "Province": "NCD"}]

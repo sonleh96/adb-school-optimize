@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from .raster_keys import build_district_raster_object_key
+
 
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -62,6 +64,9 @@ class Settings:
     gcs_raster_prefix: str | None
     gcs_flood_raster_path: str | None
     gcs_landcover_raster_path: str | None
+    gcs_district_clip_prefix: str | None
+    gcs_flood_district_clip_prefix: str | None
+    gcs_landcover_district_clip_prefix: str | None
     gcs_flood_raster_crs: str | None
     gcs_landcover_raster_crs: str | None
     raster_cache_dir: str
@@ -82,6 +87,9 @@ class Settings:
             gcs_raster_prefix=_normalize_path(os.getenv("GCS_RASTER_PREFIX")),
             gcs_flood_raster_path=_normalize_path(os.getenv("GCS_FLOOD_RASTER_PATH")),
             gcs_landcover_raster_path=_normalize_path(os.getenv("GCS_LANDCOVER_RASTER_PATH")),
+            gcs_district_clip_prefix=_normalize_path(os.getenv("GCS_DISTRICT_CLIP_PREFIX")),
+            gcs_flood_district_clip_prefix=_normalize_path(os.getenv("GCS_FLOOD_DISTRICT_CLIP_PREFIX")),
+            gcs_landcover_district_clip_prefix=_normalize_path(os.getenv("GCS_LANDCOVER_DISTRICT_CLIP_PREFIX")),
             gcs_flood_raster_crs=os.getenv("GCS_FLOOD_RASTER_CRS"),
             gcs_landcover_raster_crs=os.getenv("GCS_LANDCOVER_RASTER_CRS"),
             raster_cache_dir=os.getenv("RASTER_CACHE_DIR", str(Path(tempfile.gettempdir()) / "rise-png-raster-cache")),
@@ -116,8 +124,32 @@ class Settings:
             return f"{self.gcs_raster_prefix}/{layer}"
         return None
 
+    def raster_district_clip_prefix(self, layer: str) -> str | None:
+        layer = layer.lower()
+        explicit_prefix = {
+            "flood": self.gcs_flood_district_clip_prefix,
+            "landcover": self.gcs_landcover_district_clip_prefix,
+        }.get(layer)
+        if explicit_prefix:
+            return explicit_prefix
+        return self.gcs_district_clip_prefix
+
+    def raster_district_clip_path(self, layer: str, province: str, district: str, *, extension: str = "tif") -> str | None:
+        prefix = self.raster_district_clip_prefix(layer)
+        if not prefix:
+            return None
+        if not province.strip() or not district.strip():
+            return None
+        return "/".join(
+            [
+                prefix,
+                build_district_raster_object_key(layer, province, district, extension=extension),
+            ]
+        )
+
     def raster_layer_status(self, layer: str) -> dict[str, object]:
         source_path = self.raster_source_path(layer)
+        district_clip_prefix = self.raster_district_clip_prefix(layer)
         declared_crs = {
             "flood": self.gcs_flood_raster_crs,
             "landcover": self.gcs_landcover_raster_crs,
@@ -138,6 +170,7 @@ class Settings:
             "configured": not missing_settings,
             "bucket": self.gcs_bucket,
             "source_path": source_path,
+            "district_clip_prefix": district_clip_prefix,
             "gcs_uri": f"gs://{self.gcs_bucket}/{source_path}" if self.gcs_bucket and source_path else None,
             "declared_crs": declared_crs,
             "credentials_mode": "service_account_file" if self.google_application_credentials else "adc_or_workload_identity",
