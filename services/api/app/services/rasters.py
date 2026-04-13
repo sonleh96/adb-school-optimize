@@ -307,17 +307,19 @@ def _build_raster_clip_result(
 
     deps = _import_raster_dependencies()
     MemoryFile = deps["MemoryFile"]
-    mask = deps["mask"]
     array_bounds = deps["array_bounds"]
     transform_bounds = deps["transform_bounds"]
-    transform_geom = deps["transform_geom"]
     district_row = fetch_district_geometry(connection, district=district, province=province)
     province_name = district_row["province"]
-    geometry = district_row["geometry"]
 
     bucket_name = str(layer_status["bucket"])
     preclipped_source_path = settings.raster_district_clip_path(layer, province_name, district, extension="tif")
-    source_path = preclipped_source_path or str(layer_status["source_path"])
+    if not preclipped_source_path:
+        raise ConfigurationError(
+            "District raster clip storage is not fully configured.",
+            details={"layer": layer, "district": district, "province": province_name},
+        )
+    source_path = preclipped_source_path
     raster_bytes = _download_gcs_bytes(bucket_name, source_path)
 
     try:
@@ -326,6 +328,8 @@ def _build_raster_clip_result(
                 declared_crs = {
                     "flood": settings.gcs_flood_raster_crs,
                     "landcover": settings.gcs_landcover_raster_crs,
+                    "luminosity": settings.gcs_luminosity_raster_crs,
+                    "elevation": settings.gcs_elevation_raster_crs,
                 }.get(layer.lower())
 
                 try:
@@ -347,44 +351,22 @@ def _build_raster_clip_result(
                         },
                     )
 
-                if preclipped_source_path:
-                    clipped = src.read(masked=True)
-                    if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
-                        raise ApiError(
-                            "District raster asset is empty.",
-                            status_code=422,
-                            code="empty_raster_clip",
-                            details={"district": district, "province": province_name, "layer": layer},
-                        )
-                    transform = src.transform
-                    profile = src.profile.copy()
-                    profile.update(
-                        height=clipped.shape[1],
-                        width=clipped.shape[2],
-                        transform=transform,
-                        count=clipped.shape[0],
+                clipped = src.read(masked=True)
+                if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
+                    raise ApiError(
+                        "District raster asset is empty.",
+                        status_code=422,
+                        code="empty_raster_clip",
+                        details={"district": district, "province": province_name, "layer": layer},
                     )
-                else:
-                    if _is_wgs84_like(raster_crs):
-                        geometry_for_raster = geometry
-                    else:
-                        geometry_for_raster = transform_geom("EPSG:4326", raster_crs, geometry)
-                    clipped, transform = mask(src, [geometry_for_raster], crop=True, filled=False)
-                    if clipped.size == 0 or clipped.shape[1] == 0 or clipped.shape[2] == 0:
-                        raise ApiError(
-                            "District clip produced an empty raster.",
-                            status_code=422,
-                            code="empty_raster_clip",
-                            details={"district": district, "province": province_name, "layer": layer},
-                        )
-
-                    profile = src.profile.copy()
-                    profile.update(
-                        height=clipped.shape[1],
-                        width=clipped.shape[2],
-                        transform=transform,
-                        count=clipped.shape[0],
-                    )
+                transform = src.transform
+                profile = src.profile.copy()
+                profile.update(
+                    height=clipped.shape[1],
+                    width=clipped.shape[2],
+                    transform=transform,
+                    count=clipped.shape[0],
+                )
 
                 bounds_native = array_bounds(clipped.shape[1], clipped.shape[2], transform)
                 if _is_wgs84_like(raster_crs):
@@ -404,13 +386,7 @@ def _build_raster_clip_result(
                     media_type = "image/png"
                     filename = build_district_raster_object_key(layer, province_name, district, extension="png").replace("/", "__")
                 elif output_format in {"tif", "tiff", "geotiff"}:
-                    if preclipped_source_path:
-                        content = raster_bytes
-                    else:
-                        clipped_filled = clipped.filled(src.nodata if src.nodata is not None else 0)
-                        if src.nodata is None:
-                            profile["nodata"] = 0
-                        content = _encode_geotiff(clipped_filled, profile, deps)
+                    content = raster_bytes
                     media_type = "image/tiff"
                     filename = build_district_raster_object_key(layer, province_name, district, extension="tif").replace("/", "__")
                 else:
@@ -465,11 +441,12 @@ def clip_raster_for_district(
             "province": province or "",
             "output_format": output_format.lower(),
             "bucket": settings.gcs_bucket or "",
-            "source_path": settings.raster_source_path(layer) or "",
             "district_clip_path": settings.raster_district_clip_path(layer, province or "", district, extension="tif") or "",
             "declared_crs": {
                 "flood": settings.gcs_flood_raster_crs,
                 "landcover": settings.gcs_landcover_raster_crs,
+                "luminosity": settings.gcs_luminosity_raster_crs,
+                "elevation": settings.gcs_elevation_raster_crs,
             }.get(layer.lower())
             or "",
             "render_version": RASTER_RENDER_VERSION,

@@ -25,6 +25,8 @@ const INITIAL_LAYERS: SchoolLayerToggle[] = [
   { key: "access_drive", label: "Population Access (Driving - 10km)", active: false },
   { key: "landcover", label: "Land cover", active: false },
   { key: "flood", label: "Flood inundation", active: false },
+  { key: "elevation", label: "Elevation", active: false },
+  { key: "luminosity", label: "Nighttime Luminosity", active: false },
 ];
 
 export function SchoolExplorer() {

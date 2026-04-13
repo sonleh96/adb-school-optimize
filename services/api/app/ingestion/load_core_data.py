@@ -522,6 +522,30 @@ def load_default_layers(connection) -> None:
             False,
             True,
         ),
+        (
+            "luminosity",
+            "Nighttime Luminosity",
+            "school_explorer",
+            "raster",
+            "gcs",
+            settings.raster_district_clip_prefix("luminosity") or "district clip",
+            "district clip",
+            "raster",
+            False,
+            False,
+        ),
+        (
+            "elevation",
+            "Elevation",
+            "school_explorer",
+            "raster",
+            "gcs",
+            settings.raster_district_clip_prefix("elevation") or "district clip",
+            "district clip",
+            "raster",
+            False,
+            False,
+        ),
     ]
     query = """
     insert into layer_catalog (
