@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools, getApiBaseUrl } from "@/lib/api";
+import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import type { SchoolRecord } from "@/lib/types";
@@ -29,6 +29,8 @@ const INITIAL_LAYERS: SchoolLayerToggle[] = [
 
 export function SchoolExplorer() {
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
+  const [districtQuery, setDistrictQuery] = useState(DEFAULT_DISTRICT);
+  const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
   const [districtOptions, setDistrictOptions] = useState<Array<{ district_id: string; province: string; district: string }>>([]);
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
@@ -44,7 +46,10 @@ export function SchoolExplorer() {
         setDistrictOptions(rows);
         if (!rows.some((row) => row.district === DEFAULT_DISTRICT) && rows[0]) {
           setDistrict(rows[0].district);
+          setDistrictQuery(rows[0].district);
+          return;
         }
+        setDistrictQuery(DEFAULT_DISTRICT);
       })
       .catch((err: Error) => setError(err.message));
   }, []);
@@ -96,6 +101,39 @@ export function SchoolExplorer() {
 
   const selectedProvince = selectedDistrictOption?.province;
 
+  const districtSuggestions = useMemo(() => {
+    const query = districtQuery.trim().toLowerCase();
+    const scoreDistrict = (name: string): number => {
+      const candidate = name.toLowerCase();
+      if (!query) return 4;
+      if (candidate === query) return 0;
+      if (candidate.startsWith(query)) return 1;
+      if (candidate.split(/\s+/).some((token) => token.startsWith(query))) return 2;
+      if (candidate.includes(query)) return 3;
+      return 9;
+    };
+    const directionalRank = (name: string): number => {
+      const value = name.trim().toLowerCase();
+      if (value.startsWith("north ")) return 0;
+      if (value.startsWith("middle ")) return 1;
+      if (value.startsWith("south ")) return 2;
+      return 9;
+    };
+
+    return districtOptions
+      .map((option) => ({ option, score: scoreDistrict(option.district), dir: directionalRank(option.district) }))
+      .filter((item) => item.score < 9)
+      .sort((left, right) => left.score - right.score || left.dir - right.dir || left.option.district.localeCompare(right.option.district))
+      .slice(0, 8)
+      .map((item) => item.option);
+  }, [districtOptions, districtQuery]);
+
+  const applyDistrict = (value: string) => {
+    setDistrict(value);
+    setDistrictQuery(value);
+    setShowDistrictSuggestions(false);
+  };
+
   const toggleLayer = (layerKey: SchoolLayerKey) => {
     setLayers((current) => {
       const isAirLayer = layerKey === "air_quality_mean" || layerKey === "air_quality_max";
@@ -109,153 +147,116 @@ export function SchoolExplorer() {
   };
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <div>
-          <h2 className="panel-title">School Explorer</h2>
-          <p className="panel-subtitle">
-            Left: school map. Right: synced shortlist table. Default district is National Capital
-            District and selection is single-select in v1.
-          </p>
-        </div>
-        <div className="controls">
-          <div className="control">
-            <label htmlFor="district">District</label>
-            <select id="district" value={district} onChange={(event) => setDistrict(event.target.value)}>
-              {districtOptions.map((option) => (
-                <option key={option.district_id} value={option.district}>
-                  {option.district}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="control">
-            <label htmlFor="school-color">Color markers by</label>
-            <select
-              id="school-color"
-              value={scoreField}
-              onChange={(event) => setScoreField(event.target.value as "priority" | "need")}
-            >
-              <option value="priority">Priority</option>
-              <option value="need">Need</option>
-            </select>
-          </div>
-          <div className="action-row">
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.csv`}>
-              Download CSV
-            </a>
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.xlsx`}>
-              Download XLSX
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="panel-body">
+    <section className="panel school-explorer">
+      <div className="panel-body school-explorer-body">
         {error ? <div className="error">{error}</div> : null}
-        <div className="split-layout">
-          <div className="panel map-card">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Geospatial School View</h3>
-                <p className="panel-subtitle">
-                  Click a school marker to sync selection into the table and detail cards.
-                </p>
-                <div className="map-score-legend">
-                  <ScoreLegend scoreField={scoreField} />
-                </div>
-              </div>
-            </div>
-            <div className="panel-body">
-              <div className="map-frame">
-                {loading ? (
-                  <div className="loading">Loading schools…</div>
-                ) : (
-                  <SchoolMap
-                    schools={schools}
-                    selectedSchoolId={selectedSchoolId}
-                    onSelectSchool={setSelectedSchoolId}
-                    scoreField={scoreField}
-                    district={district}
-                    province={selectedProvince}
-                    layers={layers}
-                  />
-                )}
-              </div>
-              <div className="layer-control-box">
-                <p className="layer-control-title">Layer control</p>
-                <label className="layer-control-item layer-control-item-fixed">
-                  <input type="checkbox" checked disabled />
-                  <span>Schools</span>
-                </label>
-                {layers.map((layer) => (
-                  <label className="layer-control-item" key={layer.key}>
-                    <input
-                      type="checkbox"
-                      checked={layer.active}
-                      onChange={() => toggleLayer(layer.key)}
-                    />
-                    <span>{layer.label}</span>
-                  </label>
-                ))}
-              </div>
-              <p className="status-note">
-                Layer overlays load from backend. Air Quality is exclusive between Average and
-                Maximum AQI.
-              </p>
-            </div>
-          </div>
-
-          <div className="sidebar-stack">
-            <article className="panel">
+        <div className="school-explorer-layout">
+          <div className="split-layout school-map-snapshot-layout">
+            <div className="panel map-card school-map-card">
               <div className="panel-head">
                 <div>
-                  <h3 className="panel-title">Ranked School Table</h3>
+                  <h3 className="panel-title">Geospatial School View</h3>
                   <p className="panel-subtitle">
-                    Current district slice with seeded default scenario scores.
+                    Click a school marker to sync selection into the table and detail cards.
                   </p>
+                  <div className="map-score-legend">
+                    <ScoreLegend scoreField={scoreField} />
+                  </div>
+                </div>
+                <div className="map-head-actions">
+                  <div className="score-toggle" role="group" aria-label="Color markers by">
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+                      onClick={() => setScoreField("priority")}
+                    >
+                      Priority
+                    </button>
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+                      onClick={() => setScoreField("need")}
+                    >
+                      Need
+                    </button>
+                  </div>
+                  <div className="district-search map-district-search">
+                    <input
+                      id="district-search"
+                      type="text"
+                      value={districtQuery}
+                      placeholder="Search district for zoom…"
+                      onFocus={() => setShowDistrictSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
+                      onChange={(event) => {
+                        setDistrictQuery(event.target.value);
+                        setShowDistrictSuggestions(true);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && districtSuggestions[0]) {
+                          event.preventDefault();
+                          applyDistrict(districtSuggestions[0].district);
+                        }
+                      }}
+                    />
+                    {showDistrictSuggestions && districtSuggestions.length > 0 ? (
+                      <div className="district-suggestions">
+                        {districtSuggestions.map((option) => (
+                          <button
+                            type="button"
+                            key={option.district_id}
+                            className="district-suggestion-item"
+                            onMouseDown={() => applyDistrict(option.district)}
+                          >
+                            {option.district}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
               <div className="panel-body">
-                <div className="table-wrap table-wrap-tall">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>School Name</th>
-                        <th>Priority</th>
-                        <th>Need</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schools.map((school) => (
-                        <tr
-                          className="data-row"
-                          key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                          data-selected={school.school_id === selectedSchoolId}
-                          onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                        >
-                          <td>{school.rank_priority ?? "n/a"}</td>
-                          <td className="school-name-cell">{school.school_name}</td>
-                          <td>
-                            <span className="score-pill" style={scoreToPillStyle(school.priority)}>
-                              {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="score-pill" style={scoreToPillStyle(school.need)}>
-                              {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="map-frame">
+                  {loading ? (
+                    <div className="loading">Loading schools…</div>
+                  ) : (
+                    <SchoolMap
+                      schools={schools}
+                      selectedSchoolId={selectedSchoolId}
+                      onSelectSchool={setSelectedSchoolId}
+                      scoreField={scoreField}
+                      district={district}
+                      province={selectedProvince}
+                      layers={layers}
+                    />
+                  )}
                 </div>
+                <div className="layer-control-box">
+                  <p className="layer-control-title">Layer control</p>
+                  <label className="layer-control-item layer-control-item-fixed">
+                    <input type="checkbox" checked disabled />
+                    <span>Schools</span>
+                  </label>
+                  {layers.map((layer) => (
+                    <label className="layer-control-item" key={layer.key}>
+                      <input
+                        type="checkbox"
+                        checked={layer.active}
+                        onChange={() => toggleLayer(layer.key)}
+                      />
+                      <span>{layer.label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="status-note">
+                  Layer overlays load from backend. Air Quality is exclusive between Average and
+                  Maximum AQI.
+                </p>
               </div>
-            </article>
+            </div>
 
-            <article className="panel">
+            <article className="panel school-snapshot-card">
               <div className="panel-head">
                 <div>
                   <h3 className="panel-title">Selected School Snapshot</h3>
@@ -274,6 +275,12 @@ export function SchoolExplorer() {
                       <p>
                         {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
                         {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                      </p>
+                    </div>
+                    <div className="detail-card detail-card-span-two">
+                      <h4>Coordinates</h4>
+                      <p>
+                        {formatCoordinate(selectedSchool.latitude)}, {formatCoordinate(selectedSchool.longitude)}
                       </p>
                     </div>
                     <div className="detail-card">
@@ -299,8 +306,61 @@ export function SchoolExplorer() {
               </div>
             </article>
           </div>
+
+          <article className="panel school-table-card">
+            <div className="panel-head">
+              <div>
+                <h3 className="panel-title">Ranked School Table</h3>
+                <p className="panel-subtitle">
+                  Current district slice with seeded default scenario scores.
+                </p>
+              </div>
+            </div>
+            <div className="panel-body">
+              <div className="table-wrap school-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>School Name</th>
+                      <th>Priority</th>
+                      <th>Need</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schools.map((school) => (
+                      <tr
+                        className="data-row"
+                        key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                        data-selected={school.school_id === selectedSchoolId}
+                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
+                      >
+                        <td>{school.rank_priority ?? "n/a"}</td>
+                        <td className="school-name-cell">{school.school_name}</td>
+                        <td>
+                          <span className="score-pill" style={scoreToPillStyle(school.priority)}>
+                            {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="score-pill" style={scoreToPillStyle(school.need)}>
+                            {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
   );
+}
+
+function formatCoordinate(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "n/a";
+  return value.toFixed(6);
 }

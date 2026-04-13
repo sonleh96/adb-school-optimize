@@ -192,6 +192,7 @@ textarea {
 .dashboard-grid {
   display: grid;
   gap: 16px;
+  min-height: calc(100vh - 140px);
 }
 
 .panel {
@@ -253,6 +254,49 @@ textarea {
   color: var(--ink);
 }
 
+.district-search {
+  position: relative;
+}
+
+.district-search input {
+  width: 100%;
+}
+
+.map-district-search {
+  width: min(320px, 34vw);
+}
+
+.district-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow);
+}
+
+.district-suggestion-item {
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.district-suggestion-item:hover {
+  background: rgba(10, 46, 115, 0.08);
+}
+
 .control textarea {
   min-height: 170px;
   resize: vertical;
@@ -265,6 +309,13 @@ textarea {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+.header-action-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .button {
@@ -322,6 +373,64 @@ textarea {
   grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
 }
 
+.school-explorer {
+  min-height: calc(100vh - 170px);
+  display: flex;
+  flex-direction: column;
+}
+
+.school-explorer-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.school-explorer-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.school-map-snapshot-layout {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  flex: 4;
+  min-height: 0;
+}
+
+.school-snapshot-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.school-snapshot-card .panel-body {
+  flex: 1;
+  overflow: auto;
+}
+
+.school-table-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.school-table-card .panel-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.school-table-wrap {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
 .map-card {
   height: 100%;
   display: flex;
@@ -352,6 +461,11 @@ textarea {
   min-height: 0;
 }
 
+.map-card.school-map-card .map-frame {
+  min-height: 0;
+  height: 100%;
+}
+
 .district-map-card .map-frame {
   min-height: 0;
   height: 100%;
@@ -370,6 +484,41 @@ textarea {
 
 .map-score-legend {
   margin-top: 12px;
+}
+
+.map-head-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  align-content: start;
+  min-width: 220px;
+}
+
+.score-toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.8);
+  overflow: hidden;
+}
+
+.score-toggle-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.score-toggle-button + .score-toggle-button {
+  border-left: 1px solid var(--line);
+}
+
+.score-toggle-button.is-active {
+  background: rgba(10, 46, 115, 0.1);
+  color: var(--ink);
 }
 
 .school-map-root {
@@ -670,6 +819,10 @@ textarea {
   color: var(--muted);
 }
 
+.detail-card-span-two {
+  grid-column: 1 / -1;
+}
+
 .legend {
   display: flex;
   gap: 8px;
@@ -814,6 +967,21 @@ textarea {
 
   .district-split-layout {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-grid,
+  .school-explorer {
+    min-height: auto;
+  }
+
+  .map-head-actions {
+    width: 100%;
+    justify-items: start;
+    min-width: 0;
+  }
+
+  .map-district-search {
+    width: 100%;
   }
 }
 

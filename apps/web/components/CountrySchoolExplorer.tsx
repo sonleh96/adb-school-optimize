@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchSchoolDetail, fetchSchools, getApiBaseUrl } from "@/lib/api";
+import { fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import type { SchoolRecord } from "@/lib/types";
@@ -66,36 +66,6 @@ export function CountrySchoolExplorer() {
 
   return (
     <section className="panel">
-      <div className="panel-head">
-        <div>
-          <h2 className="panel-title">All Schools (Country View)</h2>
-          <p className="panel-subtitle">
-            National map view of all schools. Raster overlays are disabled in this tab.
-          </p>
-        </div>
-        <div className="controls">
-          <div className="control">
-            <label htmlFor="national-school-color">Color markers by</label>
-            <select
-              id="national-school-color"
-              value={scoreField}
-              onChange={(event) => setScoreField(event.target.value as "priority" | "need")}
-            >
-              <option value="priority">Priority</option>
-              <option value="need">Need</option>
-            </select>
-          </div>
-          <div className="action-row">
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.csv`}>
-              Download CSV
-            </a>
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/ranked.xlsx`}>
-              Download XLSX
-            </a>
-          </div>
-        </div>
-      </div>
-
       <div className="panel-body">
         {error ? <div className="error">{error}</div> : null}
         <div className="split-layout split-layout-country">
@@ -108,6 +78,24 @@ export function CountrySchoolExplorer() {
                 </p>
                 <div className="map-score-legend">
                   <ScoreLegend scoreField={scoreField} />
+                </div>
+              </div>
+              <div className="map-head-actions">
+                <div className="score-toggle" role="group" aria-label="Color markers by">
+                  <button
+                    type="button"
+                    className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+                    onClick={() => setScoreField("priority")}
+                  >
+                    Priority
+                  </button>
+                  <button
+                    type="button"
+                    className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+                    onClick={() => setScoreField("need")}
+                  >
+                    Need
+                  </button>
                 </div>
               </div>
             </div>
