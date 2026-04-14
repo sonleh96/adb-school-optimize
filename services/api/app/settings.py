@@ -1,3 +1,5 @@
+"""Environment-backed configuration for the API service and raster support."""
+
 from __future__ import annotations
 
 import os

@@ -1,3 +1,5 @@
+"""CLI utility for seeding the default scoring scenario in the database."""
+
 from __future__ import annotations
 
 import argparse

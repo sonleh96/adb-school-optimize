@@ -1,3 +1,5 @@
+"""Helpers for deriving deterministic object keys for district raster assets."""
+
 from __future__ import annotations
 
 import re

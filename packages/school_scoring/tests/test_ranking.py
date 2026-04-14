@@ -1,3 +1,5 @@
+"""Tests for ranking behavior in the school scoring package."""
+
 import pandas as pd
 
 from school_scoring import get_default_config
@@ -14,4 +16,3 @@ def test_ranking_breaks_ties_by_need() -> None:
     ranked = rank_scores(df, get_default_config())
     assert ranked.iloc[0]["School Name"] == "B"
     assert ranked.iloc[0]["rank_priority"] == 1
-

@@ -1,3 +1,5 @@
+"""Tests for school scoring preprocessing behavior."""
+
 from school_scoring import get_default_config
 from school_scoring.preprocessing import preprocess_input_data
 
@@ -8,4 +10,3 @@ def test_hierarchical_imputation_sets_flags(sample_school_df) -> None:
     assert processed.loc[2, "Number of Available Teachers_orig_missing"] == 1
     assert processed.loc[2, "Number of Available Teachers"] == processed["Number of Available Teachers"].median()
     assert isinstance(warnings, list)
-

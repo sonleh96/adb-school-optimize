@@ -55,6 +55,28 @@ function FitSchools({ schools }: { schools: SchoolRecord[] }) {
   return null;
 }
 
+function FocusSelectedSchool({
+  schools,
+  selectedSchoolId,
+}: {
+  schools: SchoolRecord[];
+  selectedSchoolId: string | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!selectedSchoolId) return;
+    const school = schools.find((item) => item.school_id === selectedSchoolId);
+    if (!school) return;
+    map.flyTo([school.latitude, school.longitude], Math.max(map.getZoom(), 11), {
+      animate: true,
+      duration: 0.7,
+    });
+  }, [map, schools, selectedSchoolId]);
+
+  return null;
+}
+
 function ViewportBoundsWatcher({ onChange }: { onChange: (bbox: Bbox4326) => void }) {
   const map = useMap();
   useMapEvents({
@@ -399,6 +421,7 @@ export function SchoolMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitSchools schools={schools} />
+        <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} />
         <ViewportBoundsWatcher onChange={setViewportBbox} />
 
         {activeLayers.has("roads") && layerState.roads.length > 0 ? (

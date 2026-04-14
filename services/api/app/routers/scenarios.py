@@ -1,3 +1,5 @@
+"""Routes for listing and managing scoring scenarios."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException

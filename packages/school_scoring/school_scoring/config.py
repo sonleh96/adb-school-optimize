@@ -1,3 +1,5 @@
+"""Configuration models and defaults for the school scoring pipeline."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field, is_dataclass
@@ -272,4 +274,3 @@ def get_default_config() -> ScoringConfig:
 
 def get_default_weights() -> WeightConfig:
     return WeightConfig()
-

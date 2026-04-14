@@ -1,3 +1,5 @@
+"""Source file mappings for ingestion-time datasets and auxiliary layers."""
+
 SCHOOL_SOURCE_FILE = "datasets/png_curated_sec_schools_access_v3_clean.csv"
 DISTRICT_SOURCE_FILE = "datasets/aggregated_district_data.geojson"
 

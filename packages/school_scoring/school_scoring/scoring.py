@@ -1,3 +1,5 @@
+"""Core scoring orchestration for transforming inputs into scored outputs."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -340,4 +342,3 @@ def run_scoring(
         applied_weights=applied_weights,
         warnings=warnings,
     )
-

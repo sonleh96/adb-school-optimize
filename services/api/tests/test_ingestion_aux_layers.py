@@ -1,3 +1,5 @@
+"""Tests for auxiliary layer ingestion and normalization behavior."""
+
 from __future__ import annotations
 
 import json

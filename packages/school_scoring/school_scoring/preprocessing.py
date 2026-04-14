@@ -1,3 +1,5 @@
+"""Data preprocessing utilities for the school scoring workflow."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -81,4 +83,3 @@ def preprocess_input_data(df: pd.DataFrame, config: ScoringConfig) -> tuple[pd.D
         _hierarchical_impute_categorical(processed, config, column)
 
     return processed, warnings
-

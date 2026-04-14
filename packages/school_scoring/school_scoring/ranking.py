@@ -1,3 +1,5 @@
+"""Ranking helpers for ordered school scoring outputs."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -25,4 +27,3 @@ def rank_scores(df: pd.DataFrame, config: ScoringConfig) -> pd.DataFrame:
         .astype(int)
     )
     return ranked
-

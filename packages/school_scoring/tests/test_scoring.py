@@ -1,3 +1,5 @@
+"""Tests for end-to-end scoring outputs."""
+
 from school_scoring import run_scoring
 
 
@@ -32,4 +34,3 @@ def test_run_scoring_returns_required_columns(sample_school_df) -> None:
     }
     assert required.issubset(set(result.scored_data.columns))
     assert result.scored_data.iloc[0]["Priority"] >= result.scored_data.iloc[-1]["Priority"]
-

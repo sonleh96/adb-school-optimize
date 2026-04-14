@@ -1,3 +1,5 @@
+"""Utilities for AQI enrichment and aggregation with Dask-backed processing."""
+
 import numpy as np
 import pandas as pd
 import dask.dataframe as dd

@@ -1,3 +1,5 @@
+"""Utility helpers shared across the school scoring package."""
+
 from __future__ import annotations
 
 import re

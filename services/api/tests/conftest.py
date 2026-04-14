@@ -1,3 +1,5 @@
+"""Shared fixtures and stubs for the API test suite."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager

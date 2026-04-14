@@ -1,3 +1,5 @@
+"""Database connection helpers used by the API and ingestion scripts."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager

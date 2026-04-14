@@ -1,3 +1,5 @@
+"""Validation routines for school scoring configuration and input data."""
+
 from __future__ import annotations
 
 from typing import Any
