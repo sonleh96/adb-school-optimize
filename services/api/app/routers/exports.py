@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 
 from ..db import get_db
-from ..repository import export_ranked_csv, export_ranked_xlsx
+from ..repository import export_full_xlsx, export_ranked_csv, export_ranked_xlsx, export_scores_xlsx
 
 router = APIRouter(prefix="/api/v1/exports", tags=["exports"])
 
@@ -30,3 +30,24 @@ def export_xlsx(scenario_id: str | None = None):
         headers={"Content-Disposition": 'attachment; filename="ranked_schools.xlsx"'},
     )
 
+
+@router.get("/scores.xlsx")
+def export_scores(scenario_id: str | None = None):
+    with get_db() as connection:
+        content = export_scores_xlsx(connection, scenario_id=scenario_id)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="Scores.xlsx"'},
+    )
+
+
+@router.get("/full.xlsx")
+def export_full(scenario_id: str | None = None):
+    with get_db() as connection:
+        content = export_full_xlsx(connection, scenario_id=scenario_id)
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="Full.xlsx"'},
+    )

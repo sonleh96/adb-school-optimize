@@ -334,9 +334,13 @@ def test_scoring_run_forwards_payload(client, monkeypatch):
 def test_exports_return_expected_content_and_headers(client, monkeypatch):
     monkeypatch.setattr(exports, "export_ranked_csv", lambda connection, scenario_id=None: b"a,b\n1,2\n")
     monkeypatch.setattr(exports, "export_ranked_xlsx", lambda connection, scenario_id=None: b"fake-xlsx")
+    monkeypatch.setattr(exports, "export_scores_xlsx", lambda connection, scenario_id=None: b"scores-xlsx")
+    monkeypatch.setattr(exports, "export_full_xlsx", lambda connection, scenario_id=None: b"full-xlsx")
 
     csv_response = client.get("/api/v1/exports/ranked.csv", params={"scenario_id": "scenario-1"})
     xlsx_response = client.get("/api/v1/exports/ranked.xlsx")
+    scores_response = client.get("/api/v1/exports/scores.xlsx", params={"scenario_id": "scenario-1"})
+    full_response = client.get("/api/v1/exports/full.xlsx")
 
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
@@ -349,6 +353,14 @@ def test_exports_return_expected_content_and_headers(client, monkeypatch):
     )
     assert xlsx_response.headers["content-disposition"] == 'attachment; filename="ranked_schools.xlsx"'
     assert xlsx_response.content == b"fake-xlsx"
+
+    assert scores_response.status_code == 200
+    assert scores_response.headers["content-disposition"] == 'attachment; filename="Scores.xlsx"'
+    assert scores_response.content == b"scores-xlsx"
+
+    assert full_response.status_code == 200
+    assert full_response.headers["content-disposition"] == 'attachment; filename="Full.xlsx"'
+    assert full_response.content == b"full-xlsx"
 
 
 def test_raster_status_uses_settings(client, fake_settings, monkeypatch):
