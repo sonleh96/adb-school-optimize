@@ -112,7 +112,7 @@ export function ScenarioPanel() {
   }
 
   return (
-    <section className="panel">
+    <section className="panel scenario-lab">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Scenario Lab</h2>
@@ -134,7 +134,7 @@ export function ScenarioPanel() {
         </div>
       </div>
 
-      <div className="panel-body">
+      <div className="panel-body scenario-lab-body">
         <div className="two-up">
           <article className="panel">
             <div className="panel-head">
@@ -205,7 +205,7 @@ export function ScenarioPanel() {
                       <th>Name</th>
                       <th>Default</th>
                       <th>Updated</th>
-                      <th>Download</th>
+                      <th aria-label="Download column" />
                     </tr>
                   </thead>
                   <tbody>
@@ -219,7 +219,7 @@ export function ScenarioPanel() {
                         <td>{scenario.scenario_name}</td>
                         <td>{scenario.is_default ? "Yes" : "No"}</td>
                         <td>{scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}</td>
-                        <td>
+                        <td className="download-cell">
                           <a
                             className="icon-download-link"
                             href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
@@ -238,7 +238,7 @@ export function ScenarioPanel() {
           </article>
         </div>
 
-        <article className="panel" style={{ marginTop: 16 }}>
+        <article className="panel scenario-preview-panel" style={{ marginTop: 16 }}>
           <div className="panel-head">
             <div>
               <h3 className="panel-title">Scenario Result Preview</h3>
