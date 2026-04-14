@@ -231,6 +231,7 @@ export function SchoolExplorer() {
                       district={district}
                       province={selectedProvince}
                       layers={layers}
+                      showDistrictProvinceInPopup={false}
                     />
                   )}
                 </div>

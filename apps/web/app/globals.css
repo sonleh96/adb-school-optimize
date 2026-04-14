@@ -482,6 +482,76 @@ textarea {
   overflow: auto;
 }
 
+.distribution-panel {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.66);
+  padding: 12px 14px;
+}
+
+.distribution-heading {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.distribution-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(4px, 1fr));
+  align-items: end;
+  gap: 1px;
+  min-height: 76px;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(11, 31, 69, 0.14);
+}
+
+.distribution-bar {
+  border-radius: 2px 2px 0 0;
+}
+
+.distribution-axis {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.distribution-scheme-row {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.distribution-scheme-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.distribution-scheme-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 0;
+}
+
+.distribution-scheme-button.is-active {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
 .map-score-legend {
   margin-top: 12px;
 }

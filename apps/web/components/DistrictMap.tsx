@@ -5,7 +5,8 @@ import { useEffect } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { Feature, Geometry } from "geojson";
 
-import { choroplethColor, scaleValue } from "@/lib/color";
+import { scaleValue } from "@/lib/color";
+import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
 
 function FitDistricts({ features }: { features: DistrictRecord[] }) {
@@ -34,7 +35,7 @@ export function DistrictMap({
   selectedDistrictId: string | null;
   onSelectDistrict: (district: DistrictRecord) => void;
 }) {
-  const field = indicatorToField(indicator);
+  const field = districtIndicatorField(indicator);
   const values = features
     .map((feature) => Number(feature[field]))
     .filter((value) => Number.isFinite(value));
@@ -51,7 +52,7 @@ export function DistrictMap({
       {features.map((feature) => {
         const value = Number(feature[field]);
         const normalized = scaleValue(Number.isFinite(value) ? value : null, min, max);
-        const fillColor = choroplethColor(normalized);
+        const fillColor = districtIndicatorColor(indicator, normalized);
         const isSelected = selectedDistrictId === feature.district_id;
         const geoJsonFeature: Feature<Geometry> = {
           type: "Feature",
@@ -98,25 +99,4 @@ function extendBounds(bounds: LatLngBounds, coordinates: unknown) {
   for (const item of coordinates) {
     extendBounds(bounds, item);
   }
-}
-
-function indicatorToField(indicator: string): string {
-  const mapping: Record<string, string> = {
-    "Average AQI": "average_aqi",
-    "Maximum AQI": "maximum_aqi",
-    "Fixed Broadband Download Speed (MB/s)": "fixed_broadband_download_speed_mbps",
-    "Fixed Broadband Upload Speed (MB/s)": "fixed_broadband_upload_speed_mbps",
-    "Mobile Internet Download Speed (MB/s)": "mobile_internet_download_speed_mbps",
-    "Mobile Internet Upload Speed (MB/s)": "mobile_internet_upload_speed_mbps",
-    "Access Walking (%)": "access_walking_pct",
-    "Access Driving (%)": "access_driving_pct",
-    "Access Cycling (%)": "access_cycling_pct",
-    "Total Nighttime Luminosity": "total_nighttime_luminosity",
-    "Secondary students per 1000 people": "secondary_students_per_1000_people",
-    "Rate of Grade 7 who progressed to Grade 10 (%)": "rate_grade_7_progressed_to_grade_10_pct",
-    "Conflict Events": "conflict_events",
-    "Conflict Fatalities": "conflict_fatalities",
-    "Conflict Population Exposure": "conflict_population_exposure",
-  };
-  return mapping[indicator] ?? "average_aqi";
 }
