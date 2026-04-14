@@ -452,7 +452,7 @@ textarea {
 
 .school-map-snapshot-layout {
   grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
-  flex: 4;
+  flex: 3;
   min-height: 0;
 }
 
@@ -460,6 +460,7 @@ textarea {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
 }
 
 .school-snapshot-card .panel-body {
@@ -470,7 +471,7 @@ textarea {
 .school-table-card {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 2;
   min-height: 0;
 }
 
@@ -676,6 +677,18 @@ textarea {
   gap: 6px;
 }
 
+.layer-control-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.layer-control-column {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
 .layer-control-title {
   margin: 0 0 2px;
   color: var(--ink);
@@ -687,8 +700,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   color: var(--ink);
+  line-height: 1.25;
 }
 
 .layer-control-item input[type="checkbox"] {
@@ -1141,6 +1155,10 @@ textarea {
   }
 
   .hero-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .layer-control-columns {
     grid-template-columns: 1fr;
   }
 }

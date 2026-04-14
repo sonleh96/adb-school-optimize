@@ -148,6 +148,11 @@ export function SchoolExplorer() {
     });
   };
 
+  const layerColumns = useMemo(() => {
+    const midpoint = Math.ceil(layers.length / 2);
+    return [layers.slice(0, midpoint), layers.slice(midpoint)];
+  }, [layers]);
+
   return (
     <section className="panel school-explorer">
       <div className="panel-body school-explorer-body">
@@ -237,20 +242,36 @@ export function SchoolExplorer() {
                 </div>
                 <div className="layer-control-box">
                   <p className="layer-control-title">Layer control</p>
-                  <label className="layer-control-item layer-control-item-fixed">
-                    <input type="checkbox" checked disabled />
-                    <span>Schools</span>
-                  </label>
-                  {layers.map((layer) => (
-                    <label className="layer-control-item" key={layer.key}>
-                      <input
-                        type="checkbox"
-                        checked={layer.active}
-                        onChange={() => toggleLayer(layer.key)}
-                      />
-                      <span>{layer.label}</span>
-                    </label>
-                  ))}
+                  <div className="layer-control-columns">
+                    <div className="layer-control-column">
+                      <label className="layer-control-item layer-control-item-fixed">
+                        <input type="checkbox" checked disabled />
+                        <span>Schools</span>
+                      </label>
+                      {layerColumns[0].map((layer) => (
+                        <label className="layer-control-item" key={layer.key}>
+                          <input
+                            type="checkbox"
+                            checked={layer.active}
+                            onChange={() => toggleLayer(layer.key)}
+                          />
+                          <span>{layer.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="layer-control-column">
+                      {layerColumns[1].map((layer) => (
+                        <label className="layer-control-item" key={layer.key}>
+                          <input
+                            type="checkbox"
+                            checked={layer.active}
+                            onChange={() => toggleLayer(layer.key)}
+                          />
+                          <span>{layer.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <p className="status-note">
                   Layer overlays load from backend. Air Quality is exclusive between Average and
