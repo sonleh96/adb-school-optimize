@@ -169,6 +169,7 @@ export function SchoolMap({
   district,
   province,
   layers,
+  showDistrictProvinceInPopup = true,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -177,6 +178,7 @@ export function SchoolMap({
   district: string;
   province?: string;
   layers: SchoolLayerToggle[];
+  showDistrictProvinceInPopup?: boolean;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -488,6 +490,7 @@ export function SchoolMap({
           </Pane>
         ) : null}
 
+        <Pane name="school-popup-pane" style={{ zIndex: 1100 }} />
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {schools.map((school) => {
             const score = scoreField === "priority" ? school.priority : school.need;
@@ -507,12 +510,16 @@ export function SchoolMap({
                 }}
                 eventHandlers={{ click: () => onSelectSchool(school.school_id ?? null) }}
               >
-                <Popup>
+                <Popup pane="school-popup-pane">
                   <strong>{school.school_name}</strong>
-                  <br />
-                  District: {school.district}
-                  <br />
-                  Province: {school.province}
+                  {showDistrictProvinceInPopup ? (
+                    <>
+                      <br />
+                      District: {school.district}
+                      <br />
+                      Province: {school.province}
+                    </>
+                  ) : null}
                   <br />
                   Priority: {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
                   <br />

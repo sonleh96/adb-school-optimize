@@ -111,6 +111,7 @@ export function CountrySchoolExplorer() {
                     scoreField={scoreField}
                     district="All PNG"
                     layers={EMPTY_LAYERS}
+                    showDistrictProvinceInPopup
                   />
                 )}
               </div>
