@@ -1,3 +1,5 @@
+"""Tests for school scoring configuration defaults and validation."""
+
 from school_scoring import ScoringConfig, get_default_config
 from school_scoring.validators import validate_config
 from school_scoring.exceptions import ConfigurationError
@@ -22,4 +24,3 @@ def test_invalid_config_values_fail() -> None:
         assert True
     else:
         raise AssertionError("Expected ConfigurationError")
-

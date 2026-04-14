@@ -1,3 +1,5 @@
+"""Routes for exporting ranked school data in download-friendly formats."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

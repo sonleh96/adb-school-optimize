@@ -1,3 +1,5 @@
+"""Helpers for explaining how school scores were derived."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -54,4 +56,3 @@ def summarize_imputation(df: pd.DataFrame) -> dict[str, Any]:
             column: int(pd.to_numeric(df[column], errors="coerce").sum()) for column in flag_columns
         },
     }
-

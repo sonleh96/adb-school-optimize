@@ -1,3 +1,5 @@
+"""CLI entrypoint for loading core school and district data into Postgres."""
+
 from __future__ import annotations
 
 import argparse

@@ -1,3 +1,5 @@
+"""Routes for school list, detail, and map-oriented data access."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException

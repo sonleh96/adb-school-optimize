@@ -1,3 +1,5 @@
+"""Raster loading, caching, and rendering helpers for district overlays."""
+
 from __future__ import annotations
 
 import hashlib

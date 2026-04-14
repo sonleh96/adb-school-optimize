@@ -1,3 +1,5 @@
+"""Routes for district metadata used by the frontend explorer."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter
@@ -26,4 +28,3 @@ def district_choropleth(
             "selected_indicator": indicator,
             "features": fetch_district_choropleth(connection, province=province, district=district),
         }
-

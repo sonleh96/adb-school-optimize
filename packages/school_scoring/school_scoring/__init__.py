@@ -1,3 +1,5 @@
+"""Public exports for the school scoring package."""
+
 from .config import (
     ColumnConfig,
     ImputationConfig,
@@ -23,4 +25,3 @@ __all__ = [
     "run_scoring",
     "validate_input_data",
 ]
-

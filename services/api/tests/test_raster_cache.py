@@ -1,3 +1,5 @@
+"""Tests for district raster cache keys and direct-asset loading behavior."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace

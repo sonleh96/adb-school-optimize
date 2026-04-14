@@ -263,7 +263,7 @@ textarea {
 }
 
 .map-district-search {
-  width: min(320px, 34vw);
+  width: 100%;
 }
 
 .district-suggestions {
@@ -618,7 +618,23 @@ textarea {
   gap: 10px;
   justify-items: end;
   align-content: start;
-  min-width: 220px;
+  min-width: 280px;
+}
+
+.search-control-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: min(460px, 36vw);
+}
+
+.search-control-label {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  white-space: nowrap;
+  width: 110px;
 }
 
 .score-toggle {
@@ -1128,6 +1144,10 @@ textarea {
     min-width: 0;
   }
 
+  .search-control-row {
+    width: 100%;
+  }
+
   .map-district-search {
     width: 100%;
   }
@@ -1160,5 +1180,10 @@ textarea {
 
   .layer-control-columns {
     grid-template-columns: 1fr;
+  }
+
+  .search-control-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
 }

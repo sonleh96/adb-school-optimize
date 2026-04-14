@@ -1,3 +1,5 @@
+"""Tests for validation helpers in the school scoring package."""
+
 import pandas as pd
 import pytest
 
@@ -16,4 +18,3 @@ def test_bad_weight_sums_fail() -> None:
     weights["priority"]["Need"] = 0.9
     with pytest.raises(WeightValidationError):
         validate_weight_config(weights)
-

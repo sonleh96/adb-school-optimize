@@ -1,3 +1,5 @@
+"""Shared API error types and exception translation helpers."""
+
 from __future__ import annotations
 
 import logging

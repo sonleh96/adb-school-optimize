@@ -1,3 +1,5 @@
+"""Database-backed repository functions for API read and write operations."""
+
 from __future__ import annotations
 
 import json

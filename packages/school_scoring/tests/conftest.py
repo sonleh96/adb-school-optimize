@@ -1,3 +1,5 @@
+"""Shared test fixtures for the school scoring package test suite."""
+
 from __future__ import annotations
 
 import pandas as pd
@@ -142,4 +144,3 @@ def sample_school_df() -> pd.DataFrame:
             },
         ]
     )
-

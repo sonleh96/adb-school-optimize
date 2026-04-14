@@ -1,3 +1,5 @@
+"""Reusable SQL query fragments for repository-layer database access."""
+
 DEFAULT_SCENARIO_SQL = """
 select scenario_id
 from scoring_scenarios

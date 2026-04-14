@@ -1,3 +1,5 @@
+"""Routes for district raster metadata and rendered overlay retrieval."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter

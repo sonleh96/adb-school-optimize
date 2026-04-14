@@ -29,11 +29,24 @@ const INITIAL_LAYERS: SchoolLayerToggle[] = [
   { key: "luminosity", label: "Nighttime Luminosity", active: false },
 ];
 
+function rankSuggestion(value: string, query: string): number {
+  const candidate = value.trim().toLowerCase();
+  if (!query) return 4;
+  if (candidate === query) return 0;
+  if (candidate.startsWith(query)) return 1;
+  if (candidate.split(/\s+/).some((token) => token.startsWith(query))) return 2;
+  if (candidate.includes(query)) return 3;
+  return 9;
+}
+
 export function SchoolExplorer() {
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
   const [districtQuery, setDistrictQuery] = useState(DEFAULT_DISTRICT);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
   const [districtOptions, setDistrictOptions] = useState<Array<{ district_id: string; province: string; district: string }>>([]);
+  const [schoolQuery, setSchoolQuery] = useState("");
+  const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
+  const [schoolSearchOptions, setSchoolSearchOptions] = useState<SchoolRecord[]>([]);
   const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [selectedSchoolDetail, setSelectedSchoolDetail] = useState<Record<string, unknown> | null>(null);
@@ -57,11 +70,17 @@ export function SchoolExplorer() {
   }, []);
 
   useEffect(() => {
+    fetchSchools({ limit: 10000 })
+      .then((rows) => setSchoolSearchOptions(rows))
+      .catch((err: Error) => setError(err.message));
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    fetchSchools({ district, limit: 1000 })
+    fetchSchools({ district, limit: 5000 })
       .then((rows) => {
         if (cancelled) return;
         setSchools(rows);
@@ -103,17 +122,13 @@ export function SchoolExplorer() {
 
   const selectedProvince = selectedDistrictOption?.province;
 
+  useEffect(() => {
+    if (!selectedSchool) return;
+    setSchoolQuery(selectedSchool.school_name);
+  }, [selectedSchool]);
+
   const districtSuggestions = useMemo(() => {
     const query = districtQuery.trim().toLowerCase();
-    const scoreDistrict = (name: string): number => {
-      const candidate = name.toLowerCase();
-      if (!query) return 4;
-      if (candidate === query) return 0;
-      if (candidate.startsWith(query)) return 1;
-      if (candidate.split(/\s+/).some((token) => token.startsWith(query))) return 2;
-      if (candidate.includes(query)) return 3;
-      return 9;
-    };
     const directionalRank = (name: string): number => {
       const value = name.trim().toLowerCase();
       if (value.startsWith("north ")) return 0;
@@ -123,17 +138,38 @@ export function SchoolExplorer() {
     };
 
     return districtOptions
-      .map((option) => ({ option, score: scoreDistrict(option.district), dir: directionalRank(option.district) }))
+      .map((option) => ({ option, score: rankSuggestion(option.district, query), dir: directionalRank(option.district) }))
       .filter((item) => item.score < 9)
       .sort((left, right) => left.score - right.score || left.dir - right.dir || left.option.district.localeCompare(right.option.district))
       .slice(0, 8)
       .map((item) => item.option);
   }, [districtOptions, districtQuery]);
 
+  const schoolSuggestions = useMemo(() => {
+    const query = schoolQuery.trim().toLowerCase();
+    return schoolSearchOptions
+      .map((school) => ({ school, score: rankSuggestion(school.school_name, query) }))
+      .filter((item) => item.score < 9)
+      .sort((left, right) => {
+        if (left.score !== right.score) return left.score - right.score;
+        return left.school.school_name.localeCompare(right.school.school_name);
+      })
+      .slice(0, 8)
+      .map((item) => item.school);
+  }, [schoolQuery, schoolSearchOptions]);
+
   const applyDistrict = (value: string) => {
     setDistrict(value);
     setDistrictQuery(value);
     setShowDistrictSuggestions(false);
+  };
+
+  const applySchool = (school: SchoolRecord) => {
+    setSchoolQuery(school.school_name);
+    setShowSchoolSuggestions(false);
+    setDistrict(school.district);
+    setDistrictQuery(school.district);
+    setSelectedSchoolId(school.school_id ?? null);
   };
 
   const toggleLayer = (layerKey: SchoolLayerKey) => {
@@ -187,39 +223,79 @@ export function SchoolExplorer() {
                       Need
                     </button>
                   </div>
-                  <div className="district-search map-district-search">
-                    <input
-                      id="district-search"
-                      type="text"
-                      value={districtQuery}
-                      placeholder="Search district for zoom…"
-                      onFocus={() => setShowDistrictSuggestions(true)}
-                      onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
-                      onChange={(event) => {
-                        setDistrictQuery(event.target.value);
-                        setShowDistrictSuggestions(true);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && districtSuggestions[0]) {
-                          event.preventDefault();
-                          applyDistrict(districtSuggestions[0].district);
-                        }
-                      }}
-                    />
-                    {showDistrictSuggestions && districtSuggestions.length > 0 ? (
-                      <div className="district-suggestions">
-                        {districtSuggestions.map((option) => (
-                          <button
-                            type="button"
-                            key={option.district_id}
-                            className="district-suggestion-item"
-                            onMouseDown={() => applyDistrict(option.district)}
-                          >
-                            {option.district}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
+                  <div className="search-control-row">
+                    <label className="search-control-label" htmlFor="school-search">Search School</label>
+                    <div className="district-search map-district-search">
+                      <input
+                        id="school-search"
+                        type="text"
+                        value={schoolQuery}
+                        placeholder="Search school name…"
+                        onFocus={() => setShowSchoolSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+                        onChange={(event) => {
+                          setSchoolQuery(event.target.value);
+                          setShowSchoolSuggestions(true);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && schoolSuggestions[0]) {
+                            event.preventDefault();
+                            applySchool(schoolSuggestions[0]);
+                          }
+                        }}
+                      />
+                      {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
+                        <div className="district-suggestions">
+                          {schoolSuggestions.map((school) => (
+                            <button
+                              type="button"
+                              key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                              className="district-suggestion-item"
+                              onMouseDown={() => applySchool(school)}
+                            >
+                              {school.school_name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="search-control-row">
+                    <label className="search-control-label" htmlFor="district-search">Search District</label>
+                    <div className="district-search map-district-search">
+                      <input
+                        id="district-search"
+                        type="text"
+                        value={districtQuery}
+                        placeholder="Search district for zoom…"
+                        onFocus={() => setShowDistrictSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
+                        onChange={(event) => {
+                          setDistrictQuery(event.target.value);
+                          setShowDistrictSuggestions(true);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && districtSuggestions[0]) {
+                            event.preventDefault();
+                            applyDistrict(districtSuggestions[0].district);
+                          }
+                        }}
+                      />
+                      {showDistrictSuggestions && districtSuggestions.length > 0 ? (
+                        <div className="district-suggestions">
+                          {districtSuggestions.map((option) => (
+                            <button
+                              type="button"
+                              key={option.district_id}
+                              className="district-suggestion-item"
+                              onMouseDown={() => applyDistrict(option.district)}
+                            >
+                              {option.district}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+"""Schema definitions for validated school scoring inputs and outputs."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,4 +15,3 @@ class ScoringResult:
     applied_config: dict[str, Any]
     applied_weights: dict[str, Any]
     warnings: list[str] = field(default_factory=list)
-

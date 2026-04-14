@@ -1,3 +1,5 @@
+"""Pydantic models for API request and response payloads."""
+
 from __future__ import annotations
 
 from typing import Any

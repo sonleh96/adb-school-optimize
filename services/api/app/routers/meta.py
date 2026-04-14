@@ -1,3 +1,5 @@
+"""Routes for metadata lookups such as available districts and layers."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter
