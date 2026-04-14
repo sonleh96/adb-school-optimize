@@ -17,6 +17,7 @@ from .queries import (
     DISTRICT_GEOMETRY_SQL,
     DISTRICTS_CHOROPLETH_SQL,
     DISTRICTS_SQL,
+    FULL_EXPORT_SQL,
     LAYERS_SQL,
     PROVINCES_SQL,
     RANKED_EXPORT_SQL,
@@ -490,6 +491,12 @@ def _fetch_ranked_export_dataframe(connection, scenario_id: str | None = None) -
     return _drop_header_like_export_rows(df)
 
 
+def _fetch_full_export_dataframe(connection, scenario_id: str | None = None) -> pd.DataFrame:
+    rows = fetch_all(connection, FULL_EXPORT_SQL, {"scenario_id": scenario_id})
+    df = pd.DataFrame(rows)
+    return _drop_header_like_export_rows(df)
+
+
 def export_ranked_csv(connection, scenario_id: str | None = None) -> bytes:
     df = _fetch_ranked_export_dataframe(connection, scenario_id=scenario_id)
     return df.to_csv(index=False).encode("utf-8")
@@ -500,5 +507,18 @@ def export_ranked_xlsx(connection, scenario_id: str | None = None) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         df.to_excel(writer, index=False, sheet_name="ranked_schools")
+    output.seek(0)
+    return output.read()
+
+
+def export_scores_xlsx(connection, scenario_id: str | None = None) -> bytes:
+    return export_ranked_xlsx(connection, scenario_id=scenario_id)
+
+
+def export_full_xlsx(connection, scenario_id: str | None = None) -> bytes:
+    df = _fetch_full_export_dataframe(connection, scenario_id=scenario_id)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="full_schools")
     output.seek(0)
     return output.read()

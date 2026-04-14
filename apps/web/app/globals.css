@@ -318,6 +318,47 @@ textarea {
   gap: 8px;
 }
 
+.scenario-data-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 84px;
+}
+
+.scenario-data-label {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.scenario-data-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.icon-download-link:hover {
+  background: rgba(10, 46, 115, 0.1);
+}
+
 .button {
   border: 0;
   border-radius: 999px;
@@ -789,6 +830,10 @@ textarea {
 
 .table-wrap-scroll {
   max-height: 560px;
+}
+
+.scenario-preview-wrap {
+  max-height: 520px;
 }
 
 .table-wrap-tall {
