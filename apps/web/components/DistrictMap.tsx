@@ -6,6 +6,7 @@ import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { Feature, Geometry } from "geojson";
 
 import { scaleValue } from "@/lib/color";
+import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
 
@@ -47,7 +48,9 @@ export function DistrictMap({
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        crossOrigin="anonymous"
       />
+      <MapScreenshotControl filenamePrefix="district-explorer-map" />
       <FitDistricts features={features} />
       {features.map((feature) => {
         const value = Number(feature[field]);
