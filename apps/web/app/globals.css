@@ -1120,6 +1120,16 @@ textarea {
   font-size: 0.94rem;
 }
 
+.methodology-math {
+  padding: 10px 12px;
+}
+
+.methodology-math .katex-display {
+  margin: 0.2rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 .methodology-quote {
   margin: 12px 0 0;
   padding: 18px 20px;
