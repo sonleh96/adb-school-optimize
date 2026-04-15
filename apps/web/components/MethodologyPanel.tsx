@@ -1,3 +1,21 @@
+"use client";
+
+import ReactMarkdown from "react-markdown";
+import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+
+import "katex/dist/katex.min.css";
+
+function MathBlock({ expression }: { expression: string }) {
+  return (
+    <div className="methodology-code methodology-math">
+      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {`$$${expression}$$`}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export function MethodologyPanel() {
   return (
     <section className="panel">
@@ -16,7 +34,7 @@ export function MethodologyPanel() {
           <section>
             <h2>1. Purpose</h2>
             <p>
-              This module is designed to support transparent, configurable, and evidence-based
+              This platform is designed to support transparent, configurable, and evidence-based
               prioritization of schools for further review, investment, or intervention. It
               implements a two-stage scoring framework:
             </p>
@@ -66,7 +84,7 @@ export function MethodologyPanel() {
               UNESCO guidance that uses geospatial multi-criteria methods to assess natural-hazard
               risks in educational-facility planning.
             </p>
-            <p>Accordingly, the app separates two questions:</p>
+            <p>Accordingly, the platform separates two questions:</p>
             <ul className="methodology-list">
               <li>
                 <strong>How much need is present?</strong> → answered by the <strong>Need score</strong>.
@@ -221,13 +239,9 @@ export function MethodologyPanel() {
               a 0-1 scale:
             </p>
             <p>For indicators where higher values mean greater need:</p>
-            <pre className="methodology-code">
-              <code>{`s_ij = (x_ij - min_j) / (max_j - min_j)`}</code>
-            </pre>
+            <MathBlock expression={`s_{ij} = \\frac{x_{ij} - \\min_j}{\\max_j - \\min_j}`} />
             <p>For indicators where higher values mean lower need:</p>
-            <pre className="methodology-code">
-              <code>{`s_ij = (max_j - x_ij) / (max_j - min_j)`}</code>
-            </pre>
+            <MathBlock expression={`s_{ij} = \\frac{\\max_j - x_{ij}}{\\max_j - \\min_j}`} />
             <p>Where:</p>
             <ul className="methodology-list">
               <li>`x_ij` is the raw value of indicator `j` for school `i`,</li>
@@ -264,26 +278,18 @@ export function MethodologyPanel() {
               indicators are combined using configurable weights.
             </p>
             <p>For school `i` and domain `d`:</p>
-            <pre className="methodology-code">
-              <code>{`DomainScore_id = Σ_j (w_jd * s_ij)`}</code>
-            </pre>
+            <MathBlock expression={`\\mathrm{DomainScore}_{id} = \\sum_j \\left(w_{jd} \\cdot s_{ij}\\right)`} />
             <p>subject to:</p>
-            <pre className="methodology-code">
-              <code>{`Σ_j w_jd = 1`}</code>
-            </pre>
+            <MathBlock expression={`\\sum_j w_{jd} = 1`} />
             <p>where `w_jd` is the weight of indicator `j` within domain `d`.</p>
 
             <h3>7.2 Aggregation Across Domains</h3>
             <p>
               The Need score is then calculated as a weighted combination of the domain sub-scores:
             </p>
-            <pre className="methodology-code">
-              <code>{`Need_i = Σ_d (W_d * DomainScore_id)`}</code>
-            </pre>
+            <MathBlock expression={`\\mathrm{Need}_i = \\sum_d \\left(W_d \\cdot \\mathrm{DomainScore}_{id}\\right)`} />
             <p>subject to:</p>
-            <pre className="methodology-code">
-              <code>{`Σ_d W_d = 1`}</code>
-            </pre>
+            <MathBlock expression={`\\sum_d W_d = 1`} />
             <p>where `W_d` is the weight assigned to domain `d`.</p>
 
             <h3>7.3 Interpretation</h3>
@@ -311,13 +317,9 @@ export function MethodologyPanel() {
               relevant for action.
             </p>
             <p>The generic structure is:</p>
-            <pre className="methodology-code">
-              <code>{`Priority_i = α * Need_i + Σ_k (β_k * p_ik)`}</code>
-            </pre>
+            <MathBlock expression={`\\mathrm{Priority}_i = \\alpha \\cdot \\mathrm{Need}_i + \\sum_k \\left(\\beta_k \\cdot p_{ik}\\right)`} />
             <p>subject to:</p>
-            <pre className="methodology-code">
-              <code>{`α + Σ_k β_k = 1`}</code>
-            </pre>
+            <MathBlock expression={`\\alpha + \\sum_k \\beta_k = 1`} />
             <p>where:</p>
             <ul className="methodology-list">
               <li>`Need_i` is the Need score,</li>
@@ -376,7 +378,7 @@ export function MethodologyPanel() {
               composite indicators because rankings may shift when assumptions change. This applies
               directly to school prioritization.
             </p>
-            <p>Accordingly, the app should support the following checks:</p>
+            <p>Accordingly, the platform should support the following checks:</p>
 
             <h3>10.1 Weight Sensitivity</h3>
             <p>
@@ -401,7 +403,7 @@ export function MethodologyPanel() {
             </p>
 
             <h3>10.5 Explainability Outputs</h3>
-            <p>For every school, the app should retain:</p>
+            <p>For every school, the platform should retain:</p>
             <ul className="methodology-list">
               <li>raw indicator values,</li>
               <li>normalized indicator values,</li>
@@ -466,7 +468,7 @@ export function MethodologyPanel() {
             <ul className="methodology-list">
               <li>rankings depend on the quality and coverage of the underlying data;</li>
               <li>results are sensitive to weighting and normalization choices;</li>
-              <li>contextual proxies cannot fully replace school-level observations;</li>
+              <li>some contextual proxies cannot fully replace school-level observations;</li>
               <li>
                 the score identifies relative priority within the analysis set, not absolute need in
                 a universal sense;
@@ -477,22 +479,6 @@ export function MethodologyPanel() {
               These limitations are normal for composite prioritization tools and are one reason
               transparency, sensitivity testing, and human review are central to the design.
             </p>
-          </section>
-
-          <section>
-            <h2>14. Recommended Wording for App Documentation</h2>
-            <p>A concise summary suitable for the app documentation is:</p>
-            <blockquote className="methodology-quote">
-              The scoring module uses a two-stage composite methodology. First, it computes a{" "}
-              <strong>Need score</strong> that summarizes the relative level of deprivation,
-              infrastructure shortfall, accessibility constraint, hazard exposure, and demand
-              pressure associated with each school. Second, it computes a <strong>Priority score</strong>{" "}
-              that combines need with configurable strategic and implementation factors used by the
-              programme. All indicators are normalized onto a common scale, weighted transparently,
-              and aggregated into domain sub-scores and final scores. The methodology follows
-              established composite-indicator practice and is designed to be configurable,
-              auditable, and robust to sensitivity testing.
-            </blockquote>
           </section>
 
           <section>
