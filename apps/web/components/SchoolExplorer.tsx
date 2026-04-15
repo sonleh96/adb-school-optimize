@@ -313,6 +313,7 @@ export function SchoolExplorer() {
                       province={selectedProvince}
                       layers={layers}
                       showDistrictProvinceInPopup={false}
+                      screenshotFilePrefix="school-explorer-map"
                     />
                   )}
                 </div>
@@ -384,11 +385,59 @@ export function SchoolExplorer() {
                       </p>
                     </div>
                     <div className="detail-card">
+                      <h4>Locality</h4>
+                      <p>{String(selectedSchoolDetail?.locality ?? selectedSchool.locality ?? "n/a")}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Power Source</h4>
+                      <p>{String(selectedSchoolDetail?.power_source ?? "n/a")}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Water Source</h4>
+                      <p>{String(selectedSchoolDetail?.water_source ?? "n/a")}</p>
+                    </div>
+                    <div className="detail-card">
                       <h4>Teachers / Classrooms</h4>
                       <p>
                         {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
                         {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
                       </p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Population with Walking Access (%)</h4>
+                      <p>{formatPercentMetric(selectedSchoolDetail?.access_walking_pct)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Population with Cycling Access (%)</h4>
+                      <p>{formatPercentMetric(selectedSchoolDetail?.access_cycling_pct)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Population with Driving Access (%)</h4>
+                      <p>{formatPercentMetric(selectedSchoolDetail?.access_driving_pct)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Fixed Broadband Download Speed (MB/s)</h4>
+                      <p>{formatNumericMetric(selectedSchoolDetail?.fixed_broadband_download_speed_mbps)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Mobile Broadband Download Speed (MB/s)</h4>
+                      <p>{formatNumericMetric(selectedSchoolDetail?.mobile_internet_download_speed_mbps)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Total enrollment Grade 7-10</h4>
+                      <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_10, 0)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Rate of Grade 7 who progressed to Grade 10 (%)</h4>
+                      <p>{formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_10_pct)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Rate of Grade 7 who progressed to Grade 12 (%)</h4>
+                      <p>{formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_12_pct)}</p>
+                    </div>
+                    <div className="detail-card">
+                      <h4>Total enrollment Grade 7-12</h4>
+                      <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_12, 0)}</p>
                     </div>
                     <div className="detail-card">
                       <h4>Confidence / Stage 1</h4>
@@ -463,4 +512,29 @@ export function SchoolExplorer() {
 function formatCoordinate(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "n/a";
   return value.toFixed(6);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function formatNumericMetric(value: unknown, digits = 1): string {
+  const numeric = toFiniteNumber(value);
+  if (numeric == null) return "n/a";
+  return numeric.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatPercentMetric(value: unknown): string {
+  const numeric = toFiniteNumber(value);
+  if (numeric == null) return "n/a";
+  const percent = numeric <= 1 ? numeric * 100 : numeric;
+  return `${percent.toFixed(1)}%`;
 }

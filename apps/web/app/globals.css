@@ -789,6 +789,27 @@ textarea {
   font-size: 0.8rem;
 }
 
+.map-screenshot-control-button {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map-screenshot-control-button:hover {
+  background: #f6f8fb;
+}
+
+.map-screenshot-control-button:disabled {
+  cursor: wait;
+  color: var(--muted);
+}
+
 .layer-legend-header {
   display: flex;
   align-items: center;

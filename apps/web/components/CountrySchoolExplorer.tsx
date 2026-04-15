@@ -112,6 +112,7 @@ export function CountrySchoolExplorer() {
                     district="All PNG"
                     layers={EMPTY_LAYERS}
                     showDistrictProvinceInPopup
+                    screenshotFilePrefix="all-schools-map"
                   />
                 )}
               </div>

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Pane, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
+import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { scoreToColor } from "@/lib/color";
 import type { RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
 
@@ -192,6 +193,7 @@ export function SchoolMap({
   province,
   layers,
   showDistrictProvinceInPopup = true,
+  screenshotFilePrefix = "school-map",
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -201,6 +203,7 @@ export function SchoolMap({
   province?: string;
   layers: SchoolLayerToggle[];
   showDistrictProvinceInPopup?: boolean;
+  screenshotFilePrefix?: string;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -419,7 +422,9 @@ export function SchoolMap({
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          crossOrigin="anonymous"
         />
+        <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
         <FitSchools schools={schools} />
         <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} />
         <ViewportBoundsWatcher onChange={setViewportBbox} />
