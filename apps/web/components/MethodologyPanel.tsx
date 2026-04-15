@@ -174,6 +174,20 @@ export function MethodologyPanel() {
               These variables belong in the <strong>Priority score</strong>, not the{" "}
               <strong>Need score</strong>.
             </p>
+            <p>
+              <strong>
+                Please click on{" "}
+                <a
+                  href="https://asiandevbank.sharepoint.com/:x:/r/teams/org_sghsd/_layouts/15/Doc.aspx?sourcedoc=%7B836BC95F-DE46-4F64-96BB-2C377A00831E%7D&file=Data%20Catalogue.xlsx&action=default&mobileredirect=true&wdOrigin=OUTLOOK-METAOS.FILEBROWSER"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#b42318", fontWeight: 600 }}
+                >
+                  Data Sources
+                </a>{" "}
+                here for more information on these domains.
+              </strong>
+            </p>
           </section>
 
           <section>
