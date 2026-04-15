@@ -1,5 +1,5 @@
-import { DashboardShell } from "@/components/DashboardShell";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <DashboardShell />;
+  redirect("/all-schools");
 }
