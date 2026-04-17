@@ -1280,8 +1280,11 @@ textarea {
 }
 
 .district-ranking-table-wrap {
+  --district-ranking-row-height: 44px;
+  --district-ranking-header-height: 44px;
   flex: 1;
   min-height: 0;
+  max-height: calc(var(--district-ranking-header-height) + (10 * var(--district-ranking-row-height)));
   overflow: auto;
 }
 
