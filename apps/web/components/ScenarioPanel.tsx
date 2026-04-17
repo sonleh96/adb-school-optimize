@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
+import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
 import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
 
 const DEFAULT_OVERRIDES = {
   need: { S: 0.55, A: 0.25, R_phys: 0.2 },
   priority: { Need: 0.7, I: 0.2, P: 0.1 },
 };
-
-const SELECTED_SCENARIO_STORAGE_KEY = "scenario_lab_selected_id";
 
 export function ScenarioPanel() {
   const [scenarios, setScenarios] = useState<ScenarioRecord[]>([]);
