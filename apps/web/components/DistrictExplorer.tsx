@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictChoropleth, fetchIndicators } from "@/lib/api";
+import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
@@ -138,6 +139,7 @@ export function DistrictExplorer() {
                     onSelectDistrict={setSelectedDistrict}
                     highlightedDistrictIds={highlightedDistrictIds}
                     rankingScoreField={rankingScoreField}
+                    showIndicatorLayer={!topNEnabled}
                   />
                 )}
               </div>
@@ -145,55 +147,25 @@ export function DistrictExplorer() {
           </div>
 
           <div className="panel district-summary-card">
-            <div className="panel-head">
-              <div>
+            <div className="panel-body">
+              <div className="indicator-summary-heading">
                 <h3 className="panel-title">Indicator Summary</h3>
                 <p className="panel-subtitle">Quick read on the current choropleth metric.</p>
               </div>
-            </div>
-            <div className="panel-body">
-              <div className="district-ranking-controls">
-                <div className="control">
-                  <label>Ranking score</label>
-                  <div className="score-toggle" role="group" aria-label="Rank districts by">
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
-                      onClick={() => setRankingScoreField("priority")}
-                    >
-                      Priority
-                    </button>
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
-                      onClick={() => setRankingScoreField("need")}
-                    >
-                      Need
-                    </button>
+
+              <div>
+                {selectedDistrict ? (
+                  <div className="detail-card">
+                    <h3>{selectedDistrict.district}</h3>
+                    <p>{selectedDistrict.province}</p>
+                    <p style={{ marginTop: 10 }}>
+                      <strong>{indicator}:</strong>{" "}
+                      {String(selectedDistrict[indicatorField] ?? "n/a")}
+                    </p>
                   </div>
-                </div>
-                <div className="control">
-                  <label htmlFor="top-n-enabled">Top-N highlight</label>
-                  <div className="district-topn-toggle-row">
-                    <label className="district-topn-checkbox" htmlFor="top-n-enabled">
-                      <input
-                        id="top-n-enabled"
-                        type="checkbox"
-                        checked={topNEnabled}
-                        onChange={(event) => setTopNEnabled(event.target.checked)}
-                      />
-                      <span>Enable highlight</span>
-                    </label>
-                    <input
-                      className="district-topn-input"
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={topNCount}
-                      onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
-                    />
-                  </div>
-                </div>
+                ) : (
+                  <div className="empty">Select a district polygon to inspect it.</div>
+                )}
               </div>
 
               {metricSummary ? (
@@ -270,19 +242,55 @@ export function DistrictExplorer() {
                 </div>
               ) : null}
 
-              <div style={{ marginTop: 16 }}>
-                {selectedDistrict ? (
-                  <div className="detail-card">
-                    <h3>{selectedDistrict.district}</h3>
-                    <p>{selectedDistrict.province}</p>
-                    <p style={{ marginTop: 10 }}>
-                      <strong>{indicator}:</strong>{" "}
-                      {String(selectedDistrict[indicatorField] ?? "n/a")}
-                    </p>
+              <div className="district-ranking-title-wrap">
+                <h3 className="panel-title">District Ranking</h3>
+              </div>
+              <div className="district-ranking-controls">
+                <div className="control">
+                  <label>Ranking score</label>
+                  <div className="score-toggle" role="group" aria-label="Rank districts by">
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
+                      onClick={() => setRankingScoreField("priority")}
+                    >
+                      Priority
+                    </button>
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
+                      onClick={() => setRankingScoreField("need")}
+                    >
+                      Need
+                    </button>
                   </div>
-                ) : (
-                  <div className="empty">Select a district polygon to inspect it.</div>
-                )}
+                </div>
+                <div className="control">
+                  <label htmlFor="top-n-enabled">Top-N highlight</label>
+                  <div className="district-topn-toggle-row">
+                    <label className="district-topn-checkbox" htmlFor="top-n-enabled">
+                      <input
+                        id="top-n-enabled"
+                        type="checkbox"
+                        checked={topNEnabled}
+                        onChange={(event) => setTopNEnabled(event.target.checked)}
+                      />
+                      <span>Enable highlight</span>
+                    </label>
+                    <input
+                      className="district-topn-input"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={topNCount}
+                      onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="map-legend-block district-ranking-legend-block">
+                <DistrictScoreLegend scoreField={rankingScoreField} />
               </div>
 
               <div className="district-ranking-table-section">

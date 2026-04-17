@@ -1277,6 +1277,24 @@ textarea {
   gap: 12px;
 }
 
+.district-ranking-title-wrap {
+  margin-bottom: -2px;
+}
+
+.district-ranking-legend-block {
+  padding: 10px 12px;
+}
+
+.district-ranking-legend-block .panel-subtitle {
+  margin-top: 0;
+}
+
+.indicator-summary-heading {
+  display: grid;
+  gap: 6px;
+  margin-top: -2px;
+}
+
 .district-topn-toggle-row {
   display: flex;
   align-items: center;

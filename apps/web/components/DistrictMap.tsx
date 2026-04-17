@@ -33,6 +33,7 @@ export function DistrictMap({
   onSelectDistrict,
   highlightedDistrictIds = new Set(),
   rankingScoreField = "priority",
+  showIndicatorLayer = true,
 }: {
   features: DistrictRecord[];
   indicator: string;
@@ -40,6 +41,7 @@ export function DistrictMap({
   onSelectDistrict: (district: DistrictRecord) => void;
   highlightedDistrictIds?: Set<string>;
   rankingScoreField?: DistrictScoreField;
+  showIndicatorLayer?: boolean;
 }) {
   const field = districtIndicatorField(indicator);
   const values = features
@@ -81,8 +83,22 @@ export function DistrictMap({
               color: isSelected ? "#17211f" : isHighlighted ? "#a8550a" : "rgba(23, 33, 31, 0.5)",
               weight: isSelected ? 3.2 : isHighlighted ? 2.6 : 1,
               dashArray: isSelected ? undefined : isHighlighted ? "8 4" : undefined,
-              fillColor: isHighlighted ? districtIndicatorColor(rankingScoreField === "priority" ? "Priority Score" : "Need Score", 1) : fillColor,
-              fillOpacity: isSelected ? 0.82 : isHighlighted ? 0.78 : 0.72,
+              fillColor: isHighlighted
+                ? districtIndicatorColor(rankingScoreField === "priority" ? "Priority Score" : "Need Score", 1)
+                : showIndicatorLayer
+                  ? fillColor
+                  : "transparent",
+              fillOpacity: isSelected
+                ? isHighlighted
+                  ? 0.82
+                  : showIndicatorLayer
+                    ? 0.82
+                    : 0.06
+                : isHighlighted
+                  ? 0.78
+                  : showIndicatorLayer
+                    ? 0.72
+                    : 0,
             }}
             eventHandlers={{
               click: () => onSelectDistrict(feature),
