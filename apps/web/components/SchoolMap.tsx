@@ -63,13 +63,16 @@ function FitSchools({ schools }: { schools: SchoolRecord[] }) {
 function FocusSelectedSchool({
   schools,
   selectedSchoolId,
+  enabled = true,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
+  enabled?: boolean;
 }) {
   const map = useMap();
 
   useEffect(() => {
+    if (!enabled) return;
     if (!selectedSchoolId) return;
     const school = schools.find((item) => item.school_id === selectedSchoolId);
     if (!school) return;
@@ -77,7 +80,7 @@ function FocusSelectedSchool({
       animate: true,
       duration: 0.7,
     });
-  }, [map, schools, selectedSchoolId]);
+  }, [enabled, map, schools, selectedSchoolId]);
 
   return null;
 }
@@ -200,6 +203,7 @@ export function SchoolMap({
   screenshotFilePrefix = "school-map",
   districtFeatures = [],
   districtScoreField,
+  focusSelectedSchool = true,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -212,6 +216,7 @@ export function SchoolMap({
   screenshotFilePrefix?: string;
   districtFeatures?: DistrictRecord[];
   districtScoreField?: DistrictScoreField;
+  focusSelectedSchool?: boolean;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -438,7 +443,7 @@ export function SchoolMap({
         />
         <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
         <FitSchools schools={schools} />
-        <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} />
+        <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} enabled={focusSelectedSchool} />
         <ViewportBoundsWatcher onChange={setViewportBbox} />
 
         {districtScoreField && districtFeatures.length > 0 ? (
