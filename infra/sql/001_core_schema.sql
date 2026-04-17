@@ -46,6 +46,8 @@ create table if not exists districts (
     conflict_events double precision,
     conflict_fatalities double precision,
     conflict_population_exposure double precision,
+    priority double precision,
+    need double precision,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     unique (province_norm, district_norm)

@@ -80,7 +80,8 @@ select district_id, province, district,
        total_enrollment_grade_7_10,
        grade_7_10_students_per_1000_population,
        rate_grade_7_progressed_to_grade_10_pct,
-       school_aged_population, conflict_events, conflict_fatalities, conflict_population_exposure
+       school_aged_population, conflict_events, conflict_fatalities, conflict_population_exposure,
+       priority, need
 from districts
 where (%(province)s::text is null or province = %(province)s::text)
   and (%(district)s::text is null or district = %(district)s::text)

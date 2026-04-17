@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictChoropleth, fetchIndicators } from "@/lib/api";
+import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
 
@@ -18,6 +19,9 @@ export function DistrictExplorer() {
   const [indicators, setIndicators] = useState<string[]>(["Average AQI"]);
   const [features, setFeatures] = useState<DistrictRecord[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictRecord | null>(null);
+  const [rankingScoreField, setRankingScoreField] = useState<"priority" | "need">("priority");
+  const [topNEnabled, setTopNEnabled] = useState(true);
+  const [topNCount, setTopNCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const indicatorField = districtIndicatorField(indicator);
@@ -38,7 +42,10 @@ export function DistrictExplorer() {
       .then((result) => {
         if (cancelled) return;
         setFeatures(result.features);
-        setSelectedDistrict((current) => current ?? result.features[0] ?? null);
+        setSelectedDistrict((current) => {
+          if (!current) return result.features[0] ?? null;
+          return result.features.find((feature) => feature.district_id === current.district_id) ?? result.features[0] ?? null;
+        });
       })
       .catch((err: Error) => {
         if (!cancelled) setError(err.message);
@@ -81,6 +88,16 @@ export function DistrictExplorer() {
     [metricValues, selectedValue]
   );
 
+  const rankedDistricts = useMemo(
+    () => sortDistrictsByScore(features, rankingScoreField),
+    [features, rankingScoreField]
+  );
+
+  const highlightedDistrictIds = useMemo(
+    () => (topNEnabled ? getTopDistrictIds(features, rankingScoreField, topNCount) : new Set<string>()),
+    [features, rankingScoreField, topNCount, topNEnabled]
+  );
+
   return (
     <section className="panel district-explorer">
       <div className="panel-head">
@@ -119,6 +136,8 @@ export function DistrictExplorer() {
                     features={features}
                     selectedDistrictId={selectedDistrict?.district_id ?? null}
                     onSelectDistrict={setSelectedDistrict}
+                    highlightedDistrictIds={highlightedDistrictIds}
+                    rankingScoreField={rankingScoreField}
                   />
                 )}
               </div>
@@ -133,6 +152,50 @@ export function DistrictExplorer() {
               </div>
             </div>
             <div className="panel-body">
+              <div className="district-ranking-controls">
+                <div className="control">
+                  <label>Ranking score</label>
+                  <div className="score-toggle" role="group" aria-label="Rank districts by">
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
+                      onClick={() => setRankingScoreField("priority")}
+                    >
+                      Priority
+                    </button>
+                    <button
+                      type="button"
+                      className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
+                      onClick={() => setRankingScoreField("need")}
+                    >
+                      Need
+                    </button>
+                  </div>
+                </div>
+                <div className="control">
+                  <label htmlFor="top-n-enabled">Top-N highlight</label>
+                  <div className="district-topn-toggle-row">
+                    <label className="district-topn-checkbox" htmlFor="top-n-enabled">
+                      <input
+                        id="top-n-enabled"
+                        type="checkbox"
+                        checked={topNEnabled}
+                        onChange={(event) => setTopNEnabled(event.target.checked)}
+                      />
+                      <span>Enable highlight</span>
+                    </label>
+                    <input
+                      className="district-topn-input"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={topNCount}
+                      onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {metricSummary ? (
                 <div className="detail-grid">
                   <div className="detail-card">
@@ -221,12 +284,59 @@ export function DistrictExplorer() {
                   <div className="empty">Select a district polygon to inspect it.</div>
                 )}
               </div>
+
+              <div className="district-ranking-table-section">
+                <div className="district-ranking-table-header">
+                  <h4 className="panel-title">District Ranking</h4>
+                  <p className="panel-subtitle">
+                    Sorted by {rankingScoreField === "priority" ? "Priority" : "Need"} score.
+                  </p>
+                </div>
+                <div className="table-wrap district-ranking-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>District</th>
+                        <th>Province</th>
+                        <th>Priority</th>
+                        <th>Need</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rankedDistricts.map((feature, index) => {
+                        const isHighlighted = highlightedDistrictIds.has(feature.district_id);
+                        return (
+                          <tr
+                            className="data-row"
+                            key={feature.district_id}
+                            data-selected={feature.district_id === selectedDistrict?.district_id}
+                            data-highlighted={isHighlighted}
+                            onClick={() => setSelectedDistrict(feature)}
+                          >
+                            <td>{getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}</td>
+                            <td>{feature.district}</td>
+                            <td>{feature.province}</td>
+                            <td>{formatDistrictScore(feature.priority)}</td>
+                            <td>{formatDistrictScore(feature.need)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
   );
+}
+
+function formatDistrictScore(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "n/a";
+  return value.toFixed(3);
 }
 
 type DistributionBin = { start: number; end: number; count: number };

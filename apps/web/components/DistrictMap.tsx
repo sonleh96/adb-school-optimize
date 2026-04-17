@@ -9,6 +9,7 @@ import { scaleValue } from "@/lib/color";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
+import type { DistrictScoreField } from "@/lib/districtScores";
 
 function FitDistricts({ features }: { features: DistrictRecord[] }) {
   const map = useMap();
@@ -30,11 +31,15 @@ export function DistrictMap({
   indicator,
   selectedDistrictId,
   onSelectDistrict,
+  highlightedDistrictIds = new Set(),
+  rankingScoreField = "priority",
 }: {
   features: DistrictRecord[];
   indicator: string;
   selectedDistrictId: string | null;
   onSelectDistrict: (district: DistrictRecord) => void;
+  highlightedDistrictIds?: Set<string>;
+  rankingScoreField?: DistrictScoreField;
 }) {
   const field = districtIndicatorField(indicator);
   const values = features
@@ -57,6 +62,7 @@ export function DistrictMap({
         const normalized = scaleValue(Number.isFinite(value) ? value : null, min, max);
         const fillColor = districtIndicatorColor(indicator, normalized);
         const isSelected = selectedDistrictId === feature.district_id;
+        const isHighlighted = highlightedDistrictIds.has(feature.district_id);
         const geoJsonFeature: Feature<Geometry> = {
           type: "Feature",
           geometry: feature.geometry as unknown as Geometry,
@@ -72,10 +78,11 @@ export function DistrictMap({
             key={feature.district_id}
             data={geoJsonFeature}
             style={{
-              color: isSelected ? "#17211f" : "rgba(23, 33, 31, 0.5)",
-              weight: isSelected ? 2.8 : 1,
-              fillColor,
-              fillOpacity: 0.72,
+              color: isSelected ? "#17211f" : isHighlighted ? "#a8550a" : "rgba(23, 33, 31, 0.5)",
+              weight: isSelected ? 3.2 : isHighlighted ? 2.6 : 1,
+              dashArray: isSelected ? undefined : isHighlighted ? "8 4" : undefined,
+              fillColor: isHighlighted ? districtIndicatorColor(rankingScoreField === "priority" ? "Priority Score" : "Need Score", 1) : fillColor,
+              fillOpacity: isSelected ? 0.82 : isHighlighted ? 0.78 : 0.72,
             }}
             eventHandlers={{
               click: () => onSelectDistrict(feature),
