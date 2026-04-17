@@ -1,5 +1,10 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+
+import { fetchScenarios } from "@/lib/api";
+import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
+import type { ScenarioRecord } from "@/lib/types";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
@@ -16,7 +21,60 @@ function MathBlock({ expression }: { expression: string }) {
   );
 }
 
+type WeightGroup = {
+  label: string;
+  entries: Array<{ key: string; value: string }>;
+};
+
+const WEIGHT_GROUP_ORDER = [
+  "Need",
+  "Impact",
+  "Physical",
+  "Priority",
+  "School Need",
+  "School Access",
+  "Girls Bonus",
+  "Practicality",
+  "Admin Socio",
+  "Admin Access",
+  "Admin Context",
+  "Admin Service",
+  "Admin Conflict",
+] as const;
+
 export function MethodologyPanel() {
+  const [activeScenario, setActiveScenario] = useState<ScenarioRecord | null>(null);
+  const [scenarioError, setScenarioError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadScenarioWeights() {
+      try {
+        const scenarios = await fetchScenarios();
+        if (cancelled) return;
+
+        const persistedId =
+          typeof window !== "undefined" ? window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY) : null;
+        const persistedScenario = persistedId
+          ? scenarios.find((scenario) => scenario.scenario_id === persistedId) ?? null
+          : null;
+        const defaultScenario = scenarios.find((scenario) => scenario.is_default) ?? scenarios[0] ?? null;
+        setActiveScenario(persistedScenario ?? defaultScenario);
+      } catch (error) {
+        if (cancelled) return;
+        setScenarioError(error instanceof Error ? error.message : "Unable to load scenario weights.");
+      }
+    }
+
+    void loadScenarioWeights();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const weightGroups = useMemo(() => buildWeightGroups(activeScenario?.weights), [activeScenario?.weights]);
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -321,6 +379,40 @@ export function MethodologyPanel() {
               should be explicit, theoretically grounded, and open to sensitivity testing rather
               than hidden inside implementation logic.
             </p>
+            <div className="methodology-weight-panel">
+              <div className="methodology-weight-header">
+                <div>
+                  <h4 className="methodology-weight-title">Active Scenario Weights</h4>
+                  <p className="methodology-weight-subtitle">
+                    {activeScenario
+                      ? `Currently reflecting "${activeScenario.scenario_name}".`
+                      : "Waiting for a saved or default scenario configuration."}
+                  </p>
+                </div>
+              </div>
+              {scenarioError ? <div className="error">{scenarioError}</div> : null}
+              {weightGroups.length ? (
+                <div className="methodology-weight-grid">
+                  {weightGroups.map((group) => (
+                    <div className="detail-card" key={group.label}>
+                      <h4>{group.label}</h4>
+                      <div className="methodology-weight-list">
+                        {group.entries.map((entry) => (
+                          <div className="methodology-weight-item" key={`${group.label}-${entry.key}`}>
+                            <span>{entry.key}</span>
+                            <strong>{entry.value}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : activeScenario ? (
+                <div className="empty">This scenario does not include displayable weight groups.</div>
+              ) : (
+                <div className="loading">Loading active scenario weights…</div>
+              )}
+            </div>
           </section>
 
           <section>
@@ -538,4 +630,68 @@ export function MethodologyPanel() {
       </div>
     </section>
   );
+}
+
+function buildWeightGroups(weights: Record<string, unknown> | undefined): WeightGroup[] {
+  if (!weights) return [];
+
+  return Object.entries(weights)
+    .map(([groupKey, groupValue]) => {
+      if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) return null;
+      const entries = Object.entries(groupValue as Record<string, unknown>)
+        .map(([entryKey, entryValue]) => {
+          const numericValue = toFiniteNumber(entryValue);
+          if (numericValue == null) return null;
+          return {
+            key: entryKey,
+            value: formatWeightValue(numericValue),
+          };
+        })
+        .filter((entry): entry is { key: string; value: string } => entry !== null);
+
+      if (!entries.length) return null;
+      return {
+        label: startCase(groupKey),
+        entries,
+      };
+    })
+    .filter((group): group is WeightGroup => group !== null)
+    .sort((left, right) => compareWeightGroups(left.label, right.label));
+}
+
+function startCase(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatWeightValue(value: number): string {
+  if (value >= 0 && value <= 1) {
+    return `${(value * 100).toFixed(1)}%`;
+  }
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function compareWeightGroups(left: string, right: string): number {
+  const leftIndex = WEIGHT_GROUP_ORDER.indexOf(left as (typeof WEIGHT_GROUP_ORDER)[number]);
+  const rightIndex = WEIGHT_GROUP_ORDER.indexOf(right as (typeof WEIGHT_GROUP_ORDER)[number]);
+
+  if (leftIndex === -1 && rightIndex === -1) {
+    return left.localeCompare(right);
+  }
+  if (leftIndex === -1) return 1;
+  if (rightIndex === -1) return -1;
+  return leftIndex - rightIndex;
 }
