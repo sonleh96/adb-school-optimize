@@ -304,6 +304,10 @@ textarea {
   font-size: 0.9rem;
 }
 
+.scenario-json-editor {
+  min-height: 510px !important;
+}
+
 .action-row {
   display: flex;
   flex-wrap: wrap;
@@ -902,6 +906,33 @@ textarea {
   max-height: 520px;
 }
 
+.scenario-run-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.scenario-run-panel-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.scenario-inline-preview {
+  margin-top: 18px;
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+}
+
+.scenario-inline-preview-header .panel-title {
+  font-size: 1.05rem;
+}
+
+.scenario-saved-table-wrap {
+  max-height: 360px;
+}
+
 .table-wrap-tall {
   max-height: 940px;
 }
@@ -1185,6 +1216,17 @@ textarea {
   font-family: var(--font-display), sans-serif;
 }
 
+.scenario-weight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scenario-weight-grid .detail-card {
+  min-height: 0;
+  padding: 16px 18px;
+}
+
 @media (max-width: 1500px) {
   .methodology-weight-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1199,6 +1241,10 @@ textarea {
 
 @media (max-width: 720px) {
   .methodology-weight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-weight-grid {
     grid-template-columns: 1fr;
   }
 }

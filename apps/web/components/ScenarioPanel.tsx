@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
+import { buildWeightGroups } from "@/lib/scenarioWeights";
 import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
 
 const DEFAULT_OVERRIDES = {
@@ -25,6 +26,11 @@ export function ScenarioPanel() {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const scenarioCountLabel = useMemo(() => `${scenarios.length} saved scenarios`, [scenarios.length]);
+  const selectedScenario = useMemo(
+    () => scenarios.find((scenario) => scenario.scenario_id === selectedScenarioId) ?? null,
+    [scenarios, selectedScenarioId]
+  );
+  const weightGroups = useMemo(() => buildWeightGroups(selectedScenario?.weights), [selectedScenario?.weights]);
 
   useEffect(() => {
     async function initialize() {
@@ -135,14 +141,14 @@ export function ScenarioPanel() {
 
       <div className="panel-body scenario-lab-body">
         <div className="two-up">
-          <article className="panel">
+          <article className="panel scenario-run-panel">
             <div className="panel-head">
               <div>
                 <h3 className="panel-title">Run A Scenario</h3>
                 <p className="panel-subtitle">Submit weight overrides to the FastAPI scoring endpoint.</p>
               </div>
             </div>
-            <div className="panel-body">
+            <div className="panel-body scenario-run-panel-body">
               <div className="controls">
                 <div className="control" style={{ minWidth: "100%" }}>
                   <label htmlFor="scenarioName">Scenario name</label>
@@ -163,6 +169,7 @@ export function ScenarioPanel() {
                 <div className="control" style={{ minWidth: "100%" }}>
                   <label htmlFor="weightOverrides">Weight overrides JSON</label>
                   <textarea
+                    className="scenario-json-editor"
                     id="weightOverrides"
                     value={weightOverridesText}
                     onChange={(event) => setWeightOverridesText(event.target.value)}
@@ -186,97 +193,129 @@ export function ScenarioPanel() {
                 </div>
               ) : null}
               {error ? <div className="error">{error}</div> : null}
+
+              <div className="scenario-inline-preview">
+                <div className="scenario-inline-preview-header">
+                  <h4 className="panel-title">Scenario Result Preview</h4>
+                  <p className="panel-subtitle">All schools for the selected scenario result set.</p>
+                </div>
+                {loadingPreview ? (
+                  <div className="loading">Loading scenario results…</div>
+                ) : previewRows.length ? (
+                  <div className="table-wrap scenario-preview-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>School</th>
+                          <th>District</th>
+                          <th>Priority</th>
+                          <th>Need</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewRows.map((row) => (
+                          <tr className="data-row" key={`${row.school_id ?? row.school_name}-${row.district}`}>
+                            <td>{row.rank_priority ?? "n/a"}</td>
+                            <td>{row.school_name}</td>
+                            <td>{row.district}</td>
+                            <td>{row.priority != null ? (row.priority * 100).toFixed(1) : "n/a"}</td>
+                            <td>{row.need != null ? (row.need * 100).toFixed(1) : "n/a"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty">Run or select a scenario to preview all recalculated school results.</div>
+                )}
+              </div>
             </div>
           </article>
 
-          <article className="panel">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Saved Scenarios</h3>
-                <p className="panel-subtitle">{scenarioCountLabel}</p>
+          <div className="sidebar-stack">
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <h3 className="panel-title">Saved Scenarios</h3>
+                  <p className="panel-subtitle">{scenarioCountLabel}</p>
+                </div>
               </div>
-            </div>
-            <div className="panel-body">
-              <div className="table-wrap table-wrap-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Default</th>
-                      <th>Updated</th>
-                      <th aria-label="Download column" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {scenarios.map((scenario) => (
-                      <tr
-                        className="data-row"
-                        key={scenario.scenario_id}
-                        data-selected={scenario.scenario_id === selectedScenarioId}
-                        onClick={() => void loadScenario(scenario)}
-                      >
-                        <td>{scenario.scenario_name}</td>
-                        <td>{scenario.is_default ? "Yes" : "No"}</td>
-                        <td>{scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}</td>
-                        <td className="download-cell">
-                          <a
-                            className="icon-download-link"
-                            href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
-                            title={`Download ${scenario.scenario_name}`}
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            ⬇
-                          </a>
-                        </td>
+              <div className="panel-body">
+                <div className="table-wrap table-wrap-scroll scenario-saved-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Default</th>
+                        <th>Updated</th>
+                        <th aria-label="Download column" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {scenarios.map((scenario) => (
+                        <tr
+                          className="data-row"
+                          key={scenario.scenario_id}
+                          data-selected={scenario.scenario_id === selectedScenarioId}
+                          onClick={() => void loadScenario(scenario)}
+                        >
+                          <td>{scenario.scenario_name}</td>
+                          <td>{scenario.is_default ? "Yes" : "No"}</td>
+                          <td>{scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}</td>
+                          <td className="download-cell">
+                            <a
+                              className="icon-download-link"
+                              href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
+                              title={`Download ${scenario.scenario_name}`}
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              ⬇
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          </article>
+            </article>
+
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <h3 className="panel-title">Selected Scenario Weights</h3>
+                  <p className="panel-subtitle">
+                    {selectedScenario
+                      ? `Currently showing "${selectedScenario.scenario_name}".`
+                      : "Select a saved scenario to inspect its component weights."}
+                  </p>
+                </div>
+              </div>
+              <div className="panel-body">
+                {weightGroups.length ? (
+                  <div className="scenario-weight-grid">
+                    {weightGroups.map((group) => (
+                      <div className="detail-card" key={group.label}>
+                        <h4>{group.label}</h4>
+                        <div className="methodology-weight-list">
+                          {group.entries.map((entry) => (
+                            <div className="methodology-weight-item" key={`${group.label}-${entry.key}`}>
+                              <span>{entry.key}</span>
+                              <strong>{entry.value}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="empty">Select a saved scenario to inspect its component weights.</div>
+                )}
+              </div>
+            </article>
+          </div>
         </div>
-
-        <article className="panel scenario-preview-panel" style={{ marginTop: 16 }}>
-          <div className="panel-head">
-            <div>
-              <h3 className="panel-title">Scenario Result Preview</h3>
-              <p className="panel-subtitle">All schools for the selected scenario result set.</p>
-            </div>
-          </div>
-          <div className="panel-body">
-            {loadingPreview ? (
-              <div className="loading">Loading scenario results…</div>
-            ) : previewRows.length ? (
-              <div className="table-wrap scenario-preview-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>School</th>
-                      <th>District</th>
-                      <th>Priority</th>
-                      <th>Need</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewRows.map((row) => (
-                      <tr className="data-row" key={`${row.school_id ?? row.school_name}-${row.district}`}>
-                        <td>{row.rank_priority ?? "n/a"}</td>
-                        <td>{row.school_name}</td>
-                        <td>{row.district}</td>
-                        <td>{row.priority != null ? (row.priority * 100).toFixed(1) : "n/a"}</td>
-                        <td>{row.need != null ? (row.need * 100).toFixed(1) : "n/a"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="empty">Run or select a scenario to preview all recalculated school results.</div>
-            )}
-          </div>
-        </article>
       </div>
     </section>
   );
