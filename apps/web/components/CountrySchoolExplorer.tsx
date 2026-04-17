@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDistrictChoropleth, fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
+import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import type { DistrictRecord, SchoolRecord } from "@/lib/types";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
@@ -93,8 +94,13 @@ export function CountrySchoolExplorer() {
                 <p className="panel-subtitle">
                   Click a school marker to sync selection into the ranked table.
                 </p>
-                <div className="map-score-legend">
-                  <ScoreLegend scoreField={scoreField} />
+                <div className="map-score-legend map-score-legend-overview">
+                  <div className="map-legend-block">
+                    <ScoreLegend scoreField={scoreField} />
+                  </div>
+                  <div className="map-legend-block district-choropleth-legend-block">
+                    <DistrictScoreLegend scoreField={scoreField} />
+                  </div>
                 </div>
               </div>
               <div className="map-head-actions">
