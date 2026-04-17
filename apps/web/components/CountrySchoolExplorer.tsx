@@ -132,6 +132,7 @@ export function CountrySchoolExplorer() {
                     screenshotFilePrefix="all-schools-map"
                     districtFeatures={districtFeatures}
                     districtScoreField={scoreField}
+                    focusSelectedSchool={false}
                   />
                 )}
               </div>
