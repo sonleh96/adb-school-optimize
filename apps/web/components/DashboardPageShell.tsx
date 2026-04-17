@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const TABS: Array<{ href: string; label: string }> = [
-  { href: "/all-schools", label: "All Schools" },
+  { href: "/all-schools", label: "Overview" },
   { href: "/school-explorer", label: "School Explorer" },
   { href: "/district-explorer", label: "District Explorer" },
   { href: "/scenario-lab", label: "Scenario Lab" },

@@ -540,7 +540,11 @@ textarea {
 
 .district-summary-card .panel-body {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .distribution-panel {
@@ -986,6 +990,14 @@ textarea {
   background: rgba(10, 46, 115, 0.1);
 }
 
+.data-row[data-highlighted="true"] {
+  background: rgba(168, 85, 10, 0.08);
+}
+
+.data-row[data-highlighted="true"]:hover {
+  background: rgba(168, 85, 10, 0.14);
+}
+
 .score-pill {
   display: inline-flex;
   align-items: center;
@@ -1227,6 +1239,52 @@ textarea {
   padding: 16px 18px;
 }
 
+.district-ranking-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.district-topn-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.district-topn-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.district-topn-input {
+  width: 96px;
+  border: 1px solid rgba(29, 42, 40, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 11px 12px;
+  color: var(--ink);
+}
+
+.district-ranking-table-section {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.district-ranking-table-header .panel-title {
+  font-size: 1.05rem;
+}
+
+.district-ranking-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 @media (max-width: 1500px) {
   .methodology-weight-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1236,6 +1294,10 @@ textarea {
 @media (max-width: 1100px) {
   .methodology-weight-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .district-ranking-controls {
+    grid-template-columns: 1fr;
   }
 }
 

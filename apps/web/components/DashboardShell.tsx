@@ -12,7 +12,7 @@ import { SchoolExplorer } from "@/components/SchoolExplorer";
 type TabKey = "country_schools" | "schools" | "districts" | "scenarios" | "methodology";
 
 const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: "country_schools", label: "All Schools" },
+  { key: "country_schools", label: "Overview" },
   { key: "schools", label: "School Explorer" },
   { key: "districts", label: "District Explorer" },
   { key: "scenarios", label: "Scenario Lab" },

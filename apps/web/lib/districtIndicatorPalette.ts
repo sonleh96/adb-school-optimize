@@ -8,6 +8,8 @@ type IndicatorMeta = {
 };
 
 const DISTRICT_INDICATOR_META: Record<string, IndicatorMeta> = {
+  "Priority Score": { field: "priority", direction: "higher_is_worse" },
+  "Need Score": { field: "need", direction: "higher_is_worse" },
   "Average AQI": { field: "average_aqi", direction: "higher_is_worse" },
   "Maximum AQI": { field: "maximum_aqi", direction: "higher_is_worse" },
   "Fixed Broadband Download Speed (MB/s)": {

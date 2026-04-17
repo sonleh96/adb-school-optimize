@@ -224,6 +224,8 @@ def _district_records(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "conflict_events": properties.get("Conflict Events"),
                 "conflict_fatalities": properties.get("Conflict Fatalities"),
                 "conflict_population_exposure": properties.get("Conflict Population Exposure"),
+                "priority": properties.get("Priority"),
+                "need": properties.get("Need"),
                 "geom_wkt": dumps(geometry),
             }
         )
@@ -363,7 +365,8 @@ def load_districts(connection, path: Path) -> int:
         secondary_students_per_1000_people, rate_grade_7_progressed_to_grade_12_pct,
         total_enrollment_grade_7_10, grade_7_10_students_per_1000_population,
         rate_grade_7_progressed_to_grade_10_pct, school_aged_population,
-        conflict_events, conflict_fatalities, conflict_population_exposure
+        conflict_events, conflict_fatalities, conflict_population_exposure,
+        priority, need
     )
     values (
         %(province)s, %(district)s, st_setsrid(st_geomfromtext(%(geom_wkt)s), 4326), %(average_aqi)s, %(maximum_aqi)s,
@@ -376,7 +379,8 @@ def load_districts(connection, path: Path) -> int:
         %(secondary_students_per_1000_people)s, %(rate_grade_7_progressed_to_grade_12_pct)s,
         %(total_enrollment_grade_7_10)s, %(grade_7_10_students_per_1000_population)s,
         %(rate_grade_7_progressed_to_grade_10_pct)s, %(school_aged_population)s,
-        %(conflict_events)s, %(conflict_fatalities)s, %(conflict_population_exposure)s
+        %(conflict_events)s, %(conflict_fatalities)s, %(conflict_population_exposure)s,
+        %(priority)s, %(need)s
     )
     on conflict (province_norm, district_norm) do update
     set geom = excluded.geom,
@@ -410,6 +414,8 @@ def load_districts(connection, path: Path) -> int:
         conflict_events = excluded.conflict_events,
         conflict_fatalities = excluded.conflict_fatalities,
         conflict_population_exposure = excluded.conflict_population_exposure,
+        priority = excluded.priority,
+        need = excluded.need,
         updated_at = now()
     """
     with connection.cursor() as cursor:
@@ -576,13 +582,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Load core school and district data into PostGIS.")
     parser.add_argument("--schools", type=Path, default=DEFAULT_SCHOOLS_PATH)
     parser.add_argument("--districts", type=Path, default=DEFAULT_DISTRICTS_PATH)
+    parser.add_argument("--skip-schools", action="store_true")
+    parser.add_argument("--skip-districts", action="store_true")
     parser.add_argument("--skip-auxiliary-layers", action="store_true")
     args = parser.parse_args()
 
     settings = get_settings()
     with get_db(settings) as connection:
-        district_count = load_districts(connection, args.districts)
-        school_count = load_schools(connection, args.schools)
+        district_count = 0 if args.skip_districts else load_districts(connection, args.districts)
+        school_count = 0 if args.skip_schools else load_schools(connection, args.schools)
         auxiliary_counts = {} if args.skip_auxiliary_layers else load_auxiliary_layers(connection)
         load_default_layers(connection)
 

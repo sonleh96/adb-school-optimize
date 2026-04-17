@@ -32,6 +32,8 @@ export type DistrictRecord = {
   province: string;
   district: string;
   geometry: GeoJsonGeometry;
+  priority?: number | null;
+  need?: number | null;
   average_aqi?: number | null;
   maximum_aqi?: number | null;
   fixed_broadband_download_speed_mbps?: number | null;

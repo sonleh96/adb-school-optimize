@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchSchoolDetail, fetchSchools } from "@/lib/api";
+import { fetchDistrictChoropleth, fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
-import type { SchoolRecord } from "@/lib/types";
+import type { DistrictRecord, SchoolRecord } from "@/lib/types";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
@@ -21,8 +21,25 @@ export function CountrySchoolExplorer() {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [selectedSchoolDetail, setSelectedSchoolDetail] = useState<Record<string, unknown> | null>(null);
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
+  const [districtFeatures, setDistrictFeatures] = useState<DistrictRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchDistrictChoropleth({})
+      .then((result) => {
+        if (!cancelled) setDistrictFeatures(result.features);
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +117,7 @@ export function CountrySchoolExplorer() {
               </div>
             </div>
             <div className="panel-body">
-              <div className="map-frame">
+                <div className="map-frame">
                 {loading ? (
                   <div className="loading">Loading schools…</div>
                 ) : (
@@ -113,6 +130,8 @@ export function CountrySchoolExplorer() {
                     layers={EMPTY_LAYERS}
                     showDistrictProvinceInPopup
                     screenshotFilePrefix="all-schools-map"
+                    districtFeatures={districtFeatures}
+                    districtScoreField={scoreField}
                   />
                 )}
               </div>

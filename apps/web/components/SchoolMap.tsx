@@ -2,12 +2,16 @@
 
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Feature, Geometry } from "geojson";
 import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Pane, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { scoreToColor } from "@/lib/color";
-import type { RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
+import { districtIndicatorColor } from "@/lib/districtIndicatorPalette";
+import { getDistrictScore, scoreExtent } from "@/lib/districtScores";
+import type { DistrictRecord, RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
+import type { DistrictScoreField } from "@/lib/districtScores";
 
 export type SchoolLayerKey =
   | "roads"
@@ -194,6 +198,8 @@ export function SchoolMap({
   layers,
   showDistrictProvinceInPopup = true,
   screenshotFilePrefix = "school-map",
+  districtFeatures = [],
+  districtScoreField,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -204,6 +210,8 @@ export function SchoolMap({
   layers: SchoolLayerToggle[];
   showDistrictProvinceInPopup?: boolean;
   screenshotFilePrefix?: string;
+  districtFeatures?: DistrictRecord[];
+  districtScoreField?: DistrictScoreField;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -395,6 +403,10 @@ export function SchoolMap({
   }, [activeLayers, district, loadRasterLayer, loadVectorLayer, province]);
 
   const selectedAQIField = selectedAirField(activeLayers);
+  const districtScoreRange = useMemo(
+    () => (districtScoreField ? scoreExtent(districtFeatures, districtScoreField) : { min: 0, max: 1 }),
+    [districtFeatures, districtScoreField]
+  );
 
   const renderAccessLayer = (features: VectorLayerFeature[]) => {
     if (!features.length) return null;
@@ -428,6 +440,43 @@ export function SchoolMap({
         <FitSchools schools={schools} />
         <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} />
         <ViewportBoundsWatcher onChange={setViewportBbox} />
+
+        {districtScoreField && districtFeatures.length > 0 ? (
+          <Pane name="district-choropleth-layer" style={{ zIndex: 360 }}>
+            {districtFeatures.map((feature) => {
+              const value = getDistrictScore(feature, districtScoreField);
+              const normalized =
+                value == null || districtScoreRange.max === districtScoreRange.min
+                  ? 0
+                  : (value - districtScoreRange.min) / (districtScoreRange.max - districtScoreRange.min);
+              const geoJsonFeature: Feature<Geometry> = {
+                type: "Feature",
+                geometry: feature.geometry as unknown as Geometry,
+                properties: {
+                  district: feature.district,
+                  province: feature.province,
+                  value,
+                },
+              };
+              return (
+                <GeoJSON
+                  key={`district-${feature.district_id}`}
+                  data={geoJsonFeature}
+                  style={{
+                    color: "rgba(15, 31, 51, 0.28)",
+                    weight: 1,
+                    fillColor: districtIndicatorColor(
+                      districtScoreField === "priority" ? "Priority Score" : "Need Score",
+                      normalized
+                    ),
+                    fillOpacity: value == null ? 0.12 : 0.48,
+                  }}
+                  interactive={false}
+                />
+              );
+            })}
+          </Pane>
+        ) : null}
 
         {activeLayers.has("roads") && layerState.roads.length > 0 ? (
           <Pane name="roads-layer" style={{ zIndex: 420 }}>
