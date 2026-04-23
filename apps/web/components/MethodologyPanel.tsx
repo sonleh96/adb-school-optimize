@@ -379,7 +379,7 @@ export function MethodologyPanel() {
                       <div className="methodology-weight-list">
                         {group.entries.map((entry) => (
                           <div className="methodology-weight-item" key={`${group.label}-${entry.key}`}>
-                            <span>{entry.key}</span>
+                            <span>{entry.label}</span>
                             <strong>{entry.value}</strong>
                           </div>
                         ))}

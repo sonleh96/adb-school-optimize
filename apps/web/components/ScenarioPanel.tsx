@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
-import { buildWeightGroups } from "@/lib/scenarioWeights";
+import { buildWeightGroups, displayWeightLabel } from "@/lib/scenarioWeights";
 import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
 
-const DEFAULT_OVERRIDES = {
+type WeightOverrides = Record<string, Record<string, number>>;
+
+const DEFAULT_OVERRIDES: WeightOverrides = {
   need: { S: 0.55, A: 0.25, R_phys: 0.2 },
   priority: { Need: 0.7, I: 0.2, P: 0.1 },
 };
@@ -17,7 +19,7 @@ export function ScenarioPanel() {
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [scenarioName, setScenarioName] = useState("Scenario Lab Run");
   const [description, setDescription] = useState("Interactive run from frontend scaffold.");
-  const [weightOverridesText, setWeightOverridesText] = useState(JSON.stringify(DEFAULT_OVERRIDES, null, 2));
+  const [weightOverrides, setWeightOverrides] = useState<WeightOverrides>(DEFAULT_OVERRIDES);
   const [previewRows, setPreviewRows] = useState<SchoolRecord[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
@@ -31,6 +33,8 @@ export function ScenarioPanel() {
     [scenarios, selectedScenarioId]
   );
   const weightGroups = useMemo(() => buildWeightGroups(selectedScenario?.weights), [selectedScenario?.weights]);
+  const weightOverridesText = useMemo(() => JSON.stringify(weightOverrides, null, 2), [weightOverrides]);
+  const editableWeightGroups = useMemo(() => buildEditableWeightGroups(weightOverrides), [weightOverrides]);
 
   useEffect(() => {
     async function initialize() {
@@ -68,7 +72,7 @@ export function ScenarioPanel() {
     setSelectedScenarioId(scenario.scenario_id);
     setScenarioName(scenario.scenario_name);
     setDescription(scenario.description ?? "");
-    setWeightOverridesText(JSON.stringify(scenario.weights ?? DEFAULT_OVERRIDES, null, 2));
+    setWeightOverrides(normalizeWeightOverrides(scenario.weights));
     window.localStorage.setItem(SELECTED_SCENARIO_STORAGE_KEY, scenario.scenario_id);
     await loadPreviewRows(scenario.scenario_id);
     setStatus(`Loaded scenario "${scenario.scenario_name}".`);
@@ -79,11 +83,10 @@ export function ScenarioPanel() {
     setError(null);
     setStatus(null);
     try {
-      const weight_overrides = JSON.parse(weightOverridesText) as Record<string, unknown>;
       const result = await runScenario({
         scenario_name: scenarioName,
         description,
-        weight_overrides,
+        weight_overrides: weightOverrides,
         persist: true,
         is_default: false,
         created_by: "frontend",
@@ -116,14 +119,68 @@ export function ScenarioPanel() {
     }
   }
 
+  function updateWeight(groupKey: string, entryKey: string, nextPercent: number) {
+    setWeightOverrides((current) => {
+      const group = current[groupKey];
+      if (!group) return current;
+      const keys = Object.keys(group);
+      if (!keys.includes(entryKey)) return current;
+
+      const clamped = clamp(nextPercent / 100, 0, 1);
+      if (keys.length === 1) {
+        return {
+          ...current,
+          [groupKey]: { [entryKey]: 1 },
+        };
+      }
+
+      const remaining = clamp(1 - clamped, 0, 1);
+      const otherKeys = keys.filter((key) => key !== entryKey);
+      const othersTotal = otherKeys.reduce((sum, key) => sum + finite(group[key]), 0);
+
+      const nextGroup: Record<string, number> = { ...group, [entryKey]: clamped };
+      if (othersTotal <= 0) {
+        const evenShare = remaining / otherKeys.length;
+        for (const key of otherKeys) nextGroup[key] = evenShare;
+      } else {
+        for (const key of otherKeys) nextGroup[key] = (finite(group[key]) / othersTotal) * remaining;
+      }
+
+      return {
+        ...current,
+        [groupKey]: nextGroup,
+      };
+    });
+  }
+
+  function resetGroup(groupKey: string) {
+    const defaults = normalizeWeightOverrides(DEFAULT_OVERRIDES);
+    setWeightOverrides((current) => {
+      if (defaults[groupKey]) {
+        return { ...current, [groupKey]: defaults[groupKey] };
+      }
+      const existing = current[groupKey];
+      if (!existing) return current;
+      const keys = Object.keys(existing);
+      if (!keys.length) return current;
+      const evenShare = 1 / keys.length;
+      const normalized = Object.fromEntries(keys.map((key) => [key, evenShare]));
+      return { ...current, [groupKey]: normalized };
+    });
+  }
+
+  function resetAll() {
+    setWeightOverrides(normalizeWeightOverrides(DEFAULT_OVERRIDES));
+  }
+
   return (
     <section className="panel scenario-lab">
       <div className="panel-head">
         <div>
           <h2 className="panel-title">Scenario Lab</h2>
           <p className="panel-subtitle">
-            Run persisted scoring scenarios against the seeded school dataset. This initial UI uses
-            JSON overrides so the full scoring surface can be exercised immediately.
+            Run persisted scoring scenarios against the seeded school dataset using interactive
+            weight controls.
           </p>
         </div>
         <div className="scenario-data-actions">
@@ -167,12 +224,59 @@ export function ScenarioPanel() {
                   />
                 </div>
                 <div className="control" style={{ minWidth: "100%" }}>
-                  <label htmlFor="weightOverrides">Weight overrides JSON</label>
+                  <label>Weight Builder</label>
+                  <div className="scenario-weight-builder-header">
+                    <p className="small-copy">Use sliders or percentage inputs. Each group automatically sums to 100%.</p>
+                    <button className="button button-secondary" type="button" onClick={resetAll}>
+                      Reset all
+                    </button>
+                  </div>
+                  <div className="scenario-weight-builder">
+                    {editableWeightGroups.map((group) => (
+                      <article className="detail-card scenario-weight-editor-card" key={group.key}>
+                        <div className="scenario-weight-editor-card-head">
+                          <h4>{group.label}</h4>
+                          <button className="button button-secondary" type="button" onClick={() => resetGroup(group.key)}>
+                            Reset group
+                          </button>
+                        </div>
+                        <div className="scenario-weight-editor-list">
+                          {group.entries.map((entry) => (
+                            <div className="scenario-weight-editor-row" key={`${group.key}-${entry.key}`}>
+                              <label className="scenario-weight-editor-label">{entry.label}</label>
+                              <input
+                                className="scenario-weight-slider"
+                                type="range"
+                                min={0}
+                                max={100}
+                                step={0.1}
+                                value={entry.percent}
+                                onChange={(event) => updateWeight(group.key, entry.key, Number(event.target.value))}
+                              />
+                              <input
+                                className="scenario-weight-number"
+                                type="number"
+                                min={0}
+                                max={100}
+                                step={0.1}
+                                value={entry.percent.toFixed(1)}
+                                onChange={(event) => updateWeight(group.key, entry.key, Number(event.target.value))}
+                              />
+                              <span className="scenario-weight-percent">%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+                <div className="control" style={{ minWidth: "100%" }}>
+                  <label htmlFor="weightOverridesPreview">Weight overrides JSON (preview)</label>
                   <textarea
-                    className="scenario-json-editor"
-                    id="weightOverrides"
+                    className="scenario-json-preview"
+                    id="weightOverridesPreview"
                     value={weightOverridesText}
-                    onChange={(event) => setWeightOverridesText(event.target.value)}
+                    readOnly
                   />
                 </div>
                 <div className="action-row">
@@ -301,7 +405,7 @@ export function ScenarioPanel() {
                         <div className="methodology-weight-list">
                           {group.entries.map((entry) => (
                             <div className="methodology-weight-item" key={`${group.label}-${entry.key}`}>
-                              <span>{entry.key}</span>
+                              <span>{entry.label}</span>
                               <strong>{entry.value}</strong>
                             </div>
                           ))}
@@ -319,4 +423,81 @@ export function ScenarioPanel() {
       </div>
     </section>
   );
+}
+
+type EditableWeightGroup = {
+  key: string;
+  label: string;
+  entries: Array<{ key: string; label: string; percent: number }>;
+};
+
+function buildEditableWeightGroups(weights: WeightOverrides): EditableWeightGroup[] {
+  return Object.entries(weights).map(([groupKey, group]) => ({
+    key: groupKey,
+    label: toStartCase(groupKey),
+    entries: Object.entries(group).map(([entryKey, entryValue]) => ({
+      key: entryKey,
+      label: displayWeightLabel(entryKey),
+      percent: roundToOneDecimal(finite(entryValue) * 100),
+    })),
+  }));
+}
+
+function normalizeWeightOverrides(weights: unknown): WeightOverrides {
+  if (!weights || typeof weights !== "object" || Array.isArray(weights)) {
+    return normalizeWeightOverrides(DEFAULT_OVERRIDES);
+  }
+
+  const next: WeightOverrides = {};
+  for (const [groupKey, groupValue] of Object.entries(weights as Record<string, unknown>)) {
+    if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) continue;
+
+    const numericEntries = Object.entries(groupValue as Record<string, unknown>)
+      .map(([entryKey, entryValue]) => [entryKey, parseFinite(entryValue)] as const)
+      .filter((entry): entry is readonly [string, number] => entry[1] != null);
+
+    if (!numericEntries.length) continue;
+    const sum = numericEntries.reduce((total, [, value]) => total + value, 0);
+    const normalizedGroup: Record<string, number> = {};
+
+    if (sum <= 0) {
+      const evenShare = 1 / numericEntries.length;
+      for (const [entryKey] of numericEntries) normalizedGroup[entryKey] = evenShare;
+    } else {
+      for (const [entryKey, value] of numericEntries) normalizedGroup[entryKey] = value / sum;
+    }
+
+    next[groupKey] = normalizedGroup;
+  }
+
+  if (Object.keys(next).length) return next;
+  return normalizeWeightOverrides(DEFAULT_OVERRIDES);
+}
+
+function parseFinite(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function finite(value: unknown): number {
+  const parsed = parseFinite(value);
+  return parsed == null ? 0 : parsed;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function roundToOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function toStartCase(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }

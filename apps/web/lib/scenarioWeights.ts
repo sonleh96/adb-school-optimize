@@ -1,6 +1,6 @@
 export type WeightGroup = {
   label: string;
-  entries: Array<{ key: string; value: string }>;
+  entries: Array<{ key: string; label: string; value: string }>;
 };
 
 const WEIGHT_GROUP_ORDER = [
@@ -19,6 +19,14 @@ const WEIGHT_GROUP_ORDER = [
   "Admin Conflict",
 ] as const;
 
+const WEIGHT_LABEL_ALIASES: Record<string, string> = {
+  S: "School Need",
+  A: "Area Disadvantage",
+  R_phys: "Physical / Resilience",
+  I: "Impact Potential",
+  P: "Practicality",
+};
+
 export function buildWeightGroups(weights: Record<string, unknown> | undefined): WeightGroup[] {
   if (!weights) return [];
 
@@ -31,10 +39,11 @@ export function buildWeightGroups(weights: Record<string, unknown> | undefined):
           if (numericValue == null) return null;
           return {
             key: entryKey,
+            label: displayWeightLabel(entryKey),
             value: formatWeightValue(numericValue),
           };
         })
-        .filter((entry): entry is { key: string; value: string } => entry !== null);
+        .filter((entry): entry is { key: string; label: string; value: string } => entry !== null);
 
       if (!entries.length) return null;
       return {
@@ -44,6 +53,10 @@ export function buildWeightGroups(weights: Record<string, unknown> | undefined):
     })
     .filter((group): group is WeightGroup => group !== null)
     .sort((left, right) => compareWeightGroups(left.label, right.label));
+}
+
+export function displayWeightLabel(key: string): string {
+  return WEIGHT_LABEL_ALIASES[key] ?? key;
 }
 
 function startCase(value: string): string {
