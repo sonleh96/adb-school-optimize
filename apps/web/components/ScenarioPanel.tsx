@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
-import { buildWeightGroups, displayWeightLabel } from "@/lib/scenarioWeights";
+import { displayWeightLabel } from "@/lib/scenarioWeights";
 import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
 
 type WeightOverrides = Record<string, Record<string, number>>;
@@ -28,12 +28,6 @@ export function ScenarioPanel() {
   const [loadingPreview, setLoadingPreview] = useState(false);
 
   const scenarioCountLabel = useMemo(() => `${scenarios.length} saved scenarios`, [scenarios.length]);
-  const selectedScenario = useMemo(
-    () => scenarios.find((scenario) => scenario.scenario_id === selectedScenarioId) ?? null,
-    [scenarios, selectedScenarioId]
-  );
-  const weightGroups = useMemo(() => buildWeightGroups(selectedScenario?.weights), [selectedScenario?.weights]);
-  const weightOverridesText = useMemo(() => JSON.stringify(weightOverrides, null, 2), [weightOverrides]);
   const editableWeightGroups = useMemo(() => buildEditableWeightGroups(weightOverrides), [weightOverrides]);
 
   useEffect(() => {
@@ -223,6 +217,11 @@ export function ScenarioPanel() {
                     onChange={(event) => setDescription(event.target.value)}
                   />
                 </div>
+                <div className="action-row">
+                  <button className="button button-primary" type="button" onClick={handleRunScenario} disabled={running}>
+                    {running ? "Running…" : "Run And Save Scenario"}
+                  </button>
+                </div>
                 <div className="control" style={{ minWidth: "100%" }}>
                   <label>Weight Builder</label>
                   <div className="scenario-weight-builder-header">
@@ -270,20 +269,6 @@ export function ScenarioPanel() {
                     ))}
                   </div>
                 </div>
-                <div className="control" style={{ minWidth: "100%" }}>
-                  <label htmlFor="weightOverridesPreview">Weight overrides JSON (preview)</label>
-                  <textarea
-                    className="scenario-json-preview"
-                    id="weightOverridesPreview"
-                    value={weightOverridesText}
-                    readOnly
-                  />
-                </div>
-                <div className="action-row">
-                  <button className="button button-primary" type="button" onClick={handleRunScenario} disabled={running}>
-                    {running ? "Running…" : "Run And Save Scenario"}
-                  </button>
-                </div>
               </div>
               {status ? <p className="small-copy">{status}</p> : null}
               {warnings.length ? (
@@ -297,43 +282,6 @@ export function ScenarioPanel() {
                 </div>
               ) : null}
               {error ? <div className="error">{error}</div> : null}
-
-              <div className="scenario-inline-preview">
-                <div className="scenario-inline-preview-header">
-                  <h4 className="panel-title">Scenario Result Preview</h4>
-                  <p className="panel-subtitle">All schools for the selected scenario result set.</p>
-                </div>
-                {loadingPreview ? (
-                  <div className="loading">Loading scenario results…</div>
-                ) : previewRows.length ? (
-                  <div className="table-wrap scenario-preview-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>School</th>
-                          <th>District</th>
-                          <th>Priority</th>
-                          <th>Need</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewRows.map((row) => (
-                          <tr className="data-row" key={`${row.school_id ?? row.school_name}-${row.district}`}>
-                            <td>{row.rank_priority ?? "n/a"}</td>
-                            <td>{row.school_name}</td>
-                            <td>{row.district}</td>
-                            <td>{row.priority != null ? (row.priority * 100).toFixed(1) : "n/a"}</td>
-                            <td>{row.need != null ? (row.need * 100).toFixed(1) : "n/a"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="empty">Run or select a scenario to preview all recalculated school results.</div>
-                )}
-              </div>
             </div>
           </article>
 
@@ -388,33 +336,40 @@ export function ScenarioPanel() {
             <article className="panel">
               <div className="panel-head">
                 <div>
-                  <h3 className="panel-title">Selected Scenario Weights</h3>
-                  <p className="panel-subtitle">
-                    {selectedScenario
-                      ? `Currently showing "${selectedScenario.scenario_name}".`
-                      : "Select a saved scenario to inspect its component weights."}
-                  </p>
+                  <h3 className="panel-title">Scenario Result Preview</h3>
+                  <p className="panel-subtitle">All schools for the selected scenario result set.</p>
                 </div>
               </div>
               <div className="panel-body">
-                {weightGroups.length ? (
-                  <div className="scenario-weight-grid">
-                    {weightGroups.map((group) => (
-                      <div className="detail-card" key={group.label}>
-                        <h4>{group.label}</h4>
-                        <div className="methodology-weight-list">
-                          {group.entries.map((entry) => (
-                            <div className="methodology-weight-item" key={`${group.label}-${entry.key}`}>
-                              <span>{entry.label}</span>
-                              <strong>{entry.value}</strong>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                {loadingPreview ? (
+                  <div className="loading">Loading scenario results…</div>
+                ) : previewRows.length ? (
+                  <div className="table-wrap scenario-preview-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Rank</th>
+                          <th>School</th>
+                          <th>District</th>
+                          <th>Priority</th>
+                          <th>Need</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewRows.map((row) => (
+                          <tr className="data-row" key={`${row.school_id ?? row.school_name}-${row.district}`}>
+                            <td>{row.rank_priority ?? "n/a"}</td>
+                            <td>{row.school_name}</td>
+                            <td>{row.district}</td>
+                            <td>{row.priority != null ? (row.priority * 100).toFixed(1) : "n/a"}</td>
+                            <td>{row.need != null ? (row.need * 100).toFixed(1) : "n/a"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <div className="empty">Select a saved scenario to inspect its component weights.</div>
+                  <div className="empty">Run or select a scenario to preview all recalculated school results.</div>
                 )}
               </div>
             </article>
