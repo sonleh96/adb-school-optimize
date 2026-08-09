@@ -18,5 +18,6 @@ services/api/.env.local
 node_modules/
 .next/
 .audit-work/
+apps/web/.audit-work-build/
 
 .serena/
