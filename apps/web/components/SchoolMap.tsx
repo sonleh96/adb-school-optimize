@@ -36,6 +36,7 @@ export type SchoolLayerToggle = {
   key: SchoolLayerKey;
   label: string;
   active: boolean;
+  opacity: number;
 };
 
 type LayerState = {
@@ -326,16 +327,24 @@ export function SchoolMap({
     luminosity: null,
   });
   const [layerStatus, setLayerStatus] = useState<string>("");
-  const [showLayerLegend, setShowLayerLegend] = useState(true);
   const [viewportBbox, setViewportBbox] = useState<Bbox4326 | null>(null);
   const [viewportZoom, setViewportZoom] = useState(6);
   const [debouncedViewportBbox, setDebouncedViewportBbox] = useState<Bbox4326 | null>(null);
   const cacheRef = useRef<Map<string, LayerCacheValue>>(new Map());
 
+  const activeLayerKeySignature = layers
+    .filter((layer) => layer.active)
+    .map((layer) => layer.key)
+    .join(",");
   const activeLayers = useMemo<Set<SchoolLayerKey>>(
-    () => new Set(layers.filter((layer) => layer.active).map((layer) => layer.key)),
+    () => new Set(activeLayerKeySignature ? (activeLayerKeySignature.split(",") as SchoolLayerKey[]) : []),
+    [activeLayerKeySignature]
+  );
+  const layerOpacityByKey = useMemo(
+    () => new Map(layers.map((layer) => [layer.key, layer.opacity])),
     [layers]
   );
+  const layerOpacity = (layerKey: SchoolLayerKey) => layerOpacityByKey.get(layerKey) ?? 1;
 
   const onViewportChange = useCallback(
     (state: { bbox: Bbox4326; zoom: number; mapView: MapView }) => {
@@ -372,14 +381,11 @@ export function SchoolMap({
   );
 
   const loadRasterLayer = useCallback(
-    async (
-      layer: "flood" | "landcover" | "elevation" | "luminosity",
-      opacity: number
-    ): Promise<RasterMetadataResponse> => {
-      const key = cacheKey(`raster:${layer}:opacity=${opacity}`, district, province, null);
+    async (layer: "flood" | "landcover" | "elevation" | "luminosity"): Promise<RasterMetadataResponse> => {
+      const key = cacheKey(`raster:${layer}`, district, province, null);
       const cached = cacheRef.current.get(key);
       if (cached) return cached as RasterMetadataResponse;
-      const response = await fetchRasterMetadata({ layer, district, province, opacity });
+      const response = await fetchRasterMetadata({ layer, district, province });
       cacheRef.current.set(key, response);
       return response;
     },
@@ -510,7 +516,7 @@ export function SchoolMap({
 
         if (activeLayers.has("flood")) {
           jobs.push(
-            loadRasterLayer("flood", 0.55).then((response) => {
+            loadRasterLayer("flood").then((response) => {
               next.flood = response;
             })
           );
@@ -518,7 +524,7 @@ export function SchoolMap({
 
         if (activeLayers.has("landcover")) {
           jobs.push(
-            loadRasterLayer("landcover", 0.75).then((response) => {
+            loadRasterLayer("landcover").then((response) => {
               next.landcover = response;
             })
           );
@@ -526,7 +532,7 @@ export function SchoolMap({
 
         if (activeLayers.has("elevation")) {
           jobs.push(
-            loadRasterLayer("elevation", 0.7).then((response) => {
+            loadRasterLayer("elevation").then((response) => {
               next.elevation = response;
             })
           );
@@ -534,7 +540,7 @@ export function SchoolMap({
 
         if (activeLayers.has("luminosity")) {
           jobs.push(
-            loadRasterLayer("luminosity", 0.7).then((response) => {
+            loadRasterLayer("luminosity").then((response) => {
               next.luminosity = response;
             })
           );
@@ -629,7 +635,7 @@ export function SchoolMap({
     };
   }, [schools]);
 
-  const renderAccessLayer = (features: VectorLayerFeature[]) => {
+  const renderAccessLayer = (features: VectorLayerFeature[], opacity: number) => {
     if (!features.length) return null;
     return (
       <GeoJSON
@@ -641,7 +647,8 @@ export function SchoolMap({
             radius: 3,
             color,
             fillColor: color,
-            fillOpacity: 0.48,
+            opacity,
+            fillOpacity: opacity,
             weight: 0.6,
             renderer: L.canvas({ padding: 0.5 }),
           });
@@ -707,7 +714,7 @@ export function SchoolMap({
           <Pane name="roads-layer" style={{ zIndex: 420 }}>
             <GeoJSON
               data={toFeatureCollection(layerState.roads)}
-              style={{ color: "#a855f7", weight: 1.1, opacity: 0.75 }}
+              style={{ color: "#a855f7", weight: 1.1, opacity: layerOpacity("roads") }}
             />
           </Pane>
         ) : null}
@@ -724,7 +731,10 @@ export function SchoolMap({
                     ? findNumericProperty(properties, ["aqi_us_max"])
                     : findNumericProperty(properties, ["aqi_us_mean"]);
                 const color = airQualityColor(value);
-                return { color, fillColor: color, weight: 0.9, opacity: 0.72, fillOpacity: 0.24 };
+                const opacity = layerOpacity(
+                  selectedAQIField === "aqi_us_max" ? "air_quality_max" : "air_quality_mean"
+                );
+                return { color, fillColor: color, weight: 0.9, opacity, fillOpacity: opacity * 0.33 };
               }}
               onEachFeature={(feature, layer) => {
                 const properties = asRecord(feature.properties);
@@ -751,9 +761,15 @@ export function SchoolMap({
         activeLayers.has("access_cycle") ||
         activeLayers.has("access_drive") ? (
           <Pane name="access-layer" style={{ zIndex: 440 }}>
-            {activeLayers.has("access_walk") ? renderAccessLayer(layerState.access_walk) : null}
-            {activeLayers.has("access_cycle") ? renderAccessLayer(layerState.access_cycle) : null}
-            {activeLayers.has("access_drive") ? renderAccessLayer(layerState.access_drive) : null}
+            {activeLayers.has("access_walk")
+              ? renderAccessLayer(layerState.access_walk, layerOpacity("access_walk"))
+              : null}
+            {activeLayers.has("access_cycle")
+              ? renderAccessLayer(layerState.access_cycle, layerOpacity("access_cycle"))
+              : null}
+            {activeLayers.has("access_drive")
+              ? renderAccessLayer(layerState.access_drive, layerOpacity("access_drive"))
+              : null}
           </Pane>
         ) : null}
 
@@ -764,11 +780,10 @@ export function SchoolMap({
                 layer: "flood",
                 district,
                 province,
-                opacity: layerState.flood.opacity,
                 format: "png",
               })}
               bounds={rasterBounds(layerState.flood)}
-              opacity={layerState.flood.opacity}
+              opacity={layerOpacity("flood")}
               interactive={false}
             />
           </Pane>
@@ -781,11 +796,10 @@ export function SchoolMap({
                 layer: "landcover",
                 district,
                 province,
-                opacity: layerState.landcover.opacity,
                 format: "png",
               })}
               bounds={rasterBounds(layerState.landcover)}
-              opacity={layerState.landcover.opacity}
+              opacity={layerOpacity("landcover")}
               interactive={false}
             />
           </Pane>
@@ -798,11 +812,10 @@ export function SchoolMap({
                 layer: "elevation",
                 district,
                 province,
-                opacity: layerState.elevation.opacity,
                 format: "png",
               })}
               bounds={rasterBounds(layerState.elevation)}
-              opacity={layerState.elevation.opacity}
+              opacity={layerOpacity("elevation")}
               interactive={false}
             />
           </Pane>
@@ -815,11 +828,10 @@ export function SchoolMap({
                 layer: "luminosity",
                 district,
                 province,
-                opacity: layerState.luminosity.opacity,
                 format: "png",
               })}
               bounds={rasterBounds(layerState.luminosity)}
-              opacity={layerState.luminosity.opacity}
+              opacity={layerOpacity("luminosity")}
               interactive={false}
             />
           </Pane>
@@ -875,131 +887,6 @@ export function SchoolMap({
       </MapContainer>
 
       {layerStatus ? <div className="map-status-overlay">{layerStatus}</div> : null}
-
-      {activeLayers.size > 0 ? (
-        <div className="layer-legend-panel map-layer-legend-overlay">
-          <div className="layer-legend-header">
-            <p className="layer-legend-heading">Active Layer Legends</p>
-            <button
-              type="button"
-              className="layer-legend-toggle"
-              onClick={() => setShowLayerLegend((current) => !current)}
-            >
-              {showLayerLegend ? "Hide" : "Show"}
-            </button>
-          </div>
-          {showLayerLegend ? (
-            <>
-              {activeLayers.has("flood") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">Flood Raster</p>
-                  <div className="legend-gradient flood-gradient" />
-                  <p className="layer-legend-note">Lower flood signal to higher flood signal</p>
-                </div>
-              ) : null}
-
-              {activeLayers.has("landcover") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">Land Cover Raster</p>
-                  <div className="legend-row">
-                    <span className="legend-dot" style={{ background: "#419bdf" }} />
-                    <span className="small-copy">Water</span>
-                    <span className="legend-dot" style={{ background: "#397d49" }} />
-                    <span className="small-copy">Trees</span>
-                    <span className="legend-dot" style={{ background: "#88b053" }} />
-                    <span className="small-copy">Grass</span>
-                    <span className="legend-dot" style={{ background: "#7a87c6" }} />
-                    <span className="small-copy">Flooded Vegetation</span>
-                    <span className="legend-dot" style={{ background: "#e49635" }} />
-                    <span className="small-copy">Crops</span>
-                    <span className="legend-dot" style={{ background: "#dfc35a" }} />
-                    <span className="small-copy">Shrub</span>
-                    <span className="legend-dot" style={{ background: "#c4281b" }} />
-                    <span className="small-copy">Built-up</span>
-                    <span className="legend-dot" style={{ background: "#a59b8f" }} />
-                    <span className="small-copy">Bare</span>
-                    <span className="legend-dot" style={{ background: "#b39fe1" }} />
-                    <span className="small-copy">Snow/Ice</span>
-                  </div>
-                </div>
-              ) : null}
-
-              {activeLayers.has("elevation") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">Elevation</p>
-                  <div className="legend-gradient grayscale-gradient" />
-                  <p className="layer-legend-note">Lower elevation to higher elevation</p>
-                </div>
-              ) : null}
-
-              {activeLayers.has("luminosity") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">Nighttime Luminosity</p>
-                  <div className="legend-gradient grayscale-gradient" />
-                  <p className="layer-legend-note">Lower luminosity to higher luminosity</p>
-                </div>
-              ) : null}
-
-              {activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">
-                    Air Pollution (AQI {selectedAQIField === "aqi_us_max" ? "Maximum" : "Mean"})
-                  </p>
-                  <div className="legend-row">
-                    <span className="legend-dot" style={{ background: "#00E400" }} />
-                    <span className="small-copy">Good (0-50)</span>
-                    <span className="legend-dot" style={{ background: "#FFFF00" }} />
-                    <span className="small-copy">Moderate (51-100)</span>
-                    <span className="legend-dot" style={{ background: "#FF7E00" }} />
-                    <span className="small-copy">USG (101-150)</span>
-                    <span className="legend-dot" style={{ background: "#FF0000" }} />
-                    <span className="small-copy">Unhealthy (151-200)</span>
-                    <span className="legend-dot" style={{ background: "#8F3F97" }} />
-                    <span className="small-copy">Very Unhealthy (201-300)</span>
-                    <span className="legend-dot" style={{ background: "#7E0023" }} />
-                    <span className="small-copy">Hazardous (300+)</span>
-                  </div>
-                  <p className="layer-legend-note">Click a tile to inspect AQI values.</p>
-                </div>
-              ) : null}
-
-              {activeLayers.has("access_walk") ||
-              activeLayers.has("access_cycle") ||
-              activeLayers.has("access_drive") ? (
-                <div className="layer-legend-item">
-                  <p className="layer-legend-title">Access Grids</p>
-                  <div className="legend-row">
-                    {activeLayers.has("access_walk") ? (
-                      <>
-                        <span className="legend-dot" style={{ background: "#059669" }} />
-                        <span className="small-copy">Walk within</span>
-                        <span className="legend-dot" style={{ background: "#c2410c" }} />
-                        <span className="small-copy">Walk outside</span>
-                      </>
-                    ) : null}
-                    {activeLayers.has("access_cycle") ? (
-                      <>
-                        <span className="legend-dot" style={{ background: "#0891b2" }} />
-                        <span className="small-copy">Cycle within</span>
-                        <span className="legend-dot" style={{ background: "#9a3412" }} />
-                        <span className="small-copy">Cycle outside</span>
-                      </>
-                    ) : null}
-                    {activeLayers.has("access_drive") ? (
-                      <>
-                        <span className="legend-dot" style={{ background: "#6366f1" }} />
-                        <span className="small-copy">Drive within</span>
-                        <span className="legend-dot" style={{ background: "#be123c" }} />
-                        <span className="small-copy">Drive outside</span>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }
