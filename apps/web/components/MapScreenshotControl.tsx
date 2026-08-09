@@ -1,58 +1,10 @@
 "use client";
 
-import { Control, DomEvent, DomUtil } from "leaflet";
-import * as LeafletNS from "leaflet";
+import { Control, DomEvent, DomUtil, type Map as LeafletMap } from "leaflet";
 import { useEffect } from "react";
 import { useMap } from "react-leaflet";
 
-type LeafletImageFn = (map: unknown, callback: (error: unknown, canvas: HTMLCanvasElement) => void) => void;
-
-let leafletImageLoader: Promise<LeafletImageFn> | null = null;
-
-declare global {
-  interface Window {
-    L?: typeof LeafletNS;
-    leafletImage?: LeafletImageFn;
-  }
-}
-
-function makePngFilename(prefix: string): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  return `${prefix}-${timestamp}.png`;
-}
-
-async function loadLeafletImage(): Promise<LeafletImageFn> {
-  if (typeof window === "undefined") {
-    throw new Error("Map screenshot export is only available in browser.");
-  }
-  if (typeof window.leafletImage === "function") {
-    return window.leafletImage;
-  }
-  if (leafletImageLoader) {
-    return leafletImageLoader;
-  }
-
-  if (!window.L) {
-    window.L = LeafletNS;
-  }
-
-  leafletImageLoader = new Promise<LeafletImageFn>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet-image@0.0.4/leaflet-image.js";
-    script.async = true;
-    script.onload = () => {
-      if (typeof window.leafletImage === "function") {
-        resolve(window.leafletImage);
-      } else {
-        reject(new Error("leaflet-image loaded but did not expose window.leafletImage."));
-      }
-    };
-    script.onerror = () => reject(new Error("Failed to load leaflet-image script."));
-    document.head.appendChild(script);
-  });
-
-  return leafletImageLoader;
-}
+import { downloadBlob, exportFilename } from "@/lib/exportPack";
 
 function waitForFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
@@ -193,31 +145,34 @@ async function renderLeafletViewport(mapContainer: HTMLElement): Promise<HTMLCan
   return canvas;
 }
 
-async function renderWithLeafletImage(mapInstance: unknown): Promise<HTMLCanvasElement> {
-  const leafletImage = await loadLeafletImage();
-  return new Promise<HTMLCanvasElement>((resolve, reject) => {
-    leafletImage(mapInstance, (error, canvas) => {
-      if (error) {
-        reject(error instanceof Error ? error : new Error("leaflet-image failed to render map."));
-        return;
-      }
-      resolve(canvas);
-    });
+function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Unable to encode map screenshot."))),
+      "image/png"
+    );
   });
 }
 
-function downloadCanvas(canvas: HTMLCanvasElement, filenamePrefix: string) {
-  const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/png");
-  link.download = makePngFilename(filenamePrefix);
-  link.click();
+export async function captureLeafletMapPng(map: LeafletMap): Promise<Blob> {
+  map.stop();
+  await waitForFrame();
+  return canvasToPng(await renderLeafletViewport(map.getContainer()));
 }
 
-export function MapScreenshotControl({ filenamePrefix }: { filenamePrefix: string }) {
+export function MapScreenshotControl({
+  filenamePrefix,
+  onCaptureReady,
+}: {
+  filenamePrefix: string;
+  onCaptureReady?: (capture: (() => Promise<Blob>) | null) => void;
+}) {
   const map = useMap();
 
   useEffect(() => {
     let removed = false;
+    const capture = () => captureLeafletMapPng(map);
+    onCaptureReady?.(capture);
     const screenshotControl = new Control({ position: "topleft" });
 
     screenshotControl.onAdd = () => {
@@ -235,21 +190,14 @@ export function MapScreenshotControl({ filenamePrefix }: { filenamePrefix: strin
         DomEvent.stop(event);
         if (button.disabled) return;
 
-        map.stop();
-        await waitForFrame();
         button.disabled = true;
         const previousLabel = button.textContent;
         button.textContent = "...";
 
         try {
           if (removed) return;
-          let canvas: HTMLCanvasElement;
-          try {
-            canvas = await renderWithLeafletImage(map);
-          } catch {
-            canvas = await renderLeafletViewport(map.getContainer());
-          }
-          downloadCanvas(canvas, filenamePrefix);
+          const png = await capture();
+          downloadBlob(png, exportFilename(filenamePrefix, new Date(), "png"));
         } catch (error) {
           // Keep failure handling local to avoid breaking map interaction.
           console.error(error);
@@ -267,8 +215,9 @@ export function MapScreenshotControl({ filenamePrefix }: { filenamePrefix: strin
     return () => {
       removed = true;
       screenshotControl.remove();
+      onCaptureReady?.(null);
     };
-  }, [filenamePrefix, map]);
+  }, [filenamePrefix, map, onCaptureReady]);
 
   return null;
 }
