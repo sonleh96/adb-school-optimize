@@ -24,6 +24,7 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 });
 
 const DEFAULT_DISTRICT = "National Capital District";
+const ACCESS_LAYER_KEYS = new Set<SchoolLayerKey>(["access_walk", "access_cycle", "access_drive"]);
 
 const INITIAL_LAYERS: SchoolLayerToggle[] = [
   { key: "roads", label: "Road segments", active: false, opacity: 0.75 },
@@ -63,6 +64,7 @@ export function SchoolExplorer() {
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [province, setProvince] = useState<string | null>(initialState.province);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
+  const [catchmentEnabled, setCatchmentEnabled] = useState(initialState.catchment);
   const [suppressNextSelectionFocus, setSuppressNextSelectionFocus] = useState(false);
 
   const districtOptionsQuery = useDistrictOptionsQuery();
@@ -284,6 +286,21 @@ export function SchoolExplorer() {
     setLayers(nextLayers);
   };
 
+  const setCatchment = useCallback(
+    (enabled: boolean) => {
+      const nextLayers = enabled
+        ? layers.map((layer) => (ACCESS_LAYER_KEYS.has(layer.key) ? { ...layer, active: true } : layer))
+        : layers;
+      setCatchmentEnabled(enabled);
+      if (enabled) setLayers(nextLayers);
+      replaceState({
+        catchment: enabled,
+        layers: nextLayers.filter((layer) => layer.active).map((layer) => layer.key),
+      });
+    },
+    [layers, replaceState]
+  );
+
   useEffect(() => {
     if (!mapView) return;
     const handle = window.setTimeout(() => replaceState({ mapView }), 240);
@@ -298,10 +315,21 @@ export function SchoolExplorer() {
         province: selectedProvince ?? null,
         score: scoreField,
         scenario: scenarioId,
+        catchment: catchmentEnabled,
         layers: layers.filter((layer) => layer.active).map((layer) => layer.key),
         mapView,
       }),
-    [district, initialState, layers, mapView, scenarioId, scoreField, selectedProvince, selectedSchoolId]
+    [
+      catchmentEnabled,
+      district,
+      initialState,
+      layers,
+      mapView,
+      scenarioId,
+      scoreField,
+      selectedProvince,
+      selectedSchoolId,
+    ]
   );
   const applyBookmark = (state: UrlState) => {
     const nextDistrict = state.district ?? DEFAULT_DISTRICT;
@@ -313,6 +341,7 @@ export function SchoolExplorer() {
     setShowDistrictSuggestions(false);
     setShowSchoolSuggestions(false);
     setScoreField(state.score ?? "priority");
+    setCatchmentEnabled(state.catchment);
     const activeLayerKeys = new Set(
       state.layers.filter(
         (layerKey) => layerKey !== "air_quality_max" || !state.layers.includes("air_quality_mean")
@@ -324,7 +353,7 @@ export function SchoolExplorer() {
     setScenarioId(state.scenario);
     if (state.scenario) persistSelectedScenario(state.scenario);
     else clearPersistedScenario();
-    replaceState({ ...state, layers: [...activeLayerKeys] });
+    replaceState({ ...state, layers: [...activeLayerKeys], catchment: state.catchment });
   };
   return (
     <div className="map-workspace">
@@ -348,6 +377,7 @@ export function SchoolExplorer() {
               hasExplicitMapView={initialState.mapView != null}
               suppressNextSelectionFocus={suppressNextSelectionFocus}
               onSelectionFocusSuppressed={() => setSuppressNextSelectionFocus(false)}
+              catchmentSchool={catchmentEnabled ? selectedSchool : null}
             />
           )}
         </div>
@@ -498,6 +528,8 @@ export function SchoolExplorer() {
                 : null
           }
           onRetry={() => void (schoolsQuery.error ? schoolsQuery.refetch() : detailQuery.refetch())}
+          catchmentEnabled={catchmentEnabled}
+          onCatchmentChange={setCatchment}
         />
       </aside>
     </div>
