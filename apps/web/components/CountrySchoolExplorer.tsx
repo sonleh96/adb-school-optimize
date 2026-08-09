@@ -1,14 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
+import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
+import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -18,11 +21,14 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 const EMPTY_LAYERS: SchoolLayerToggle[] = [];
 
 export function CountrySchoolExplorer() {
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
+  const { initialState, replaceState } = useShareableUrlState();
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(initialState.school);
+  const [scoreField, setScoreField] = useState<"priority" | "need">(initialState.score ?? "priority");
+  const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
+  const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
 
   const choroplethQuery = useChoroplethQuery({ fields: "scores" });
-  const schoolsQuery = useSchoolsQuery({ limit: 10000 });
+  const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
 
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const districtFeatures = useMemo(
@@ -33,12 +39,42 @@ export function CountrySchoolExplorer() {
   const loading = schoolsQuery.isLoading;
 
   useEffect(() => {
-    if (!selectedSchoolId && schools[0]?.school_id) {
-      setSelectedSchoolId(schools[0].school_id);
+    if (initialState.scenario) {
+      setScenarioId(initialState.scenario);
+      persistSelectedScenario(initialState.scenario);
+      return;
     }
-  }, [schools, selectedSchoolId]);
+    const persistedScenario = getPersistedScenario();
+    if (!persistedScenario) return;
+    setScenarioId(persistedScenario);
+    replaceState({ scenario: persistedScenario });
+  }, [initialState.scenario, replaceState]);
 
-  const detailQuery = useSchoolDetailQuery(selectedSchoolId);
+  const selectSchool = useCallback(
+    (schoolId: string | null) => {
+      const school = schools.find((item) => item.school_id === schoolId);
+      setSelectedSchoolId(schoolId);
+      replaceState({
+        school: schoolId,
+        district: school?.district ?? null,
+        province: school?.province ?? null,
+      });
+    },
+    [replaceState, schools]
+  );
+
+  useEffect(() => {
+    if (selectedSchoolId || !schools[0]?.school_id) return;
+    selectSchool(schools[0].school_id);
+  }, [selectSchool, selectedSchoolId, schools]);
+
+  useEffect(() => {
+    if (!mapView) return;
+    const handle = window.setTimeout(() => replaceState({ mapView }), 240);
+    return () => window.clearTimeout(handle);
+  }, [mapView, replaceState]);
+
+  const detailQuery = useSchoolDetailQuery(selectedSchoolId, scenarioId ?? undefined);
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
@@ -56,7 +92,7 @@ export function CountrySchoolExplorer() {
             <SchoolMap
               schools={schools}
               selectedSchoolId={selectedSchoolId}
-              onSelectSchool={setSelectedSchoolId}
+              onSelectSchool={selectSchool}
               scoreField={scoreField}
               district="All PNG"
               layers={EMPTY_LAYERS}
@@ -65,6 +101,9 @@ export function CountrySchoolExplorer() {
               districtFeatures={districtFeatures}
               districtScoreField={scoreField}
               focusSelectedSchool={false}
+              mapView={mapView}
+              onMapViewChange={setMapView}
+              hasExplicitMapView={initialState.mapView != null}
             />
           )}
         </div>
@@ -77,18 +116,34 @@ export function CountrySchoolExplorer() {
           <button
             type="button"
             className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-            onClick={() => setScoreField("priority")}
+            onClick={() => {
+              setScoreField("priority");
+              replaceState({ score: "priority" });
+            }}
           >
             Priority
           </button>
           <button
             type="button"
             className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-            onClick={() => setScoreField("need")}
+            onClick={() => {
+              setScoreField("need");
+              replaceState({ score: "need" });
+            }}
           >
             Need
           </button>
         </div>
+        <CopyLinkButton
+          state={mergeUrlState(initialState, {
+            school: selectedSchoolId,
+            district: selectedSchool?.district ?? initialState.district,
+            province: selectedSchool?.province ?? initialState.province,
+            score: scoreField,
+            scenario: scenarioId,
+            mapView,
+          })}
+        />
       </div>
 
       <div className="map-overlay-legend">
@@ -115,7 +170,7 @@ export function CountrySchoolExplorer() {
               <VirtualizedSchoolTable
                 schools={schools}
                 selectedSchoolId={selectedSchoolId}
-                onSelectSchool={setSelectedSchoolId}
+                onSelectSchool={selectSchool}
               />
             )}
           </div>

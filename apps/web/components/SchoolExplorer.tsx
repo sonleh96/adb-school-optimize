@@ -3,11 +3,14 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolRecord } from "@/lib/types";
 import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
+import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
+import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -40,17 +43,23 @@ function rankSuggestion(value: string, query: string): number {
 }
 
 export function SchoolExplorer() {
-  const [district, setDistrict] = useState(DEFAULT_DISTRICT);
-  const [districtQuery, setDistrictQuery] = useState(DEFAULT_DISTRICT);
+  const { initialState, replaceState } = useShareableUrlState();
+  const [district, setDistrict] = useState(initialState.district ?? DEFAULT_DISTRICT);
+  const [districtQuery, setDistrictQuery] = useState(initialState.district ?? DEFAULT_DISTRICT);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
   const [schoolQuery, setSchoolQuery] = useState("");
   const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
-  const [layers, setLayers] = useState<SchoolLayerToggle[]>(INITIAL_LAYERS);
+  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(initialState.school);
+  const [scoreField, setScoreField] = useState<"priority" | "need">(initialState.score ?? "priority");
+  const [layers, setLayers] = useState<SchoolLayerToggle[]>(() =>
+    INITIAL_LAYERS.map((layer) => ({ ...layer, active: initialState.layers.includes(layer.key) }))
+  );
+  const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
+  const [province, setProvince] = useState<string | null>(initialState.province);
+  const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
 
   const districtOptionsQuery = useDistrictOptionsQuery();
-  const schoolsQuery = useSchoolsQuery({ limit: 10000 });
+  const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
 
   const districtOptions = useMemo(() => districtOptionsQuery.data ?? [], [districtOptionsQuery.data]);
   const schoolSearchOptions = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
@@ -61,29 +70,84 @@ export function SchoolExplorer() {
   const loading = schoolsQuery.isLoading;
 
   const schools = useMemo(
-    () => schoolSearchOptions.filter((school) => school.district === district),
-    [schoolSearchOptions, district]
+    () =>
+      schoolSearchOptions.filter(
+        (school) => school.district === district && (!province || school.province === province)
+      ),
+    [district, province, schoolSearchOptions]
   );
 
   useEffect(() => {
-    if (!districtOptions.length) return;
-    if (!districtOptions.some((row) => row.district === DEFAULT_DISTRICT) && districtOptions[0]) {
-      setDistrict(districtOptions[0].district);
-      setDistrictQuery(districtOptions[0].district);
+    if (initialState.scenario) {
+      setScenarioId(initialState.scenario);
+      persistSelectedScenario(initialState.scenario);
+      return;
     }
-  }, [districtOptions]);
+    const persistedScenario = getPersistedScenario();
+    if (!persistedScenario) return;
+    setScenarioId(persistedScenario);
+    replaceState({ scenario: persistedScenario });
+  }, [initialState.scenario, replaceState]);
+
+  const selectedSchoolFromSearch = useMemo(
+    () => schoolSearchOptions.find((school) => school.school_id === selectedSchoolId) ?? null,
+    [schoolSearchOptions, selectedSchoolId]
+  );
+
+  const selectedDistrictOption = useMemo(
+    () =>
+      districtOptions.find(
+        (option) => option.district === district && (!province || option.province === province)
+      ) ?? null,
+    [districtOptions, district, province]
+  );
+  const selectedProvince = province ?? selectedDistrictOption?.province;
 
   useEffect(() => {
+    if (!selectedSchoolFromSearch || selectedSchoolFromSearch.district === district) return;
+    setDistrict(selectedSchoolFromSearch.district);
+    setDistrictQuery(selectedSchoolFromSearch.district);
+    setProvince(selectedSchoolFromSearch.province);
+    replaceState({
+      school: selectedSchoolFromSearch.school_id ?? null,
+      district: selectedSchoolFromSearch.district,
+      province: selectedSchoolFromSearch.province,
+    });
+  }, [district, replaceState, selectedSchoolFromSearch]);
+
+  useEffect(() => {
+    if (!districtOptions.length || districtOptions.some((row) => row.district === district)) return;
+    const fallback = districtOptions.find((row) => row.district === DEFAULT_DISTRICT) ?? districtOptions[0];
+    if (!fallback) return;
+    setDistrict(fallback.district);
+    setDistrictQuery(fallback.district);
+    setProvince(fallback.province);
+    replaceState({ district: fallback.district, province: fallback.province, school: null });
+  }, [district, districtOptions, replaceState]);
+
+  useEffect(() => {
+    if (selectedSchoolId && selectedSchoolFromSearch && selectedSchoolFromSearch.district !== district)
+      return;
     if (!selectedSchoolId && schools[0]?.school_id) {
       setSelectedSchoolId(schools[0].school_id);
+      replaceState({
+        school: schools[0].school_id,
+        district: schools[0].district,
+        province: schools[0].province,
+      });
       return;
     }
     if (selectedSchoolId && !schools.some((school) => school.school_id === selectedSchoolId)) {
       setSelectedSchoolId(schools[0]?.school_id ?? null);
+      replaceState({
+        school: schools[0]?.school_id ?? null,
+        district: schools[0]?.district ?? district,
+        province: schools[0]?.province ?? selectedProvince ?? null,
+      });
     }
-  }, [schools, selectedSchoolId]);
+  }, [district, replaceState, schools, selectedProvince, selectedSchoolFromSearch, selectedSchoolId]);
 
-  const detailQuery = useSchoolDetailQuery(selectedSchoolId);
+  const detailQuery = useSchoolDetailQuery(selectedSchoolId, scenarioId ?? undefined);
 
   const selectedSchoolDetail = detailQuery.data ?? null;
 
@@ -91,13 +155,6 @@ export function SchoolExplorer() {
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
     [schools, selectedSchoolId]
   );
-
-  const selectedDistrictOption = useMemo(
-    () => districtOptions.find((option) => option.district === district) ?? null,
-    [districtOptions, district]
-  );
-
-  const selectedProvince = selectedDistrictOption?.province;
 
   useEffect(() => {
     if (!selectedSchool) return;
@@ -144,9 +201,20 @@ export function SchoolExplorer() {
       .map((item) => item.school);
   }, [schoolQuery, schoolSearchOptions]);
 
-  const applyDistrict = (value: string) => {
-    setDistrict(value);
-    setDistrictQuery(value);
+  const applyDistrict = (option: { district: string; province: string }) => {
+    const nextSchool =
+      schoolSearchOptions.find(
+        (school) => school.district === option.district && school.province === option.province
+      ) ?? null;
+    setDistrict(option.district);
+    setDistrictQuery(option.district);
+    setProvince(nextSchool?.province ?? option.province);
+    setSelectedSchoolId(nextSchool?.school_id ?? null);
+    replaceState({
+      district: option.district,
+      province: nextSchool?.province ?? option.province,
+      school: nextSchool?.school_id ?? null,
+    });
     setShowDistrictSuggestions(false);
   };
 
@@ -155,21 +223,30 @@ export function SchoolExplorer() {
     setShowSchoolSuggestions(false);
     setDistrict(school.district);
     setDistrictQuery(school.district);
+    setProvince(school.province);
     setSelectedSchoolId(school.school_id ?? null);
+    replaceState({ school: school.school_id ?? null, district: school.district, province: school.province });
   };
 
   const toggleLayer = (layerKey: SchoolLayerKey) => {
-    setLayers((current) => {
-      const isAirLayer = layerKey === "air_quality_mean" || layerKey === "air_quality_max";
-      return current.map((layer) => {
-        if (layer.key === layerKey) return { ...layer, active: !layer.active };
-        if (!isAirLayer) return layer;
-        if (layer.key === "air_quality_mean" || layer.key === "air_quality_max")
-          return { ...layer, active: false };
-        return layer;
-      });
+    const isAirLayer = layerKey === "air_quality_mean" || layerKey === "air_quality_max";
+    const nextLayers = layers.map((layer) => {
+      if (layer.key === layerKey) return { ...layer, active: !layer.active };
+      if (!isAirLayer) return layer;
+      if (layer.key === "air_quality_mean" || layer.key === "air_quality_max") {
+        return { ...layer, active: false };
+      }
+      return layer;
     });
+    setLayers(nextLayers);
+    replaceState({ layers: nextLayers.filter((layer) => layer.active).map((layer) => layer.key) });
   };
+
+  useEffect(() => {
+    if (!mapView) return;
+    const handle = window.setTimeout(() => replaceState({ mapView }), 240);
+    return () => window.clearTimeout(handle);
+  }, [mapView, replaceState]);
 
   const layerColumns = useMemo(() => {
     const midpoint = Math.ceil(layers.length / 2);
@@ -193,6 +270,9 @@ export function SchoolExplorer() {
               layers={layers}
               showDistrictProvinceInPopup={false}
               screenshotFilePrefix="school-explorer-map"
+              mapView={mapView}
+              onMapViewChange={setMapView}
+              hasExplicitMapView={initialState.mapView != null}
             />
           )}
         </div>
@@ -205,18 +285,35 @@ export function SchoolExplorer() {
           <button
             type="button"
             className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-            onClick={() => setScoreField("priority")}
+            onClick={() => {
+              setScoreField("priority");
+              replaceState({ score: "priority" });
+            }}
           >
             Priority
           </button>
           <button
             type="button"
             className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-            onClick={() => setScoreField("need")}
+            onClick={() => {
+              setScoreField("need");
+              replaceState({ score: "need" });
+            }}
           >
             Need
           </button>
         </div>
+        <CopyLinkButton
+          state={mergeUrlState(initialState, {
+            school: selectedSchoolId,
+            district,
+            province: selectedProvince ?? initialState.province,
+            score: scoreField,
+            scenario: scenarioId,
+            layers: layers.filter((layer) => layer.active).map((layer) => layer.key),
+            mapView,
+          })}
+        />
         <div className="district-search map-district-search">
           <input
             id="school-search"
@@ -266,7 +363,7 @@ export function SchoolExplorer() {
             onKeyDown={(event) => {
               if (event.key === "Enter" && districtSuggestions[0]) {
                 event.preventDefault();
-                applyDistrict(districtSuggestions[0].district);
+                applyDistrict(districtSuggestions[0]);
               }
             }}
           />
@@ -277,7 +374,7 @@ export function SchoolExplorer() {
                   type="button"
                   key={option.district_id}
                   className="district-suggestion-item"
-                  onMouseDown={() => applyDistrict(option.district)}
+                  onMouseDown={() => applyDistrict(option)}
                 >
                   {option.district}
                 </button>
