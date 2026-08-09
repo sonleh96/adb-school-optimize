@@ -4,3 +4,21 @@ data/
 
 notebooks/
 
+build_instructions/
+
+datasets/
+
+.DS_Store
+
+.env
+.env.local
+services/api/.env
+services/api/.env.local
+.venv/
+node_modules/
+.next/
+.audit-work/
+apps/web/.audit-work-build/
+
+.serena/
+*.tsbuildinfo

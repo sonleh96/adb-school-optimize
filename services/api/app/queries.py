@@ -88,7 +88,7 @@ where (%(province)s::text is null or province = %(province)s::text)
 order by province, district
 """
 
-SCHOOLS_SQL = """
+SCHOOLS_SQL = f"""
 select s.school_id, s.school_name, s.locality, s.province, s.district,
        s.latitude, s.longitude, st_asgeojson(s.geom)::json as geometry,
        s.number_of_available_teachers,
@@ -106,14 +106,14 @@ select s.school_id, s.school_name, s.locality, s.province, s.district,
 from schools s
 left join school_scores sc
   on sc.school_id = s.school_id
- and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
+ and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({DEFAULT_SCENARIO_SQL.strip()}))
 where (%(province)s::text is null or s.province = %(province)s::text)
   and (%(district)s::text is null or s.district = %(district)s::text)
 order by coalesce(sc.rank_priority, 999999), s.school_name
 limit %(limit)s
-""".format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
+"""
 
-SCHOOL_DETAIL_SQL = """
+SCHOOL_DETAIL_SQL = f"""
 select s.*,
        st_asgeojson(s.geom)::json as geometry,
        sc.scenario_id,
@@ -128,25 +128,27 @@ select s.*,
 from schools s
 left join school_scores sc
   on sc.school_id = s.school_id
- and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
+ and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({DEFAULT_SCENARIO_SQL.strip()}))
 where s.school_id = %(school_id)s::uuid
 limit 1
-""".format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
+"""
 
 SCENARIOS_SQL = """
-select scenario_id, scenario_name, description, weights, config, created_by, is_default, created_at, updated_at
+select scenario_id, scenario_name, description, weights, config,
+       created_by, is_default, created_at, updated_at
 from scoring_scenarios
 order by updated_at desc, scenario_name
 """
 
 SCENARIO_SQL = """
-select scenario_id, scenario_name, description, weights, config, created_by, is_default, created_at, updated_at
+select scenario_id, scenario_name, description, weights, config,
+       created_by, is_default, created_at, updated_at
 from scoring_scenarios
 where scenario_id = %(scenario_id)s::uuid
 limit 1
 """
 
-RANKED_EXPORT_SQL = """
+RANKED_EXPORT_SQL = f"""
 select s.school_name as "School Name",
        s.province as "Province",
        s.district as "District",
@@ -164,11 +166,11 @@ select s.school_name as "School Name",
        sc.rank_need as "rank_need"
 from school_scores sc
 join schools s on s.school_id = sc.school_id
-where sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
+where sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({DEFAULT_SCENARIO_SQL.strip()}))
 order by sc.rank_priority, sc.rank_need, s.school_name
-""".format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
+"""
 
-FULL_EXPORT_SQL = """
+FULL_EXPORT_SQL = f"""
 select
        s.school_name as "School Name",
        s.locality as "Locality",
@@ -244,6 +246,6 @@ select
 from schools s
 left join school_scores sc
   on sc.school_id = s.school_id
- and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({default_scenario_sql}))
+ and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({DEFAULT_SCENARIO_SQL.strip()}))
 order by coalesce(sc.rank_priority, 999999), s.school_name
-""".format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
+"""

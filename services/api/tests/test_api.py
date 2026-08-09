@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import io
+from types import SimpleNamespace
 
 import openpyxl
-
+from app import repository
 from app.errors import ApiError
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
-from app import repository
 from app.services.rasters import RasterClipResult
 
 
@@ -33,6 +33,8 @@ def test_export_helpers_drop_header_like_rows(monkeypatch):
     assert csv_bytes.decode("utf-8").splitlines() == ["School Name,Province", "Demo School,NCD"]
 
     workbook = openpyxl.load_workbook(io.BytesIO(repository.export_ranked_xlsx(connection=object())))
+    assert workbook.sheetnames[0] == "README"
+    assert workbook["README"]["B1"].value == "Research prototype only"
     rows = list(workbook["ranked_schools"].iter_rows(values_only=True))
     assert rows == [("School Name", "Province"), ("Demo School", "NCD")]
 
@@ -62,7 +64,9 @@ def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch
     captured = {}
 
     def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
-        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
+        captured.update(
+            layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326
+        )
         return {
             "layer": {"layer_key": layer_key, "layer_type": "vector"},
             "count": 1,
@@ -95,7 +99,9 @@ def test_meta_layer_features_accepts_bbox(client, monkeypatch):
     captured = {}
 
     def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
-        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
+        captured.update(
+            layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326
+        )
         return {
             "layer": {"layer_key": layer_key, "layer_type": "vector"},
             "count": 0,
@@ -141,7 +147,9 @@ def test_meta_api_error_uses_structured_handler(client, monkeypatch):
     monkeypatch.setattr(
         meta,
         "fetch_provinces",
-        lambda connection: (_ for _ in ()).throw(ApiError("Bad metadata.", status_code=418, code="bad_metadata")),
+        lambda connection: (_ for _ in ()).throw(
+            ApiError("Bad metadata.", status_code=418, code="bad_metadata")
+        ),
     )
 
     response = client.get("/api/v1/meta/provinces")
@@ -155,7 +163,9 @@ def test_meta_layer_features_structured_error(client, monkeypatch):
         meta,
         "fetch_vector_layer_features",
         lambda connection, **kwargs: (_ for _ in ()).throw(
-            ApiError("Layer not found.", status_code=404, code="layer_not_found", details={"layer_key": "roads"})
+            ApiError(
+                "Layer not found.", status_code=404, code="layer_not_found", details={"layer_key": "roads"}
+            )
         ),
     )
 
@@ -187,7 +197,12 @@ def test_list_schools_forwards_filters(client, fake_connection, monkeypatch):
 
     response = client.get(
         "/api/v1/schools",
-        params={"province": "NCD", "district": "National Capital District", "scenario_id": "abc", "limit": 25},
+        params={
+            "province": "NCD",
+            "district": "National Capital District",
+            "scenario_id": "abc",
+            "limit": 25,
+        },
     )
 
     assert response.status_code == 200
@@ -244,7 +259,9 @@ def test_district_choropleth_returns_selected_indicator(client, monkeypatch):
         ],
     )
 
-    response = client.get("/api/v1/districts/choropleth", params={"indicator": "Conflict Events", "province": "NCD"})
+    response = client.get(
+        "/api/v1/districts/choropleth", params={"indicator": "Conflict Events", "province": "NCD"}
+    )
 
     assert response.status_code == 200
     assert response.json() == {
@@ -254,7 +271,8 @@ def test_district_choropleth_returns_selected_indicator(client, monkeypatch):
     }
 
 
-def test_scenarios_crud_routes(client, monkeypatch):
+def test_scenarios_crud_routes(write_enabled_client, monkeypatch):
+    client = write_enabled_client
     monkeypatch.setattr(scenarios, "fetch_scenarios", lambda connection: [{"scenario_id": "scenario-1"}])
     monkeypatch.setattr(
         scenarios,
@@ -290,7 +308,8 @@ def test_scenarios_crud_routes(client, monkeypatch):
     assert patch_response.json() == {"scenario_id": "scenario-1", "description": "patched"}
 
 
-def test_create_scenario_validation_error_is_structured(client):
+def test_create_scenario_validation_error_is_structured(write_enabled_client):
+    client = write_enabled_client
     response = client.post("/api/v1/scenarios", json={"scenario_name": "Broken Scenario"})
 
     assert response.status_code == 422
@@ -300,7 +319,47 @@ def test_create_scenario_validation_error_is_structured(client):
     assert body["error"]["details"]["issues"]
 
 
-def test_scoring_run_forwards_payload(client, monkeypatch):
+def test_mutation_routes_are_disabled_by_default(client, monkeypatch):
+    monkeypatch.setattr(
+        scenarios,
+        "insert_scenario",
+        lambda connection, payload: {"scenario_id": "created", **payload},
+    )
+    monkeypatch.setattr(
+        scenarios,
+        "update_scenario",
+        lambda connection, scenario_id, payload: {"scenario_id": scenario_id, **payload},
+    )
+    monkeypatch.setattr(
+        scoring,
+        "run_and_persist_scenario",
+        lambda connection, **kwargs: {"summary": {"count": 1}, "warnings": [], "top_rows": []},
+    )
+
+    responses = [
+        client.post(
+            "/api/v1/scenarios",
+            json={"scenario_name": "Blocked", "weights": {"need": 0.7}, "is_default": False},
+        ),
+        client.patch("/api/v1/scenarios/scenario-1", json={"description": "blocked"}),
+        client.post(
+            "/api/v1/scoring/run",
+            json={"scenario_name": "Blocked", "persist": False},
+        ),
+    ]
+
+    for response in responses:
+        assert response.status_code == 503
+        assert response.json() == {
+            "error": {
+                "code": "write_operations_disabled",
+                "message": "Write operations are disabled while the service is in research-only mode.",
+            }
+        }
+
+
+def test_scoring_run_forwards_payload(write_enabled_client, monkeypatch):
+    client = write_enabled_client
     captured = {}
 
     def fake_run(connection, **kwargs):
@@ -335,6 +394,57 @@ def test_scoring_run_forwards_payload(client, monkeypatch):
     }
 
 
+def test_non_persisted_scoring_run_returns_run_manifest(monkeypatch):
+    monkeypatch.setattr(repository, "_fetch_school_dataframe", lambda connection: object())
+    monkeypatch.setattr(
+        repository,
+        "run_scoring",
+        lambda *args, **kwargs: SimpleNamespace(
+            summary={"rows": 1},
+            warnings=[],
+            scored_data=__import__("pandas").DataFrame(),
+            run_manifest={"score_version": "0.1.0-research", "input_sha256": "a" * 64},
+        ),
+    )
+
+    result = repository.run_and_persist_scenario(object(), persist=False)
+
+    assert result["run_manifest"] == {
+        "score_version": "0.1.0-research",
+        "input_sha256": "a" * 64,
+    }
+
+
+def test_score_persistence_rows_use_durable_school_id() -> None:
+    result = SimpleNamespace(
+        scored_data=__import__("pandas").DataFrame(
+            [
+                {
+                    "School ID": "school-uuid-1",
+                    "School Name": "A renamed school",
+                    "S": 0.1,
+                    "A": 0.2,
+                    "R_phys": 0.3,
+                    "G": 0.0,
+                    "I": 0.4,
+                    "P": 0.5,
+                    "Need": 0.25,
+                    "Priority": 0.31,
+                    "data_confidence": 0.9,
+                    "stage1_selected": True,
+                    "rank_priority": 1,
+                    "rank_need": 1,
+                }
+            ]
+        ),
+        applied_weights={},
+    )
+
+    rows = repository._build_score_rows(result, "scenario-uuid-1")
+
+    assert rows[0]["school_id"] == "school-uuid-1"
+
+
 def test_exports_return_expected_content_and_headers(client, monkeypatch):
     monkeypatch.setattr(exports, "export_ranked_csv", lambda connection, scenario_id=None: b"a,b\n1,2\n")
     monkeypatch.setattr(exports, "export_ranked_xlsx", lambda connection, scenario_id=None: b"fake-xlsx")
@@ -348,22 +458,35 @@ def test_exports_return_expected_content_and_headers(client, monkeypatch):
 
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
-    assert csv_response.headers["content-disposition"] == 'attachment; filename="ranked_schools.csv"'
+    assert (
+        csv_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_ranked_schools.csv"'
+    )
+    assert csv_response.headers["x-rise-png-decision-use"] == "research-prototype-only"
     assert csv_response.content == b"a,b\n1,2\n"
 
     assert xlsx_response.status_code == 200
     assert xlsx_response.headers["content-type"].startswith(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    assert xlsx_response.headers["content-disposition"] == 'attachment; filename="ranked_schools.xlsx"'
+    assert (
+        xlsx_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_ranked_schools.xlsx"'
+    )
+    assert xlsx_response.headers["x-rise-png-decision-use"] == "research-prototype-only"
     assert xlsx_response.content == b"fake-xlsx"
 
     assert scores_response.status_code == 200
-    assert scores_response.headers["content-disposition"] == 'attachment; filename="Scores.xlsx"'
+    assert (
+        scores_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_scores.xlsx"'
+    )
     assert scores_response.content == b"scores-xlsx"
 
     assert full_response.status_code == 200
-    assert full_response.headers["content-disposition"] == 'attachment; filename="Full.xlsx"'
+    assert (
+        full_response.headers["content-disposition"] == 'attachment; filename="research_prototype_full.xlsx"'
+    )
     assert full_response.content == b"full-xlsx"
 
 
@@ -428,7 +551,11 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
     )
     overlay_response = client.get(
         "/api/v1/rasters/flood/overlay",
-        params={"district": "National Capital District", "province": "National Capital District", "format": "png"},
+        params={
+            "district": "National Capital District",
+            "province": "National Capital District",
+            "format": "png",
+        },
     )
 
     assert metadata_response.status_code == 200

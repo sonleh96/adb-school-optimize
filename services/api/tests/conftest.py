@@ -6,10 +6,10 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
+from app.security import require_write_operations
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
@@ -28,6 +28,15 @@ def client(fake_connection, monkeypatch):
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def write_enabled_client(client):
+    app.dependency_overrides[require_write_operations] = lambda: None
+    try:
+        yield client
+    finally:
+        app.dependency_overrides.pop(require_write_operations, None)
 
 
 @pytest.fixture

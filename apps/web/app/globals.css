@@ -1,17 +1,65 @@
+@import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/*
+ * Design tokens (single source of truth).
+ * ADB-adjacent navy/blue palette, neutral grays, semantic states.
+ * Radiused, border-based elevation (no blur). Dark-mode-ready via CSS vars.
+ */
+@theme {
+  /* Brand / accent */
+  --color-brand: #0a2e73;
+  --color-brand-strong: #082452;
+  --color-brand-2: #006cb7;
+  --color-brand-foreground: #ffffff;
+
+  /* Surfaces */
+  --color-background: #eef1f5;
+  --color-surface: rgba(255, 255, 255, 0.92);
+  --color-surface-strong: #ffffff;
+  --color-surface-muted: rgba(255, 255, 255, 0.72);
+
+  /* Ink / text */
+  --color-ink: #0f1f33;
+  --color-muted: #4d5f73;
+  --color-line: rgba(11, 31, 69, 0.14);
+
+  /* Semantic */
+  --color-success: #157f3d;
+  --color-warning: #a8550a;
+  --color-danger: #b42318;
+  --color-danger-ink: #8f1d14;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 30px;
+
+  /* Elevation (thin border + light shadow for float panels) */
+  --shadow-card: 0 4px 18px rgba(16, 38, 75, 0.1);
+  --shadow-pop: 0 8px 24px rgba(16, 38, 75, 0.12);
+
+  /* Type */
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-prose: var(--font-prose), Georgia, serif;
+}
+
+/* Legacy aliases so existing component classes keep working during migration. */
 :root {
-  --bg: #d7dade;
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-strong: #ffffff;
-  --ink: #0f1f33;
-  --muted: #4d5f73;
-  --line: rgba(11, 31, 69, 0.14);
-  --accent: #0a2e73;
-  --accent-2: #006cb7;
-  --danger: #b42318;
-  --shadow: 0 12px 34px rgba(16, 38, 75, 0.12);
-  --radius: 22px;
+  --bg: var(--color-background);
+  --panel: var(--color-surface);
+  --panel-strong: var(--color-surface-strong);
+  --ink: var(--color-ink);
+  --muted: var(--color-muted);
+  --line: var(--color-line);
+  --accent: var(--color-brand);
+  --accent-2: var(--color-brand-2);
+  --danger: var(--color-danger);
+  --shadow: var(--shadow-card);
+  --radius: var(--radius-xl);
 }
 
 * {
@@ -23,9 +71,302 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: linear-gradient(180deg, #eef1f5 0%, #d7dade 36%, #d3d7dc 100%);
-  color: var(--ink);
-  font-family: var(--font-body), serif;
+  height: 100%;
+  background: #eef1f5;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Felt/Atlas-style map product layout */
+.map-workspace {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #cfd8e4;
+}
+
+.map-workspace-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.map-workspace .map-frame {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.map-workspace .leaflet-top.leaflet-left {
+  top: auto;
+  bottom: 16px;
+  left: auto;
+  right: 360px;
+}
+
+.map-workspace .leaflet-control-zoom {
+  border: 1px solid rgba(15, 31, 51, 0.12) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(15, 31, 51, 0.12);
+}
+
+.map-workspace .leaflet-control-zoom a {
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  color: var(--color-ink) !important;
+}
+
+.float-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid rgba(15, 31, 51, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(15, 31, 51, 0.14);
+  backdrop-filter: blur(16px) saturate(1.2);
+  overflow: hidden;
+}
+
+.float-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid rgba(15, 31, 51, 0.08);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.float-panel-title {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.84rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.float-panel-subtitle {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.float-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 12px;
+}
+
+.map-overlay-controls {
+  position: absolute;
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(300px, calc(100% - 24px));
+  padding: 10px;
+  border: 1px solid rgba(15, 31, 51, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(15, 31, 51, 0.14);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.map-overlay-controls-top-left {
+  top: 12px;
+  left: 12px;
+}
+
+.map-overlay-controls .score-toggle {
+  width: 100%;
+  border-radius: 8px;
+  background: rgba(15, 31, 51, 0.05);
+  border-color: transparent;
+}
+
+.map-overlay-controls .score-toggle-button {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+}
+
+.map-overlay-controls .score-toggle-button.is-active {
+  background: var(--color-brand);
+  color: #fff;
+}
+
+.map-overlay-controls .district-search input,
+.map-overlay-controls .control select {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 31, 51, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.map-overlay-legend {
+  position: absolute;
+  z-index: 800;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 24px));
+}
+
+.map-overlay-legend .map-legend-block {
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 31, 51, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 20px rgba(15, 31, 51, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.map-side-panel {
+  position: absolute;
+  z-index: 850;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  width: min(340px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.map-side-panel > * {
+  pointer-events: auto;
+}
+
+.map-side-panel-primary {
+  flex: 1.4;
+  min-height: 0;
+}
+
+.map-side-panel-secondary {
+  flex: 0 1 auto;
+  max-height: 38%;
+}
+
+.map-overlay-layers {
+  position: absolute;
+  z-index: 800;
+  left: 12px;
+  bottom: 12px;
+  width: min(260px, calc(100% - 24px));
+  max-height: min(240px, 36%);
+  overflow: hidden;
+}
+
+.map-overlay-layers .float-panel-body {
+  overflow: auto;
+}
+
+.doc-workspace {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(10, 46, 115, 0.06), transparent 55%),
+    #e8ecf1;
+}
+
+.doc-workspace-inner {
+  width: min(1120px, calc(100% - 28px));
+  margin: 14px auto 28px;
+}
+
+.doc-workspace-inner > .float-panel,
+.doc-workspace-inner > .panel {
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(15, 31, 51, 0.1);
+  backdrop-filter: blur(16px);
+}
+
+.float-panel .table-wrap,
+.map-side-panel .table-wrap {
+  border: 0;
+  border-radius: 0;
+  max-height: none;
+  height: 100%;
+  background: transparent;
+}
+
+.float-panel .data-table th,
+.float-panel .data-table td {
+  padding: 7px 10px;
+  font-size: 0.78rem;
+}
+
+.float-panel .data-table th {
+  background: rgba(244, 247, 251, 0.96);
+  font-size: 0.68rem;
+}
+
+.float-panel .score-pill {
+  min-width: 48px;
+  padding: 4px 7px;
+  font-size: 0.74rem;
+  border-radius: 6px;
+}
+
+.float-panel .detail-card {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(244, 247, 251, 0.85);
+}
+
+.float-panel .detail-card h3,
+.float-panel .detail-card h4 {
+  font-size: 0.8rem;
+}
+
+.float-panel .detail-card p {
+  font-size: 0.78rem;
+}
+
+.overlay-title {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.overlay-copy {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .map-side-panel {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    max-height: 46%;
+  }
+
+  .map-overlay-legend,
+  .map-overlay-layers {
+    display: none;
+  }
 }
 
 a {
@@ -39,6 +380,13 @@ select,
 textarea {
   font: inherit;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Legacy component classes (pre-Tailwind).                                  */
+/* TODO(Phase 1.x): migrate each component to Tailwind + shadcn primitives   */
+/* and delete the corresponding block below. New shell/shared components     */
+/* are built with Tailwind utilities and do not rely on these classes.       */
+/* ------------------------------------------------------------------------ */
 
 .page-shell {
   width: calc(100vw - 24px);
@@ -81,6 +429,42 @@ textarea {
   font-size: 0.95rem;
   letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+.research-status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  border-radius: 14px;
+  background: #fff4f2;
+  color: #5c1d16;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.research-status-banner strong {
+  color: #8f1d14;
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.research-status-banner span {
+  flex: 1 1 560px;
+}
+
+.research-status-banner a {
+  color: #7a271a;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.research-mode-copy {
+  margin: 0;
+  color: var(--danger);
 }
 
 .hero {
@@ -305,11 +689,11 @@ textarea {
 }
 
 .scenario-json-editor {
-  min-height: 510px !important;
+  min-height: 510px;
 }
 
 .scenario-json-preview {
-  min-height: 180px !important;
+  min-height: 180px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -450,7 +834,7 @@ textarea {
 }
 
 .download-cell {
-  text-align: center !important;
+  text-align: center;
 }
 
 .button {
@@ -1207,10 +1591,11 @@ textarea {
 }
 
 .methodology-doc {
-  width: 80%;
+  width: 100%;
   max-width: none;
-  margin: 0 auto;
+  margin: 0;
   color: var(--ink);
+  font-family: var(--font-prose), Georgia, serif;
 }
 
 .methodology-doc h1,
@@ -1352,10 +1737,6 @@ textarea {
   gap: 12px;
 }
 
-.district-ranking-title-wrap {
-  margin-bottom: -2px;
-}
-
 .district-ranking-legend-block {
   padding: 10px 12px;
 }
@@ -1475,6 +1856,11 @@ textarea {
     height: 500px;
   }
 
+  .map-card-country .map-frame {
+    flex: 0 0 500px;
+    height: 500px;
+  }
+
   .district-explorer {
     min-height: auto;
   }
@@ -1528,12 +1914,21 @@ textarea {
     font-size: 0.82rem;
   }
 
+  .research-status-banner {
+    align-items: flex-start;
+  }
+
   .hero-metrics {
     grid-template-columns: 1fr;
   }
 
   .layer-control-columns {
     grid-template-columns: 1fr;
+  }
+
+  .map-card-country .map-frame {
+    flex-basis: 420px;
+    height: 420px;
   }
 
   .search-control-row {

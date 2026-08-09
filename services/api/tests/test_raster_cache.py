@@ -10,12 +10,15 @@ from app.services.rasters import RasterClipResult
 
 
 def test_build_district_raster_object_key_uses_normalized_admin_names():
-    assert build_district_raster_object_key(
-        "landcover",
-        "West New Britain",
-        "Talasea / Hoskins",
-        extension="tif",
-    ) == "landcover/west-new-britain/talasea-hoskins.tif"
+    assert (
+        build_district_raster_object_key(
+            "landcover",
+            "West New Britain",
+            "Talasea / Hoskins",
+            extension="tif",
+        )
+        == "landcover/west-new-britain/talasea-hoskins.tif"
+    )
 
 
 def test_clip_raster_for_district_uses_cache(monkeypatch, tmp_path):

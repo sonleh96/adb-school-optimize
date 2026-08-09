@@ -14,4 +14,5 @@ class ScoringResult:
     summary: dict[str, Any]
     applied_config: dict[str, Any]
     applied_weights: dict[str, Any]
+    run_manifest: dict[str, Any]
     warnings: list[str] = field(default_factory=list)

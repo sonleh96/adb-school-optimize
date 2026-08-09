@@ -9,12 +9,13 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-
 logger = logging.getLogger(__name__)
 
 
 class ApiError(Exception):
-    def __init__(self, message: str, *, status_code: int = 500, code: str = "api_error", details: dict | None = None) -> None:
+    def __init__(
+        self, message: str, *, status_code: int = 500, code: str = "api_error", details: dict | None = None
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.status_code = status_code
@@ -43,14 +44,18 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def handle_api_error(request: Request, exc: ApiError) -> JSONResponse:
         logger.warning("API error on %s %s: %s", request.method, request.url.path, exc.message)
-        return JSONResponse(status_code=exc.status_code, content=_error_payload(exc.code, exc.message, exc.details))
+        return JSONResponse(
+            status_code=exc.status_code, content=_error_payload(exc.code, exc.message, exc.details)
+        )
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
         logger.warning("Validation error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=422,
-            content=_error_payload("validation_error", "Request validation failed.", {"issues": exc.errors()}),
+            content=_error_payload(
+                "validation_error", "Request validation failed.", {"issues": exc.errors()}
+            ),
         )
 
     @app.exception_handler(psycopg.Error)

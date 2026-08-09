@@ -10,7 +10,6 @@ from pathlib import Path
 
 from .raster_keys import build_district_raster_object_key
 
-
 SERVICE_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -54,6 +53,13 @@ def _normalize_path(value: str | None) -> str | None:
     return normalized or None
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str | None
@@ -78,9 +84,10 @@ class Settings:
     raster_cache_dir: str
     raster_cache_ttl_seconds: int
     cors_origins_raw: str | None
+    write_operations_enabled: bool
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         load_env_files()
         return cls(
             database_url=os.getenv("DATABASE_URL"),
@@ -95,19 +102,28 @@ class Settings:
             gcs_landcover_raster_path=_normalize_path(os.getenv("GCS_LANDCOVER_RASTER_PATH")),
             gcs_district_clip_prefix=_normalize_path(os.getenv("GCS_DISTRICT_CLIP_PREFIX")),
             gcs_flood_district_clip_prefix=_normalize_path(os.getenv("GCS_FLOOD_DISTRICT_CLIP_PREFIX")),
-            gcs_landcover_district_clip_prefix=_normalize_path(os.getenv("GCS_LANDCOVER_DISTRICT_CLIP_PREFIX")),
-            gcs_luminosity_district_clip_prefix=_normalize_path(os.getenv("GCS_LUMINOSITY_DISTRICT_CLIP_PREFIX")),
-            gcs_elevation_district_clip_prefix=_normalize_path(os.getenv("GCS_ELEVATION_DISTRICT_CLIP_PREFIX")),
+            gcs_landcover_district_clip_prefix=_normalize_path(
+                os.getenv("GCS_LANDCOVER_DISTRICT_CLIP_PREFIX")
+            ),
+            gcs_luminosity_district_clip_prefix=_normalize_path(
+                os.getenv("GCS_LUMINOSITY_DISTRICT_CLIP_PREFIX")
+            ),
+            gcs_elevation_district_clip_prefix=_normalize_path(
+                os.getenv("GCS_ELEVATION_DISTRICT_CLIP_PREFIX")
+            ),
             gcs_flood_raster_crs=os.getenv("GCS_FLOOD_RASTER_CRS"),
             gcs_landcover_raster_crs=os.getenv("GCS_LANDCOVER_RASTER_CRS"),
             gcs_luminosity_raster_crs=os.getenv("GCS_LUMINOSITY_RASTER_CRS"),
             gcs_elevation_raster_crs=os.getenv("GCS_ELEVATION_RASTER_CRS"),
-            raster_cache_dir=os.getenv("RASTER_CACHE_DIR", str(Path(tempfile.gettempdir()) / "rise-png-raster-cache")),
+            raster_cache_dir=os.getenv(
+                "RASTER_CACHE_DIR", str(Path(tempfile.gettempdir()) / "rise-png-raster-cache")
+            ),
             raster_cache_ttl_seconds=int(os.getenv("RASTER_CACHE_TTL_SECONDS", "3600")),
             cors_origins_raw=os.getenv(
                 "CORS_ORIGINS",
                 "http://localhost:3000,http://127.0.0.1:3000",
             ),
+            write_operations_enabled=_env_flag("WRITE_OPERATIONS_ENABLED"),
         )
 
     def validate_database(self) -> None:
@@ -146,7 +162,9 @@ class Settings:
             return explicit_prefix
         return self.gcs_district_clip_prefix
 
-    def raster_district_clip_path(self, layer: str, province: str, district: str, *, extension: str = "tif") -> str | None:
+    def raster_district_clip_path(
+        self, layer: str, province: str, district: str, *, extension: str = "tif"
+    ) -> str | None:
         prefix = self.raster_district_clip_prefix(layer)
         if not prefix:
             return None
@@ -186,9 +204,13 @@ class Settings:
             "bucket": self.gcs_bucket,
             "source_path": None,
             "district_clip_prefix": district_clip_prefix,
-            "gcs_uri": f"gs://{self.gcs_bucket}/{district_clip_prefix}" if self.gcs_bucket and district_clip_prefix else None,
+            "gcs_uri": f"gs://{self.gcs_bucket}/{district_clip_prefix}"
+            if self.gcs_bucket and district_clip_prefix
+            else None,
             "declared_crs": declared_crs,
-            "credentials_mode": "service_account_file" if self.google_application_credentials else "adc_or_workload_identity",
+            "credentials_mode": "service_account_file"
+            if self.google_application_credentials
+            else "adc_or_workload_identity",
             "google_application_credentials": self.google_application_credentials,
             "gcs_project": self.gcs_project,
             "missing_settings": missing_settings,

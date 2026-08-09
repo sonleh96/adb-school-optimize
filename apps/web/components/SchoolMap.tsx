@@ -3,14 +3,30 @@
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Feature, Geometry } from "geojson";
-import { CircleMarker, GeoJSON, ImageOverlay, MapContainer, Pane, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import {
+  CircleMarker,
+  GeoJSON,
+  ImageOverlay,
+  MapContainer,
+  Pane,
+  Popup,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { scoreToColor } from "@/lib/color";
 import { districtIndicatorColor } from "@/lib/districtIndicatorPalette";
 import { getDistrictScore, scoreExtent } from "@/lib/districtScores";
-import type { DistrictRecord, RasterMetadataResponse, SchoolRecord, VectorLayerFeature, VectorLayerFeaturesResponse } from "@/lib/types";
+import type {
+  DistrictRecord,
+  RasterMetadataResponse,
+  SchoolRecord,
+  VectorLayerFeature,
+  VectorLayerFeaturesResponse,
+} from "@/lib/types";
 import type { DistrictScoreField } from "@/lib/districtScores";
 
 export type SchoolLayerKey =
@@ -53,7 +69,9 @@ function FitSchools({ schools }: { schools: SchoolRecord[] }) {
   const map = useMap();
   useEffect(() => {
     if (schools.length === 0) return;
-    const bounds = new LatLngBounds(schools.map((school) => [school.latitude, school.longitude] as [number, number]));
+    const bounds = new LatLngBounds(
+      schools.map((school) => [school.latitude, school.longitude] as [number, number])
+    );
     map.fitBounds(bounds.pad(0.18));
   }, [map, schools]);
 
@@ -137,7 +155,12 @@ function thinByStride(features: VectorLayerFeature[], maxPoints: number): Vector
   return features.filter((_, index) => index % step === 0);
 }
 
-function cacheKey(prefix: string, district: string, province: string | undefined, bbox4326: Bbox4326 | null): string {
+function cacheKey(
+  prefix: string,
+  district: string,
+  province: string | undefined,
+  bbox4326: Bbox4326 | null
+): string {
   const bboxPart = bbox4326 ? bbox4326.map((value) => value.toFixed(5)).join(",") : "none";
   return `${prefix}|province=${province ?? ""}|district=${district}|bbox=${bboxPart}`;
 }
@@ -266,7 +289,10 @@ export function SchoolMap({
   );
 
   const loadRasterLayer = useCallback(
-    async (layer: "flood" | "landcover" | "elevation" | "luminosity", opacity: number): Promise<RasterMetadataResponse> => {
+    async (
+      layer: "flood" | "landcover" | "elevation" | "luminosity",
+      opacity: number
+    ): Promise<RasterMetadataResponse> => {
       const key = cacheKey(`raster:${layer}:opacity=${opacity}`, district, province, null);
       const cached = cacheRef.current.get(key);
       if (cached) return cached as RasterMetadataResponse;
@@ -314,37 +340,40 @@ export function SchoolMap({
 
         if (activeLayers.has("access_walk")) {
           jobs.push(
-            Promise.all([loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT), loadVectorLayer("pop_no_walk", VECTOR_LIMIT_DEFAULT)]).then(
-              (responses) => {
-                const merged = responses.flatMap((response) => response.items);
-                accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
-                next.access_walk = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
-              }
-            )
+            Promise.all([
+              loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_walk", VECTOR_LIMIT_DEFAULT),
+            ]).then((responses) => {
+              const merged = responses.flatMap((response) => response.items);
+              accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
+              next.access_walk = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
+            })
           );
         }
 
         if (activeLayers.has("access_cycle")) {
           jobs.push(
-            Promise.all([loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT), loadVectorLayer("pop_no_cycle", VECTOR_LIMIT_DEFAULT)]).then(
-              (responses) => {
-                const merged = responses.flatMap((response) => response.items);
-                accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
-                next.access_cycle = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
-              }
-            )
+            Promise.all([
+              loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_cycle", VECTOR_LIMIT_DEFAULT),
+            ]).then((responses) => {
+              const merged = responses.flatMap((response) => response.items);
+              accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
+              next.access_cycle = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
+            })
           );
         }
 
         if (activeLayers.has("access_drive")) {
           jobs.push(
-            Promise.all([loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT), loadVectorLayer("pop_no_drive", VECTOR_LIMIT_DEFAULT)]).then(
-              (responses) => {
-                const merged = responses.flatMap((response) => response.items);
-                accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
-                next.access_drive = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
-              }
-            )
+            Promise.all([
+              loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_no_drive", VECTOR_LIMIT_DEFAULT),
+            ]).then((responses) => {
+              const merged = responses.flatMap((response) => response.items);
+              accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
+              next.access_drive = thinByStride(merged, ACCESS_POINTS_MAX_RENDER);
+            })
           );
         }
 
@@ -392,7 +421,9 @@ export function SchoolMap({
         await Promise.all(jobs);
         if (!cancelled) {
           setLayerState(next);
-          setLayerStatus(accessThinned ? "Showing sampled access points to keep map rendering responsive." : "");
+          setLayerStatus(
+            accessThinned ? "Showing sampled access points to keep map rendering responsive." : ""
+          );
         }
       } catch (error) {
         if (cancelled) return;
@@ -443,7 +474,11 @@ export function SchoolMap({
         />
         <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
         <FitSchools schools={schools} />
-        <FocusSelectedSchool schools={schools} selectedSchoolId={selectedSchoolId} enabled={focusSelectedSchool} />
+        <FocusSelectedSchool
+          schools={schools}
+          selectedSchoolId={selectedSchoolId}
+          enabled={focusSelectedSchool}
+        />
         <ViewportBoundsWatcher onChange={setViewportBbox} />
 
         {districtScoreField && districtFeatures.length > 0 ? (
@@ -485,11 +520,15 @@ export function SchoolMap({
 
         {activeLayers.has("roads") && layerState.roads.length > 0 ? (
           <Pane name="roads-layer" style={{ zIndex: 420 }}>
-            <GeoJSON data={toFeatureCollection(layerState.roads)} style={{ color: "#a855f7", weight: 1.1, opacity: 0.75 }} />
+            <GeoJSON
+              data={toFeatureCollection(layerState.roads)}
+              style={{ color: "#a855f7", weight: 1.1, opacity: 0.75 }}
+            />
           </Pane>
         ) : null}
 
-        {(activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max")) && layerState.air_quality.length > 0 ? (
+        {(activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max")) &&
+        layerState.air_quality.length > 0 ? (
           <Pane name="air-quality-layer" style={{ zIndex: 430 }}>
             <GeoJSON
               data={toFeatureCollection(layerState.air_quality)}
@@ -520,7 +559,9 @@ export function SchoolMap({
           </Pane>
         ) : null}
 
-        {(activeLayers.has("access_walk") || activeLayers.has("access_cycle") || activeLayers.has("access_drive")) ? (
+        {activeLayers.has("access_walk") ||
+        activeLayers.has("access_cycle") ||
+        activeLayers.has("access_drive") ? (
           <Pane name="access-layer" style={{ zIndex: 440 }}>
             {activeLayers.has("access_walk") ? renderAccessLayer(layerState.access_walk) : null}
             {activeLayers.has("access_cycle") ? renderAccessLayer(layerState.access_cycle) : null}
@@ -531,7 +572,13 @@ export function SchoolMap({
         {activeLayers.has("flood") && layerState.flood ? (
           <Pane name="flood-layer" style={{ zIndex: 410 }}>
             <ImageOverlay
-              url={buildRasterOverlayUrl({ layer: "flood", district, province, opacity: layerState.flood.opacity, format: "png" })}
+              url={buildRasterOverlayUrl({
+                layer: "flood",
+                district,
+                province,
+                opacity: layerState.flood.opacity,
+                format: "png",
+              })}
               bounds={rasterBounds(layerState.flood)}
               opacity={layerState.flood.opacity}
               interactive={false}
@@ -542,7 +589,13 @@ export function SchoolMap({
         {activeLayers.has("landcover") && layerState.landcover ? (
           <Pane name="landcover-layer" style={{ zIndex: 415 }}>
             <ImageOverlay
-              url={buildRasterOverlayUrl({ layer: "landcover", district, province, opacity: layerState.landcover.opacity, format: "png" })}
+              url={buildRasterOverlayUrl({
+                layer: "landcover",
+                district,
+                province,
+                opacity: layerState.landcover.opacity,
+                format: "png",
+              })}
               bounds={rasterBounds(layerState.landcover)}
               opacity={layerState.landcover.opacity}
               interactive={false}
@@ -553,7 +606,13 @@ export function SchoolMap({
         {activeLayers.has("elevation") && layerState.elevation ? (
           <Pane name="elevation-layer" style={{ zIndex: 417 }}>
             <ImageOverlay
-              url={buildRasterOverlayUrl({ layer: "elevation", district, province, opacity: layerState.elevation.opacity, format: "png" })}
+              url={buildRasterOverlayUrl({
+                layer: "elevation",
+                district,
+                province,
+                opacity: layerState.elevation.opacity,
+                format: "png",
+              })}
               bounds={rasterBounds(layerState.elevation)}
               opacity={layerState.elevation.opacity}
               interactive={false}
@@ -564,7 +623,13 @@ export function SchoolMap({
         {activeLayers.has("luminosity") && layerState.luminosity ? (
           <Pane name="luminosity-layer" style={{ zIndex: 418 }}>
             <ImageOverlay
-              url={buildRasterOverlayUrl({ layer: "luminosity", district, province, opacity: layerState.luminosity.opacity, format: "png" })}
+              url={buildRasterOverlayUrl({
+                layer: "luminosity",
+                district,
+                province,
+                opacity: layerState.luminosity.opacity,
+                format: "png",
+              })}
               bounds={rasterBounds(layerState.luminosity)}
               opacity={layerState.luminosity.opacity}
               interactive={false}
@@ -619,7 +684,11 @@ export function SchoolMap({
         <div className="layer-legend-panel map-layer-legend-overlay">
           <div className="layer-legend-header">
             <p className="layer-legend-heading">Active Layer Legends</p>
-            <button type="button" className="layer-legend-toggle" onClick={() => setShowLayerLegend((current) => !current)}>
+            <button
+              type="button"
+              className="layer-legend-toggle"
+              onClick={() => setShowLayerLegend((current) => !current)}
+            >
               {showLayerLegend ? "Hide" : "Show"}
             </button>
           </div>
@@ -675,9 +744,11 @@ export function SchoolMap({
                 </div>
               ) : null}
 
-              {(activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max")) ? (
+              {activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max") ? (
                 <div className="layer-legend-item">
-                  <p className="layer-legend-title">Air Pollution (AQI {selectedAQIField === "aqi_us_max" ? "Maximum" : "Mean"})</p>
+                  <p className="layer-legend-title">
+                    Air Pollution (AQI {selectedAQIField === "aqi_us_max" ? "Maximum" : "Mean"})
+                  </p>
                   <div className="legend-row">
                     <span className="legend-dot" style={{ background: "#00E400" }} />
                     <span className="small-copy">Good (0-50)</span>
@@ -696,7 +767,9 @@ export function SchoolMap({
                 </div>
               ) : null}
 
-              {(activeLayers.has("access_walk") || activeLayers.has("access_cycle") || activeLayers.has("access_drive")) ? (
+              {activeLayers.has("access_walk") ||
+              activeLayers.has("access_cycle") ||
+              activeLayers.has("access_drive") ? (
                 <div className="layer-legend-item">
                   <p className="layer-legend-title">Access Grids</p>
                   <div className="legend-row">

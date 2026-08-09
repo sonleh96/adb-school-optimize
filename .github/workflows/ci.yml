@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run build
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Install ruff
+        run: uv tool install ruff
+
+      - name: Ruff lint
+        run: ruff check services/api packages/school_scoring
+
+      - name: Ruff format check
+        run: ruff format --check services/api packages/school_scoring
+
+      - name: Install API + scoring package
+        run: |
+          uv pip install --system -e packages/school_scoring
+          uv pip install --system --no-deps -e services/api
+          uv pip install --system -r services/api/requirements.lock
+
+      - name: API tests
+        working-directory: services/api
+        run: python -m pytest tests/ -q
+
+      - name: Scoring package tests
+        working-directory: packages/school_scoring
+        run: python -m pytest tests/ -q
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f services/api/Dockerfile -t rise-png-api:ci .

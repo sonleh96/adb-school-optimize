@@ -10,16 +10,19 @@ from .config import (
     get_default_config,
     get_default_weights,
 )
+from .provenance import SCORE_VERSION
 from .scoring import run_scoring
-from .validators import validate_input_data
+from .validators import collect_data_quality_issues, validate_input_data
 
 __all__ = [
+    "SCORE_VERSION",
     "ColumnConfig",
     "ImputationConfig",
     "OutputConfig",
     "ScoringConfig",
     "ScreeningConfig",
     "WeightConfig",
+    "collect_data_quality_issues",
     "get_default_config",
     "get_default_weights",
     "run_scoring",
