@@ -163,8 +163,8 @@ from schools s
 left join school_scores sc
   on sc.school_id = s.school_id
  and sc.scenario_id = coalesce(%(scenario_id)s::uuid, ({DEFAULT_SCENARIO_SQL.strip()}))
-where (%(province)s::text is null or s.province = %(province)s::text)
-  and (%(district)s::text is null or s.district = %(district)s::text)
+where (%(province)s::text is null or s.province_norm = normalize_join_key(%(province)s::text))
+  and (%(district)s::text is null or s.district_norm = normalize_join_key(%(district)s::text))
 order by coalesce(sc.rank_priority, 999999), s.school_name
 limit %(limit)s
 """

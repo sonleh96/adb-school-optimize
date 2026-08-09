@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from ..db import get_db
 from ..errors import ApiError
+from ..http_cache import META_CACHE_CONTROL, set_cache_control
 from ..repository import (
     VECTOR_FEATURE_LIMIT_MAX,
     fetch_districts,
@@ -19,26 +20,33 @@ router = APIRouter(prefix="/api/v1/meta", tags=["meta"])
 
 
 @router.get("/layers")
-def get_layers():
+def get_layers(response: Response):
     with get_db() as connection:
-        return fetch_layers(connection)
+        rows = fetch_layers(connection)
+    set_cache_control(response, META_CACHE_CONTROL)
+    return rows
 
 
 @router.get("/indicators")
-def get_indicators():
+def get_indicators(response: Response):
+    set_cache_control(response, META_CACHE_CONTROL)
     return {"default": "Average AQI", "items": fetch_indicators()}
 
 
 @router.get("/provinces")
-def get_provinces():
+def get_provinces(response: Response):
     with get_db() as connection:
-        return fetch_provinces(connection)
+        rows = fetch_provinces(connection)
+    set_cache_control(response, META_CACHE_CONTROL)
+    return rows
 
 
 @router.get("/districts")
-def get_districts(province: str | None = None):
+def get_districts(response: Response, province: str | None = None):
     with get_db() as connection:
-        return fetch_districts(connection, province=province)
+        rows = fetch_districts(connection, province=province)
+    set_cache_control(response, META_CACHE_CONTROL)
+    return rows
 
 
 @router.get("/layers/{layer_key}/features")

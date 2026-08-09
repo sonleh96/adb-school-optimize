@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import Response
 
 from ..db import get_db
+from ..http_cache import META_CACHE_CONTROL, set_cache_control
 from ..queries import DEFAULT_CHOROPLETH_SIMPLIFY_TOLERANCE
 from ..repository import fetch_district_choropleth
 
@@ -15,8 +16,7 @@ router = APIRouter(prefix="/api/v1/districts", tags=["districts"])
 
 
 def _choropleth_response_headers(response: Response) -> None:
-    # Choropleth geometry is effectively static between ingestions.
-    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+    set_cache_control(response, META_CACHE_CONTROL)
 
 
 @router.get("")
