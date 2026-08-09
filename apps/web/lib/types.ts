@@ -58,6 +58,8 @@ export type ScenarioRecord = {
   description?: string | null;
   weights: Record<string, unknown>;
   config?: Record<string, unknown> | null;
+  score_version?: string | null;
+  run_manifest?: Record<string, unknown> | null;
   created_by?: string | null;
   is_default: boolean;
   created_at?: string;
@@ -112,6 +114,7 @@ export type IndicatorsResponse = {
 export type ScoringRunResponse = {
   scenario: ScenarioRecord | null;
   summary: Record<string, unknown>;
+  run_manifest: Record<string, unknown>;
   warnings: string[];
   top_rows: SchoolRecord[];
 };

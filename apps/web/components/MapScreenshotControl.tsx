@@ -5,10 +5,7 @@ import * as LeafletNS from "leaflet";
 import { useEffect } from "react";
 import { useMap } from "react-leaflet";
 
-type LeafletImageFn = (
-  map: unknown,
-  callback: (error: unknown, canvas: HTMLCanvasElement) => void
-) => void;
+type LeafletImageFn = (map: unknown, callback: (error: unknown, canvas: HTMLCanvasElement) => void) => void;
 
 let leafletImageLoader: Promise<LeafletImageFn> | null = null;
 
@@ -133,7 +130,9 @@ async function renderLeafletViewport(mapContainer: HTMLElement): Promise<HTMLCan
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const imgNodes = Array.from(
-    mapContainer.querySelectorAll<HTMLImageElement>(".leaflet-pane img.leaflet-tile, .leaflet-pane img.leaflet-image-layer")
+    mapContainer.querySelectorAll<HTMLImageElement>(
+      ".leaflet-pane img.leaflet-tile, .leaflet-pane img.leaflet-image-layer"
+    )
   );
   const canvasNodes = Array.from(mapContainer.querySelectorAll<HTMLCanvasElement>(".leaflet-pane canvas"));
   const svgNodes = Array.from(mapContainer.querySelectorAll<SVGElement>(".leaflet-pane svg"));
@@ -223,7 +222,11 @@ export function MapScreenshotControl({ filenamePrefix }: { filenamePrefix: strin
 
     screenshotControl.onAdd = () => {
       const container = DomUtil.create("div", "leaflet-bar map-screenshot-control");
-      const button = DomUtil.create("button", "leaflet-bar-part map-screenshot-control-button", container) as HTMLButtonElement;
+      const button = DomUtil.create(
+        "button",
+        "leaflet-bar-part map-screenshot-control-button",
+        container
+      ) as HTMLButtonElement;
       button.type = "button";
       button.title = "Save current map window as PNG";
       button.textContent = "PNG";

@@ -21,9 +21,5 @@ def compute_stage1_screening(df: pd.DataFrame, config: ScoringConfig) -> pd.Data
 def rank_scores(df: pd.DataFrame, config: ScoringConfig) -> pd.DataFrame:
     ranked = df.sort_values(config.output.sort_by, ascending=config.output.ascending, kind="mergesort").copy()
     ranked["rank_priority"] = range(1, len(ranked) + 1)
-    ranked["rank_need"] = (
-        ranked["Need"]
-        .rank(method="dense", ascending=False)
-        .astype(int)
-    )
+    ranked["rank_need"] = ranked["Need"].rank(method="dense", ascending=False).astype(int)
     return ranked

@@ -7,12 +7,13 @@ import { fetchDistrictChoropleth, fetchSchoolDetail, fetchSchools } from "@/lib/
 import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
+import { ErrorState, LoadingSkeleton } from "@/components/states";
 import type { DistrictRecord, SchoolRecord } from "@/lib/types";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
-  loading: () => <div className="loading">Loading school map…</div>,
+  loading: () => <LoadingSkeleton className="absolute inset-0 m-0 rounded-none border-0" lines={4} />,
 });
 
 const EMPTY_LAYERS: SchoolLayerToggle[] = [];
@@ -79,168 +80,162 @@ export function CountrySchoolExplorer() {
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
-    [schools, selectedSchoolId]
+    [schools, selectedSchoolId],
   );
 
   return (
-    <section className="panel">
-      <div className="panel-body">
-        {error ? <div className="error">{error}</div> : null}
-        <div className="split-layout split-layout-country">
-          <div className="panel map-card map-card-country">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">National School Map</h3>
-                <p className="panel-subtitle">
-                  Click a school marker to sync selection into the ranked table.
-                </p>
-                <div className="map-score-legend map-score-legend-overview">
-                  <div className="map-legend-block">
-                    <ScoreLegend scoreField={scoreField} />
-                  </div>
-                  <div className="map-legend-block district-choropleth-legend-block">
-                    <DistrictScoreLegend scoreField={scoreField} />
-                  </div>
-                </div>
-              </div>
-              <div className="map-head-actions">
-                <div className="score-toggle" role="group" aria-label="Color markers by">
-                  <button
-                    type="button"
-                    className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-                    onClick={() => setScoreField("priority")}
-                  >
-                    Priority
-                  </button>
-                  <button
-                    type="button"
-                    className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-                    onClick={() => setScoreField("need")}
-                  >
-                    Need
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="panel-body">
-                <div className="map-frame">
-                {loading ? (
-                  <div className="loading">Loading schools…</div>
-                ) : (
-                  <SchoolMap
-                    schools={schools}
-                    selectedSchoolId={selectedSchoolId}
-                    onSelectSchool={setSelectedSchoolId}
-                    scoreField={scoreField}
-                    district="All PNG"
-                    layers={EMPTY_LAYERS}
-                    showDistrictProvinceInPopup
-                    screenshotFilePrefix="all-schools-map"
-                    districtFeatures={districtFeatures}
-                    districtScoreField={scoreField}
-                    focusSelectedSchool={false}
-                  />
-                )}
-              </div>
-              <p className="status-note">No raster or vector overlay layers are enabled in this view.</p>
-            </div>
-          </div>
-
-          <div className="sidebar-stack">
-            <article className="panel">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Ranked School Table</h3>
-                  <p className="panel-subtitle">Nationwide table with Priority and Need scores.</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                <div className="table-wrap table-wrap-scroll">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>School Name</th>
-                        <th>Priority</th>
-                        <th>Need</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schools.map((school) => (
-                        <tr
-                          className="data-row"
-                          key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                          data-selected={school.school_id === selectedSchoolId}
-                          onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                        >
-                          <td>{school.rank_priority ?? "n/a"}</td>
-                          <td className="school-name-cell">{school.school_name}</td>
-                          <td>
-                            <span className="score-pill" style={scoreToPillStyle(school.priority)}>
-                              {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="score-pill" style={scoreToPillStyle(school.need)}>
-                              {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </article>
-
-            <article className="panel">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Selected School Snapshot</h3>
-                  <p className="panel-subtitle">Current selection from national map or table.</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                {selectedSchool ? (
-                  <div className="detail-grid detail-grid-compact">
-                    <div className="detail-card">
-                      <h4>{selectedSchool.school_name}</h4>
-                      <p>
-                        {selectedSchool.district}, {selectedSchool.province}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Priority / Need</h4>
-                      <p>
-                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                        {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Teachers / Classrooms</h4>
-                      <p>
-                        {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
-                        {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Confidence / Stage 1</h4>
-                      <p>
-                        {selectedSchool.data_confidence != null
-                          ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
-                          : "n/a"}{" "}
-                        / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty">Pick a school on the map or in the table.</div>
-                )}
-              </div>
-            </article>
-          </div>
+    <div className="map-workspace">
+      <div className="map-workspace-canvas">
+        <div className="map-frame">
+          {loading ? (
+            <LoadingSkeleton className="absolute inset-0 m-0 rounded-none border-0" lines={4} />
+          ) : (
+            <SchoolMap
+              schools={schools}
+              selectedSchoolId={selectedSchoolId}
+              onSelectSchool={setSelectedSchoolId}
+              scoreField={scoreField}
+              district="All PNG"
+              layers={EMPTY_LAYERS}
+              showDistrictProvinceInPopup
+              screenshotFilePrefix="all-schools-map"
+              districtFeatures={districtFeatures}
+              districtScoreField={scoreField}
+              focusSelectedSchool={false}
+            />
+          )}
         </div>
       </div>
-    </section>
+
+      <div className="map-overlay-controls map-overlay-controls-top-left">
+        <p className="overlay-title">National overview</p>
+        <p className="overlay-copy">Click a marker to sync the ranked table.</p>
+        <div className="score-toggle" role="group" aria-label="Color markers by">
+          <button
+            type="button"
+            className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+            onClick={() => setScoreField("priority")}
+          >
+            Priority
+          </button>
+          <button
+            type="button"
+            className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+            onClick={() => setScoreField("need")}
+          >
+            Need
+          </button>
+        </div>
+      </div>
+
+      <div className="map-overlay-legend">
+        <div className="map-legend-block">
+          <ScoreLegend scoreField={scoreField} />
+        </div>
+        <div className="map-legend-block">
+          <DistrictScoreLegend scoreField={scoreField} />
+        </div>
+      </div>
+
+      <aside className="map-side-panel" aria-label="School ranking and snapshot">
+        <article className="float-panel map-side-panel-primary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Ranked schools</h2>
+              <p className="float-panel-subtitle">Nationwide Priority and Need</p>
+            </div>
+          </div>
+          <div className="float-panel-body" style={{ padding: 0 }}>
+            {error ? (
+              <ErrorState message="Could not load schools." className="m-3" />
+            ) : (
+              <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>School</th>
+                      <th>Pri</th>
+                      <th>Need</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schools.map((school) => (
+                      <tr
+                        className="data-row"
+                        key={
+                          school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`
+                        }
+                        data-selected={school.school_id === selectedSchoolId}
+                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
+                      >
+                        <td>{school.rank_priority ?? "n/a"}</td>
+                        <td className="school-name-cell">{school.school_name}</td>
+                        <td>
+                          <span className="score-pill" style={scoreToPillStyle(school.priority)}>
+                            {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="score-pill" style={scoreToPillStyle(school.need)}>
+                            {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </article>
+
+        <article className="float-panel map-side-panel-secondary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Selection</h2>
+              <p className="float-panel-subtitle">Map or table pick</p>
+            </div>
+          </div>
+          <div className="float-panel-body">
+            {selectedSchool ? (
+              <div className="detail-grid detail-grid-compact">
+                <div className="detail-card">
+                  <h4>{selectedSchool.school_name}</h4>
+                  <p>
+                    {selectedSchool.district}, {selectedSchool.province}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Priority / Need</h4>
+                  <p>
+                    {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
+                    {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Teachers / Classrooms</h4>
+                  <p>
+                    {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
+                    {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Confidence / Stage 1</h4>
+                  <p>
+                    {selectedSchool.data_confidence != null
+                      ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
+                      : "n/a"}{" "}
+                    / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="overlay-copy">Pick a school on the map or in the table.</p>
+            )}
+          </div>
+        </article>
+      </aside>
+    </div>
   );
 }

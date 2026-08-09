@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from ..db import get_db
 from ..models.api import ScenarioCreate, ScenarioUpdate
 from ..repository import fetch_scenario, fetch_scenarios, insert_scenario, update_scenario
+from ..security import require_write_operations
 
 router = APIRouter(prefix="/api/v1/scenarios", tags=["scenarios"])
 
 
 def _payload_dict(model):
-    return model.model_dump(exclude_none=True) if hasattr(model, "model_dump") else model.dict(exclude_none=True)
+    return (
+        model.model_dump(exclude_none=True) if hasattr(model, "model_dump") else model.dict(exclude_none=True)
+    )
 
 
 @router.get("")
@@ -22,7 +25,7 @@ def list_scenarios():
 
 
 @router.post("")
-def create_scenario(payload: ScenarioCreate):
+def create_scenario(payload: ScenarioCreate, _write_access: None = Depends(require_write_operations)):
     with get_db() as connection:
         return insert_scenario(connection, _payload_dict(payload))
 
@@ -37,7 +40,11 @@ def get_scenario(scenario_id: str):
 
 
 @router.patch("/{scenario_id}")
-def patch_scenario(scenario_id: str, payload: ScenarioUpdate):
+def patch_scenario(
+    scenario_id: str,
+    payload: ScenarioUpdate,
+    _write_access: None = Depends(require_write_operations),
+):
     with get_db() as connection:
         scenario = update_scenario(connection, scenario_id, _payload_dict(payload))
     if not scenario:

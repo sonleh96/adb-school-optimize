@@ -18,7 +18,9 @@ def list_schools(
     limit: int = 500,
 ):
     with get_db() as connection:
-        return fetch_schools(connection, province=province, district=district, scenario_id=scenario_id, limit=limit)
+        return fetch_schools(
+            connection, province=province, district=district, scenario_id=scenario_id, limit=limit
+        )
 
 
 @router.get("/{school_id}")

@@ -40,11 +40,9 @@ def build_score_breakdown(row: pd.Series | dict[str, Any], applied_weights: dict
 def summarize_missingness(df: pd.DataFrame) -> dict[str, Any]:
     missing_counts = df.isna().sum()
     return {
-        "rows": int(len(df)),
+        "rows": len(df),
         "columns_with_missing": int((missing_counts > 0).sum()),
-        "missing_counts": {
-            column: int(count) for column, count in missing_counts.items() if count > 0
-        },
+        "missing_counts": {column: int(count) for column, count in missing_counts.items() if count > 0},
     }
 
 
