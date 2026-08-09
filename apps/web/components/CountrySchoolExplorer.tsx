@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
+import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
@@ -176,51 +177,23 @@ export function CountrySchoolExplorer() {
           </div>
         </article>
 
-        <article className="float-panel map-side-panel-secondary">
-          <div className="float-panel-head">
-            <div>
-              <h2 className="float-panel-title">Selection</h2>
-              <p className="float-panel-subtitle">Map or table pick</p>
-            </div>
-          </div>
-          <div className="float-panel-body">
-            {selectedSchool ? (
-              <div className="detail-grid detail-grid-compact">
-                <div className="detail-card">
-                  <h4>{selectedSchool.school_name}</h4>
-                  <p>
-                    {selectedSchool.district}, {selectedSchool.province}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Priority / Need</h4>
-                  <p>
-                    {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                    {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Teachers / Classrooms</h4>
-                  <p>
-                    {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
-                    {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Confidence / Stage 1</h4>
-                  <p>
-                    {selectedSchool.data_confidence != null
-                      ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
-                      : "n/a"}{" "}
-                    / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="overlay-copy">Pick a school on the map or in the table.</p>
-            )}
-          </div>
-        </article>
+        <SelectionDetailCard
+          className="map-side-panel-secondary"
+          kind="school"
+          school={selectedSchool}
+          detail={selectedSchoolDetail}
+          schools={schools}
+          scenarioId={scenarioId}
+          isLoading={schoolsQuery.isLoading || detailQuery.isLoading}
+          errorMessage={
+            schoolsQuery.error
+              ? "Schools could not be loaded."
+              : detailQuery.error
+                ? "School details could not be loaded."
+                : null
+          }
+          onRetry={() => void (schoolsQuery.error ? schoolsQuery.refetch() : detailQuery.refetch())}
+        />
       </aside>
     </div>
   );
