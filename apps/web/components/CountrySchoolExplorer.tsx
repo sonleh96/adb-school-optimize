@@ -142,7 +142,7 @@ export function CountrySchoolExplorer() {
   );
 
   return (
-    <div className="map-workspace">
+    <div className="map-workspace national-overview-workspace">
       <div className="map-workspace-canvas">
         <div className="map-frame">
           {loading ? (
@@ -164,12 +164,13 @@ export function CountrySchoolExplorer() {
               mapView={mapView}
               onMapViewChange={setMapView}
               hasExplicitMapView={initialState.mapView != null}
+              enableNationalDensity
             />
           )}
         </div>
       </div>
 
-      <div className="map-overlay-controls map-overlay-controls-top-left">
+      <div className="map-overlay-controls map-overlay-controls-top-left national-overview-controls">
         <p className="overlay-title">National overview</p>
         <p className="overlay-copy">Click a marker to sync the ranked table.</p>
         <div className="score-toggle" role="group" aria-label="Color markers by">

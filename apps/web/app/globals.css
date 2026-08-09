@@ -631,6 +631,20 @@ body {
     display: grid;
   }
 
+  .national-density-legend {
+    bottom: calc(46% + 20px);
+    max-width: min(320px, calc(100% - 24px));
+  }
+
+  .national-overview-controls {
+    bottom: calc(46% + 120px);
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .school-explorer-left-stack {
     max-height: calc(54% - 32px);
   }
@@ -1557,6 +1571,33 @@ textarea {
   background: rgba(255, 255, 255, 0.9);
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.national-density-legend {
+  position: absolute;
+  z-index: 805;
+  left: 12px;
+  bottom: 124px;
+  display: grid;
+  gap: 2px;
+  max-width: min(320px, calc(100% - 384px));
+  padding: 8px 10px;
+  border: 1px solid rgba(15, 31, 51, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 20px rgba(15, 31, 51, 0.12);
+  color: var(--ink);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.national-density-legend strong {
+  font-size: 0.76rem;
+}
+
+.national-density-legend span {
+  color: var(--muted);
 }
 
 .map-screenshot-control-button {
