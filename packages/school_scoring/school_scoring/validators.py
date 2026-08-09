@@ -181,7 +181,7 @@ def collect_data_quality_issues(
                     school_outside.loc[index] = True
 
             walking, cycling, driving = row_geometries
-            if not cycling.covers(walking) or not driving.covers(cycling):
+            if walking.area > cycling.area or cycling.area > driving.area:
                 not_nested.loc[index] = True
 
         for issue in (
@@ -207,7 +207,7 @@ def collect_data_quality_issues(
                 config,
                 code="catchment_not_nested",
                 severity="warning",
-                message="Walking, cycling, and driving catchments are not spatially nested.",
+                message="Catchment area is not non-decreasing from walking to cycling to driving.",
             ),
         ):
             if issue:
