@@ -15,6 +15,7 @@ from shapely.wkt import dumps
 from ..db import get_db
 from .mappings import AUXILIARY_VECTOR_SOURCES
 from ..settings import get_settings
+from .data_quality import preflight_ingestion_inputs
 
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -586,6 +587,9 @@ def main() -> None:
     parser.add_argument("--skip-districts", action="store_true")
     parser.add_argument("--skip-auxiliary-layers", action="store_true")
     args = parser.parse_args()
+
+    if not args.skip_schools:
+        preflight_ingestion_inputs(args.schools, args.districts)
 
     settings = get_settings()
     with get_db(settings) as connection:

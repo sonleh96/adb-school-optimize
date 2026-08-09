@@ -11,6 +11,12 @@ def test_default_config_loads() -> None:
     validate_config(config)
 
 
+def test_default_required_columns_include_every_field_read_by_scoring() -> None:
+    config = get_default_config()
+
+    assert "Grade 7-10 Students per 1000 Population" in config.columns.required_columns
+
+
 def test_config_override_works() -> None:
     config = ScoringConfig.from_dict({"screening": {"quantile": 0.8}})
     assert config.screening.quantile == 0.8
