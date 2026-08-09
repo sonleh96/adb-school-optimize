@@ -29,6 +29,7 @@ function isBookmarkPathname(value: string): value is BookmarkPathname {
 function snapshotState(state: UrlState): UrlState {
   return {
     ...state,
+    filters: { ...state.filters, provinces: [...state.filters.provinces] },
     layers: [...state.layers],
     mapView: state.mapView ? { ...state.mapView } : null,
   };
