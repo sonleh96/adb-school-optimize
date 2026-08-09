@@ -9,8 +9,10 @@ import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
+import { SchoolFilterControls } from "@/components/SchoolFilterControls";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
+import { createSchoolFilterPredicate, type SchoolFilters } from "@/lib/schoolFilters";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
 import {
@@ -32,11 +34,24 @@ export function CountrySchoolExplorer() {
   const [scoreField, setScoreField] = useState<"priority" | "need">(initialState.score ?? "priority");
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
+  const [filters, setFilters] = useState<SchoolFilters>(initialState.filters);
 
   const choroplethQuery = useChoroplethQuery({ fields: "scores" });
   const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
 
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const schoolFilterPredicate = useMemo(() => createSchoolFilterPredicate(filters), [filters]);
+  const filteredSchools = useMemo(
+    () => schools.filter(schoolFilterPredicate),
+    [schools, schoolFilterPredicate]
+  );
+  const provinces = useMemo(
+    () =>
+      [...new Set(schools.map((school) => school.province).filter(Boolean))].sort((left, right) =>
+        left.localeCompare(right)
+      ),
+    [schools]
+  );
   const districtFeatures = useMemo(
     () => choroplethQuery.data?.features ?? [],
     [choroplethQuery.data?.features]
@@ -70,9 +85,9 @@ export function CountrySchoolExplorer() {
   );
 
   useEffect(() => {
-    if (selectedSchoolId || !schools[0]?.school_id) return;
-    selectSchool(schools[0].school_id);
-  }, [selectSchool, selectedSchoolId, schools]);
+    if (selectedSchoolId && filteredSchools.some((school) => school.school_id === selectedSchoolId)) return;
+    selectSchool(filteredSchools[0]?.school_id ?? null);
+  }, [filteredSchools, selectSchool, selectedSchoolId]);
 
   useEffect(() => {
     if (!mapView) return;
@@ -83,8 +98,8 @@ export function CountrySchoolExplorer() {
   const detailQuery = useSchoolDetailQuery(selectedSchoolId, scenarioId ?? undefined);
 
   const selectedSchool = useMemo(
-    () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
-    [schools, selectedSchoolId]
+    () => filteredSchools.find((school) => school.school_id === selectedSchoolId) ?? null,
+    [filteredSchools, selectedSchoolId]
   );
   const selectedSchoolDetail = detailQuery.data ?? null;
   const briefingState = useMemo(
@@ -95,10 +110,11 @@ export function CountrySchoolExplorer() {
         province: selectedSchool?.province ?? null,
         score: scoreField,
         scenario: scenarioId,
+        filters,
         layers: [],
         mapView,
       }),
-    [initialState, mapView, scenarioId, scoreField, selectedSchool, selectedSchoolId]
+    [filters, initialState, mapView, scenarioId, scoreField, selectedSchool, selectedSchoolId]
   );
   const applyBookmark = useCallback(
     (state: UrlState) => {
@@ -106,9 +122,17 @@ export function CountrySchoolExplorer() {
       setScoreField(state.score ?? "priority");
       setMapView(state.mapView);
       setScenarioId(state.scenario);
+      setFilters(state.filters);
       if (state.scenario) persistSelectedScenario(state.scenario);
       else clearPersistedScenario();
       replaceState(state);
+    },
+    [replaceState]
+  );
+  const updateFilters = useCallback(
+    (nextFilters: SchoolFilters) => {
+      setFilters(nextFilters);
+      replaceState({ filters: nextFilters });
     },
     [replaceState]
   );
@@ -121,7 +145,7 @@ export function CountrySchoolExplorer() {
             <LoadingSkeleton className="absolute inset-0 m-0 rounded-none border-0" lines={4} />
           ) : (
             <SchoolMap
-              schools={schools}
+              schools={filteredSchools}
               selectedSchoolId={selectedSchoolId}
               onSelectSchool={selectSchool}
               scoreField={scoreField}
@@ -183,15 +207,28 @@ export function CountrySchoolExplorer() {
           <div className="float-panel-head">
             <div>
               <h2 className="float-panel-title">Ranked schools</h2>
-              <p className="float-panel-subtitle">Nationwide Priority and Need</p>
+              <p className="float-panel-subtitle">Nationwide Priority and Need, filtered locally</p>
             </div>
           </div>
+          <SchoolFilterControls
+            filters={filters}
+            provinces={provinces}
+            resultCount={filteredSchools.length}
+            onChange={updateFilters}
+          />
           <div className="float-panel-body" style={{ padding: 0 }}>
             {error ? (
               <ErrorState message="Could not load schools." className="m-3" />
+            ) : filteredSchools.length === 0 ? (
+              <div className="p-5" role="status">
+                <p className="text-sm font-medium text-[var(--color-ink)]">No schools match these filters.</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--color-muted)]">
+                  Remove a filter or lower a score threshold to see schools on the map and in this table.
+                </p>
+              </div>
             ) : (
               <VirtualizedSchoolTable
-                schools={schools}
+                schools={filteredSchools}
                 selectedSchoolId={selectedSchoolId}
                 onSelectSchool={selectSchool}
               />
