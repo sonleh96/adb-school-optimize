@@ -140,7 +140,9 @@ def build_choropleth_sql(extra_columns: list[str] | None = None) -> str:
         if column not in extras:
             extras.append(column)
     if extras:
-        return CHOROPLETH_BASE_SELECT + ",\n       " + ",\n       ".join(extras) + "\n" + CHOROPLETH_FROM_WHERE
+        return (
+            CHOROPLETH_BASE_SELECT + ",\n       " + ",\n       ".join(extras) + "\n" + CHOROPLETH_FROM_WHERE
+        )
     return CHOROPLETH_BASE_SELECT + "\n" + CHOROPLETH_FROM_WHERE
 
 

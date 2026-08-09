@@ -55,7 +55,7 @@ def open_pool(settings: Settings | None = None) -> ConnectionPool | None:
             kwargs={"row_factory": dict_row},
             open=True,
         )
-    except Exception as exc:  # noqa: BLE001 - surface pool open failures as dependency errors
+    except Exception as exc:
         raise DependencyError(
             "Unable to open Supabase Postgres connection pool.",
             details={"type": exc.__class__.__name__},

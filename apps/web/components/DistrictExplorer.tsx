@@ -28,12 +28,9 @@ export function DistrictExplorer() {
 
   const indicators = useMemo(
     () => indicatorsQuery.data?.items ?? ["Average AQI"],
-    [indicatorsQuery.data?.items],
+    [indicatorsQuery.data?.items]
   );
-  const features = useMemo(
-    () => choroplethQuery.data?.features ?? [],
-    [choroplethQuery.data?.features],
-  );
+  const features = useMemo(() => choroplethQuery.data?.features ?? [], [choroplethQuery.data?.features]);
   const loading = choroplethQuery.isLoading;
   const error =
     (indicatorsQuery.error instanceof Error && indicatorsQuery.error.message) ||
@@ -159,7 +156,11 @@ export function DistrictExplorer() {
             onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
           />
         </div>
-        {error ? <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>{error}</p> : null}
+        {error ? (
+          <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
+            {error}
+          </p>
+        ) : null}
       </div>
 
       <div className="map-overlay-legend">
@@ -283,9 +284,7 @@ export function DistrictExplorer() {
                         data-highlighted={isHighlighted}
                         onClick={() => setSelectedDistrict(feature)}
                       >
-                        <td>
-                          {getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}
-                        </td>
+                        <td>{getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}</td>
                         <td className="school-name-cell">{feature.district}</td>
                         <td>{formatDistrictScore(feature.priority)}</td>
                         <td>{formatDistrictScore(feature.need)}</td>

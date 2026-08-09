@@ -17,12 +17,14 @@ export function useScenariosQuery() {
   });
 }
 
-export function useSchoolsQuery(params: {
-  district?: string;
-  province?: string;
-  scenarioId?: string;
-  limit?: number;
-} = {}) {
+export function useSchoolsQuery(
+  params: {
+    district?: string;
+    province?: string;
+    scenarioId?: string;
+    limit?: number;
+  } = {}
+) {
   const limit = params.limit ?? 10000;
   return useQuery({
     queryKey: queryKeys.schools({
@@ -63,12 +65,14 @@ export function useIndicatorsQuery() {
   });
 }
 
-export function useChoroplethQuery(params: {
-  indicator?: string;
-  province?: string;
-  district?: string;
-  fields?: "scores" | "indicator" | "full";
-} = {}) {
+export function useChoroplethQuery(
+  params: {
+    indicator?: string;
+    province?: string;
+    district?: string;
+    fields?: "scores" | "indicator" | "full";
+  } = {}
+) {
   return useQuery({
     queryKey: queryKeys.choropleth(params),
     queryFn: () => fetchDistrictChoropleth(params),
