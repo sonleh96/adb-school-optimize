@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
+import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import { useChoroplethQuery, useIndicatorsQuery } from "@/lib/hooks";
@@ -99,16 +100,6 @@ export function DistrictExplorer() {
       features.map((feature) => Number(feature[indicatorField])).filter((value) => Number.isFinite(value)),
     [features, indicatorField]
   );
-
-  const metricSummary = useMemo(() => {
-    const values = metricValues;
-
-    if (values.length === 0) return null;
-    return {
-      avg: values.reduce((sum, value) => sum + value, 0) / values.length,
-      count: values.length,
-    };
-  }, [metricValues]);
 
   const selectedValue = useMemo(() => {
     if (!selectedDistrict) return null;
@@ -239,39 +230,29 @@ export function DistrictExplorer() {
       </div>
 
       <aside className="map-side-panel" aria-label="District summary and ranking">
+        <SelectionDetailCard
+          className="map-side-panel-secondary"
+          kind="district"
+          district={selectedDistrict}
+          districts={features}
+          indicator={indicator}
+          indicatorField={String(indicatorField)}
+          scenarioId={scenarioId}
+          isLoading={choroplethQuery.isLoading}
+          errorMessage={error}
+          onRetry={() => void Promise.all([choroplethQuery.refetch(), indicatorsQuery.refetch()])}
+        />
+
         <article className="float-panel map-side-panel-secondary">
           <div className="float-panel-head">
             <div>
-              <h2 className="float-panel-title">Selection</h2>
+              <h2 className="float-panel-title">Distribution</h2>
               <p className="float-panel-subtitle">{indicator}</p>
             </div>
           </div>
           <div className="float-panel-body">
-            {selectedDistrict ? (
-              <div className="detail-card">
-                <h3>{selectedDistrict.district}</h3>
-                <p>{selectedDistrict.province}</p>
-                <p style={{ marginTop: 8 }}>
-                  <strong>{indicator}:</strong> {String(selectedDistrict[indicatorField] ?? "n/a")}
-                </p>
-              </div>
-            ) : (
-              <p className="overlay-copy">Select a district polygon.</p>
-            )}
-            {metricSummary ? (
-              <div className="detail-grid" style={{ marginTop: 10 }}>
-                <div className="detail-card">
-                  <h4>Average</h4>
-                  <p>{metricSummary.avg.toFixed(2)}</p>
-                </div>
-                <div className="detail-card">
-                  <h4>Districts</h4>
-                  <p>{metricSummary.count}</p>
-                </div>
-              </div>
-            ) : null}
             {distribution ? (
-              <div className="distribution-panel" style={{ marginTop: 10 }}>
+              <div className="distribution-panel">
                 <p className="distribution-heading">Distribution</p>
                 <div
                   className="distribution-bars"
@@ -318,7 +299,9 @@ export function DistrictExplorer() {
                   </button>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <p className="overlay-copy">Distribution is unavailable for this indicator.</p>
+            )}
           </div>
         </article>
 

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
+import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolRecord } from "@/lib/types";
@@ -440,80 +441,24 @@ export function SchoolExplorer() {
           </div>
         </article>
 
-        <article className="float-panel map-side-panel-secondary">
-          <div className="float-panel-head">
-            <div>
-              <h2 className="float-panel-title">Selection</h2>
-              <p className="float-panel-subtitle">Decision-ready snapshot</p>
-            </div>
-          </div>
-          <div className="float-panel-body">
-            {selectedSchool ? (
-              <div className="detail-grid detail-grid-compact">
-                <div className="detail-card">
-                  <h4>{selectedSchool.school_name}</h4>
-                  <p>
-                    {selectedSchool.district}, {selectedSchool.province}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Priority / Need</h4>
-                  <p>
-                    {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                    {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Locality</h4>
-                  <p>{String(selectedSchoolDetail?.locality ?? selectedSchool.locality ?? "n/a")}</p>
-                </div>
-                <div className="detail-card">
-                  <h4>Teachers / Classrooms</h4>
-                  <p>
-                    {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
-                    {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
-                  </p>
-                </div>
-                <div className="detail-card">
-                  <h4>Walking access</h4>
-                  <p>{formatPercentMetric(selectedSchoolDetail?.access_walking_pct)}</p>
-                </div>
-                <div className="detail-card">
-                  <h4>Enrollment 7-10</h4>
-                  <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_10, 0)}</p>
-                </div>
-              </div>
-            ) : (
-              <p className="overlay-copy">Pick a school on the map or in the table.</p>
-            )}
-          </div>
-        </article>
+        <SelectionDetailCard
+          className="map-side-panel-secondary"
+          kind="school"
+          school={selectedSchool}
+          detail={selectedSchoolDetail}
+          schools={schoolSearchOptions}
+          scenarioId={scenarioId}
+          isLoading={schoolsQuery.isLoading || detailQuery.isLoading}
+          errorMessage={
+            schoolsQuery.error
+              ? "Schools could not be loaded."
+              : detailQuery.error
+                ? "School details could not be loaded."
+                : null
+          }
+          onRetry={() => void (schoolsQuery.error ? schoolsQuery.refetch() : detailQuery.refetch())}
+        />
       </aside>
     </div>
   );
-}
-
-function toFiniteNumber(value: unknown): number | null {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  return null;
-}
-
-function formatNumericMetric(value: unknown, digits = 1): string {
-  const numeric = toFiniteNumber(value);
-  if (numeric == null) return "n/a";
-  return numeric.toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function formatPercentMetric(value: unknown): string {
-  const numeric = toFiniteNumber(value);
-  if (numeric == null) return "n/a";
-  const percent = numeric <= 1 ? numeric * 100 : numeric;
-  return `${percent.toFixed(1)}%`;
 }
