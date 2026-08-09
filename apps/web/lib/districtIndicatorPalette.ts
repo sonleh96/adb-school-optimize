@@ -47,7 +47,10 @@ const DISTRICT_INDICATOR_META: Record<string, IndicatorMeta> = {
   "School-Aged Population": { field: "school_aged_population", direction: "higher_is_better" },
   "Female students grade 7-12": { field: "female_students_grade_7_12", direction: "higher_is_better" },
   "Total enrollment Grade 7-10": { field: "total_enrollment_grade_7_10", direction: "higher_is_better" },
-  "Secondary students per 1000 people": { field: "secondary_students_per_1000_people", direction: "higher_is_better" },
+  "Secondary students per 1000 people": {
+    field: "secondary_students_per_1000_people",
+    direction: "higher_is_better",
+  },
   "Rate of Grade 7 who progressed to Grade 10 (%)": {
     field: "rate_grade_7_progressed_to_grade_10_pct",
     direction: "higher_is_better",
@@ -80,11 +83,11 @@ export function districtIndicatorColor(indicator: string, normalized: number): s
 
 function interpolateBadnessColor(t: number): string {
   const stops = [
-    [0.0, [49, 130, 206]],   // good: blue
+    [0.0, [49, 130, 206]], // good: blue
     [0.26, [92, 170, 214]],
     [0.5, [166, 201, 183]],
     [0.72, [239, 186, 132]],
-    [1.0, [199, 83, 70]],    // bad: red
+    [1.0, [199, 83, 70]], // bad: red
   ] as const;
 
   if (t <= stops[0][0]) return rgb(stops[0][1]);

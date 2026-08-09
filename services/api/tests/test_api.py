@@ -6,10 +6,9 @@ import io
 from types import SimpleNamespace
 
 import openpyxl
-
+from app import repository
 from app.errors import ApiError
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
-from app import repository
 from app.services.rasters import RasterClipResult
 
 
@@ -65,7 +64,9 @@ def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch
     captured = {}
 
     def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
-        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
+        captured.update(
+            layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326
+        )
         return {
             "layer": {"layer_key": layer_key, "layer_type": "vector"},
             "count": 1,
@@ -98,7 +99,9 @@ def test_meta_layer_features_accepts_bbox(client, monkeypatch):
     captured = {}
 
     def fake_fetch(connection, layer_key, province=None, district=None, limit=5000, bbox_4326=None):
-        captured.update(layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326)
+        captured.update(
+            layer_key=layer_key, province=province, district=district, limit=limit, bbox_4326=bbox_4326
+        )
         return {
             "layer": {"layer_key": layer_key, "layer_type": "vector"},
             "count": 0,
@@ -144,7 +147,9 @@ def test_meta_api_error_uses_structured_handler(client, monkeypatch):
     monkeypatch.setattr(
         meta,
         "fetch_provinces",
-        lambda connection: (_ for _ in ()).throw(ApiError("Bad metadata.", status_code=418, code="bad_metadata")),
+        lambda connection: (_ for _ in ()).throw(
+            ApiError("Bad metadata.", status_code=418, code="bad_metadata")
+        ),
     )
 
     response = client.get("/api/v1/meta/provinces")
@@ -158,7 +163,9 @@ def test_meta_layer_features_structured_error(client, monkeypatch):
         meta,
         "fetch_vector_layer_features",
         lambda connection, **kwargs: (_ for _ in ()).throw(
-            ApiError("Layer not found.", status_code=404, code="layer_not_found", details={"layer_key": "roads"})
+            ApiError(
+                "Layer not found.", status_code=404, code="layer_not_found", details={"layer_key": "roads"}
+            )
         ),
     )
 
@@ -190,7 +197,12 @@ def test_list_schools_forwards_filters(client, fake_connection, monkeypatch):
 
     response = client.get(
         "/api/v1/schools",
-        params={"province": "NCD", "district": "National Capital District", "scenario_id": "abc", "limit": 25},
+        params={
+            "province": "NCD",
+            "district": "National Capital District",
+            "scenario_id": "abc",
+            "limit": 25,
+        },
     )
 
     assert response.status_code == 200
@@ -247,7 +259,9 @@ def test_district_choropleth_returns_selected_indicator(client, monkeypatch):
         ],
     )
 
-    response = client.get("/api/v1/districts/choropleth", params={"indicator": "Conflict Events", "province": "NCD"})
+    response = client.get(
+        "/api/v1/districts/choropleth", params={"indicator": "Conflict Events", "province": "NCD"}
+    )
 
     assert response.status_code == 200
     assert response.json() == {
@@ -444,7 +458,10 @@ def test_exports_return_expected_content_and_headers(client, monkeypatch):
 
     assert csv_response.status_code == 200
     assert csv_response.headers["content-type"].startswith("text/csv")
-    assert csv_response.headers["content-disposition"] == 'attachment; filename="research_prototype_ranked_schools.csv"'
+    assert (
+        csv_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_ranked_schools.csv"'
+    )
     assert csv_response.headers["x-rise-png-decision-use"] == "research-prototype-only"
     assert csv_response.content == b"a,b\n1,2\n"
 
@@ -452,16 +469,24 @@ def test_exports_return_expected_content_and_headers(client, monkeypatch):
     assert xlsx_response.headers["content-type"].startswith(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    assert xlsx_response.headers["content-disposition"] == 'attachment; filename="research_prototype_ranked_schools.xlsx"'
+    assert (
+        xlsx_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_ranked_schools.xlsx"'
+    )
     assert xlsx_response.headers["x-rise-png-decision-use"] == "research-prototype-only"
     assert xlsx_response.content == b"fake-xlsx"
 
     assert scores_response.status_code == 200
-    assert scores_response.headers["content-disposition"] == 'attachment; filename="research_prototype_scores.xlsx"'
+    assert (
+        scores_response.headers["content-disposition"]
+        == 'attachment; filename="research_prototype_scores.xlsx"'
+    )
     assert scores_response.content == b"scores-xlsx"
 
     assert full_response.status_code == 200
-    assert full_response.headers["content-disposition"] == 'attachment; filename="research_prototype_full.xlsx"'
+    assert (
+        full_response.headers["content-disposition"] == 'attachment; filename="research_prototype_full.xlsx"'
+    )
     assert full_response.content == b"full-xlsx"
 
 
@@ -526,7 +551,11 @@ def test_raster_metadata_and_overlay_routes(client, monkeypatch):
     )
     overlay_response = client.get(
         "/api/v1/rasters/flood/overlay",
-        params={"district": "National Capital District", "province": "National Capital District", "format": "png"},
+        params={
+            "district": "National Capital District",
+            "province": "National Capital District",
+            "format": "png",
+        },
     )
 
     assert metadata_response.status_code == 200

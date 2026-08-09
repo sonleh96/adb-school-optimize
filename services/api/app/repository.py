@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import json
 import math
 from io import BytesIO
 from typing import Any
 
 import pandas as pd
 from psycopg.types.json import Json
-
 from school_scoring import ScoringConfig, get_default_config, run_scoring
 from school_scoring.explainability import build_score_breakdown
 
 from .errors import ApiError
 from .queries import (
-    DEFAULT_SCENARIO_SQL,
     DISTRICT_GEOMETRY_SQL,
     DISTRICTS_CHOROPLETH_SQL,
     DISTRICTS_SQL,
@@ -30,7 +27,6 @@ from .queries import (
     VECTOR_LAYER_FEATURES_SQL,
 )
 from .settings import get_settings
-
 
 INDICATOR_OPTIONS = [
     "Average AQI",
@@ -60,7 +56,10 @@ EXPORT_NOTICE_ROWS = [
     ("Status", "Research prototype only"),
     ("Decision use", "Do not use these rankings as the sole basis for investment decisions."),
     ("Interpretation", "Ranks are sample-relative and may change when data, weights, or methods change."),
-    ("Data confidence", "This field records coverage of configured stock-imputation flags, not a probability."),
+    (
+        "Data confidence",
+        "This field records coverage of configured stock-imputation flags, not a probability.",
+    ),
 ]
 
 
@@ -281,7 +280,9 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
         "scenario_name": payload.get("scenario_name", existing["scenario_name"]),
         "description": payload.get("description", existing["description"]),
         "weights": Json(payload.get("weights", existing["weights"])),
-        "config": Json(payload.get("config", existing["config"])) if payload.get("config", existing["config"]) is not None else None,
+        "config": Json(payload.get("config", existing["config"]))
+        if payload.get("config", existing["config"]) is not None
+        else None,
         "score_version": payload.get("score_version", existing.get("score_version")),
         "run_manifest": Json(payload.get("run_manifest", existing.get("run_manifest")))
         if payload.get("run_manifest", existing.get("run_manifest")) is not None
@@ -468,7 +469,10 @@ def run_and_persist_scenario(
     scenario = insert_scenario(connection, scenario_payload)
 
     with connection.cursor() as cursor:
-        cursor.execute("delete from school_scores where scenario_id = %(scenario_id)s::uuid", {"scenario_id": scenario["scenario_id"]})
+        cursor.execute(
+            "delete from school_scores where scenario_id = %(scenario_id)s::uuid",
+            {"scenario_id": scenario["scenario_id"]},
+        )
     connection.commit()
 
     insert_query = """

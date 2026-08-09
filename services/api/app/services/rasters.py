@@ -10,20 +10,20 @@ from pathlib import Path
 from typing import Any
 
 from ..errors import ApiError, ConfigurationError, DependencyError
-from ..repository import fetch_district_geometry
 from ..raster_keys import build_district_raster_object_key
+from ..repository import fetch_district_geometry
 from ..settings import get_settings
 
 RASTER_RENDER_VERSION = "v3_landcover_classes"
 
 LANDCOVER_CLASS_COLORS: dict[int, tuple[int, int, int]] = {
-    0: (65, 155, 223),   # Water #419bdf
-    1: (57, 125, 73),    # Trees #397d49
-    2: (136, 176, 83),   # Grass #88b053
+    0: (65, 155, 223),  # Water #419bdf
+    1: (57, 125, 73),  # Trees #397d49
+    2: (136, 176, 83),  # Grass #88b053
     3: (122, 135, 198),  # Flooded Vegetation #7a87c6
-    4: (228, 150, 53),   # Crops #e49635
-    5: (223, 195, 90),   # Shrub #dfc35a
-    6: (196, 40, 27),    # Built-up #c4281b
+    4: (228, 150, 53),  # Crops #e49635
+    5: (223, 195, 90),  # Shrub #dfc35a
+    6: (196, 40, 27),  # Built-up #c4281b
     7: (165, 155, 143),  # Bare #a59b8f
     8: (179, 159, 225),  # Snow/Ice #b39fe1
 }
@@ -108,15 +108,17 @@ def _load_cached_result(settings, cache_key: str) -> RasterClipResult | None:
 def _store_cached_result(settings, cache_key: str, result: RasterClipResult) -> None:
     entry_dir = _cache_entry_dir(settings, cache_key)
     entry_dir.mkdir(parents=True, exist_ok=True)
-    (entry_dir / "metadata.json").write_text(json.dumps(_serialize_result(result), sort_keys=True), encoding="utf-8")
+    (entry_dir / "metadata.json").write_text(
+        json.dumps(_serialize_result(result), sort_keys=True), encoding="utf-8"
+    )
     (entry_dir / "content.bin").write_bytes(result.content)
 
 
 def _import_raster_dependencies():
     try:
         import numpy as np
-        from google.cloud import storage
         import rasterio
+        from google.cloud import storage
         from rasterio.io import MemoryFile
         from rasterio.mask import mask
         from rasterio.transform import array_bounds
@@ -315,7 +317,9 @@ def _build_raster_clip_result(
     province_name = district_row["province"]
 
     bucket_name = str(layer_status["bucket"])
-    preclipped_source_path = settings.raster_district_clip_path(layer, province_name, district, extension="tif")
+    preclipped_source_path = settings.raster_district_clip_path(
+        layer, province_name, district, extension="tif"
+    )
     if not preclipped_source_path:
         raise ConfigurationError(
             "District raster clip storage is not fully configured.",
@@ -339,7 +343,11 @@ def _build_raster_clip_result(
                 except Exception:
                     detected_crs = None
 
-                raster_crs = declared_crs.strip() if isinstance(declared_crs, str) and declared_crs.strip() else detected_crs
+                raster_crs = (
+                    declared_crs.strip()
+                    if isinstance(declared_crs, str) and declared_crs.strip()
+                    else detected_crs
+                )
 
                 if not raster_crs:
                     raise ApiError(
@@ -386,11 +394,15 @@ def _build_raster_clip_result(
                         src_nodata=src.nodata,
                     )
                     media_type = "image/png"
-                    filename = build_district_raster_object_key(layer, province_name, district, extension="png").replace("/", "__")
+                    filename = build_district_raster_object_key(
+                        layer, province_name, district, extension="png"
+                    ).replace("/", "__")
                 elif output_format in {"tif", "tiff", "geotiff"}:
                     content = raster_bytes
                     media_type = "image/tiff"
-                    filename = build_district_raster_object_key(layer, province_name, district, extension="tif").replace("/", "__")
+                    filename = build_district_raster_object_key(
+                        layer, province_name, district, extension="tif"
+                    ).replace("/", "__")
                 else:
                     raise ApiError(
                         "Unsupported raster output format.",
@@ -443,7 +455,10 @@ def clip_raster_for_district(
             "province": province or "",
             "output_format": output_format.lower(),
             "bucket": settings.gcs_bucket or "",
-            "district_clip_path": settings.raster_district_clip_path(layer, province or "", district, extension="tif") or "",
+            "district_clip_path": settings.raster_district_clip_path(
+                layer, province or "", district, extension="tif"
+            )
+            or "",
             "declared_crs": {
                 "flood": settings.gcs_flood_raster_crs,
                 "landcover": settings.gcs_landcover_raster_crs,

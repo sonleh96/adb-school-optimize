@@ -116,7 +116,7 @@ class ColumnConfig:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "ColumnConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> ColumnConfig:
         data = _deep_merge(cls().to_dict(), overrides or {})
         return cls(**data)
 
@@ -135,7 +135,7 @@ class ImputationConfig:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "ImputationConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> ImputationConfig:
         data = _deep_merge(cls().to_dict(), overrides or {})
         return cls(**data)
 
@@ -151,7 +151,7 @@ class OutputConfig:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "OutputConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> OutputConfig:
         data = _deep_merge(cls().to_dict(), overrides or {})
         return cls(**data)
 
@@ -165,7 +165,7 @@ class ScreeningConfig:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "ScreeningConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> ScreeningConfig:
         data = _deep_merge(cls().to_dict(), overrides or {})
         return cls(**data)
 
@@ -214,15 +214,11 @@ class WeightConfig:
             "conflict": 0.10,
         }
     )
-    physical: dict[str, float] = field(
-        default_factory=lambda: {"flood_risk": 0.70, "land_terrain": 0.30}
-    )
+    physical: dict[str, float] = field(default_factory=lambda: {"flood_risk": 0.70, "land_terrain": 0.30})
     girls_bonus: dict[str, float] = field(
         default_factory=lambda: {"female_disadvantage": 0.05, "locality": 0.03, "cap": 0.08}
     )
-    need: dict[str, float] = field(
-        default_factory=lambda: {"S": 0.55, "A": 0.25, "R_phys": 0.20}
-    )
+    need: dict[str, float] = field(default_factory=lambda: {"S": 0.55, "A": 0.25, "R_phys": 0.20})
     impact: dict[str, float] = field(
         default_factory=lambda: {
             "accessible_pop": 0.45,
@@ -233,15 +229,13 @@ class WeightConfig:
     practicality: dict[str, float] = field(
         default_factory=lambda: {"land_terrain_inverse": 0.50, "flood_inverse": 0.50}
     )
-    priority: dict[str, float] = field(
-        default_factory=lambda: {"Need": 0.70, "I": 0.20, "P": 0.10}
-    )
+    priority: dict[str, float] = field(default_factory=lambda: {"Need": 0.70, "I": 0.20, "P": 0.10})
 
     def to_dict(self) -> dict[str, Any]:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "WeightConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> WeightConfig:
         data = _deep_merge(cls().to_dict(), overrides or {})
         return cls(**data)
 
@@ -258,7 +252,7 @@ class ScoringConfig:
         return _serialize(self)
 
     @classmethod
-    def from_dict(cls, overrides: dict[str, Any] | None = None) -> "ScoringConfig":
+    def from_dict(cls, overrides: dict[str, Any] | None = None) -> ScoringConfig:
         overrides = overrides or {}
         return cls(
             columns=ColumnConfig.from_dict(overrides.get("columns")),

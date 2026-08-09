@@ -9,8 +9,7 @@ import type {
   VectorLayerFeaturesResponse,
 } from "@/lib/types";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -42,8 +41,12 @@ export async function fetchLayers(): Promise<LayersResponse[]> {
   return apiFetch<LayersResponse[]>("/api/v1/meta/layers");
 }
 
-export async function fetchDistrictOptions(): Promise<Array<{ district_id: string; province: string; district: string }>> {
-  return apiFetch<Array<{ district_id: string; province: string; district: string }>>("/api/v1/meta/districts");
+export async function fetchDistrictOptions(): Promise<
+  Array<{ district_id: string; province: string; district: string }>
+> {
+  return apiFetch<Array<{ district_id: string; province: string; district: string }>>(
+    "/api/v1/meta/districts"
+  );
 }
 
 export async function fetchLayerFeatures(params: {
@@ -109,7 +112,10 @@ export async function fetchSchools(params: {
   return apiFetch<SchoolRecord[]>(`/api/v1/schools?${search.toString()}`);
 }
 
-export async function fetchSchoolDetail(schoolId: string, scenarioId?: string): Promise<SchoolRecord & Record<string, unknown>> {
+export async function fetchSchoolDetail(
+  schoolId: string,
+  scenarioId?: string
+): Promise<SchoolRecord & Record<string, unknown>> {
   const search = new URLSearchParams();
   if (scenarioId) search.set("scenario_id", scenarioId);
   const suffix = search.toString() ? `?${search.toString()}` : "";

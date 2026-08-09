@@ -13,16 +13,17 @@ from shapely.geometry import MultiPolygon, shape
 from shapely.wkt import dumps
 
 from ..db import get_db
-from .mappings import AUXILIARY_VECTOR_SOURCES
 from ..settings import get_settings
 from .data_quality import preflight_ingestion_inputs
-
+from .mappings import AUXILIARY_VECTOR_SOURCES
 
 ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_SCHOOLS_PATH = ROOT / "datasets" / "png_curated_sec_schools_access_v3_clean.csv"
 DEFAULT_DISTRICTS_PATH = ROOT / "datasets" / "aggregated_district_data.geojson"
 DEFAULT_DISTRICT_REFERENCE_PATH = ROOT / "datasets" / "PNG_districts.geojson"
-DEFAULT_AUXILIARY_SOURCE_PATHS = {key: ROOT / relative_path for key, relative_path in AUXILIARY_VECTOR_SOURCES.items()}
+DEFAULT_AUXILIARY_SOURCE_PATHS = {
+    key: ROOT / relative_path for key, relative_path in AUXILIARY_VECTOR_SOURCES.items()
+}
 
 
 def _drop_header_like_school_rows(df: pd.DataFrame) -> pd.DataFrame:
@@ -171,10 +172,14 @@ def _school_records(df: pd.DataFrame) -> list[dict[str, Any]]:
                 "female_students_grade_7_12": row.get("Female students grade 7-12"),
                 "total_enrollment_grade_7_12": row.get("Total enrollment Grade 7-12"),
                 "secondary_students_per_1000_people": row.get("Secondary students per 1000 people"),
-                "rate_grade_7_progressed_to_grade_12_pct": row.get("Rate of Grade 7 who progressed to Grade 12 (%)"),
+                "rate_grade_7_progressed_to_grade_12_pct": row.get(
+                    "Rate of Grade 7 who progressed to Grade 12 (%)"
+                ),
                 "total_enrollment_grade_7_10": row.get("Total enrollment Grade 7-10"),
                 "grade_7_10_students_per_1000_population": row.get("Grade 7-10 Students per 1000 Population"),
-                "rate_grade_7_progressed_to_grade_10_pct": row.get("Rate of Grade 7 who progressed to Grade 10 (%)"),
+                "rate_grade_7_progressed_to_grade_10_pct": row.get(
+                    "Rate of Grade 7 who progressed to Grade 10 (%)"
+                ),
                 "school_aged_population": row.get("School-Aged Population"),
                 "conflict_events": row.get("Conflict Events"),
                 "conflict_fatalities": row.get("Conflict Fatalities"),
@@ -198,9 +203,13 @@ def _district_records(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "district": properties.get("District"),
                 "average_aqi": properties.get("Average AQI"),
                 "maximum_aqi": properties.get("Maximum AQI"),
-                "fixed_broadband_download_speed_mbps": properties.get("Fixed Broadband Download Speed (MB/s)"),
+                "fixed_broadband_download_speed_mbps": properties.get(
+                    "Fixed Broadband Download Speed (MB/s)"
+                ),
                 "fixed_broadband_upload_speed_mbps": properties.get("Fixed Broadband Upload Speed (MB/s)"),
-                "mobile_internet_download_speed_mbps": properties.get("Mobile Internet Download Speed (MB/s)"),
+                "mobile_internet_download_speed_mbps": properties.get(
+                    "Mobile Internet Download Speed (MB/s)"
+                ),
                 "mobile_internet_upload_speed_mbps": properties.get("Mobile Internet Upload Speed (MB/s)"),
                 "access_walking_pct": properties.get("Access Walking (%)"),
                 "access_driving_pct": properties.get("Access Driving (%)"),
@@ -218,10 +227,16 @@ def _district_records(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "female_students_grade_7_12": properties.get("Female students grade 7-12"),
                 "total_enrollment_grade_7_12": properties.get("Total enrollment Grade 7-12"),
                 "secondary_students_per_1000_people": properties.get("Secondary students per 1000 people"),
-                "rate_grade_7_progressed_to_grade_12_pct": properties.get("Rate of Grade 7 who progressed to Grade 12 (%)"),
+                "rate_grade_7_progressed_to_grade_12_pct": properties.get(
+                    "Rate of Grade 7 who progressed to Grade 12 (%)"
+                ),
                 "total_enrollment_grade_7_10": properties.get("Total enrollment Grade 7-10"),
-                "grade_7_10_students_per_1000_population": properties.get("Grade 7-10 Students per 1000 Population"),
-                "rate_grade_7_progressed_to_grade_10_pct": properties.get("Rate of Grade 7 who progressed to Grade 10 (%)"),
+                "grade_7_10_students_per_1000_population": properties.get(
+                    "Grade 7-10 Students per 1000 Population"
+                ),
+                "rate_grade_7_progressed_to_grade_10_pct": properties.get(
+                    "Rate of Grade 7 who progressed to Grade 10 (%)"
+                ),
                 "school_aged_population": properties.get("School-Aged Population"),
                 "conflict_events": properties.get("Conflict Events"),
                 "conflict_fatalities": properties.get("Conflict Fatalities"),
@@ -237,7 +252,15 @@ def _district_records(features: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def load_schools(connection, path: Path) -> int:
     df = pd.read_csv(path)
     df = _drop_header_like_school_rows(df)
-    for column in ["School Name", "Province", "District", "Locality", "Power Source", "Water Source", "Toilets"]:
+    for column in [
+        "School Name",
+        "Province",
+        "District",
+        "Locality",
+        "Power Source",
+        "Water Source",
+        "Toilets",
+    ]:
         if column in df.columns:
             df[column] = df[column].map(lambda value: value.strip() if isinstance(value, str) else value)
     records = _school_records(df)
@@ -495,19 +518,162 @@ def load_auxiliary_layers(connection, auxiliary_paths: dict[str, Path] | None = 
 def load_default_layers(connection) -> None:
     settings = get_settings()
     layers = [
-        ("schools", "Schools", "school_explorer", "vector", "supabase", "schools", "school_name", "point", True, False),
-        ("districts", "Districts", "district_explorer", "vector", "supabase", "districts", "province+district", "polygon", True, False),
-        ("roads", "Roads", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "linestring", False, False),
-        ("air_quality", "Air Quality", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "polygon", False, False),
-        ("pop_access_walk", "Population Within Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_walk", "Population Without Access (Walking - 4 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("pop_access_cycle", "Population Within Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_cycle", "Population Without Access (Cycling - 7 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("pop_access_drive", "Population Within Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("pop_no_drive", "Population Without Access (Driving - 10 km)", "school_explorer", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "point", False, False),
-        ("country_boundary", "Country Boundary", "reference", "vector", "supabase", "vector_layer_features", "country", "polygon", False, False),
-        ("province_boundaries", "Province Boundaries", "reference", "vector", "supabase", "vector_layer_features", "NAM_1", "polygon", False, False),
-        ("district_boundaries_ref", "District Boundaries Reference", "reference", "vector", "supabase", "vector_layer_features", "NAM_1+NAM_2", "polygon", False, False),
+        (
+            "schools",
+            "Schools",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "schools",
+            "school_name",
+            "point",
+            True,
+            False,
+        ),
+        (
+            "districts",
+            "Districts",
+            "district_explorer",
+            "vector",
+            "supabase",
+            "districts",
+            "province+district",
+            "polygon",
+            True,
+            False,
+        ),
+        (
+            "roads",
+            "Roads",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "linestring",
+            False,
+            False,
+        ),
+        (
+            "air_quality",
+            "Air Quality",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "polygon",
+            False,
+            False,
+        ),
+        (
+            "pop_access_walk",
+            "Population Within Access (Walking - 4 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "pop_no_walk",
+            "Population Without Access (Walking - 4 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "pop_access_cycle",
+            "Population Within Access (Cycling - 7 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "pop_no_cycle",
+            "Population Without Access (Cycling - 7 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "pop_access_drive",
+            "Population Within Access (Driving - 10 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "pop_no_drive",
+            "Population Without Access (Driving - 10 km)",
+            "school_explorer",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "point",
+            False,
+            False,
+        ),
+        (
+            "country_boundary",
+            "Country Boundary",
+            "reference",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "country",
+            "polygon",
+            False,
+            False,
+        ),
+        (
+            "province_boundaries",
+            "Province Boundaries",
+            "reference",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1",
+            "polygon",
+            False,
+            False,
+        ),
+        (
+            "district_boundaries_ref",
+            "District Boundaries Reference",
+            "reference",
+            "vector",
+            "supabase",
+            "vector_layer_features",
+            "NAM_1+NAM_2",
+            "polygon",
+            False,
+            False,
+        ),
         (
             "flood",
             "Flood inundation",

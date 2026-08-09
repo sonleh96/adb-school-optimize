@@ -21,3 +21,4 @@ node_modules/
 apps/web/.audit-work-build/
 
 .serena/
+*.tsbuildinfo

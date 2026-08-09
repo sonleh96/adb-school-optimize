@@ -22,7 +22,9 @@ def _ensure_missing_flag(df: pd.DataFrame, column: str) -> None:
 
 
 def _hierarchical_impute_numeric(df: pd.DataFrame, config: ScoringConfig, column: str) -> None:
-    district_columns = [column_name for column_name in config.imputation.district_group_columns if column_name in df.columns]
+    district_columns = [
+        column_name for column_name in config.imputation.district_group_columns if column_name in df.columns
+    ]
     province_column = config.imputation.province_group_column
     if len(district_columns) != len(config.imputation.district_group_columns):
         raise SchemaValidationError("Imputation group columns are missing from the dataset.")
@@ -34,7 +36,9 @@ def _hierarchical_impute_numeric(df: pd.DataFrame, config: ScoringConfig, column
 
 
 def _hierarchical_impute_categorical(df: pd.DataFrame, config: ScoringConfig, column: str) -> None:
-    district_columns = [column_name for column_name in config.imputation.district_group_columns if column_name in df.columns]
+    district_columns = [
+        column_name for column_name in config.imputation.district_group_columns if column_name in df.columns
+    ]
     province_column = config.imputation.province_group_column
     if len(district_columns) != len(config.imputation.district_group_columns):
         raise SchemaValidationError("Imputation group columns are missing from the dataset.")
@@ -55,7 +59,9 @@ def preprocess_input_data(df: pd.DataFrame, config: ScoringConfig) -> tuple[pd.D
     _coerce_numeric_columns(processed, config.columns.numeric_imputation_columns)
 
     if config.imputation.mode == "none":
-        for column in config.columns.numeric_imputation_columns + config.columns.categorical_imputation_columns:
+        for column in (
+            config.columns.numeric_imputation_columns + config.columns.categorical_imputation_columns
+        ):
             if column in processed.columns and config.imputation.preserve_missing_flags:
                 _ensure_missing_flag(processed, column)
         return processed, warnings

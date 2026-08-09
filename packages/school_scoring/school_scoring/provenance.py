@@ -10,7 +10,6 @@ import pandas as pd
 
 from .config import ScoringConfig
 
-
 SCORE_VERSION = "0.1.0-research"
 
 
@@ -42,6 +41,6 @@ def build_run_manifest(
         "input_sha256": _sha256_json(_canonical_dataframe_payload(df)),
         "config_sha256": _sha256_json(config.to_dict()),
         "weights_sha256": _sha256_json(weights),
-        "source_rows": int(len(df)),
-        "source_columns": int(len(df.columns)),
+        "source_rows": len(df),
+        "source_columns": len(df.columns),
     }

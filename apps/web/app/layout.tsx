@@ -17,7 +17,8 @@ const bodyFont = Spectral({
 
 export const metadata: Metadata = {
   title: "RISE-PNG Dashboard",
-  description: "Decision-support dashboard for prioritizing secondary school investments in Papua New Guinea.",
+  description:
+    "Decision-support dashboard for prioritizing secondary school investments in Papua New Guinea.",
 };
 
 export default function RootLayout({

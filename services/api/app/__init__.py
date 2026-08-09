@@ -1,2 +1,1 @@
 """FastAPI service package scaffold."""
-

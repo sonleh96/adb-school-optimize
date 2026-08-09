@@ -52,7 +52,9 @@ def raster_status():
     return {
         "gcs_bucket": settings.gcs_bucket,
         "gcs_project": settings.gcs_project,
-        "credentials_mode": "service_account_file" if settings.google_application_credentials else "adc_or_workload_identity",
+        "credentials_mode": "service_account_file"
+        if settings.google_application_credentials
+        else "adc_or_workload_identity",
         "layers": [
             settings.raster_layer_status("flood"),
             settings.raster_layer_status("landcover"),

@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ..errors import ApiError
-
 from ..db import get_db
-from ..repository import fetch_districts, fetch_indicators, fetch_layers, fetch_provinces, fetch_vector_layer_features
+from ..errors import ApiError
+from ..repository import (
+    fetch_districts,
+    fetch_indicators,
+    fetch_layers,
+    fetch_provinces,
+    fetch_vector_layer_features,
+)
 
 router = APIRouter(prefix="/api/v1/meta", tags=["meta"])
 
@@ -47,7 +52,9 @@ def get_layer_features(
     max_lat: float | None = None,
 ):
     bbox_values = [min_lon, min_lat, max_lon, max_lat]
-    if any(value is not None for value in bbox_values) and not all(value is not None for value in bbox_values):
+    if any(value is not None for value in bbox_values) and not all(
+        value is not None for value in bbox_values
+    ):
         raise ApiError(
             "Incomplete bbox parameters. Provide min_lon, min_lat, max_lon, and max_lat together.",
             status_code=400,

@@ -10,7 +10,9 @@ from ..settings import get_settings
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run scoring on the loaded schools table and persist a default scenario.")
+    parser = argparse.ArgumentParser(
+        description="Run scoring on the loaded schools table and persist a default scenario."
+    )
     parser.add_argument("--scenario-name", default="Default Methodology")
     parser.add_argument("--description", default="Default scenario seeded from notebook methodology.")
     parser.add_argument("--created-by", default="system")

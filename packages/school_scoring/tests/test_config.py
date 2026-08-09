@@ -1,8 +1,8 @@
 """Tests for school scoring configuration defaults and validation."""
 
 from school_scoring import ScoringConfig, get_default_config
-from school_scoring.validators import validate_config
 from school_scoring.exceptions import ConfigurationError
+from school_scoring.validators import validate_config
 
 
 def test_default_config_loads() -> None:

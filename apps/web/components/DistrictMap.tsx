@@ -44,9 +44,7 @@ export function DistrictMap({
   showIndicatorLayer?: boolean;
 }) {
   const field = districtIndicatorField(indicator);
-  const values = features
-    .map((feature) => Number(feature[field]))
-    .filter((value) => Number.isFinite(value));
+  const values = features.map((feature) => Number(feature[field])).filter((value) => Number.isFinite(value));
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 1;
 
@@ -84,7 +82,10 @@ export function DistrictMap({
               weight: isSelected ? 3.2 : isHighlighted ? 2.6 : 1,
               dashArray: isSelected ? undefined : isHighlighted ? "8 4" : undefined,
               fillColor: isHighlighted
-                ? districtIndicatorColor(rankingScoreField === "priority" ? "Priority Score" : "Need Score", 1)
+                ? districtIndicatorColor(
+                    rankingScoreField === "priority" ? "Priority Score" : "Need Score",
+                    1
+                  )
                 : showIndicatorLayer
                   ? fillColor
                   : "transparent",
@@ -113,11 +114,7 @@ export function DistrictMap({
 function extendBounds(bounds: LatLngBounds, coordinates: unknown) {
   if (!Array.isArray(coordinates)) return;
 
-  if (
-    coordinates.length >= 2 &&
-    typeof coordinates[0] === "number" &&
-    typeof coordinates[1] === "number"
-  ) {
+  if (coordinates.length >= 2 && typeof coordinates[0] === "number" && typeof coordinates[1] === "number") {
     bounds.extend([coordinates[1] as number, coordinates[0] as number]);
     return;
   }

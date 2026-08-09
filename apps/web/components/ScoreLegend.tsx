@@ -6,7 +6,8 @@ export function ScoreLegend({ scoreField }: { scoreField: "priority" | "need" })
   return (
     <>
       <p className="panel-subtitle">
-        Marker color currently reflects the chosen score dimension: {scoreField === "priority" ? "Priority" : "Need"}.
+        Marker color currently reflects the chosen score dimension:{" "}
+        {scoreField === "priority" ? "Priority" : "Need"}.
       </p>
       <div className="legend legend-score">
         {SCORE_LEGEND_STOPS.map((stop) => (

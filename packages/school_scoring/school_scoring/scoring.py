@@ -8,8 +8,8 @@ import pandas as pd
 
 from .config import ScoringConfig, WeightConfig, get_default_config, get_default_weights
 from .explainability import build_score_breakdown, summarize_imputation, summarize_missingness
-from .ranking import compute_stage1_screening, rank_scores
 from .provenance import build_run_manifest
+from .ranking import compute_stage1_screening, rank_scores
 from .schemas import ScoringResult
 from .utils import (
     clean_text,
@@ -85,16 +85,15 @@ def compute_school_need_subscore(
         "Number of Computer Labs",
         "Number of Specialized Classrooms",
     ]
-    result["facility_count_total"] = result[facility_columns].apply(pd.to_numeric, errors="coerce").fillna(0).sum(axis=1)
+    result["facility_count_total"] = (
+        result[facility_columns].apply(pd.to_numeric, errors="coerce").fillna(0).sum(axis=1)
+    )
     result["facility_deficit"] = inv_minmax(result["facility_count_total"])
 
     result["teacher_housing_deficit"] = inv_minmax(result["Number of Houses for Teachers"])
     result["power_deficit"] = result["Power Source"].map(score_power).fillna(0.5)
     result["water_deficit"] = result["Water Source"].map(score_water).fillna(0.5)
-    result["service_deficit"] = (
-        0.40 * result["power_deficit"] +
-        0.30 * result["water_deficit"]
-    )
+    result["service_deficit"] = 0.40 * result["power_deficit"] + 0.30 * result["water_deficit"]
 
     result["S"] = clip01(
         weight_dict["school_need"]["locality"] * result["Locality_score"]
@@ -146,7 +145,8 @@ def compute_admin_context_subscore(
     result["SocioAdm"] = (
         weight_dict["admin_socio"]["ntl_deficit"] * result["ntl_deficit"]
         + weight_dict["admin_socio"]["sec_participation_deficit"] * result["sec_participation_deficit"]
-        + weight_dict["admin_socio"]["secondary_students_per_1000_deficit"] * result["secondary_students_per_1000_deficit"]
+        + weight_dict["admin_socio"]["secondary_students_per_1000_deficit"]
+        * result["secondary_students_per_1000_deficit"]
     )
 
     result["conflict_events_n"] = minmax(result["Conflict Events"])
@@ -177,15 +177,18 @@ def compute_physical_risk_subscore(
     weight_dict = _weight_dict(weights)
     result = df.copy()
 
-    r_filled = fill_with_median_or_default(result["R"]) if "R" in result.columns else pd.Series(0.5, index=result.index)
+    r_filled = (
+        fill_with_median_or_default(result["R"])
+        if "R" in result.columns
+        else pd.Series(0.5, index=result.index)
+    )
     lc_filled = (
         fill_with_median_or_default(result["lc_landterr_score"])
         if "lc_landterr_score" in result.columns
         else pd.Series(0.5, index=result.index)
     )
     result["R_phys"] = clip01(
-        weight_dict["physical"]["flood_risk"] * r_filled +
-        weight_dict["physical"]["land_terrain"] * lc_filled
+        weight_dict["physical"]["flood_risk"] * r_filled + weight_dict["physical"]["land_terrain"] * lc_filled
     )
     return result
 
@@ -198,8 +201,8 @@ def compute_girls_bonus(
     weight_dict = _weight_dict(weights)
     result = df.copy()
     result["G"] = (
-        weight_dict["girls_bonus"]["female_disadvantage"] * result["female_disadvantage"] +
-        weight_dict["girls_bonus"]["locality"] * result["Locality_score"]
+        weight_dict["girls_bonus"]["female_disadvantage"] * result["female_disadvantage"]
+        + weight_dict["girls_bonus"]["locality"] * result["Locality_score"]
     ).clip(upper=weight_dict["girls_bonus"]["cap"])
     return result
 
@@ -212,10 +215,10 @@ def compute_need_score(
     weight_dict = _weight_dict(weights)
     result = df.copy()
     result["Need"] = clip01(
-        weight_dict["need"]["S"] * result["S"] +
-        weight_dict["need"]["A"] * result["A"] +
-        weight_dict["need"]["R_phys"] * result["R_phys"] +
-        result["G"]
+        weight_dict["need"]["S"] * result["S"]
+        + weight_dict["need"]["A"] * result["A"]
+        + weight_dict["need"]["R_phys"] * result["R_phys"]
+        + result["G"]
     )
     return result
 
@@ -248,14 +251,14 @@ def compute_impact_score(
     result["accessible_pop_n"] = minmax(result["accessible_pop"])
     result["catchment_area_n"] = minmax(result["catchment_area"])
     result["school_gap"] = (
-        0.45 * result["service_deficit"] +
-        0.30 * result["classroom_stock_deficit"] +
-        0.25 * result["teacher_scarcity"]
+        0.45 * result["service_deficit"]
+        + 0.30 * result["classroom_stock_deficit"]
+        + 0.25 * result["teacher_scarcity"]
     )
     result["I"] = clip01(
-        weight_dict["impact"]["accessible_pop"] * result["accessible_pop_n"] +
-        weight_dict["impact"]["catchment_area"] * result["catchment_area_n"] +
-        weight_dict["impact"]["school_gap"] * result["school_gap"]
+        weight_dict["impact"]["accessible_pop"] * result["accessible_pop_n"]
+        + weight_dict["impact"]["catchment_area"] * result["catchment_area_n"]
+        + weight_dict["impact"]["school_gap"] * result["school_gap"]
     )
     return result
 
@@ -267,11 +270,19 @@ def compute_practicality_score(
 ) -> pd.DataFrame:
     weight_dict = _weight_dict(weights)
     result = df.copy()
-    land = fill_with_median_or_default(result["lc_landterr_score"]) if "lc_landterr_score" in result.columns else pd.Series(0.5, index=result.index)
-    flood = fill_with_median_or_default(result["R"]) if "R" in result.columns else pd.Series(0.5, index=result.index)
+    land = (
+        fill_with_median_or_default(result["lc_landterr_score"])
+        if "lc_landterr_score" in result.columns
+        else pd.Series(0.5, index=result.index)
+    )
+    flood = (
+        fill_with_median_or_default(result["R"])
+        if "R" in result.columns
+        else pd.Series(0.5, index=result.index)
+    )
     result["P"] = clip01(
-        weight_dict["practicality"]["land_terrain_inverse"] * (1 - land) +
-        weight_dict["practicality"]["flood_inverse"] * (1 - flood)
+        weight_dict["practicality"]["land_terrain_inverse"] * (1 - land)
+        + weight_dict["practicality"]["flood_inverse"] * (1 - flood)
     )
     return result
 
@@ -284,9 +295,9 @@ def compute_priority_score(
     weight_dict = _weight_dict(weights)
     result = df.copy()
     result["Priority"] = clip01(
-        weight_dict["priority"]["Need"] * result["Need"] +
-        weight_dict["priority"]["I"] * result["I"] +
-        weight_dict["priority"]["P"] * result["P"]
+        weight_dict["priority"]["Need"] * result["Need"]
+        + weight_dict["priority"]["I"] * result["I"]
+        + weight_dict["priority"]["P"] * result["P"]
     )
     return result
 
@@ -336,7 +347,7 @@ def run_scoring(
         )
 
     summary = {
-        "rows": int(len(ranked)),
+        "rows": len(ranked),
         "selected_stage1": int(ranked["stage1_selected"].sum()),
         "top_school": ranked.iloc[0][config.columns.school_name] if not ranked.empty else None,
         "missingness": summarize_missingness(df),

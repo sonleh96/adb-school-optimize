@@ -2,7 +2,6 @@
 
 import pandas as pd
 import pytest
-
 from school_scoring import get_default_config, get_default_weights, validate_input_data
 from school_scoring.exceptions import SchemaValidationError, WeightValidationError
 from school_scoring.validators import collect_data_quality_issues, validate_weight_config

@@ -60,9 +60,7 @@ export function displayWeightLabel(key: string): string {
 }
 
 function startCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function formatWeightValue(value: number): string {
