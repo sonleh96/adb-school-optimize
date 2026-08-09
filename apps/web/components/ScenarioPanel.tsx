@@ -171,30 +171,32 @@ export function ScenarioPanel() {
   }
 
   return (
-    <section className="panel scenario-lab">
-      <div className="panel-head">
-        <div>
-          <h2 className="panel-title">Scenario Lab</h2>
-          <p className="panel-subtitle">
-            Run persisted scoring scenarios against the seeded school dataset using interactive weight
-            controls.
-          </p>
-        </div>
-        <div className="scenario-data-actions">
-          <p className="scenario-data-label">Data</p>
-          <div className="scenario-data-buttons">
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx`}>
-              Scores
-            </a>
-            <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/full.xlsx`}>
-              Full
-            </a>
+    <div className="doc-workspace">
+      <div className="doc-workspace-inner" style={{ width: "min(1200px, calc(100% - 32px))" }}>
+        <section className="float-panel scenario-lab">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Scenario Lab</h2>
+              <p className="float-panel-subtitle">
+                Run persisted scoring scenarios against the seeded school dataset using interactive weight
+                controls.
+              </p>
+            </div>
+            <div className="scenario-data-actions">
+              <p className="scenario-data-label">Data</p>
+              <div className="scenario-data-buttons">
+                <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx`}>
+                  Scores
+                </a>
+                <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/full.xlsx`}>
+                  Full
+                </a>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="panel-body scenario-lab-body">
-        <div className="two-up">
+          <div className="float-panel-body scenario-lab-body">
+            <div className="two-up">
           <article className="panel scenario-run-panel">
             <div className="panel-head">
               <div>
@@ -415,9 +417,11 @@ export function ScenarioPanel() {
               </div>
             </article>
           </div>
-        </div>
+            </div>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }
 

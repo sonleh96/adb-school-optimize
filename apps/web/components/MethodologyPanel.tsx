@@ -56,17 +56,19 @@ export function MethodologyPanel() {
   const weightGroups = useMemo(() => buildWeightGroups(activeScenario?.weights), [activeScenario?.weights]);
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <div>
-          <h2 className="panel-title">Methodology</h2>
-          <p className="panel-subtitle">
-            Full methodological note for the school prioritization scoring module.
-          </p>
-        </div>
-      </div>
-      <div className="panel-body">
-        <article className="methodology-doc">
+    <div className="doc-workspace">
+      <div className="doc-workspace-inner">
+        <section className="float-panel">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Methodology</h2>
+              <p className="float-panel-subtitle">
+                Full methodological note for the school prioritization scoring module.
+              </p>
+            </div>
+          </div>
+          <div className="float-panel-body">
+            <article className="methodology-doc">
           <h1>Methodology for the School Prioritization Scoring Module</h1>
 
           <section>
@@ -616,8 +618,10 @@ export function MethodologyPanel() {
               </li>
             </ul>
           </section>
-        </article>
+            </article>
+          </div>
+        </section>
       </div>
-    </section>
+    </div>
   );
 }

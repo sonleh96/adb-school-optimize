@@ -11,7 +11,7 @@ import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
-  loading: () => <div className="loading">Loading school map…</div>,
+  loading: () => <div className="loading absolute inset-0">Loading school map…</div>,
 });
 
 const DEFAULT_DISTRICT = "National Capital District";
@@ -202,341 +202,249 @@ export function SchoolExplorer() {
   }, [layers]);
 
   return (
-    <section className="panel school-explorer">
-      <div className="panel-body school-explorer-body">
-        {error ? <div className="error">{error}</div> : null}
-        <div className="school-explorer-layout">
-          <div className="split-layout school-map-snapshot-layout">
-            <div className="panel map-card school-map-card">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Geospatial School View</h3>
-                  <p className="panel-subtitle">
-                    Click a school marker to sync selection into the table and detail cards.
-                  </p>
-                  <div className="map-score-legend">
-                    <ScoreLegend scoreField={scoreField} />
-                  </div>
-                </div>
-                <div className="map-head-actions">
-                  <div className="score-toggle" role="group" aria-label="Color markers by">
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-                      onClick={() => setScoreField("priority")}
-                    >
-                      Priority
-                    </button>
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-                      onClick={() => setScoreField("need")}
-                    >
-                      Need
-                    </button>
-                  </div>
-                  <div className="search-control-row">
-                    <label className="search-control-label" htmlFor="school-search">
-                      Search School
-                    </label>
-                    <div className="district-search map-district-search">
-                      <input
-                        id="school-search"
-                        type="text"
-                        value={schoolQuery}
-                        placeholder="Search school name…"
-                        onFocus={() => setShowSchoolSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
-                        onChange={(event) => {
-                          setSchoolQuery(event.target.value);
-                          setShowSchoolSuggestions(true);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && schoolSuggestions[0]) {
-                            event.preventDefault();
-                            applySchool(schoolSuggestions[0]);
-                          }
-                        }}
-                      />
-                      {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
-                        <div className="district-suggestions">
-                          {schoolSuggestions.map((school) => (
-                            <button
-                              type="button"
-                              key={
-                                school.school_id ??
-                                `${school.school_name}-${school.latitude}-${school.longitude}`
-                              }
-                              className="district-suggestion-item"
-                              onMouseDown={() => applySchool(school)}
-                            >
-                              {school.school_name}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="search-control-row">
-                    <label className="search-control-label" htmlFor="district-search">
-                      Search District
-                    </label>
-                    <div className="district-search map-district-search">
-                      <input
-                        id="district-search"
-                        type="text"
-                        value={districtQuery}
-                        placeholder="Search district for zoom…"
-                        onFocus={() => setShowDistrictSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
-                        onChange={(event) => {
-                          setDistrictQuery(event.target.value);
-                          setShowDistrictSuggestions(true);
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && districtSuggestions[0]) {
-                            event.preventDefault();
-                            applyDistrict(districtSuggestions[0].district);
-                          }
-                        }}
-                      />
-                      {showDistrictSuggestions && districtSuggestions.length > 0 ? (
-                        <div className="district-suggestions">
-                          {districtSuggestions.map((option) => (
-                            <button
-                              type="button"
-                              key={option.district_id}
-                              className="district-suggestion-item"
-                              onMouseDown={() => applyDistrict(option.district)}
-                            >
-                              {option.district}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="panel-body">
-                <div className="map-frame">
-                  {loading ? (
-                    <div className="loading">Loading schools…</div>
-                  ) : (
-                    <SchoolMap
-                      schools={schools}
-                      selectedSchoolId={selectedSchoolId}
-                      onSelectSchool={setSelectedSchoolId}
-                      scoreField={scoreField}
-                      district={district}
-                      province={selectedProvince}
-                      layers={layers}
-                      showDistrictProvinceInPopup={false}
-                      screenshotFilePrefix="school-explorer-map"
-                    />
-                  )}
-                </div>
-                <div className="layer-control-box">
-                  <p className="layer-control-title">Layer control</p>
-                  <div className="layer-control-columns">
-                    <div className="layer-control-column">
-                      <label className="layer-control-item layer-control-item-fixed">
-                        <input type="checkbox" checked disabled />
-                        <span>Schools</span>
-                      </label>
-                      {layerColumns[0].map((layer) => (
-                        <label className="layer-control-item" key={layer.key}>
-                          <input
-                            type="checkbox"
-                            checked={layer.active}
-                            onChange={() => toggleLayer(layer.key)}
-                          />
-                          <span>{layer.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="layer-control-column">
-                      {layerColumns[1].map((layer) => (
-                        <label className="layer-control-item" key={layer.key}>
-                          <input
-                            type="checkbox"
-                            checked={layer.active}
-                            onChange={() => toggleLayer(layer.key)}
-                          />
-                          <span>{layer.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <p className="status-note">
-                  Layer overlays load from backend. Air Quality is exclusive between Average and Maximum AQI.
-                </p>
-              </div>
-            </div>
-
-            <article className="panel school-snapshot-card">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Selected School Snapshot</h3>
-                  <p className="panel-subtitle">Decision-ready summary for the current single selection.</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                {selectedSchool ? (
-                  <div className="detail-grid detail-grid-compact">
-                    <div className="detail-card">
-                      <h4>{selectedSchool.school_name}</h4>
-                      <p>
-                        {selectedSchool.district}, {selectedSchool.province}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Priority / Need</h4>
-                      <p>
-                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"}{" "}
-                        / {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
-                      </p>
-                    </div>
-                    <div className="detail-card detail-card-span-two">
-                      <h4>Coordinates</h4>
-                      <p>
-                        {formatCoordinate(selectedSchool.latitude)},{" "}
-                        {formatCoordinate(selectedSchool.longitude)}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Locality</h4>
-                      <p>{String(selectedSchoolDetail?.locality ?? selectedSchool.locality ?? "n/a")}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Power Source</h4>
-                      <p>{String(selectedSchoolDetail?.power_source ?? "n/a")}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Water Source</h4>
-                      <p>{String(selectedSchoolDetail?.water_source ?? "n/a")}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Teachers / Classrooms</h4>
-                      <p>
-                        {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
-                        {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Population with Walking Access (%)</h4>
-                      <p>{formatPercentMetric(selectedSchoolDetail?.access_walking_pct)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Population with Cycling Access (%)</h4>
-                      <p>{formatPercentMetric(selectedSchoolDetail?.access_cycling_pct)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Population with Driving Access (%)</h4>
-                      <p>{formatPercentMetric(selectedSchoolDetail?.access_driving_pct)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Fixed Broadband Download Speed (MB/s)</h4>
-                      <p>{formatNumericMetric(selectedSchoolDetail?.fixed_broadband_download_speed_mbps)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Mobile Broadband Download Speed (MB/s)</h4>
-                      <p>{formatNumericMetric(selectedSchoolDetail?.mobile_internet_download_speed_mbps)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Total enrollment Grade 7-10</h4>
-                      <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_10, 0)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Rate of Grade 7 who progressed to Grade 10 (%)</h4>
-                      <p>
-                        {formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_10_pct)}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Rate of Grade 7 who progressed to Grade 12 (%)</h4>
-                      <p>
-                        {formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_12_pct)}
-                      </p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Total enrollment Grade 7-12</h4>
-                      <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_12, 0)}</p>
-                    </div>
-                    <div className="detail-card">
-                      <h4>Confidence / Stage 1</h4>
-                      <p>
-                        {selectedSchool.data_confidence != null
-                          ? `${(selectedSchool.data_confidence * 100).toFixed(0)}%`
-                          : "n/a"}{" "}
-                        / {selectedSchool.stage1_selected ? "Selected" : "Not selected"}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="empty">Pick a school on the map or in the table.</div>
-                )}
-              </div>
-            </article>
-          </div>
-
-          <article className="panel school-table-card">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Ranked School Table</h3>
-                <p className="panel-subtitle">Current district slice with seeded default scenario scores.</p>
-              </div>
-            </div>
-            <div className="panel-body">
-              <div className="table-wrap school-table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>School Name</th>
-                      <th>Priority</th>
-                      <th>Need</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schools.map((school) => (
-                      <tr
-                        className="data-row"
-                        key={
-                          school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`
-                        }
-                        data-selected={school.school_id === selectedSchoolId}
-                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                      >
-                        <td>{school.rank_priority ?? "n/a"}</td>
-                        <td className="school-name-cell">{school.school_name}</td>
-                        <td>
-                          <span className="score-pill" style={scoreToPillStyle(school.priority)}>
-                            {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="score-pill" style={scoreToPillStyle(school.need)}>
-                            {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </article>
+    <div className="map-workspace">
+      <div className="map-workspace-canvas">
+        <div className="map-frame">
+          {loading ? (
+            <div className="loading absolute inset-0">Loading schools…</div>
+          ) : (
+            <SchoolMap
+              schools={schools}
+              selectedSchoolId={selectedSchoolId}
+              onSelectSchool={setSelectedSchoolId}
+              scoreField={scoreField}
+              district={district}
+              province={selectedProvince}
+              layers={layers}
+              showDistrictProvinceInPopup={false}
+              screenshotFilePrefix="school-explorer-map"
+            />
+          )}
         </div>
       </div>
-    </section>
-  );
-}
 
-function formatCoordinate(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "n/a";
-  return value.toFixed(6);
+      <div className="map-overlay-controls map-overlay-controls-top-left">
+        <p className="overlay-title">School explorer</p>
+        <p className="overlay-copy">Search and inspect a district slice.</p>
+        <div className="score-toggle" role="group" aria-label="Color markers by">
+          <button
+            type="button"
+            className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+            onClick={() => setScoreField("priority")}
+          >
+            Priority
+          </button>
+          <button
+            type="button"
+            className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+            onClick={() => setScoreField("need")}
+          >
+            Need
+          </button>
+        </div>
+        <div className="district-search map-district-search">
+          <input
+            id="school-search"
+            type="text"
+            value={schoolQuery}
+            placeholder="Search school…"
+            onFocus={() => setShowSchoolSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+            onChange={(event) => {
+              setSchoolQuery(event.target.value);
+              setShowSchoolSuggestions(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && schoolSuggestions[0]) {
+                event.preventDefault();
+                applySchool(schoolSuggestions[0]);
+              }
+            }}
+          />
+          {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
+            <div className="district-suggestions">
+              {schoolSuggestions.map((school) => (
+                <button
+                  type="button"
+                  key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                  className="district-suggestion-item"
+                  onMouseDown={() => applySchool(school)}
+                >
+                  {school.school_name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <div className="district-search map-district-search">
+          <input
+            id="district-search"
+            type="text"
+            value={districtQuery}
+            placeholder="Search district…"
+            onFocus={() => setShowDistrictSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
+            onChange={(event) => {
+              setDistrictQuery(event.target.value);
+              setShowDistrictSuggestions(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && districtSuggestions[0]) {
+                event.preventDefault();
+                applyDistrict(districtSuggestions[0].district);
+              }
+            }}
+          />
+          {showDistrictSuggestions && districtSuggestions.length > 0 ? (
+            <div className="district-suggestions">
+              {districtSuggestions.map((option) => (
+                <button
+                  type="button"
+                  key={option.district_id}
+                  className="district-suggestion-item"
+                  onMouseDown={() => applyDistrict(option.district)}
+                >
+                  {option.district}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <ScoreLegend scoreField={scoreField} />
+        {error ? <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>{error}</p> : null}
+      </div>
+
+      <aside className="float-panel map-overlay-layers" aria-label="Layer control">
+        <div className="float-panel-head">
+          <div>
+            <h2 className="float-panel-title">Layers</h2>
+            <p className="float-panel-subtitle">AQI mean/max are exclusive</p>
+          </div>
+        </div>
+        <div className="float-panel-body">
+          <div className="layer-control-columns">
+            <div className="layer-control-column">
+              <label className="layer-control-item layer-control-item-fixed">
+                <input type="checkbox" checked disabled />
+                <span>Schools</span>
+              </label>
+              {layerColumns[0].map((layer) => (
+                <label className="layer-control-item" key={layer.key}>
+                  <input type="checkbox" checked={layer.active} onChange={() => toggleLayer(layer.key)} />
+                  <span>{layer.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="layer-control-column">
+              {layerColumns[1].map((layer) => (
+                <label className="layer-control-item" key={layer.key}>
+                  <input type="checkbox" checked={layer.active} onChange={() => toggleLayer(layer.key)} />
+                  <span>{layer.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside className="map-side-panel" aria-label="School table and snapshot">
+        <article className="float-panel map-side-panel-primary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Ranked schools</h2>
+              <p className="float-panel-subtitle">{district}</p>
+            </div>
+          </div>
+          <div className="float-panel-body" style={{ padding: 0 }}>
+            <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>School</th>
+                    <th>Pri</th>
+                    <th>Need</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schools.map((school) => (
+                    <tr
+                      className="data-row"
+                      key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                      data-selected={school.school_id === selectedSchoolId}
+                      onClick={() => setSelectedSchoolId(school.school_id ?? null)}
+                    >
+                      <td>{school.rank_priority ?? "n/a"}</td>
+                      <td className="school-name-cell">{school.school_name}</td>
+                      <td>
+                        <span className="score-pill" style={scoreToPillStyle(school.priority)}>
+                          {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="score-pill" style={scoreToPillStyle(school.need)}>
+                          {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+
+        <article className="float-panel map-side-panel-secondary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Selection</h2>
+              <p className="float-panel-subtitle">Decision-ready snapshot</p>
+            </div>
+          </div>
+          <div className="float-panel-body">
+            {selectedSchool ? (
+              <div className="detail-grid detail-grid-compact">
+                <div className="detail-card">
+                  <h4>{selectedSchool.school_name}</h4>
+                  <p>
+                    {selectedSchool.district}, {selectedSchool.province}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Priority / Need</h4>
+                  <p>
+                    {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
+                    {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Locality</h4>
+                  <p>{String(selectedSchoolDetail?.locality ?? selectedSchool.locality ?? "n/a")}</p>
+                </div>
+                <div className="detail-card">
+                  <h4>Teachers / Classrooms</h4>
+                  <p>
+                    {String(selectedSchoolDetail?.number_of_available_teachers ?? "n/a")} /{" "}
+                    {String(selectedSchoolDetail?.total_number_of_classrooms ?? "n/a")}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <h4>Walking access</h4>
+                  <p>{formatPercentMetric(selectedSchoolDetail?.access_walking_pct)}</p>
+                </div>
+                <div className="detail-card">
+                  <h4>Enrollment 7-10</h4>
+                  <p>{formatNumericMetric(selectedSchoolDetail?.total_enrollment_grade_7_10, 0)}</p>
+                </div>
+              </div>
+            ) : (
+              <p className="overlay-copy">Pick a school on the map or in the table.</p>
+            )}
+          </div>
+        </article>
+      </aside>
+    </div>
+  );
 }
 
 function toFiniteNumber(value: unknown): number | null {
