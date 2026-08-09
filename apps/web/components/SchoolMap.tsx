@@ -368,6 +368,7 @@ export function SchoolMap({
   suppressNextSelectionFocus = false,
   onSelectionFocusSuppressed,
   catchmentSchool = null,
+  onMapCaptureReady,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -390,6 +391,7 @@ export function SchoolMap({
   suppressNextSelectionFocus?: boolean;
   onSelectionFocusSuppressed?: () => void;
   catchmentSchool?: SchoolRecord | null;
+  onMapCaptureReady?: (capture: (() => Promise<Blob>) | null) => void;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -769,7 +771,7 @@ export function SchoolMap({
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           crossOrigin="anonymous"
         />
-        <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
+        <MapScreenshotControl filenamePrefix={screenshotFilePrefix} onCaptureReady={onMapCaptureReady} />
         <ApplyMapView mapView={mapView} />
         <FitSchools schools={schools} enabled={!hasExplicitMapView} />
         <FocusSelectedSchool
