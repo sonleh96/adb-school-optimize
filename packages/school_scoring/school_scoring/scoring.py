@@ -9,6 +9,7 @@ import pandas as pd
 from .config import ScoringConfig, WeightConfig, get_default_config, get_default_weights
 from .explainability import build_score_breakdown, summarize_imputation, summarize_missingness
 from .ranking import compute_stage1_screening, rank_scores
+from .provenance import build_run_manifest
 from .schemas import ScoringResult
 from .utils import (
     clean_text,
@@ -22,7 +23,12 @@ from .utils import (
     score_water,
     wkt_area_m2,
 )
-from .validators import merge_weight_overrides, validate_input_data, validate_weight_config
+from .validators import (
+    collect_data_quality_issues,
+    merge_weight_overrides,
+    validate_input_data,
+    validate_weight_config,
+)
 
 
 def _weight_dict(weights: WeightConfig | dict[str, Any]) -> dict[str, Any]:
@@ -304,9 +310,11 @@ def run_scoring(
 
     config = config or get_default_config()
     validate_input_data(df, config)
+    data_quality_issues = collect_data_quality_issues(df, config)
 
     applied_weights = merge_weight_overrides(get_default_weights().to_dict(), weight_overrides)
     validate_weight_config(applied_weights)
+    run_manifest = build_run_manifest(df, config, applied_weights)
 
     processed, warnings = preprocess_input_data(df, config)
     scored = compute_school_need_subscore(processed, config, applied_weights)
@@ -333,12 +341,24 @@ def run_scoring(
         "top_school": ranked.iloc[0][config.columns.school_name] if not ranked.empty else None,
         "missingness": summarize_missingness(df),
         "imputation": summarize_imputation(ranked),
+        "data_quality": {
+            "status": "review_required" if data_quality_issues else "passed",
+            "issue_count": len(data_quality_issues),
+            "issues": data_quality_issues,
+        },
+        "run_manifest": run_manifest,
     }
+
+    warnings.extend(
+        f"[{issue['severity']}] {issue['message']} Affected rows: {issue['count']}."
+        for issue in data_quality_issues
+    )
 
     return ScoringResult(
         scored_data=ranked,
         summary=summary,
         applied_config=config.to_dict(),
         applied_weights=applied_weights,
+        run_manifest=run_manifest,
         warnings=warnings,
     )

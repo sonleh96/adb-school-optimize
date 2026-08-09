@@ -56,6 +56,13 @@ INDICATOR_OPTIONS = [
     "Conflict Population Exposure",
 ]
 
+EXPORT_NOTICE_ROWS = [
+    ("Status", "Research prototype only"),
+    ("Decision use", "Do not use these rankings as the sole basis for investment decisions."),
+    ("Interpretation", "Ranks are sample-relative and may change when data, weights, or methods change."),
+    ("Data confidence", "This field records coverage of configured stock-imputation flags, not a probability."),
+]
+
 
 def fetch_all(connection, query: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     with connection.cursor() as cursor:
@@ -226,18 +233,28 @@ def insert_scenario(connection, payload: dict[str, Any]) -> dict[str, Any]:
         **payload,
         "weights": Json(payload["weights"]),
         "config": Json(payload["config"]) if payload.get("config") is not None else None,
+        "score_version": payload.get("score_version"),
+        "run_manifest": Json(payload["run_manifest"]) if payload.get("run_manifest") is not None else None,
     }
     query = """
-    insert into scoring_scenarios (scenario_name, description, weights, config, created_by, is_default)
-    values (%(scenario_name)s, %(description)s, %(weights)s, %(config)s, %(created_by)s, %(is_default)s)
+    insert into scoring_scenarios (
+        scenario_name, description, weights, config, score_version, run_manifest, created_by, is_default
+    )
+    values (
+        %(scenario_name)s, %(description)s, %(weights)s, %(config)s,
+        %(score_version)s, %(run_manifest)s, %(created_by)s, %(is_default)s
+    )
     on conflict (scenario_name_norm) do update
     set description = excluded.description,
         weights = excluded.weights,
         config = excluded.config,
+        score_version = excluded.score_version,
+        run_manifest = excluded.run_manifest,
         created_by = excluded.created_by,
         is_default = excluded.is_default,
         updated_at = now()
-    returning scenario_id, scenario_name, description, weights, config, created_by, is_default, created_at, updated_at
+    returning scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
+              created_by, is_default, created_at, updated_at
     """
     with connection.cursor() as cursor:
         cursor.execute(query, db_payload)
@@ -265,6 +282,10 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
         "description": payload.get("description", existing["description"]),
         "weights": Json(payload.get("weights", existing["weights"])),
         "config": Json(payload.get("config", existing["config"])) if payload.get("config", existing["config"]) is not None else None,
+        "score_version": payload.get("score_version", existing.get("score_version")),
+        "run_manifest": Json(payload.get("run_manifest", existing.get("run_manifest")))
+        if payload.get("run_manifest", existing.get("run_manifest")) is not None
+        else None,
         "created_by": payload.get("created_by", existing["created_by"]),
         "is_default": payload.get("is_default", existing["is_default"]),
         "scenario_id": scenario_id,
@@ -276,11 +297,14 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
         description = %(description)s,
         weights = %(weights)s,
         config = %(config)s,
+        score_version = %(score_version)s,
+        run_manifest = %(run_manifest)s,
         created_by = %(created_by)s,
         is_default = %(is_default)s,
         updated_at = now()
     where scenario_id = %(scenario_id)s::uuid
-    returning scenario_id, scenario_name, description, weights, config, created_by, is_default, created_at, updated_at
+    returning scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
+              created_by, is_default, created_at, updated_at
     """
     with connection.cursor() as cursor:
         cursor.execute(query, merged)
@@ -300,7 +324,8 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
 
 def _fetch_school_dataframe(connection) -> pd.DataFrame:
     query = """
-    select school_name as "School Name",
+    select school_id::text as "School ID",
+           school_name as "School Name",
            locality as "Locality",
            number_of_available_teachers as "Number of Available Teachers",
            total_number_of_classrooms as "Total Number of Classrooms",
@@ -375,6 +400,38 @@ def _fetch_school_dataframe(connection) -> pd.DataFrame:
     return df
 
 
+def _build_score_rows(result, scenario_id: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for record in result.scored_data.to_dict(orient="records"):
+        school_id = record.get("School ID")
+        if not school_id:
+            raise ApiError(
+                "Scoring output is missing the durable school identifier.",
+                status_code=500,
+                code="school_id_missing",
+            )
+        rows.append(
+            {
+                "scenario_id": scenario_id,
+                "school_id": school_id,
+                "s": record.get("S"),
+                "a": record.get("A"),
+                "r_phys": record.get("R_phys"),
+                "g": record.get("G"),
+                "i": record.get("I"),
+                "p": record.get("P"),
+                "need_score": record.get("Need"),
+                "priority_score": record.get("Priority"),
+                "data_confidence": record.get("data_confidence"),
+                "stage1_selected": bool(record.get("stage1_selected")),
+                "rank_priority": int(record.get("rank_priority")),
+                "rank_need": int(record.get("rank_need")),
+                "component_breakdown": Json(build_score_breakdown(record, result.applied_weights)),
+            }
+        )
+    return rows
+
+
 def run_and_persist_scenario(
     connection,
     weight_overrides: dict[str, Any] | None = None,
@@ -393,6 +450,7 @@ def run_and_persist_scenario(
         return {
             "scenario": None,
             "summary": result.summary,
+            "run_manifest": result.run_manifest,
             "warnings": result.warnings,
             "top_rows": _serialize_preview_rows(result.scored_data),
         }
@@ -402,6 +460,8 @@ def run_and_persist_scenario(
         "description": description,
         "weights": result.applied_weights,
         "config": result.applied_config,
+        "score_version": result.run_manifest["score_version"],
+        "run_manifest": result.run_manifest,
         "created_by": created_by,
         "is_default": is_default,
     }
@@ -410,11 +470,6 @@ def run_and_persist_scenario(
     with connection.cursor() as cursor:
         cursor.execute("delete from school_scores where scenario_id = %(scenario_id)s::uuid", {"scenario_id": scenario["scenario_id"]})
     connection.commit()
-
-    school_id_map = {
-        row["School Name"]: row["school_id"]
-        for row in fetch_all(connection, 'select school_id, school_name as "School Name" from schools')
-    }
 
     insert_query = """
     insert into school_scores (
@@ -429,30 +484,7 @@ def run_and_persist_scenario(
     )
     """
 
-    rows = []
-    for record in result.scored_data.to_dict(orient="records"):
-        school_id = school_id_map.get(record["School Name"])
-        if not school_id:
-            continue
-        rows.append(
-            {
-                "scenario_id": scenario["scenario_id"],
-                "school_id": school_id,
-                "s": record.get("S"),
-                "a": record.get("A"),
-                "r_phys": record.get("R_phys"),
-                "g": record.get("G"),
-                "i": record.get("I"),
-                "p": record.get("P"),
-                "need_score": record.get("Need"),
-                "priority_score": record.get("Priority"),
-                "data_confidence": record.get("data_confidence"),
-                "stage1_selected": bool(record.get("stage1_selected")),
-                "rank_priority": int(record.get("rank_priority")),
-                "rank_need": int(record.get("rank_need")),
-                "component_breakdown": Json(build_score_breakdown(record, result.applied_weights)),
-            }
-        )
+    rows = _build_score_rows(result, scenario["scenario_id"])
 
     with connection.cursor() as cursor:
         cursor.executemany(insert_query, rows)
@@ -461,6 +493,7 @@ def run_and_persist_scenario(
     return {
         "scenario": scenario,
         "summary": result.summary,
+        "run_manifest": result.run_manifest,
         "warnings": result.warnings,
         "top_rows": _serialize_preview_rows(result.scored_data),
     }
@@ -508,6 +541,12 @@ def export_ranked_xlsx(connection, scenario_id: str | None = None) -> bytes:
     df = _fetch_ranked_export_dataframe(connection, scenario_id=scenario_id)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame(EXPORT_NOTICE_ROWS, columns=["Item", "Value"]).to_excel(
+            writer,
+            index=False,
+            header=False,
+            sheet_name="README",
+        )
         df.to_excel(writer, index=False, sheet_name="ranked_schools")
     output.seek(0)
     return output.read()
@@ -521,6 +560,12 @@ def export_full_xlsx(connection, scenario_id: str | None = None) -> bytes:
     df = _fetch_full_export_dataframe(connection, scenario_id=scenario_id)
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        pd.DataFrame(EXPORT_NOTICE_ROWS, columns=["Item", "Value"]).to_excel(
+            writer,
+            index=False,
+            header=False,
+            sheet_name="README",
+        )
         df.to_excel(writer, index=False, sheet_name="full_schools")
     output.seek(0)
     return output.read()

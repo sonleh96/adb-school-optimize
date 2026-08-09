@@ -92,6 +92,7 @@ class ColumnConfig:
             "Mobile Internet Download Speed (MB/s)",
             "Total Nighttime Luminosity",
             "Secondary students per 1000 people",
+            "Grade 7-10 Students per 1000 Population",
             "Rate of Grade 7 who progressed to Grade 10 (%)",
             "Female students grade 7-12",
             "Total enrollment Grade 7-12",
