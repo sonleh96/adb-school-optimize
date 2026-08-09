@@ -134,14 +134,14 @@ limit 1
 """.format(default_scenario_sql=DEFAULT_SCENARIO_SQL.strip())
 
 SCENARIOS_SQL = """
-select scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
+select scenario_id, scenario_name, description, weights, config,
        created_by, is_default, created_at, updated_at
 from scoring_scenarios
 order by updated_at desc, scenario_name
 """
 
 SCENARIO_SQL = """
-select scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
+select scenario_id, scenario_name, description, weights, config,
        created_by, is_default, created_at, updated_at
 from scoring_scenarios
 where scenario_id = %(scenario_id)s::uuid

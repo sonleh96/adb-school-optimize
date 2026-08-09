@@ -21,6 +21,7 @@ from .data_quality import preflight_ingestion_inputs
 ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_SCHOOLS_PATH = ROOT / "datasets" / "png_curated_sec_schools_access_v3_clean.csv"
 DEFAULT_DISTRICTS_PATH = ROOT / "datasets" / "aggregated_district_data.geojson"
+DEFAULT_DISTRICT_REFERENCE_PATH = ROOT / "datasets" / "PNG_districts.geojson"
 DEFAULT_AUXILIARY_SOURCE_PATHS = {key: ROOT / relative_path for key, relative_path in AUXILIARY_VECTOR_SOURCES.items()}
 
 
@@ -589,7 +590,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if not args.skip_schools:
-        preflight_ingestion_inputs(args.schools, args.districts)
+        preflight_ingestion_inputs(
+            args.schools,
+            args.districts,
+            DEFAULT_DISTRICT_REFERENCE_PATH if DEFAULT_DISTRICT_REFERENCE_PATH.exists() else None,
+        )
 
     settings = get_settings()
     with get_db(settings) as connection:

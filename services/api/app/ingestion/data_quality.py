@@ -58,8 +58,8 @@ def collect_spatial_assignment_issues(
         geometries.append(
             {
                 "geometry": geometry,
-                "province": str(properties.get("Province", "")).strip(),
-                "district": str(properties.get("District", "")).strip(),
+                "province": str(properties.get("Province") or properties.get("NAM_1") or "").strip(),
+                "district": str(properties.get("District") or properties.get("NAM_2") or "").strip(),
             }
         )
 
@@ -109,13 +109,18 @@ def collect_spatial_assignment_issues(
     return issues
 
 
-def preflight_ingestion_inputs(schools_path: Path, districts_path: Path) -> list[dict[str, Any]]:
+def preflight_ingestion_inputs(
+    schools_path: Path,
+    districts_path: Path,
+    district_reference_path: Path | None = None,
+) -> list[dict[str, Any]]:
     """Load school and district inputs and fail fast on blocking spatial issues."""
     schools = pd.read_csv(schools_path)
     if "School Name" in schools.columns:
         schools = schools[schools["School Name"].astype(str).str.strip() != "School Name"].copy()
 
-    districts_payload = json.loads(Path(districts_path).read_text(encoding="utf-8"))
+    spatial_source = district_reference_path or districts_path
+    districts_payload = json.loads(Path(spatial_source).read_text(encoding="utf-8"))
     district_features = districts_payload["features"]
     issues = collect_spatial_assignment_issues(schools, district_features)
 
