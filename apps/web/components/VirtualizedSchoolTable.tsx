@@ -1,7 +1,7 @@
 "use client";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { scoreToPillStyle } from "@/lib/color";
 import type { SchoolRecord } from "@/lib/types";
@@ -24,6 +24,15 @@ export function VirtualizedSchoolTable({
     estimateSize: () => ROW_HEIGHT,
     overscan: 10,
   });
+  const selectedSchoolIndex = useMemo(
+    () => (selectedSchoolId ? schools.findIndex((school) => school.school_id === selectedSchoolId) : -1),
+    [schools, selectedSchoolId]
+  );
+
+  useEffect(() => {
+    if (selectedSchoolIndex < 0) return;
+    virtualizer.scrollToIndex(selectedSchoolIndex, { align: "auto" });
+  }, [selectedSchoolIndex, virtualizer]);
 
   return (
     <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
@@ -67,6 +76,7 @@ export function VirtualizedSchoolTable({
                   }
                 }}
                 role="button"
+                aria-pressed={school.school_id === selectedSchoolId}
                 tabIndex={0}
               >
                 <span className="virtual-cell virtual-cell-rank">{school.rank_priority ?? "n/a"}</span>

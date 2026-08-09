@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
@@ -30,6 +30,7 @@ export function DistrictExplorer() {
   const [topNCount, setTopNCount] = useState(10);
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
+  const selectedDistrictRowRef = useRef<HTMLTableRowElement>(null);
   const indicatorField = districtIndicatorField(indicator);
 
   const indicatorsQuery = useIndicatorsQuery();
@@ -66,10 +67,13 @@ export function DistrictExplorer() {
     replaceState({ indicator: fallback });
   }, [indicator, indicators, indicatorsQuery.data?.default, replaceState]);
 
-  const selectDistrict = (district: DistrictRecord) => {
-    setSelectedDistrict(district);
-    replaceState({ district: district.district, province: district.province });
-  };
+  const selectDistrict = useCallback(
+    (district: DistrictRecord) => {
+      setSelectedDistrict(district);
+      replaceState({ district: district.district, province: district.province });
+    },
+    [replaceState]
+  );
 
   useEffect(() => {
     if (!features.length) return;
@@ -116,6 +120,10 @@ export function DistrictExplorer() {
     () => sortDistrictsByScore(features, rankingScoreField),
     [features, rankingScoreField]
   );
+
+  useEffect(() => {
+    selectedDistrictRowRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [rankedDistricts, selectedDistrict?.district_id]);
 
   const highlightedDistrictIds = useMemo(
     () => (topNEnabled ? getTopDistrictIds(features, rankingScoreField, topNCount) : new Set<string>()),
@@ -334,10 +342,27 @@ export function DistrictExplorer() {
                         key={feature.district_id}
                         data-selected={feature.district_id === selectedDistrict?.district_id}
                         data-highlighted={isHighlighted}
+                        ref={
+                          feature.district_id === selectedDistrict?.district_id
+                            ? selectedDistrictRowRef
+                            : null
+                        }
                         onClick={() => selectDistrict(feature)}
                       >
                         <td>{getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}</td>
-                        <td className="school-name-cell">{feature.district}</td>
+                        <td className="school-name-cell">
+                          <button
+                            type="button"
+                            className="district-ranking-select"
+                            aria-pressed={feature.district_id === selectedDistrict?.district_id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              selectDistrict(feature);
+                            }}
+                          >
+                            {feature.district}
+                          </button>
+                        </td>
                         <td>{formatDistrictScore(feature.priority)}</td>
                         <td>{formatDistrictScore(feature.need)}</td>
                       </tr>
