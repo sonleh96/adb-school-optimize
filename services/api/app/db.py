@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 import psycopg
 from psycopg.rows import dict_row
@@ -22,7 +22,9 @@ def create_connection(settings: Settings | None = None) -> psycopg.Connection:
     try:
         return psycopg.connect(settings.database_url, row_factory=dict_row)
     except psycopg.Error as exc:
-        raise DependencyError("Unable to connect to Supabase Postgres.", details={"type": exc.__class__.__name__}) from exc
+        raise DependencyError(
+            "Unable to connect to Supabase Postgres.", details={"type": exc.__class__.__name__}
+        ) from exc
 
 
 @contextmanager

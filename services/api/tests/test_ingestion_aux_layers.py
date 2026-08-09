@@ -6,7 +6,6 @@ import json
 import sys
 
 import pandas as pd
-
 from app.ingestion import load_core_data
 from app.ingestion.load_core_data import (
     _csv_point_vector_records,

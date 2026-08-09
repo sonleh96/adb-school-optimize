@@ -7,7 +7,10 @@ export function getDistrictScore(feature: DistrictRecord, field: DistrictScoreFi
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function sortDistrictsByScore(features: DistrictRecord[], field: DistrictScoreField): DistrictRecord[] {
+export function sortDistrictsByScore(
+  features: DistrictRecord[],
+  field: DistrictScoreField
+): DistrictRecord[] {
   return [...features].sort((left, right) => {
     const leftValue = getDistrictScore(left, field);
     const rightValue = getDistrictScore(right, field);
@@ -36,8 +39,13 @@ export function getTopDistrictIds(
   );
 }
 
-export function scoreExtent(features: DistrictRecord[], field: DistrictScoreField): { min: number; max: number } {
-  const values = features.map((feature) => getDistrictScore(feature, field)).filter((value): value is number => value != null);
+export function scoreExtent(
+  features: DistrictRecord[],
+  field: DistrictScoreField
+): { min: number; max: number } {
+  const values = features
+    .map((feature) => getDistrictScore(feature, field))
+    .filter((value): value is number => value != null);
   return {
     min: values.length ? Math.min(...values) : 0,
     max: values.length ? Math.max(...values) : 1,

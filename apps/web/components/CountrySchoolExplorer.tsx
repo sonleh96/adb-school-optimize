@@ -123,7 +123,7 @@ export function CountrySchoolExplorer() {
               </div>
             </div>
             <div className="panel-body">
-                <div className="map-frame">
+              <div className="map-frame">
                 {loading ? (
                   <div className="loading">Loading schools…</div>
                 ) : (
@@ -169,7 +169,9 @@ export function CountrySchoolExplorer() {
                       {schools.map((school) => (
                         <tr
                           className="data-row"
-                          key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                          key={
+                            school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`
+                          }
                           data-selected={school.school_id === selectedSchoolId}
                           onClick={() => setSelectedSchoolId(school.school_id ?? null)}
                         >
@@ -212,8 +214,8 @@ export function CountrySchoolExplorer() {
                     <div className="detail-card">
                       <h4>Priority / Need</h4>
                       <p>
-                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                        {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"}{" "}
+                        / {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
                       </p>
                     </div>
                     <div className="detail-card">

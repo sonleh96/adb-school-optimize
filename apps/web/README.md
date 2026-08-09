@@ -3,6 +3,7 @@
 Planned `Next.js` frontend hosted on Vercel.
 
 Responsibilities:
+
 - school map and synced table
 - district choropleth
 - scoring scenario forms
@@ -32,6 +33,7 @@ npm run dev
 ```
 
 The current scaffold includes:
+
 - school explorer with map + synced table
 - district choropleth explorer
 - scenario runner scaffold

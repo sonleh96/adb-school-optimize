@@ -11,7 +11,6 @@ from shapely.geometry import Point
 from .config import ScoringConfig, WeightConfig, get_default_config
 from .exceptions import ConfigurationError, SchemaValidationError, WeightValidationError
 
-
 WEIGHT_SUM_GROUPS = [
     "school_access",
     "school_need",
@@ -138,9 +137,11 @@ def collect_data_quality_issues(
     if latitude_column in df.columns and longitude_column in df.columns:
         latitude = pd.to_numeric(df[latitude_column], errors="coerce")
         longitude = pd.to_numeric(df[longitude_column], errors="coerce")
-        duplicate_coordinates = latitude.notna() & longitude.notna() & pd.DataFrame(
-            {"latitude": latitude, "longitude": longitude}
-        ).duplicated(keep=False)
+        duplicate_coordinates = (
+            latitude.notna()
+            & longitude.notna()
+            & pd.DataFrame({"latitude": latitude, "longitude": longitude}).duplicated(keep=False)
+        )
         issue = _quality_issue(
             df,
             duplicate_coordinates,
@@ -154,10 +155,7 @@ def collect_data_quality_issues(
 
     catchment_columns = config.columns.catchment_wkt_columns
     if all(column in df.columns for column in catchment_columns):
-        geometries = {
-            column: df[column].map(_parse_geometry)
-            for column in catchment_columns
-        }
+        geometries = {column: df[column].map(_parse_geometry) for column in catchment_columns}
         invalid_geometry = pd.Series(False, index=df.index)
         school_outside = pd.Series(False, index=df.index)
         not_nested = pd.Series(False, index=df.index)
@@ -166,7 +164,10 @@ def collect_data_quality_issues(
             row_geometries = [geometries[column].loc[index] for column in catchment_columns]
             supplied_values = [df.at[index, column] for column in catchment_columns]
             supplied = [value is not None and not pd.isna(value) for value in supplied_values]
-            if any(is_supplied and geometry is None for is_supplied, geometry in zip(supplied, row_geometries)):
+            if any(
+                is_supplied and geometry is None
+                for is_supplied, geometry in zip(supplied, row_geometries, strict=True)
+            ):
                 invalid_geometry.loc[index] = True
                 continue
             if not all(geometry is not None and geometry.is_valid for geometry in row_geometries):
@@ -174,10 +175,14 @@ def collect_data_quality_issues(
 
             if latitude_column in df.columns and longitude_column in df.columns:
                 try:
-                    school_point = Point(float(df.at[index, longitude_column]), float(df.at[index, latitude_column]))
+                    school_point = Point(
+                        float(df.at[index, longitude_column]), float(df.at[index, latitude_column])
+                    )
                 except (TypeError, ValueError):
                     school_point = None
-                if school_point is not None and any(not geometry.covers(school_point) for geometry in row_geometries):
+                if school_point is not None and any(
+                    not geometry.covers(school_point) for geometry in row_geometries
+                ):
                     school_outside.loc[index] = True
 
             walking, cycling, driving = row_geometries

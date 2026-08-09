@@ -8,7 +8,7 @@ Build a production-ready decision-support application for ADB staff to:
 - run and persist scoring scenarios
 - generate a full ranked shortlist export
 
-The notebook prototypes in [test_plot.ipynb](/Users/sonle/Documents/work/ADB/adb-school-optimize/test_plot.ipynb) and [score_calculations.ipynb](/Users/sonle/Documents/work/ADB/adb-school-optimize/score_calculations.ipynb) remain the methodological reference. The application should replace notebook-driven workflows with a structured web system.
+The notebook prototypes in [test_plot.ipynb](../../prototype/test_plot.ipynb) and [score_calculations.ipynb](../../prototype/score_calculations.ipynb) remain the methodological reference. The application should replace notebook-driven workflows with a structured web system.
 
 ## Agreed Product Decisions
 
@@ -17,7 +17,7 @@ The notebook prototypes in [test_plot.ipynb](/Users/sonle/Documents/work/ADB/adb
 - Ranked exports: full ranked list, not only filtered rows
 - Selection model: single-select for map/table in v1
 - School map default district: `National Capital District`
-- School map default layer visibility: match the current defaults in [test_plot.ipynb](/Users/sonle/Documents/work/ADB/adb-school-optimize/test_plot.ipynb)
+- School map default layer visibility: match the current defaults in [test_plot.ipynb](../../prototype/test_plot.ipynb)
 - District choropleth default indicator: `Average AQI`
 - Runtime clipping: raster layers only
 - Text joins: lowercase and collapsed whitespace

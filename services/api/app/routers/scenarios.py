@@ -13,7 +13,9 @@ router = APIRouter(prefix="/api/v1/scenarios", tags=["scenarios"])
 
 
 def _payload_dict(model):
-    return model.model_dump(exclude_none=True) if hasattr(model, "model_dump") else model.dict(exclude_none=True)
+    return (
+        model.model_dump(exclude_none=True) if hasattr(model, "model_dump") else model.dict(exclude_none=True)
+    )
 
 
 @router.get("")

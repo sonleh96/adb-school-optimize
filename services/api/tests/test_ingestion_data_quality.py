@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pandas as pd
-
 from app.ingestion.data_quality import collect_spatial_assignment_issues, preflight_ingestion_inputs
 
 

@@ -175,8 +175,8 @@ export function ScenarioPanel() {
         <div>
           <h2 className="panel-title">Scenario Lab</h2>
           <p className="panel-subtitle">
-            Run persisted scoring scenarios against the seeded school dataset using interactive
-            weight controls.
+            Run persisted scoring scenarios against the seeded school dataset using interactive weight
+            controls.
           </p>
         </div>
         <div className="scenario-data-actions">
@@ -225,20 +225,31 @@ export function ScenarioPanel() {
                     type="button"
                     onClick={handleRunScenario}
                     disabled={running || !WRITE_OPERATIONS_ENABLED}
-                    title={WRITE_OPERATIONS_ENABLED ? undefined : "Scenario writes are disabled in research-only mode."}
+                    title={
+                      WRITE_OPERATIONS_ENABLED
+                        ? undefined
+                        : "Scenario writes are disabled in research-only mode."
+                    }
                   >
-                    {running ? "Running…" : WRITE_OPERATIONS_ENABLED ? "Run And Save Scenario" : "Scenario Runs Disabled"}
+                    {running
+                      ? "Running…"
+                      : WRITE_OPERATIONS_ENABLED
+                        ? "Run And Save Scenario"
+                        : "Scenario Runs Disabled"}
                   </button>
                 </div>
                 {!WRITE_OPERATIONS_ENABLED ? (
                   <p className="small-copy research-mode-copy">
-                    Saved scenario runs are disabled until authentication and data-governance controls are approved.
+                    Saved scenario runs are disabled until authentication and data-governance controls are
+                    approved.
                   </p>
                 ) : null}
                 <div className="control" style={{ minWidth: "100%" }}>
                   <label>Weight Builder</label>
                   <div className="scenario-weight-builder-header">
-                    <p className="small-copy">Use sliders or percentage inputs. Each group automatically sums to 100%.</p>
+                    <p className="small-copy">
+                      Use sliders or percentage inputs. Each group automatically sums to 100%.
+                    </p>
                     <button className="button button-secondary" type="button" onClick={resetAll}>
                       Reset all
                     </button>
@@ -248,7 +259,11 @@ export function ScenarioPanel() {
                       <article className="detail-card scenario-weight-editor-card" key={group.key}>
                         <div className="scenario-weight-editor-card-head">
                           <h4>{group.label}</h4>
-                          <button className="button button-secondary" type="button" onClick={() => resetGroup(group.key)}>
+                          <button
+                            className="button button-secondary"
+                            type="button"
+                            onClick={() => resetGroup(group.key)}
+                          >
                             Reset group
                           </button>
                         </div>
@@ -263,7 +278,9 @@ export function ScenarioPanel() {
                                 max={100}
                                 step={0.1}
                                 value={entry.percent}
-                                onChange={(event) => updateWeight(group.key, entry.key, Number(event.target.value))}
+                                onChange={(event) =>
+                                  updateWeight(group.key, entry.key, Number(event.target.value))
+                                }
                               />
                               <input
                                 className="scenario-weight-number"
@@ -272,7 +289,9 @@ export function ScenarioPanel() {
                                 max={100}
                                 step={0.1}
                                 value={entry.percent.toFixed(1)}
-                                onChange={(event) => updateWeight(group.key, entry.key, Number(event.target.value))}
+                                onChange={(event) =>
+                                  updateWeight(group.key, entry.key, Number(event.target.value))
+                                }
                               />
                               <span className="scenario-weight-percent">%</span>
                             </div>
@@ -327,7 +346,9 @@ export function ScenarioPanel() {
                         >
                           <td>{scenario.scenario_name}</td>
                           <td>{scenario.is_default ? "Yes" : "No"}</td>
-                          <td>{scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}</td>
+                          <td>
+                            {scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}
+                          </td>
                           <td className="download-cell">
                             <a
                               className="icon-download-link"
@@ -370,7 +391,10 @@ export function ScenarioPanel() {
                       </thead>
                       <tbody>
                         {previewRows.map((row) => (
-                          <tr className="data-row" key={`${row.school_id ?? row.school_name}-${row.district}`}>
+                          <tr
+                            className="data-row"
+                            key={`${row.school_id ?? row.school_name}-${row.district}`}
+                          >
                             <td>{row.rank_priority ?? "n/a"}</td>
                             <td>{row.school_name}</td>
                             <td>{row.district}</td>
@@ -382,7 +406,9 @@ export function ScenarioPanel() {
                     </table>
                   </div>
                 ) : (
-                  <div className="empty">Run or select a scenario to preview all recalculated school results.</div>
+                  <div className="empty">
+                    Run or select a scenario to preview all recalculated school results.
+                  </div>
                 )}
               </div>
             </article>
@@ -465,7 +491,5 @@ function roundToOneDecimal(value: number): number {
 }
 
 function toStartCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }

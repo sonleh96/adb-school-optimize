@@ -43,7 +43,9 @@ export function SchoolExplorer() {
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
   const [districtQuery, setDistrictQuery] = useState(DEFAULT_DISTRICT);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
-  const [districtOptions, setDistrictOptions] = useState<Array<{ district_id: string; province: string; district: string }>>([]);
+  const [districtOptions, setDistrictOptions] = useState<
+    Array<{ district_id: string; province: string; district: string }>
+  >([]);
   const [schoolQuery, setSchoolQuery] = useState("");
   const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
   const [schoolSearchOptions, setSchoolSearchOptions] = useState<SchoolRecord[]>([]);
@@ -138,9 +140,18 @@ export function SchoolExplorer() {
     };
 
     return districtOptions
-      .map((option) => ({ option, score: rankSuggestion(option.district, query), dir: directionalRank(option.district) }))
+      .map((option) => ({
+        option,
+        score: rankSuggestion(option.district, query),
+        dir: directionalRank(option.district),
+      }))
       .filter((item) => item.score < 9)
-      .sort((left, right) => left.score - right.score || left.dir - right.dir || left.option.district.localeCompare(right.option.district))
+      .sort(
+        (left, right) =>
+          left.score - right.score ||
+          left.dir - right.dir ||
+          left.option.district.localeCompare(right.option.district)
+      )
       .slice(0, 8)
       .map((item) => item.option);
   }, [districtOptions, districtQuery]);
@@ -178,7 +189,8 @@ export function SchoolExplorer() {
       return current.map((layer) => {
         if (layer.key === layerKey) return { ...layer, active: !layer.active };
         if (!isAirLayer) return layer;
-        if (layer.key === "air_quality_mean" || layer.key === "air_quality_max") return { ...layer, active: false };
+        if (layer.key === "air_quality_mean" || layer.key === "air_quality_max")
+          return { ...layer, active: false };
         return layer;
       });
     });
@@ -224,7 +236,9 @@ export function SchoolExplorer() {
                     </button>
                   </div>
                   <div className="search-control-row">
-                    <label className="search-control-label" htmlFor="school-search">Search School</label>
+                    <label className="search-control-label" htmlFor="school-search">
+                      Search School
+                    </label>
                     <div className="district-search map-district-search">
                       <input
                         id="school-search"
@@ -249,7 +263,10 @@ export function SchoolExplorer() {
                           {schoolSuggestions.map((school) => (
                             <button
                               type="button"
-                              key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                              key={
+                                school.school_id ??
+                                `${school.school_name}-${school.latitude}-${school.longitude}`
+                              }
                               className="district-suggestion-item"
                               onMouseDown={() => applySchool(school)}
                             >
@@ -261,7 +278,9 @@ export function SchoolExplorer() {
                     </div>
                   </div>
                   <div className="search-control-row">
-                    <label className="search-control-label" htmlFor="district-search">Search District</label>
+                    <label className="search-control-label" htmlFor="district-search">
+                      Search District
+                    </label>
                     <div className="district-search map-district-search">
                       <input
                         id="district-search"
@@ -351,8 +370,7 @@ export function SchoolExplorer() {
                   </div>
                 </div>
                 <p className="status-note">
-                  Layer overlays load from backend. Air Quality is exclusive between Average and
-                  Maximum AQI.
+                  Layer overlays load from backend. Air Quality is exclusive between Average and Maximum AQI.
                 </p>
               </div>
             </div>
@@ -369,19 +387,22 @@ export function SchoolExplorer() {
                   <div className="detail-grid detail-grid-compact">
                     <div className="detail-card">
                       <h4>{selectedSchool.school_name}</h4>
-                      <p>{selectedSchool.district}, {selectedSchool.province}</p>
+                      <p>
+                        {selectedSchool.district}, {selectedSchool.province}
+                      </p>
                     </div>
                     <div className="detail-card">
                       <h4>Priority / Need</h4>
                       <p>
-                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"} /{" "}
-                        {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
+                        {selectedSchool.priority != null ? (selectedSchool.priority * 100).toFixed(1) : "n/a"}{" "}
+                        / {selectedSchool.need != null ? (selectedSchool.need * 100).toFixed(1) : "n/a"}
                       </p>
                     </div>
                     <div className="detail-card detail-card-span-two">
                       <h4>Coordinates</h4>
                       <p>
-                        {formatCoordinate(selectedSchool.latitude)}, {formatCoordinate(selectedSchool.longitude)}
+                        {formatCoordinate(selectedSchool.latitude)},{" "}
+                        {formatCoordinate(selectedSchool.longitude)}
                       </p>
                     </div>
                     <div className="detail-card">
@@ -429,11 +450,15 @@ export function SchoolExplorer() {
                     </div>
                     <div className="detail-card">
                       <h4>Rate of Grade 7 who progressed to Grade 10 (%)</h4>
-                      <p>{formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_10_pct)}</p>
+                      <p>
+                        {formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_10_pct)}
+                      </p>
                     </div>
                     <div className="detail-card">
                       <h4>Rate of Grade 7 who progressed to Grade 12 (%)</h4>
-                      <p>{formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_12_pct)}</p>
+                      <p>
+                        {formatPercentMetric(selectedSchoolDetail?.rate_grade_7_progressed_to_grade_12_pct)}
+                      </p>
                     </div>
                     <div className="detail-card">
                       <h4>Total enrollment Grade 7-12</h4>
@@ -460,9 +485,7 @@ export function SchoolExplorer() {
             <div className="panel-head">
               <div>
                 <h3 className="panel-title">Ranked School Table</h3>
-                <p className="panel-subtitle">
-                  Current district slice with seeded default scenario scores.
-                </p>
+                <p className="panel-subtitle">Current district slice with seeded default scenario scores.</p>
               </div>
             </div>
             <div className="panel-body">
@@ -480,7 +503,9 @@ export function SchoolExplorer() {
                     {schools.map((school) => (
                       <tr
                         className="data-row"
-                        key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                        key={
+                          school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`
+                        }
                         data-selected={school.school_id === selectedSchoolId}
                         onClick={() => setSelectedSchoolId(school.school_id ?? null)}
                       >

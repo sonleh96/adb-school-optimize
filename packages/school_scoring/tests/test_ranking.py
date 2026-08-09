@@ -1,7 +1,6 @@
 """Tests for ranking behavior in the school scoring package."""
 
 import pandas as pd
-
 from school_scoring import get_default_config
 from school_scoring.ranking import rank_scores
 

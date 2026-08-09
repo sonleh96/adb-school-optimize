@@ -1,7 +1,6 @@
 """Tests for end-to-end scoring outputs."""
 
 import pandas as pd
-
 from school_scoring import run_scoring
 from school_scoring.config import get_default_config, get_default_weights
 from school_scoring.preprocessing import preprocess_input_data

@@ -15,7 +15,11 @@ export function scoreToColor(value?: number | null): string {
   return "#0f3d8a";
 }
 
-export function scoreToPillStyle(value?: number | null): { background: string; color: string; borderColor: string } {
+export function scoreToPillStyle(value?: number | null): {
+  background: string;
+  color: string;
+  borderColor: string;
+} {
   const color = scoreToColor(value);
   return {
     background: `${color}26`,

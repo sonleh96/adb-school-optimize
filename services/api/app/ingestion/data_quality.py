@@ -80,9 +80,7 @@ def collect_spatial_assignment_issues(
 
         province = str(row.get("Province", "")).strip()
         district = str(row.get("District", "")).strip()
-        if not any(
-            item["province"] == province and item["district"] == district for item in covering
-        ):
+        if not any(item["province"] == province and item["district"] == district for item in covering):
             label_mismatch_mask.at[index] = True
 
     issues: list[dict[str, Any]] = []

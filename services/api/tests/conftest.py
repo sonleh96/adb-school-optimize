@@ -6,11 +6,10 @@ from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
 from app.security import require_write_operations
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture

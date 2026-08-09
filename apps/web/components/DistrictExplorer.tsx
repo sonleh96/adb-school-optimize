@@ -16,7 +16,7 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) 
 
 export function DistrictExplorer() {
   const [indicator, setIndicator] = useState("Average AQI");
-  const [distributionScheme, setDistributionScheme] = useState<"everyone" | "selected_group" | "on_screen">("everyone");
+  const [distributionScheme, setDistributionScheme] = useState<"everyone" | "selected_group">("everyone");
   const [indicators, setIndicators] = useState<string[]>(["Average AQI"]);
   const [features, setFeatures] = useState<DistrictRecord[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictRecord | null>(null);
@@ -45,7 +45,11 @@ export function DistrictExplorer() {
         setFeatures(result.features);
         setSelectedDistrict((current) => {
           if (!current) return result.features[0] ?? null;
-          return result.features.find((feature) => feature.district_id === current.district_id) ?? result.features[0] ?? null;
+          return (
+            result.features.find((feature) => feature.district_id === current.district_id) ??
+            result.features[0] ??
+            null
+          );
         });
       })
       .catch((err: Error) => {
@@ -62,9 +66,7 @@ export function DistrictExplorer() {
 
   const metricValues = useMemo(
     () =>
-      features
-        .map((feature) => Number(feature[indicatorField]))
-        .filter((value) => Number.isFinite(value)),
+      features.map((feature) => Number(feature[indicatorField])).filter((value) => Number.isFinite(value)),
     [features, indicatorField]
   );
 
@@ -105,8 +107,8 @@ export function DistrictExplorer() {
         <div>
           <h2 className="panel-title">District Explorer</h2>
           <p className="panel-subtitle">
-            Compare aggregated administrative indicators across district polygons. Default indicator
-            is Average AQI.
+            Compare aggregated administrative indicators across district polygons. Default indicator is
+            Average AQI.
           </p>
         </div>
         <div className="controls">
@@ -159,8 +161,7 @@ export function DistrictExplorer() {
                     <h3>{selectedDistrict.district}</h3>
                     <p>{selectedDistrict.province}</p>
                     <p style={{ marginTop: 10 }}>
-                      <strong>{indicator}:</strong>{" "}
-                      {String(selectedDistrict[indicatorField] ?? "n/a")}
+                      <strong>{indicator}:</strong> {String(selectedDistrict[indicatorField] ?? "n/a")}
                     </p>
                   </div>
                 ) : (
@@ -186,9 +187,14 @@ export function DistrictExplorer() {
               {distribution ? (
                 <div className="distribution-panel">
                   <p className="distribution-heading">Distribution</p>
-                  <div className="distribution-bars" role="img" aria-label={`${indicator} distribution histogram`}>
+                  <div
+                    className="distribution-bars"
+                    role="img"
+                    aria-label={`${indicator} distribution histogram`}
+                  >
                     {distribution.bins.map((bin, index) => {
-                      const normalizedHeight = distribution.maxCount > 0 ? bin.count / distribution.maxCount : 0;
+                      const normalizedHeight =
+                        distribution.maxCount > 0 ? bin.count / distribution.maxCount : 0;
                       const isSelectedBin = distribution.selectedBinIndex === index;
                       const color = distributionColor(
                         indicator,
@@ -203,7 +209,6 @@ export function DistrictExplorer() {
                           style={{
                             height: `${Math.max(6, normalizedHeight * 72)}px`,
                             background: color,
-                            opacity: distributionScheme === "on_screen" ? 0.9 : 1,
                           }}
                           title={`${bin.start.toFixed(2)} to ${bin.end.toFixed(2)}: ${bin.count}`}
                         />
@@ -231,20 +236,10 @@ export function DistrictExplorer() {
                     >
                       SELECTED GROUP
                     </button>
-                    <button
-                      type="button"
-                      className={`distribution-scheme-button ${distributionScheme === "on_screen" ? "is-active" : ""}`}
-                      onClick={() => setDistributionScheme("on_screen")}
-                    >
-                      ON SCREEN
-                    </button>
                   </div>
                 </div>
               ) : null}
 
-              <div className="district-ranking-title-wrap">
-                <h3 className="panel-title">District Ranking</h3>
-              </div>
               <div className="district-ranking-controls">
                 <div className="control">
                   <label>Ranking score</label>
@@ -322,7 +317,9 @@ export function DistrictExplorer() {
                             data-highlighted={isHighlighted}
                             onClick={() => setSelectedDistrict(feature)}
                           >
-                            <td>{getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}</td>
+                            <td>
+                              {getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}
+                            </td>
                             <td>{feature.district}</td>
                             <td>{feature.province}</td>
                             <td>{formatDistrictScore(feature.priority)}</td>
@@ -385,7 +382,9 @@ function buildDistribution(values: number[], selectedValue: number | null): Dist
   }
 
   const selectedBinIndex =
-    selectedValue == null ? null : Math.min(binCount - 1, Math.max(0, Math.floor((selectedValue - min) / width)));
+    selectedValue == null
+      ? null
+      : Math.min(binCount - 1, Math.max(0, Math.floor((selectedValue - min) / width)));
 
   return {
     bins,
@@ -399,11 +398,10 @@ function buildDistribution(values: number[], selectedValue: number | null): Dist
 function distributionColor(
   indicator: string,
   position: number,
-  scheme: "everyone" | "selected_group" | "on_screen",
+  scheme: "everyone" | "selected_group",
   isSelectedBin: boolean
 ): string {
   const everyone = districtIndicatorColor(indicator, position);
   if (scheme === "selected_group") return isSelectedBin ? everyone : "#d7dddb";
-  if (scheme === "on_screen") return everyone;
   return everyone;
 }

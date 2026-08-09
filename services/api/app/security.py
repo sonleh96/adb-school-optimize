@@ -8,7 +8,7 @@ from .errors import ApiError
 from .settings import Settings, get_settings
 
 
-def require_write_operations(settings: Settings = Depends(get_settings)) -> None:
+def require_write_operations(settings: Settings = Depends(get_settings)) -> None:  # noqa: B008
     """Reject mutations unless a server operator explicitly enables them."""
     if settings.write_operations_enabled:
         return
