@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
@@ -157,6 +157,28 @@ export function SchoolExplorer() {
     [schools, selectedSchoolId]
   );
 
+  const selectSchool = useCallback(
+    (schoolId: string | null) => {
+      const school = schoolSearchOptions.find((item) => item.school_id === schoolId);
+      setSelectedSchoolId(schoolId);
+
+      if (!school) {
+        replaceState({ school: null });
+        return;
+      }
+
+      setDistrict(school.district);
+      setDistrictQuery(school.district);
+      setProvince(school.province);
+      replaceState({
+        school: school.school_id ?? null,
+        district: school.district,
+        province: school.province,
+      });
+    },
+    [replaceState, schoolSearchOptions]
+  );
+
   useEffect(() => {
     if (!selectedSchool) return;
     setSchoolQuery(selectedSchool.school_name);
@@ -222,11 +244,7 @@ export function SchoolExplorer() {
   const applySchool = (school: SchoolRecord) => {
     setSchoolQuery(school.school_name);
     setShowSchoolSuggestions(false);
-    setDistrict(school.district);
-    setDistrictQuery(school.district);
-    setProvince(school.province);
-    setSelectedSchoolId(school.school_id ?? null);
-    replaceState({ school: school.school_id ?? null, district: school.district, province: school.province });
+    selectSchool(school.school_id ?? null);
   };
 
   const toggleLayer = (layerKey: SchoolLayerKey) => {
@@ -264,7 +282,7 @@ export function SchoolExplorer() {
             <SchoolMap
               schools={schools}
               selectedSchoolId={selectedSchoolId}
-              onSelectSchool={setSelectedSchoolId}
+              onSelectSchool={selectSchool}
               scoreField={scoreField}
               district={district}
               province={selectedProvince}
@@ -436,7 +454,7 @@ export function SchoolExplorer() {
             <VirtualizedSchoolTable
               schools={schools}
               selectedSchoolId={selectedSchoolId}
-              onSelectSchool={setSelectedSchoolId}
+              onSelectSchool={selectSchool}
             />
           </div>
         </article>
