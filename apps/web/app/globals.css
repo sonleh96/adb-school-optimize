@@ -636,6 +636,15 @@ body {
     max-width: min(320px, calc(100% - 24px));
   }
 
+  .national-overview-controls {
+    bottom: calc(46% + 120px);
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .school-explorer-left-stack {
     max-height: calc(54% - 32px);
   }
