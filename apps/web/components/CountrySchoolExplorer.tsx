@@ -27,7 +27,7 @@ export function CountrySchoolExplorer() {
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const districtFeatures = useMemo(
     () => choroplethQuery.data?.features ?? [],
-    [choroplethQuery.data?.features],
+    [choroplethQuery.data?.features]
   );
   const error = schoolsQuery.error ?? choroplethQuery.error;
   const loading = schoolsQuery.isLoading;
@@ -42,7 +42,7 @@ export function CountrySchoolExplorer() {
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
-    [schools, selectedSchoolId],
+    [schools, selectedSchoolId]
   );
   const selectedSchoolDetail = detailQuery.data ?? null;
 
