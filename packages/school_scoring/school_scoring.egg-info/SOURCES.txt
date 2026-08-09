@@ -5,6 +5,7 @@ school_scoring/config.py
 school_scoring/exceptions.py
 school_scoring/explainability.py
 school_scoring/preprocessing.py
+school_scoring/provenance.py
 school_scoring/ranking.py
 school_scoring/schemas.py
 school_scoring/scoring.py
