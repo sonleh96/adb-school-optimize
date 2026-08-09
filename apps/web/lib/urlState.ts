@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import {
+  EMPTY_SCHOOL_FILTERS,
+  parseSchoolFilters,
+  serializeSchoolFilters,
+  type SchoolFilters,
+} from "@/lib/schoolFilters";
+
 export const SUPPORTED_SCHOOL_LAYER_KEYS = [
   "roads",
   "air_quality_mean",
@@ -31,6 +38,7 @@ export type UrlState = {
   score: "priority" | "need" | null;
   indicator: string | null;
   scenario: string | null;
+  filters: SchoolFilters;
   layers: SupportedSchoolLayerKey[];
   mapView: MapView | null;
 };
@@ -38,7 +46,7 @@ export type UrlState = {
 type UrlStatePatch = Partial<UrlState>;
 
 const STRING_KEYS = ["school", "district", "province", "indicator", "scenario"] as const;
-const KNOWN_KEYS = [...STRING_KEYS, "score", "layers", "lat", "lng", "z"] as const;
+const KNOWN_KEYS = [...STRING_KEYS, "score", "filters", "layers", "lat", "lng", "z"] as const;
 const SUPPORTED_LAYER_SET = new Set<string>(SUPPORTED_SCHOOL_LAYER_KEYS);
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 22;
@@ -101,6 +109,7 @@ export function parseUrlState(search: URLSearchParams | ReadonlyURLSearchParams)
     score: score === "priority" || score === "need" ? score : null,
     indicator: trimmed(search.get("indicator")),
     scenario: trimmed(search.get("scenario")),
+    filters: parseSchoolFilters(search.get("filters")),
     layers,
     mapView: validMapView ? { lat, lng, zoom } : null,
   };
@@ -134,6 +143,8 @@ export function serializeUrlState(
 
   for (const key of STRING_KEYS) setString(params, key, state[key]);
   if (state.score) params.set("score", state.score);
+  const filters = serializeSchoolFilters(state.filters ?? EMPTY_SCHOOL_FILTERS);
+  if (filters) params.set("filters", filters);
   const layers = normalizeLayers(state.layers);
   if (layers.length) params.set("layers", layers.join(","));
   setMapView(params, state.mapView);

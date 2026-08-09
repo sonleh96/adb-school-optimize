@@ -1,4 +1,5 @@
 import { parseUrlState, serializeUrlState, SUPPORTED_SCHOOL_LAYER_KEYS, type UrlState } from "@/lib/urlState";
+import { EMPTY_SCHOOL_FILTERS, normalizeSchoolFilters, serializeSchoolFilters } from "@/lib/schoolFilters";
 
 export const BRIEFING_BOOKMARKS_STORAGE_KEY = "rise-png-briefing-bookmarks-v1";
 export const BRIEFING_BOOKMARKS_SCHEMA_VERSION = 1;
@@ -34,6 +35,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       score: "priority",
       indicator: null,
       scenario: null,
+      filters: EMPTY_SCHOOL_FILTERS,
       layers: [],
       mapView: NATIONAL_MAP_VIEW,
     },
@@ -50,6 +52,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       score: "priority",
       indicator: null,
       scenario: null,
+      filters: EMPTY_SCHOOL_FILTERS,
       layers: [],
       mapView: null,
     },
@@ -66,6 +69,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       score: "priority",
       indicator: null,
       scenario: null,
+      filters: EMPTY_SCHOOL_FILTERS,
       layers: ["air_quality_mean"],
       mapView: PORT_MORESBY_MAP_VIEW,
     },
@@ -102,6 +106,13 @@ function parseStoredState(value: unknown): UrlState | null {
   if (!isRecord(value)) return null;
   const score = value.score;
   if (score != null && score !== "priority" && score !== "need") return null;
+  const filters =
+    value.filters == null
+      ? EMPTY_SCHOOL_FILTERS
+      : typeof value.filters === "object"
+        ? normalizeSchoolFilters(value.filters)
+        : null;
+  if (!filters) return null;
   if (
     !Array.isArray(value.layers) ||
     !value.layers.every((layer) => SUPPORTED_SCHOOL_LAYER_KEYS.includes(layer))
@@ -127,6 +138,8 @@ function parseStoredState(value: unknown): UrlState | null {
     if (string) params.set(key, string);
   }
   if (score) params.set("score", score);
+  const serializedFilters = serializeSchoolFilters(filters);
+  if (serializedFilters) params.set("filters", serializedFilters);
   if (value.layers.length) params.set("layers", value.layers.join(","));
   if (mapView) {
     params.set("lat", String(mapView.lat));
@@ -225,6 +238,8 @@ export function bookmarkMatchesState(bookmark: BriefingBookmark, current: UrlSta
     if (bookmark.state[key] != null && bookmark.state[key] !== current[key]) return false;
   }
   if (bookmark.state.score != null && bookmark.state.score !== current.score) return false;
+  if (serializeSchoolFilters(bookmark.state.filters) !== serializeSchoolFilters(current.filters))
+    return false;
   if (bookmark.state.layers.join(",") !== current.layers.join(",")) return false;
   return sameMapView(bookmark.state.mapView, current.mapView);
 }
