@@ -203,6 +203,44 @@ body {
   color: #fff;
 }
 
+.compare-mode-button {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.compare-score-legend {
+  display: grid;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(10, 46, 115, 0.05);
+}
+
+.compare-score-legend .panel-subtitle,
+.compare-score-legend .small-copy {
+  margin: 0;
+}
+
+.compare-score-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.compare-score-marker-swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  border: 3px solid #b8611b;
+  border-radius: 50%;
+  background: #9bb8e8;
+}
+
+.compare-score-legend-compact {
+  display: none;
+}
+
 .map-overlay-controls .district-search input,
 .map-overlay-controls .control select {
   width: 100%;
@@ -587,6 +625,10 @@ body {
 
   .map-overlay-legend {
     display: none;
+  }
+
+  .compare-score-legend-compact {
+    display: grid;
   }
 
   .school-explorer-left-stack {

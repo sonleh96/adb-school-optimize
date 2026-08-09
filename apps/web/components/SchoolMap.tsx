@@ -319,6 +319,7 @@ export function SchoolMap({
   mapView = null,
   onMapViewChange,
   hasExplicitMapView = false,
+  comparePriorityAndNeed = false,
   suppressNextSelectionFocus = false,
   onSelectionFocusSuppressed,
 }: {
@@ -337,6 +338,7 @@ export function SchoolMap({
   mapView?: MapView | null;
   onMapViewChange?: (mapView: MapView) => void;
   hasExplicitMapView?: boolean;
+  comparePriorityAndNeed?: boolean;
   suppressNextSelectionFocus?: boolean;
   onSelectionFocusSuppressed?: () => void;
 }) {
@@ -867,7 +869,7 @@ export function SchoolMap({
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {schoolCollection.features.length > 0 ? (
             <GeoJSON
-              key={`schools-${scoreField}-${markerSignature}-${selectedSchoolId ?? "none"}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
+              key={`schools-${scoreField}-${comparePriorityAndNeed ? "compare" : "single"}-${markerSignature}-${selectedSchoolId ?? "none"}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
               data={schoolCollection}
               pointToLayer={(feature, latlng) => {
                 const props = asRecord(feature.properties);
@@ -879,13 +881,15 @@ export function SchoolMap({
                     : typeof props.need === "number"
                       ? props.need
                       : null;
+                const priorityScore = typeof props.priority === "number" ? props.priority : null;
+                const needScore = typeof props.need === "number" ? props.need : null;
                 const isSelected = props.school_id === selectedSchoolId;
                 return L.circleMarker(latlng, {
                   radius: isSelected ? 10 : 7,
-                  color: "#000000",
-                  fillColor: scoreToColor(score),
+                  color: comparePriorityAndNeed ? scoreToColor(needScore) : "#000000",
+                  fillColor: scoreToColor(comparePriorityAndNeed ? priorityScore : score),
                   fillOpacity: isSelected ? 0.95 : 0.78,
-                  weight: isSelected ? 3 : 1,
+                  weight: comparePriorityAndNeed ? (isSelected ? 4 : 3) : isSelected ? 3 : 1,
                   renderer: L.canvas({ padding: 0.5 }),
                 });
               }}
