@@ -233,6 +233,31 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+function hashMarkerValue(hash: number, value: string | number | null | undefined): number {
+  const text = value == null ? "∅" : String(value);
+  let next = hash ^ text.length;
+  for (let index = 0; index < text.length; index += 1) {
+    next ^= text.charCodeAt(index);
+    next = Math.imul(next, 16777619);
+  }
+  return next;
+}
+
+function schoolMarkerSignature(schools: SchoolRecord[]): string {
+  let hash = 2166136261;
+  for (const school of schools) {
+    hash = hashMarkerValue(hash, school.school_id);
+    hash = hashMarkerValue(hash, school.school_name);
+    hash = hashMarkerValue(hash, school.district);
+    hash = hashMarkerValue(hash, school.province);
+    hash = hashMarkerValue(hash, school.latitude);
+    hash = hashMarkerValue(hash, school.longitude);
+    hash = hashMarkerValue(hash, school.priority);
+    hash = hashMarkerValue(hash, school.need);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function findNumericProperty(properties: Record<string, unknown>, keys: string[]): number | null {
   for (const key of keys) {
     const value = properties[key];
@@ -634,6 +659,7 @@ export function SchoolMap({
       })),
     };
   }, [schools]);
+  const markerSignature = useMemo(() => schoolMarkerSignature(schools), [schools]);
 
   const renderAccessLayer = (features: VectorLayerFeature[], opacity: number) => {
     if (!features.length) return null;
@@ -841,7 +867,7 @@ export function SchoolMap({
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {schoolCollection.features.length > 0 ? (
             <GeoJSON
-              key={`schools-${scoreField}-${selectedSchoolId ?? "none"}-${schools.length}`}
+              key={`schools-${scoreField}-${markerSignature}-${selectedSchoolId ?? "none"}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
               data={schoolCollection}
               pointToLayer={(feature, latlng) => {
                 const props = asRecord(feature.properties);
