@@ -164,6 +164,7 @@ export function CountrySchoolExplorer() {
               mapView={mapView}
               onMapViewChange={setMapView}
               hasExplicitMapView={initialState.mapView != null}
+              enableNationalDensity
             />
           )}
         </div>
