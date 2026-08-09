@@ -102,240 +102,213 @@ export function DistrictExplorer() {
   );
 
   return (
-    <section className="panel district-explorer">
-      <div className="panel-head">
-        <div>
-          <h2 className="panel-title">District Explorer</h2>
-          <p className="panel-subtitle">
-            Compare aggregated administrative indicators across district polygons. Default indicator is
-            Average AQI.
-          </p>
-        </div>
-        <div className="controls">
-          <div className="control">
-            <label htmlFor="indicator">Indicator</label>
-            <select id="indicator" value={indicator} onChange={(event) => setIndicator(event.target.value)}>
-              {indicators.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+    <div className="map-workspace">
+      <div className="map-workspace-canvas">
+        <div className="map-frame">
+          {loading ? (
+            <div className="loading absolute inset-0">Loading choropleth…</div>
+          ) : (
+            <DistrictMap
+              indicator={indicator}
+              features={features}
+              selectedDistrictId={selectedDistrict?.district_id ?? null}
+              onSelectDistrict={setSelectedDistrict}
+              highlightedDistrictIds={highlightedDistrictIds}
+              rankingScoreField={rankingScoreField}
+              showIndicatorLayer={!topNEnabled}
+            />
+          )}
         </div>
       </div>
 
-      <div className="panel-body district-explorer-body">
-        {error ? <div className="error">{error}</div> : null}
-        <div className="split-layout district-split-layout">
-          <div className="panel map-card district-map-card">
-            <div className="panel-body">
-              <div className="map-frame">
-                {loading ? (
-                  <div className="loading">Loading choropleth…</div>
-                ) : (
-                  <DistrictMap
-                    indicator={indicator}
-                    features={features}
-                    selectedDistrictId={selectedDistrict?.district_id ?? null}
-                    onSelectDistrict={setSelectedDistrict}
-                    highlightedDistrictIds={highlightedDistrictIds}
-                    rankingScoreField={rankingScoreField}
-                    showIndicatorLayer={!topNEnabled}
-                  />
-                )}
-              </div>
+      <div className="map-overlay-controls map-overlay-controls-top-left">
+        <p className="overlay-title">District explorer</p>
+        <p className="overlay-copy">Compare administrative indicators across polygons.</p>
+        <div className="control" style={{ minWidth: 0 }}>
+          <label htmlFor="indicator">Indicator</label>
+          <select id="indicator" value={indicator} onChange={(event) => setIndicator(event.target.value)}>
+            {indicators.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="score-toggle" role="group" aria-label="Rank districts by">
+          <button
+            type="button"
+            className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
+            onClick={() => setRankingScoreField("priority")}
+          >
+            Priority
+          </button>
+          <button
+            type="button"
+            className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
+            onClick={() => setRankingScoreField("need")}
+          >
+            Need
+          </button>
+        </div>
+        <div className="district-topn-toggle-row">
+          <label className="district-topn-checkbox" htmlFor="top-n-enabled">
+            <input
+              id="top-n-enabled"
+              type="checkbox"
+              checked={topNEnabled}
+              onChange={(event) => setTopNEnabled(event.target.checked)}
+            />
+            <span>Top-N</span>
+          </label>
+          <input
+            className="district-topn-input"
+            type="number"
+            min={1}
+            step={1}
+            value={topNCount}
+            onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
+          />
+        </div>
+        {error ? <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>{error}</p> : null}
+      </div>
+
+      <div className="map-overlay-legend">
+        <div className="map-legend-block">
+          <DistrictScoreLegend scoreField={rankingScoreField} />
+        </div>
+      </div>
+
+      <aside className="map-side-panel" aria-label="District summary and ranking">
+        <article className="float-panel map-side-panel-secondary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">Selection</h2>
+              <p className="float-panel-subtitle">{indicator}</p>
             </div>
           </div>
-
-          <div className="panel district-summary-card">
-            <div className="panel-body">
-              <div className="indicator-summary-heading">
-                <h3 className="panel-title">Indicator Summary</h3>
-                <p className="panel-subtitle">Quick read on the current choropleth metric.</p>
+          <div className="float-panel-body">
+            {selectedDistrict ? (
+              <div className="detail-card">
+                <h3>{selectedDistrict.district}</h3>
+                <p>{selectedDistrict.province}</p>
+                <p style={{ marginTop: 8 }}>
+                  <strong>{indicator}:</strong> {String(selectedDistrict[indicatorField] ?? "n/a")}
+                </p>
               </div>
-
-              <div>
-                {selectedDistrict ? (
-                  <div className="detail-card">
-                    <h3>{selectedDistrict.district}</h3>
-                    <p>{selectedDistrict.province}</p>
-                    <p style={{ marginTop: 10 }}>
-                      <strong>{indicator}:</strong> {String(selectedDistrict[indicatorField] ?? "n/a")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="empty">Select a district polygon to inspect it.</div>
-                )}
+            ) : (
+              <p className="overlay-copy">Select a district polygon.</p>
+            )}
+            {metricSummary ? (
+              <div className="detail-grid" style={{ marginTop: 10 }}>
+                <div className="detail-card">
+                  <h4>Average</h4>
+                  <p>{metricSummary.avg.toFixed(2)}</p>
+                </div>
+                <div className="detail-card">
+                  <h4>Districts</h4>
+                  <p>{metricSummary.count}</p>
+                </div>
               </div>
-
-              {metricSummary ? (
-                <div className="detail-grid">
-                  <div className="detail-card">
-                    <h4>Average</h4>
-                    <p>{metricSummary.avg.toFixed(2)}</p>
-                  </div>
-                  <div className="detail-card">
-                    <h4>Districts</h4>
-                    <p>{metricSummary.count}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="empty">No values available for this indicator.</div>
-              )}
-
-              {distribution ? (
-                <div className="distribution-panel">
-                  <p className="distribution-heading">Distribution</p>
-                  <div
-                    className="distribution-bars"
-                    role="img"
-                    aria-label={`${indicator} distribution histogram`}
-                  >
-                    {distribution.bins.map((bin, index) => {
-                      const normalizedHeight =
-                        distribution.maxCount > 0 ? bin.count / distribution.maxCount : 0;
-                      const isSelectedBin = distribution.selectedBinIndex === index;
-                      const color = distributionColor(
-                        indicator,
-                        index / Math.max(1, distribution.bins.length - 1),
-                        distributionScheme,
-                        isSelectedBin
-                      );
-                      return (
-                        <span
-                          key={`${bin.start}-${bin.end}-${index}`}
-                          className="distribution-bar"
-                          style={{
-                            height: `${Math.max(6, normalizedHeight * 72)}px`,
-                            background: color,
-                          }}
-                          title={`${bin.start.toFixed(2)} to ${bin.end.toFixed(2)}: ${bin.count}`}
-                        />
-                      );
-                    })}
-                  </div>
-                  <div className="distribution-axis">
-                    <span>{distribution.min.toFixed(2)}</span>
-                    <span>{((distribution.min + distribution.max) / 2).toFixed(2)}</span>
-                    <span>{distribution.max.toFixed(2)}</span>
-                  </div>
-                  <div className="distribution-scheme-row">
-                    <span className="distribution-scheme-label">color scheme:</span>
-                    <button
-                      type="button"
-                      className={`distribution-scheme-button ${distributionScheme === "everyone" ? "is-active" : ""}`}
-                      onClick={() => setDistributionScheme("everyone")}
-                    >
-                      EVERYONE
-                    </button>
-                    <button
-                      type="button"
-                      className={`distribution-scheme-button ${distributionScheme === "selected_group" ? "is-active" : ""}`}
-                      onClick={() => setDistributionScheme("selected_group")}
-                    >
-                      SELECTED GROUP
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="district-ranking-controls">
-                <div className="control">
-                  <label>Ranking score</label>
-                  <div className="score-toggle" role="group" aria-label="Rank districts by">
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
-                      onClick={() => setRankingScoreField("priority")}
-                    >
-                      Priority
-                    </button>
-                    <button
-                      type="button"
-                      className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
-                      onClick={() => setRankingScoreField("need")}
-                    >
-                      Need
-                    </button>
-                  </div>
-                </div>
-                <div className="control">
-                  <label htmlFor="top-n-enabled">Top-N highlight</label>
-                  <div className="district-topn-toggle-row">
-                    <label className="district-topn-checkbox" htmlFor="top-n-enabled">
-                      <input
-                        id="top-n-enabled"
-                        type="checkbox"
-                        checked={topNEnabled}
-                        onChange={(event) => setTopNEnabled(event.target.checked)}
+            ) : null}
+            {distribution ? (
+              <div className="distribution-panel" style={{ marginTop: 10 }}>
+                <p className="distribution-heading">Distribution</p>
+                <div
+                  className="distribution-bars"
+                  role="img"
+                  aria-label={`${indicator} distribution histogram`}
+                >
+                  {distribution.bins.map((bin, index) => {
+                    const normalizedHeight =
+                      distribution.maxCount > 0 ? bin.count / distribution.maxCount : 0;
+                    const isSelectedBin = distribution.selectedBinIndex === index;
+                    const color = distributionColor(
+                      indicator,
+                      index / Math.max(1, distribution.bins.length - 1),
+                      distributionScheme,
+                      isSelectedBin
+                    );
+                    return (
+                      <span
+                        key={`${bin.start}-${bin.end}-${index}`}
+                        className="distribution-bar"
+                        style={{
+                          height: `${Math.max(6, normalizedHeight * 72)}px`,
+                          background: color,
+                        }}
+                        title={`${bin.start.toFixed(2)} to ${bin.end.toFixed(2)}: ${bin.count}`}
                       />
-                      <span>Enable highlight</span>
-                    </label>
-                    <input
-                      className="district-topn-input"
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={topNCount}
-                      onChange={(event) => setTopNCount(Math.max(1, Number(event.target.value) || 1))}
-                    />
-                  </div>
+                    );
+                  })}
+                </div>
+                <div className="distribution-scheme-row">
+                  <button
+                    type="button"
+                    className={`distribution-scheme-button ${distributionScheme === "everyone" ? "is-active" : ""}`}
+                    onClick={() => setDistributionScheme("everyone")}
+                  >
+                    EVERYONE
+                  </button>
+                  <button
+                    type="button"
+                    className={`distribution-scheme-button ${distributionScheme === "selected_group" ? "is-active" : ""}`}
+                    onClick={() => setDistributionScheme("selected_group")}
+                  >
+                    SELECTED GROUP
+                  </button>
                 </div>
               </div>
+            ) : null}
+          </div>
+        </article>
 
-              <div className="map-legend-block district-ranking-legend-block">
-                <DistrictScoreLegend scoreField={rankingScoreField} />
-              </div>
-
-              <div className="district-ranking-table-section">
-                <div className="district-ranking-table-header">
-                  <h4 className="panel-title">District Ranking</h4>
-                  <p className="panel-subtitle">
-                    Sorted by {rankingScoreField === "priority" ? "Priority" : "Need"} score.
-                  </p>
-                </div>
-                <div className="table-wrap district-ranking-table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Rank</th>
-                        <th>District</th>
-                        <th>Province</th>
-                        <th>Priority</th>
-                        <th>Need</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rankedDistricts.map((feature, index) => {
-                        const isHighlighted = highlightedDistrictIds.has(feature.district_id);
-                        return (
-                          <tr
-                            className="data-row"
-                            key={feature.district_id}
-                            data-selected={feature.district_id === selectedDistrict?.district_id}
-                            data-highlighted={isHighlighted}
-                            onClick={() => setSelectedDistrict(feature)}
-                          >
-                            <td>
-                              {getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}
-                            </td>
-                            <td>{feature.district}</td>
-                            <td>{feature.province}</td>
-                            <td>{formatDistrictScore(feature.priority)}</td>
-                            <td>{formatDistrictScore(feature.need)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+        <article className="float-panel map-side-panel-primary">
+          <div className="float-panel-head">
+            <div>
+              <h2 className="float-panel-title">District ranking</h2>
+              <p className="float-panel-subtitle">
+                Sorted by {rankingScoreField === "priority" ? "Priority" : "Need"}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-    </section>
+          <div className="float-panel-body" style={{ padding: 0 }}>
+            <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>District</th>
+                    <th>Pri</th>
+                    <th>Need</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankedDistricts.map((feature, index) => {
+                    const isHighlighted = highlightedDistrictIds.has(feature.district_id);
+                    return (
+                      <tr
+                        className="data-row"
+                        key={feature.district_id}
+                        data-selected={feature.district_id === selectedDistrict?.district_id}
+                        data-highlighted={isHighlighted}
+                        onClick={() => setSelectedDistrict(feature)}
+                      >
+                        <td>
+                          {getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}
+                        </td>
+                        <td className="school-name-cell">{feature.district}</td>
+                        <td>{formatDistrictScore(feature.priority)}</td>
+                        <td>{formatDistrictScore(feature.need)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </article>
+      </aside>
+    </div>
   );
 }
 
