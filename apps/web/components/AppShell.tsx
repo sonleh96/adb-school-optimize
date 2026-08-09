@@ -27,7 +27,10 @@ function ActiveScenarioBadge() {
   const [scenarioId, setScenarioId] = useState<string | null>(null);
 
   useEffect(() => {
-    setScenarioId(window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY));
+    const refreshScenario = () => setScenarioId(window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY));
+    refreshScenario();
+    window.addEventListener("rise-png-scenario-change", refreshScenario);
+    return () => window.removeEventListener("rise-png-scenario-change", refreshScenario);
   }, []);
 
   const label = useMemo(() => {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { DistrictExplorer } from "@/components/DistrictExplorer";
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function DistrictExplorerPage() {
-  return <DistrictExplorer />;
+  return (
+    <Suspense fallback={null}>
+      <DistrictExplorer />
+    </Suspense>
+  );
 }

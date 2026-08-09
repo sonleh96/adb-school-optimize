@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { CountrySchoolExplorer } from "@/components/CountrySchoolExplorer";
 
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function AllSchoolsPage() {
-  return <CountrySchoolExplorer />;
+  return (
+    <Suspense fallback={null}>
+      <CountrySchoolExplorer />
+    </Suspense>
+  );
 }
