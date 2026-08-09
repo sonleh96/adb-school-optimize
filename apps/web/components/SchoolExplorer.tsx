@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { BriefingBookmarks } from "@/components/BriefingBookmarks";
-import { ScoreLegend } from "@/components/ScoreLegend";
+import { SchoolLayerPanel } from "@/components/SchoolLayerPanel";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
@@ -26,16 +26,16 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 const DEFAULT_DISTRICT = "National Capital District";
 
 const INITIAL_LAYERS: SchoolLayerToggle[] = [
-  { key: "roads", label: "Road segments", active: false },
-  { key: "air_quality_mean", label: "Average AQI", active: false },
-  { key: "air_quality_max", label: "Maximum AQI", active: false },
-  { key: "access_walk", label: "Population Access (Walking - 4km)", active: false },
-  { key: "access_cycle", label: "Population Access (Cycling - 7km)", active: false },
-  { key: "access_drive", label: "Population Access (Driving - 10km)", active: false },
-  { key: "landcover", label: "Land cover", active: false },
-  { key: "flood", label: "Flood inundation", active: false },
-  { key: "elevation", label: "Elevation", active: false },
-  { key: "luminosity", label: "Nighttime Luminosity", active: false },
+  { key: "roads", label: "Road segments", active: false, opacity: 0.75 },
+  { key: "air_quality_mean", label: "Average AQI", active: false, opacity: 0.72 },
+  { key: "air_quality_max", label: "Maximum AQI", active: false, opacity: 0.72 },
+  { key: "access_walk", label: "Population access: walking (4 km)", active: false, opacity: 0.48 },
+  { key: "access_cycle", label: "Population access: cycling (7 km)", active: false, opacity: 0.48 },
+  { key: "access_drive", label: "Population access: driving (10 km)", active: false, opacity: 0.48 },
+  { key: "landcover", label: "Land cover", active: false, opacity: 0.75 },
+  { key: "flood", label: "Flood inundation", active: false, opacity: 0.55 },
+  { key: "elevation", label: "Elevation", active: false, opacity: 0.7 },
+  { key: "luminosity", label: "Nighttime luminosity", active: false, opacity: 0.7 },
 ];
 
 function rankSuggestion(value: string, query: string): number {
@@ -254,10 +254,13 @@ export function SchoolExplorer() {
   };
 
   const toggleLayer = (layerKey: SchoolLayerKey) => {
+    const selectedLayer = layers.find((layer) => layer.key === layerKey);
+    if (!selectedLayer) return;
     const isAirLayer = layerKey === "air_quality_mean" || layerKey === "air_quality_max";
+    const isActivating = !selectedLayer.active;
     const nextLayers = layers.map((layer) => {
       if (layer.key === layerKey) return { ...layer, active: !layer.active };
-      if (!isAirLayer) return layer;
+      if (!isAirLayer || !isActivating) return layer;
       if (layer.key === "air_quality_mean" || layer.key === "air_quality_max") {
         return { ...layer, active: false };
       }
@@ -267,16 +270,26 @@ export function SchoolExplorer() {
     replaceState({ layers: nextLayers.filter((layer) => layer.active).map((layer) => layer.key) });
   };
 
+  const soloLayer = (layerKey: SchoolLayerKey) => {
+    const nextLayers = layers.map((layer) => ({ ...layer, active: layer.key === layerKey }));
+    setLayers(nextLayers);
+    replaceState({ layers: [layerKey] });
+  };
+
+  const setLayerOpacity = (layerKey: SchoolLayerKey, opacity: number) => {
+    const nextOpacity = Math.min(1, Math.max(0.1, opacity));
+    const nextLayers = layers.map((layer) =>
+      layer.key === layerKey ? { ...layer, opacity: nextOpacity } : layer
+    );
+    setLayers(nextLayers);
+  };
+
   useEffect(() => {
     if (!mapView) return;
     const handle = window.setTimeout(() => replaceState({ mapView }), 240);
     return () => window.clearTimeout(handle);
   }, [mapView, replaceState]);
 
-  const layerColumns = useMemo(() => {
-    const midpoint = Math.ceil(layers.length / 2);
-    return [layers.slice(0, midpoint), layers.slice(midpoint)];
-  }, [layers]);
   const briefingState = useMemo(
     () =>
       mergeUrlState(initialState, {
@@ -300,15 +313,19 @@ export function SchoolExplorer() {
     setShowDistrictSuggestions(false);
     setShowSchoolSuggestions(false);
     setScoreField(state.score ?? "priority");
-    setLayers(INITIAL_LAYERS.map((layer) => ({ ...layer, active: state.layers.includes(layer.key) })));
+    const activeLayerKeys = new Set(
+      state.layers.filter(
+        (layerKey) => layerKey !== "air_quality_max" || !state.layers.includes("air_quality_mean")
+      )
+    );
+    setLayers(layers.map((layer) => ({ ...layer, active: activeLayerKeys.has(layer.key) })));
     setMapView(state.mapView);
     if (state.mapView && state.school !== selectedSchoolId) setSuppressNextSelectionFocus(true);
     setScenarioId(state.scenario);
     if (state.scenario) persistSelectedScenario(state.scenario);
     else clearPersistedScenario();
-    replaceState(state);
+    replaceState({ ...state, layers: [...activeLayerKeys] });
   };
-
   return (
     <div className="map-workspace">
       <div className="map-workspace-canvas">
@@ -336,140 +353,116 @@ export function SchoolExplorer() {
         </div>
       </div>
 
-      <div className="map-overlay-controls map-overlay-controls-top-left">
-        <p className="overlay-title">School explorer</p>
-        <p className="overlay-copy">Search and inspect a district slice.</p>
-        <div className="score-toggle" role="group" aria-label="Color markers by">
-          <button
-            type="button"
-            className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-            onClick={() => {
-              setScoreField("priority");
-              replaceState({ score: "priority" });
-            }}
-          >
-            Priority
-          </button>
-          <button
-            type="button"
-            className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-            onClick={() => {
-              setScoreField("need");
-              replaceState({ score: "need" });
-            }}
-          >
-            Need
-          </button>
-        </div>
-        <CopyLinkButton state={briefingState} />
-        <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
-        <div className="district-search map-district-search">
-          <input
-            id="school-search"
-            type="text"
-            value={schoolQuery}
-            placeholder="Search school…"
-            onFocus={() => setShowSchoolSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
-            onChange={(event) => {
-              setSchoolQuery(event.target.value);
-              setShowSchoolSuggestions(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && schoolSuggestions[0]) {
-                event.preventDefault();
-                applySchool(schoolSuggestions[0]);
-              }
-            }}
-          />
-          {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
-            <div className="district-suggestions">
-              {schoolSuggestions.map((school) => (
-                <button
-                  type="button"
-                  key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                  className="district-suggestion-item"
-                  onMouseDown={() => applySchool(school)}
-                >
-                  {school.school_name}
-                </button>
-              ))}
-            </div>
+      <aside className="school-explorer-left-stack" aria-label="School explorer controls">
+        <div className="map-overlay-controls">
+          <p className="overlay-title">School explorer</p>
+          <p className="overlay-copy">Search and inspect a district slice.</p>
+          <div className="score-toggle" role="group" aria-label="Color markers by">
+            <button
+              type="button"
+              className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+              onClick={() => {
+                setScoreField("priority");
+                replaceState({ score: "priority" });
+              }}
+            >
+              Priority
+            </button>
+            <button
+              type="button"
+              className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+              onClick={() => {
+                setScoreField("need");
+                replaceState({ score: "need" });
+              }}
+            >
+              Need
+            </button>
+          </div>
+          <CopyLinkButton state={briefingState} />
+          <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
+          <div className="district-search map-district-search">
+            <input
+              id="school-search"
+              type="text"
+              value={schoolQuery}
+              placeholder="Search school…"
+              onFocus={() => setShowSchoolSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+              onChange={(event) => {
+                setSchoolQuery(event.target.value);
+                setShowSchoolSuggestions(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && schoolSuggestions[0]) {
+                  event.preventDefault();
+                  applySchool(schoolSuggestions[0]);
+                }
+              }}
+            />
+            {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
+              <div className="district-suggestions">
+                {schoolSuggestions.map((school) => (
+                  <button
+                    type="button"
+                    key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                    className="district-suggestion-item"
+                    onMouseDown={() => applySchool(school)}
+                  >
+                    {school.school_name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="district-search map-district-search">
+            <input
+              id="district-search"
+              type="text"
+              value={districtQuery}
+              placeholder="Search district…"
+              onFocus={() => setShowDistrictSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
+              onChange={(event) => {
+                setDistrictQuery(event.target.value);
+                setShowDistrictSuggestions(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && districtSuggestions[0]) {
+                  event.preventDefault();
+                  applyDistrict(districtSuggestions[0]);
+                }
+              }}
+            />
+            {showDistrictSuggestions && districtSuggestions.length > 0 ? (
+              <div className="district-suggestions">
+                {districtSuggestions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.district_id}
+                    className="district-suggestion-item"
+                    onMouseDown={() => applyDistrict(option)}
+                  >
+                    {option.district}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {errorMessage ? (
+            <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
+              {errorMessage}
+            </p>
           ) : null}
         </div>
-        <div className="district-search map-district-search">
-          <input
-            id="district-search"
-            type="text"
-            value={districtQuery}
-            placeholder="Search district…"
-            onFocus={() => setShowDistrictSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
-            onChange={(event) => {
-              setDistrictQuery(event.target.value);
-              setShowDistrictSuggestions(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && districtSuggestions[0]) {
-                event.preventDefault();
-                applyDistrict(districtSuggestions[0]);
-              }
-            }}
-          />
-          {showDistrictSuggestions && districtSuggestions.length > 0 ? (
-            <div className="district-suggestions">
-              {districtSuggestions.map((option) => (
-                <button
-                  type="button"
-                  key={option.district_id}
-                  className="district-suggestion-item"
-                  onMouseDown={() => applyDistrict(option)}
-                >
-                  {option.district}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <ScoreLegend scoreField={scoreField} />
-        {errorMessage ? (
-          <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
-            {errorMessage}
-          </p>
-        ) : null}
-      </div>
 
-      <aside className="float-panel map-overlay-layers" aria-label="Layer control">
-        <div className="float-panel-head">
-          <div>
-            <h2 className="float-panel-title">Layers</h2>
-            <p className="float-panel-subtitle">AQI mean/max are exclusive</p>
-          </div>
-        </div>
-        <div className="float-panel-body">
-          <div className="layer-control-columns">
-            <div className="layer-control-column">
-              <label className="layer-control-item layer-control-item-fixed">
-                <input type="checkbox" checked disabled />
-                <span>Schools</span>
-              </label>
-              {layerColumns[0].map((layer) => (
-                <label className="layer-control-item" key={layer.key}>
-                  <input type="checkbox" checked={layer.active} onChange={() => toggleLayer(layer.key)} />
-                  <span>{layer.label}</span>
-                </label>
-              ))}
-            </div>
-            <div className="layer-control-column">
-              {layerColumns[1].map((layer) => (
-                <label className="layer-control-item" key={layer.key}>
-                  <input type="checkbox" checked={layer.active} onChange={() => toggleLayer(layer.key)} />
-                  <span>{layer.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
+        <SchoolLayerPanel
+          layers={layers}
+          scoreField={scoreField}
+          onToggleLayer={toggleLayer}
+          onSoloLayer={soloLayer}
+          onOpacityChange={setLayerOpacity}
+        />
       </aside>
 
       <aside className="map-side-panel" aria-label="School table and snapshot">
