@@ -77,28 +77,47 @@ function FocusSelectedSchool({
   selectedSchoolId,
   enabled = true,
   suppressInitialFocus = false,
+  suppressNextSelectionFocus = false,
+  onSelectionFocusSuppressed,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
   enabled?: boolean;
   suppressInitialFocus?: boolean;
+  suppressNextSelectionFocus?: boolean;
+  onSelectionFocusSuppressed?: () => void;
 }) {
   const map = useMap();
   const hasHandledSelection = useRef(false);
+  const lastHandledSchoolId = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
     if (!selectedSchoolId) return;
+    if (lastHandledSchoolId.current === selectedSchoolId) return;
     const school = schools.find((item) => item.school_id === selectedSchoolId);
     if (!school) return;
     const isInitialSelection = !hasHandledSelection.current;
     hasHandledSelection.current = true;
+    lastHandledSchoolId.current = selectedSchoolId;
+    if (suppressNextSelectionFocus) {
+      onSelectionFocusSuppressed?.();
+      return;
+    }
     if (suppressInitialFocus && isInitialSelection) return;
     map.flyTo([school.latitude, school.longitude], Math.max(map.getZoom(), 11), {
       animate: true,
       duration: 0.7,
     });
-  }, [enabled, map, schools, selectedSchoolId, suppressInitialFocus]);
+  }, [
+    enabled,
+    map,
+    onSelectionFocusSuppressed,
+    schools,
+    selectedSchoolId,
+    suppressInitialFocus,
+    suppressNextSelectionFocus,
+  ]);
 
   return null;
 }
@@ -274,6 +293,8 @@ export function SchoolMap({
   mapView = null,
   onMapViewChange,
   hasExplicitMapView = false,
+  suppressNextSelectionFocus = false,
+  onSelectionFocusSuppressed,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -290,6 +311,8 @@ export function SchoolMap({
   mapView?: MapView | null;
   onMapViewChange?: (mapView: MapView) => void;
   hasExplicitMapView?: boolean;
+  suppressNextSelectionFocus?: boolean;
+  onSelectionFocusSuppressed?: () => void;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -648,6 +671,8 @@ export function SchoolMap({
           selectedSchoolId={selectedSchoolId}
           enabled={focusSelectedSchool}
           suppressInitialFocus={hasExplicitMapView}
+          suppressNextSelectionFocus={suppressNextSelectionFocus}
+          onSelectionFocusSuppressed={onSelectionFocusSuppressed}
         />
         <ViewportBoundsWatcher onChange={onViewportChange} />
 

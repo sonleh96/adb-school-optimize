@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { BriefingBookmarks } from "@/components/BriefingBookmarks";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
@@ -11,8 +12,12 @@ import { ErrorState, LoadingSkeleton } from "@/components/states";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
-import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
-import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
+import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
+import {
+  clearPersistedScenario,
+  getPersistedScenario,
+  persistSelectedScenario,
+} from "@/lib/scenarioSelection";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -82,6 +87,31 @@ export function CountrySchoolExplorer() {
     [schools, selectedSchoolId]
   );
   const selectedSchoolDetail = detailQuery.data ?? null;
+  const briefingState = useMemo(
+    () =>
+      mergeUrlState(initialState, {
+        school: selectedSchoolId,
+        district: selectedSchool?.district ?? null,
+        province: selectedSchool?.province ?? null,
+        score: scoreField,
+        scenario: scenarioId,
+        layers: [],
+        mapView,
+      }),
+    [initialState, mapView, scenarioId, scoreField, selectedSchool, selectedSchoolId]
+  );
+  const applyBookmark = useCallback(
+    (state: UrlState) => {
+      setSelectedSchoolId(state.school);
+      setScoreField(state.score ?? "priority");
+      setMapView(state.mapView);
+      setScenarioId(state.scenario);
+      if (state.scenario) persistSelectedScenario(state.scenario);
+      else clearPersistedScenario();
+      replaceState(state);
+    },
+    [replaceState]
+  );
 
   return (
     <div className="map-workspace">
@@ -135,16 +165,8 @@ export function CountrySchoolExplorer() {
             Need
           </button>
         </div>
-        <CopyLinkButton
-          state={mergeUrlState(initialState, {
-            school: selectedSchoolId,
-            district: selectedSchool?.district ?? initialState.district,
-            province: selectedSchool?.province ?? initialState.province,
-            score: scoreField,
-            scenario: scenarioId,
-            mapView,
-          })}
-        />
+        <CopyLinkButton state={briefingState} />
+        <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
       </div>
 
       <div className="map-overlay-legend">
