@@ -10,6 +10,12 @@ import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { scoreToColor } from "@/lib/color";
 import { districtIndicatorColor } from "@/lib/districtIndicatorPalette";
 import { getDistrictScore, scoreExtent } from "@/lib/districtScores";
+import {
+  aggregateSchoolDensity,
+  densityBubbleRadius,
+  densityCellSignature,
+  NATIONAL_DENSITY_ZOOM_THRESHOLD,
+} from "@/lib/schoolDensity";
 import type {
   DistrictRecord,
   RasterMetadataResponse,
@@ -320,6 +326,7 @@ export function SchoolMap({
   onMapViewChange,
   hasExplicitMapView = false,
   comparePriorityAndNeed = false,
+  enableNationalDensity = false,
   suppressNextSelectionFocus = false,
   onSelectionFocusSuppressed,
 }: {
@@ -339,6 +346,8 @@ export function SchoolMap({
   onMapViewChange?: (mapView: MapView) => void;
   hasExplicitMapView?: boolean;
   comparePriorityAndNeed?: boolean;
+  /** Enables the Overview-only national density layer below zoom 8. */
+  enableNationalDensity?: boolean;
   suppressNextSelectionFocus?: boolean;
   onSelectionFocusSuppressed?: () => void;
 }) {
@@ -355,7 +364,7 @@ export function SchoolMap({
   });
   const [layerStatus, setLayerStatus] = useState<string>("");
   const [viewportBbox, setViewportBbox] = useState<Bbox4326 | null>(null);
-  const [viewportZoom, setViewportZoom] = useState(6);
+  const [viewportZoom, setViewportZoom] = useState(mapView?.zoom ?? 6);
   const [debouncedViewportBbox, setDebouncedViewportBbox] = useState<Bbox4326 | null>(null);
   const cacheRef = useRef<Map<string, LayerCacheValue>>(new Map());
 
@@ -381,6 +390,10 @@ export function SchoolMap({
     },
     [onMapViewChange]
   );
+
+  useEffect(() => {
+    if (mapView) setViewportZoom(mapView.zoom);
+  }, [mapView]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -662,6 +675,25 @@ export function SchoolMap({
     };
   }, [schools]);
   const markerSignature = useMemo(() => schoolMarkerSignature(schools), [schools]);
+  const densityData = useMemo(() => {
+    const cells = enableNationalDensity ? aggregateSchoolDensity(schools) : [];
+    return {
+      key: densityCellSignature(cells),
+      collection: {
+        type: "FeatureCollection" as const,
+        features: cells.map((cell) => ({
+          type: "Feature" as const,
+          geometry: {
+            type: "Point" as const,
+            coordinates: [cell.longitude, cell.latitude],
+          },
+          properties: { count: cell.count },
+        })),
+      } satisfies FeatureCollection<Point>,
+    };
+  }, [enableNationalDensity, schools]);
+  const showNationalDensity = enableNationalDensity && viewportZoom < NATIONAL_DENSITY_ZOOM_THRESHOLD;
+  const markerSignature = useMemo(() => schoolMarkerSignature(schools), [schools]);
 
   const renderAccessLayer = (features: VectorLayerFeature[], opacity: number) => {
     if (!features.length) return null;
@@ -866,8 +898,29 @@ export function SchoolMap({
         ) : null}
 
         <Pane name="school-popup-pane" style={{ zIndex: 1100 }} />
+        {showNationalDensity ? (
+          <Pane name="school-density" style={{ zIndex: 650 }}>
+            <GeoJSON
+              key={`school-density-${densityData.key}`}
+              data={densityData.collection}
+              pointToLayer={(feature, latlng) => {
+                const count = Number(feature?.properties?.count ?? 0);
+                return L.circleMarker(latlng, {
+                  radius: densityBubbleRadius(count),
+                  color: "#0a2e73",
+                  fillColor: "#006cb7",
+                  fillOpacity: 0.42,
+                  opacity: 0.8,
+                  weight: 1.25,
+                  interactive: false,
+                  renderer: L.canvas({ padding: 0.5 }),
+                });
+              }}
+            />
+          </Pane>
+        ) : null}
         <Pane name="school-markers" style={{ zIndex: 650 }}>
-          {schoolCollection.features.length > 0 ? (
+          {!showNationalDensity && schoolCollection.features.length > 0 ? (
             <GeoJSON
               key={`schools-${scoreField}-${comparePriorityAndNeed ? "compare" : "single"}-${markerSignature}-${selectedSchoolId ?? "none"}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
               data={schoolCollection}
@@ -916,6 +969,24 @@ export function SchoolMap({
         </Pane>
       </MapContainer>
 
+      {enableNationalDensity ? (
+        <div className="national-density-legend" role="status" aria-live="polite">
+          {showNationalDensity ? (
+            <>
+              <strong>School density</strong>
+              <span>
+                Larger bubbles group more schools in a 1.5° grid. Zoom to level 8 to inspect and select
+                schools.
+              </span>
+            </>
+          ) : (
+            <>
+              <strong>Individual schools</strong>
+              <span>Selectable school markers are shown from zoom level 8.</span>
+            </>
+          )}
+        </div>
+      ) : null}
       {layerStatus ? <div className="map-status-overlay">{layerStatus}</div> : null}
     </div>
   );
