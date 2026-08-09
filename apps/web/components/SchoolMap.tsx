@@ -733,7 +733,6 @@ export function SchoolMap({
     };
   }, [enableNationalDensity, schools]);
   const showNationalDensity = enableNationalDensity && viewportZoom < NATIONAL_DENSITY_ZOOM_THRESHOLD;
-  const markerSignature = useMemo(() => schoolMarkerSignature(schools), [schools]);
 
   const renderAccessLayer = (features: VectorLayerFeature[], opacity: number) => {
     if (!features.length) return null;
