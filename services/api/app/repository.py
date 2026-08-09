@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import time
 from io import BytesIO
 from typing import Any
 
@@ -96,6 +97,9 @@ HEAVY_VECTOR_LAYER_KEYS = frozenset(
 )
 
 VECTOR_FEATURE_LIMIT_MAX = 5000
+SCHOOL_LIST_LIMIT_MAX = 5000
+_LAYER_CATALOG_CACHE: tuple[float, list[dict[str, Any]]] | None = None
+_LAYER_CATALOG_TTL_SECONDS = 60
 
 EXPORT_NOTICE_ROWS = [
     ("Status", "Research prototype only"),
@@ -136,6 +140,13 @@ def _json_safe(value: Any) -> Any:
 
 
 def fetch_layers(connection) -> list[dict[str, Any]]:
+    global _LAYER_CATALOG_CACHE
+    now = time.monotonic()
+    if _LAYER_CATALOG_CACHE is not None:
+        cached_at, cached_rows = _LAYER_CATALOG_CACHE
+        if now - cached_at < _LAYER_CATALOG_TTL_SECONDS:
+            return [dict(row) for row in cached_rows]
+
     settings = get_settings()
     rows = fetch_all(connection, LAYERS_SQL)
     raster_paths = {
@@ -150,7 +161,8 @@ def fetch_layers(connection) -> list[dict[str, Any]]:
         source_path = raster_paths.get(normalized_key)
         if source_path:
             row["source_path"] = source_path
-    return rows
+    _LAYER_CATALOG_CACHE = (now, [dict(row) for row in rows])
+    return [dict(row) for row in rows]
 
 
 def fetch_vector_layer_features(
@@ -276,6 +288,7 @@ def fetch_schools(
     scenario_id: str | None = None,
     limit: int = 500,
 ) -> list[dict[str, Any]]:
+    capped_limit = max(1, min(int(limit), SCHOOL_LIST_LIMIT_MAX))
     return fetch_all(
         connection,
         SCHOOLS_SQL,
@@ -283,7 +296,7 @@ def fetch_schools(
             "province": province,
             "district": district,
             "scenario_id": scenario_id,
-            "limit": limit,
+            "limit": capped_limit,
         },
     )
 

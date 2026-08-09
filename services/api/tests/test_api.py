@@ -45,19 +45,18 @@ def test_meta_layers_returns_repository_rows(client, fake_connection, monkeypatc
     response = client.get("/api/v1/meta/layers")
 
     assert response.status_code == 200
+    assert response.headers.get("cache-control", "").startswith("public")
     assert response.json() == [{"layer_key": "flood"}]
 
 
-def test_meta_indicators_returns_defaults(client, monkeypatch):
+def test_meta_indicators_returns_cache_headers(client, monkeypatch):
     monkeypatch.setattr(meta, "fetch_indicators", lambda: ["Average AQI", "Conflict Events"])
 
     response = client.get("/api/v1/meta/indicators")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "default": "Average AQI",
-        "items": ["Average AQI", "Conflict Events"],
-    }
+    assert response.headers.get("cache-control", "").startswith("public")
+    assert response.json() == {"default": "Average AQI", "items": ["Average AQI", "Conflict Events"]}
 
 
 def test_meta_layer_features_returns_filtered_vector_payload(client, monkeypatch):
@@ -206,6 +205,7 @@ def test_list_schools_forwards_filters(client, fake_connection, monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.headers.get("cache-control", "").startswith("private")
     assert response.json() == [{"school_id": "1"}]
     assert captured == {
         "province": "NCD",
@@ -213,6 +213,32 @@ def test_list_schools_forwards_filters(client, fake_connection, monkeypatch):
         "scenario_id": "abc",
         "limit": 25,
     }
+
+
+def test_list_schools_rejects_limit_above_cap(client):
+    response = client.get("/api/v1/schools", params={"limit": 99999})
+
+    assert response.status_code == 422
+
+
+def test_meta_layer_features_requires_bbox_for_heavy_layers(client, monkeypatch):
+    monkeypatch.setattr(
+        meta,
+        "fetch_vector_layer_features",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            ApiError(
+                "Heavy vector layers require a district filter or bounding box.",
+                status_code=400,
+                code="bbox_or_district_required",
+                details={"layer_key": "roads"},
+            )
+        ),
+    )
+
+    response = client.get("/api/v1/meta/layers/roads/features")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bbox_or_district_required"
 
 
 def test_get_school_404_when_missing(client, monkeypatch):
