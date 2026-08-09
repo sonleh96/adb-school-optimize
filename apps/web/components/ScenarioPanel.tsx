@@ -1,12 +1,16 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
-import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
+import { getApiBaseUrl, fetchScenarios, runScenario } from "@/lib/api";
+import { useScenariosQuery, useSchoolsQuery } from "@/lib/hooks";
+import { queryKeys } from "@/lib/queryKeys";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
 import { displayWeightLabel } from "@/lib/scenarioWeights";
-import type { ScenarioRecord, SchoolRecord } from "@/lib/types";
+import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
+import type { ScenarioRecord } from "@/lib/types";
 
 type WeightOverrides = Record<string, Record<string, number>>;
 
@@ -18,61 +22,66 @@ const DEFAULT_OVERRIDES: WeightOverrides = {
 const WRITE_OPERATIONS_ENABLED = process.env.NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED === "true";
 
 export function ScenarioPanel() {
-  const [scenarios, setScenarios] = useState<ScenarioRecord[]>([]);
+  const queryClient = useQueryClient();
+  const scenariosQuery = useScenariosQuery();
+  const scenarios = useMemo(() => scenariosQuery.data ?? [], [scenariosQuery.data]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [scenarioName, setScenarioName] = useState("Scenario Lab Run");
   const [description, setDescription] = useState("Interactive run from frontend scaffold.");
   const [weightOverrides, setWeightOverrides] = useState<WeightOverrides>(DEFAULT_OVERRIDES);
-  const [previewRows, setPreviewRows] = useState<SchoolRecord[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [initialized, setInitialized] = useState(false);
+
+  const previewQuery = useSchoolsQuery({
+    scenarioId: selectedScenarioId ?? undefined,
+    limit: 10000,
+  });
+  const previewRows = previewQuery.data ?? [];
+  const loadingPreview = previewQuery.isLoading || previewQuery.isFetching;
 
   const scenarioCountLabel = useMemo(() => `${scenarios.length} saved scenarios`, [scenarios.length]);
   const editableWeightGroups = useMemo(() => buildEditableWeightGroups(weightOverrides), [weightOverrides]);
 
   useEffect(() => {
-    async function initialize() {
-      try {
-        const savedScenarios = await fetchScenarios();
-        setScenarios(savedScenarios);
-        const persistedId = window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY);
-        if (persistedId) {
-          const persistedScenario = savedScenarios.find((scenario) => scenario.scenario_id === persistedId);
-          if (persistedScenario) {
-            await loadScenario(persistedScenario);
-            return;
-          }
-        }
-        await loadPreviewRows();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to initialize Scenario Lab.");
+    if (scenariosQuery.error) {
+      setError(
+        scenariosQuery.error instanceof Error
+          ? scenariosQuery.error.message
+          : "Failed to initialize Scenario Lab.",
+      );
+    }
+  }, [scenariosQuery.error]);
+
+  useEffect(() => {
+    if (initialized || !scenariosQuery.isSuccess) return;
+    const persistedId = window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY);
+    if (persistedId) {
+      const persistedScenario = scenarios.find((scenario) => scenario.scenario_id === persistedId);
+      if (persistedScenario) {
+        applyScenario(persistedScenario, false);
+        setInitialized(true);
+        return;
       }
     }
+    setInitialized(true);
+  }, [initialized, scenarios, scenariosQuery.isSuccess]);
 
-    void initialize();
-  }, []);
-
-  async function loadPreviewRows(scenarioId?: string) {
-    setLoadingPreview(true);
-    try {
-      const rows = await fetchSchools({ scenarioId, limit: 10000 });
-      setPreviewRows(rows);
-    } finally {
-      setLoadingPreview(false);
-    }
-  }
-
-  async function loadScenario(scenario: ScenarioRecord) {
+  function applyScenario(scenario: ScenarioRecord, announce = true) {
     setSelectedScenarioId(scenario.scenario_id);
     setScenarioName(scenario.scenario_name);
     setDescription(scenario.description ?? "");
     setWeightOverrides(normalizeWeightOverrides(scenario.weights));
     window.localStorage.setItem(SELECTED_SCENARIO_STORAGE_KEY, scenario.scenario_id);
-    await loadPreviewRows(scenario.scenario_id);
-    setStatus(`Loaded scenario "${scenario.scenario_name}".`);
+    if (announce) {
+      setStatus(`Loaded scenario "${scenario.scenario_name}".`);
+    }
+  }
+
+  async function loadScenario(scenario: ScenarioRecord) {
+    applyScenario(scenario);
   }
 
   async function handleRunScenario() {
@@ -96,18 +105,20 @@ export function ScenarioPanel() {
           : "Ran scenario without persistence."
       );
 
-      const latest = await fetchScenarios();
-      setScenarios(latest);
+      await queryClient.invalidateQueries({ queryKey: queryKeys.scenarios });
+      const latest = await queryClient.fetchQuery({
+        queryKey: queryKeys.scenarios,
+        queryFn: fetchScenarios,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["schools"] });
 
       if (result.scenario) {
         const saved = latest.find((scenario) => scenario.scenario_id === result.scenario?.scenario_id);
         if (saved) {
-          await loadScenario(saved);
+          applyScenario(saved);
         } else {
-          await loadPreviewRows(result.scenario.scenario_id);
+          setSelectedScenarioId(result.scenario.scenario_id);
         }
-      } else {
-        await loadPreviewRows();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to run scenario.");
@@ -382,32 +393,12 @@ export function ScenarioPanel() {
                 {loadingPreview ? (
                   <div className="loading">Loading scenario results…</div>
                 ) : previewRows.length ? (
-                  <div className="table-wrap scenario-preview-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Rank</th>
-                          <th>School</th>
-                          <th>District</th>
-                          <th>Priority</th>
-                          <th>Need</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewRows.map((row) => (
-                          <tr
-                            className="data-row"
-                            key={`${row.school_id ?? row.school_name}-${row.district}`}
-                          >
-                            <td>{row.rank_priority ?? "n/a"}</td>
-                            <td>{row.school_name}</td>
-                            <td>{row.district}</td>
-                            <td>{row.priority != null ? (row.priority * 100).toFixed(1) : "n/a"}</td>
-                            <td>{row.need != null ? (row.need * 100).toFixed(1) : "n/a"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="scenario-preview-wrap" style={{ height: 420 }}>
+                    <VirtualizedSchoolTable
+                      schools={previewRows}
+                      selectedSchoolId={null}
+                      onSelectSchool={() => undefined}
+                    />
                   </div>
                 ) : (
                   <div className="empty">

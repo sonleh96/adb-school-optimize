@@ -1,13 +1,11 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
-import { queryKeys } from "@/lib/queryKeys";
+import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolRecord } from "@/lib/types";
 import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
 
@@ -51,16 +49,8 @@ export function SchoolExplorer() {
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
   const [layers, setLayers] = useState<SchoolLayerToggle[]>(INITIAL_LAYERS);
 
-  const districtOptionsQuery = useQuery({
-    queryKey: queryKeys.districts,
-    queryFn: fetchDistrictOptions,
-  });
-
-  // Single national fetch; district map/table derives from it (no double request).
-  const schoolsQuery = useQuery({
-    queryKey: queryKeys.schools({ limit: 10000 }),
-    queryFn: () => fetchSchools({ limit: 10000 }),
-  });
+  const districtOptionsQuery = useDistrictOptionsQuery();
+  const schoolsQuery = useSchoolsQuery({ limit: 10000 });
 
   const districtOptions = useMemo(
     () => districtOptionsQuery.data ?? [],
@@ -96,11 +86,7 @@ export function SchoolExplorer() {
     }
   }, [schools, selectedSchoolId]);
 
-  const detailQuery = useQuery({
-    queryKey: queryKeys.schoolDetail(selectedSchoolId ?? ""),
-    queryFn: () => fetchSchoolDetail(selectedSchoolId!),
-    enabled: Boolean(selectedSchoolId),
-  });
+  const detailQuery = useSchoolDetailQuery(selectedSchoolId);
 
   const selectedSchoolDetail = detailQuery.data ?? null;
 

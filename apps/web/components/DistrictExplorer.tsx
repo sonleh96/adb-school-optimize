@@ -1,14 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchDistrictChoropleth, fetchIndicators } from "@/lib/api";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
-import { queryKeys } from "@/lib/queryKeys";
+import { useChoroplethQuery, useIndicatorsQuery } from "@/lib/hooks";
 import type { DistrictRecord } from "@/lib/types";
 
 const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) => mod.DistrictMap), {
@@ -25,15 +23,8 @@ export function DistrictExplorer() {
   const [topNCount, setTopNCount] = useState(10);
   const indicatorField = districtIndicatorField(indicator);
 
-  const indicatorsQuery = useQuery({
-    queryKey: queryKeys.indicators,
-    queryFn: fetchIndicators,
-  });
-
-  const choroplethQuery = useQuery({
-    queryKey: queryKeys.choropleth({ indicator, fields: "indicator" }),
-    queryFn: () => fetchDistrictChoropleth({ indicator, fields: "indicator" }),
-  });
+  const indicatorsQuery = useIndicatorsQuery();
+  const choroplethQuery = useChoroplethQuery({ indicator, fields: "indicator" });
 
   const indicators = useMemo(
     () => indicatorsQuery.data?.items ?? ["Average AQI"],

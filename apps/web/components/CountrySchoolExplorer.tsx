@@ -1,15 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchDistrictChoropleth, fetchSchoolDetail, fetchSchools } from "@/lib/api";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
-import { queryKeys } from "@/lib/queryKeys";
+import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
@@ -23,15 +21,8 @@ export function CountrySchoolExplorer() {
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
 
-  const choroplethQuery = useQuery({
-    queryKey: queryKeys.choropleth({ fields: "scores" }),
-    queryFn: () => fetchDistrictChoropleth({ fields: "scores" }),
-  });
-
-  const schoolsQuery = useQuery({
-    queryKey: queryKeys.schools({ limit: 10000 }),
-    queryFn: () => fetchSchools({ limit: 10000 }),
-  });
+  const choroplethQuery = useChoroplethQuery({ fields: "scores" });
+  const schoolsQuery = useSchoolsQuery({ limit: 10000 });
 
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const districtFeatures = useMemo(
@@ -47,11 +38,7 @@ export function CountrySchoolExplorer() {
     }
   }, [schools, selectedSchoolId]);
 
-  const detailQuery = useQuery({
-    queryKey: queryKeys.schoolDetail(selectedSchoolId ?? ""),
-    queryFn: () => fetchSchoolDetail(selectedSchoolId!),
-    enabled: Boolean(selectedSchoolId),
-  });
+  const detailQuery = useSchoolDetailQuery(selectedSchoolId);
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
