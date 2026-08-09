@@ -45,6 +45,15 @@ export function formatScore(value: unknown, digits = 1): string {
   return (numeric * 100).toFixed(digits);
 }
 
+/** Difference between two 0-1 scores, expressed in percentage points. */
+export function formatScoreDelta(value: unknown, comparison: unknown, digits = 1): string {
+  const numeric = toFiniteNumber(value);
+  const baseline = toFiniteNumber(comparison);
+  if (numeric == null || baseline == null) return "n/a";
+  const difference = (numeric - baseline) * 100;
+  return `${difference >= 0 ? "+" : ""}${difference.toFixed(digits)} pts`;
+}
+
 export function formatCoordinate(value: number | null | undefined): string {
   if (value == null || !Number.isFinite(value)) return "n/a";
   return value.toFixed(6);
@@ -59,3 +68,15 @@ export const formatMbps = (value: unknown) => {
 export const formatPopulation = (value: unknown) => formatInteger(value);
 
 export const formatCount = (value: unknown) => formatInteger(value);
+
+/** Format a district indicator according to the units conveyed by its label. */
+export function formatDistrictIndicator(indicator: string, value: unknown): string {
+  const label = indicator.toLowerCase();
+  if (label.includes("score")) return formatScore(value);
+  if (label.includes("access") || label.includes("rate")) return formatPercent(value);
+  if (label.includes("speed")) return formatMbps(value);
+  if (label.includes("students per") || label.includes("population") || label.includes("conflict")) {
+    return formatInteger(value);
+  }
+  return formatNumber(value);
+}
