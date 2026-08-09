@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   bookmarkHref,
+  bookmarkMatchesState,
   clearUserBriefingBookmarks,
   createBookmarkId,
   loadUserBriefingBookmarks,
@@ -14,7 +15,6 @@ import {
   MAX_BOOKMARK_NAME_LENGTH,
   MAX_USER_BOOKMARKS,
   saveUserBriefingBookmarks,
-  sameBookmarkState,
   SEEDED_BRIEFING_BOOKMARKS,
   type BookmarkPathname,
   type BriefingBookmark,
@@ -55,7 +55,7 @@ export function BriefingBookmarks({
   const currentIndex = useMemo(() => {
     if (!isBookmarkPathname(pathname)) return -1;
     return bookmarks.findIndex(
-      (bookmark) => bookmark.pathname === pathname && sameBookmarkState(bookmark.state, currentState)
+      (bookmark) => bookmark.pathname === pathname && bookmarkMatchesState(bookmark, currentState)
     );
   }, [bookmarks, currentState, pathname]);
 

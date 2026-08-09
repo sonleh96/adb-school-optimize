@@ -20,6 +20,7 @@ export type BriefingBookmark = {
 type StoredBookmark = Omit<BriefingBookmark, "kind">;
 
 const NATIONAL_MAP_VIEW = { lat: -6.314993, lng: 147, zoom: 6 };
+const PORT_MORESBY_MAP_VIEW = { lat: -9.4438, lng: 147.1803, zoom: 10 };
 
 export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
   {
@@ -66,7 +67,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       indicator: null,
       scenario: null,
       layers: ["air_quality_mean"],
-      mapView: NATIONAL_MAP_VIEW,
+      mapView: PORT_MORESBY_MAP_VIEW,
     },
     kind: "seeded",
   },
@@ -203,4 +204,27 @@ export function bookmarkHref(pathname: BookmarkPathname, state: UrlState): strin
 
 export function sameBookmarkState(left: UrlState, right: UrlState): boolean {
   return serializeUrlState(new URLSearchParams(), left) === serializeUrlState(new URLSearchParams(), right);
+}
+
+function sameMapView(left: UrlState["mapView"], right: UrlState["mapView"]): boolean {
+  if (!left) return true;
+  if (!right) return false;
+  return (
+    left.lat.toFixed(6) === right.lat.toFixed(6) &&
+    left.lng.toFixed(6) === right.lng.toFixed(6) &&
+    left.zoom.toFixed(2) === right.zoom.toFixed(2)
+  );
+}
+
+/** Seeded stops match their specified lens fields while user stops remain exact snapshots. */
+export function bookmarkMatchesState(bookmark: BriefingBookmark, current: UrlState): boolean {
+  if (bookmark.kind === "user") return sameBookmarkState(bookmark.state, current);
+
+  const strings = ["school", "district", "province", "indicator", "scenario"] as const;
+  for (const key of strings) {
+    if (bookmark.state[key] != null && bookmark.state[key] !== current[key]) return false;
+  }
+  if (bookmark.state.score != null && bookmark.state.score !== current.score) return false;
+  if (bookmark.state.layers.join(",") !== current.layers.join(",")) return false;
+  return sameMapView(bookmark.state.mapView, current.mapView);
 }
