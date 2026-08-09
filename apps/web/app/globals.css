@@ -1397,6 +1397,59 @@ textarea {
   max-height: 560px;
 }
 
+.virtual-table-scroll {
+  height: 100%;
+  min-height: 240px;
+  overflow: auto;
+}
+
+.virtual-data-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.virtual-data-table th:nth-child(1),
+.virtual-cell-rank {
+  width: 18%;
+}
+
+.virtual-data-table th:nth-child(2),
+.virtual-cell-name {
+  width: 46%;
+}
+
+.virtual-data-table th:nth-child(3),
+.virtual-data-table th:nth-child(4),
+.virtual-cell-score {
+  width: 18%;
+}
+
+.virtual-table-row {
+  display: grid;
+  grid-template-columns: 18% 46% 18% 18%;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid rgba(15, 31, 51, 0.06);
+  cursor: pointer;
+  background: transparent;
+}
+
+.virtual-table-row:hover,
+.virtual-table-row[data-selected="true"] {
+  background: rgba(10, 46, 115, 0.06);
+}
+
+.virtual-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.virtual-cell-name {
+  font-weight: 500;
+}
+
 .scenario-preview-wrap {
   max-height: 520px;
 }

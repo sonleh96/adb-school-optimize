@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictChoropleth, fetchIndicators } from "@/lib/api";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
+import { queryKeys } from "@/lib/queryKeys";
 import type { DistrictRecord } from "@/lib/types";
 
 const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) => mod.DistrictMap), {
@@ -17,52 +19,49 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) 
 export function DistrictExplorer() {
   const [indicator, setIndicator] = useState("Average AQI");
   const [distributionScheme, setDistributionScheme] = useState<"everyone" | "selected_group">("everyone");
-  const [indicators, setIndicators] = useState<string[]>(["Average AQI"]);
-  const [features, setFeatures] = useState<DistrictRecord[]>([]);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictRecord | null>(null);
   const [rankingScoreField, setRankingScoreField] = useState<"priority" | "need">("priority");
   const [topNEnabled, setTopNEnabled] = useState(true);
   const [topNCount, setTopNCount] = useState(10);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const indicatorField = districtIndicatorField(indicator);
 
-  useEffect(() => {
-    fetchIndicators()
-      .then((result) => {
-        setIndicators(result.items);
-        setIndicator(result.default);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, []);
+  const indicatorsQuery = useQuery({
+    queryKey: queryKeys.indicators,
+    queryFn: fetchIndicators,
+  });
+
+  const choroplethQuery = useQuery({
+    queryKey: queryKeys.choropleth({ indicator, fields: "indicator" }),
+    queryFn: () => fetchDistrictChoropleth({ indicator, fields: "indicator" }),
+  });
+
+  const indicators = useMemo(
+    () => indicatorsQuery.data?.items ?? ["Average AQI"],
+    [indicatorsQuery.data?.items],
+  );
+  const features = useMemo(
+    () => choroplethQuery.data?.features ?? [],
+    [choroplethQuery.data?.features],
+  );
+  const loading = choroplethQuery.isLoading;
+  const error =
+    (indicatorsQuery.error instanceof Error && indicatorsQuery.error.message) ||
+    (choroplethQuery.error instanceof Error && choroplethQuery.error.message) ||
+    null;
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchDistrictChoropleth({ indicator })
-      .then((result) => {
-        if (cancelled) return;
-        setFeatures(result.features);
-        setSelectedDistrict((current) => {
-          if (!current) return result.features[0] ?? null;
-          return (
-            result.features.find((feature) => feature.district_id === current.district_id) ??
-            result.features[0] ??
-            null
-          );
-        });
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    if (indicatorsQuery.data?.default) {
+      setIndicator(indicatorsQuery.data.default);
+    }
+  }, [indicatorsQuery.data?.default]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [indicator]);
+  useEffect(() => {
+    if (!features.length) return;
+    setSelectedDistrict((current) => {
+      if (!current) return features[0] ?? null;
+      return features.find((feature) => feature.district_id === current.district_id) ?? features[0] ?? null;
+    });
+  }, [features]);
 
   const metricValues = useMemo(
     () =>

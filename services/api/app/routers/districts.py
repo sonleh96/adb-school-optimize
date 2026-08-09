@@ -2,29 +2,65 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, Query
+from fastapi.responses import Response
 
 from ..db import get_db
+from ..queries import DEFAULT_CHOROPLETH_SIMPLIFY_TOLERANCE
 from ..repository import fetch_district_choropleth
 
 router = APIRouter(prefix="/api/v1/districts", tags=["districts"])
 
 
+def _choropleth_response_headers(response: Response) -> None:
+    # Choropleth geometry is effectively static between ingestions.
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=600"
+
+
 @router.get("")
-def list_districts(province: str | None = None, district: str | None = None):
+def list_districts(
+    response: Response,
+    province: str | None = None,
+    district: str | None = None,
+    simplify_tolerance: float = Query(DEFAULT_CHOROPLETH_SIMPLIFY_TOLERANCE, ge=0.0, le=0.1),
+    fields: Literal["scores", "indicator", "full"] = "scores",
+):
     with get_db() as connection:
-        return fetch_district_choropleth(connection, province=province, district=district)
+        features = fetch_district_choropleth(
+            connection,
+            province=province,
+            district=district,
+            simplify_tolerance=simplify_tolerance,
+            fields=fields,
+        )
+    _choropleth_response_headers(response)
+    return features
 
 
 @router.get("/choropleth")
 def district_choropleth(
+    response: Response,
     indicator: str = "Average AQI",
     province: str | None = None,
     district: str | None = None,
+    simplify_tolerance: float = Query(DEFAULT_CHOROPLETH_SIMPLIFY_TOLERANCE, ge=0.0, le=0.1),
+    fields: Literal["scores", "indicator", "full"] = "indicator",
 ):
     with get_db() as connection:
-        return {
-            "default_indicator": "Average AQI",
-            "selected_indicator": indicator,
-            "features": fetch_district_choropleth(connection, province=province, district=district),
-        }
+        features = fetch_district_choropleth(
+            connection,
+            province=province,
+            district=district,
+            simplify_tolerance=simplify_tolerance,
+            fields=fields,
+            indicator=indicator,
+        )
+    _choropleth_response_headers(response)
+    return {
+        "default_indicator": "Average AQI",
+        "selected_indicator": indicator,
+        "fields": fields,
+        "features": features,
+    }

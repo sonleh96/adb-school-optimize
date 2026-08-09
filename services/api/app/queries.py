@@ -60,37 +60,93 @@ where district = %(district)s::text
 order by province, district
 """
 
-DISTRICTS_CHOROPLETH_SQL = """
+# Default ~200 m at equator; keeps national choropleths readable while cutting coordinate noise.
+DEFAULT_CHOROPLETH_SIMPLIFY_TOLERANCE = 0.002
+
+# Identity + scores always returned. Extra metric columns are selected per request.
+CHOROPLETH_BASE_SELECT = """
 select district_id, province, district,
-       st_asgeojson(geom)::json as geometry,
-       average_aqi, maximum_aqi,
-       fixed_broadband_download_speed_mbps,
-       fixed_broadband_upload_speed_mbps,
-       mobile_internet_download_speed_mbps,
-       mobile_internet_upload_speed_mbps,
-       access_walking_pct, access_driving_pct, access_cycling_pct,
-       total_nighttime_luminosity,
-       co2e_20yr_total_emissions_tonnes,
-       co2e_100yr_total_emissions_tonnes,
-       grade_7_students, grade_8_students, grade_9_students, grade_10_students,
-       grade_11_students, grade_12_students,
-       total_population, female_students_grade_7_12, total_enrollment_grade_7_12,
-       secondary_students_per_1000_people,
-       rate_grade_7_progressed_to_grade_12_pct,
-       total_enrollment_grade_7_10,
-       grade_7_10_students_per_1000_population,
-       rate_grade_7_progressed_to_grade_10_pct,
-       school_aged_population, conflict_events, conflict_fatalities, conflict_population_exposure,
+       st_asgeojson(
+           coalesce(
+               st_simplifyPreserveTopology(geom, %(simplify_tolerance)s::double precision),
+               geom
+           ),
+           5
+       )::json as geometry,
        priority, need
+"""
+
+CHOROPLETH_FROM_WHERE = """
 from districts
 where (%(province)s::text is null or province = %(province)s::text)
   and (%(district)s::text is null or district = %(district)s::text)
 order by province, district
 """
 
+# Whitelist of DB columns that can be appended to a slim choropleth response.
+CHOROPLETH_METRIC_COLUMNS = frozenset(
+    {
+        "average_aqi",
+        "maximum_aqi",
+        "fixed_broadband_download_speed_mbps",
+        "fixed_broadband_upload_speed_mbps",
+        "mobile_internet_download_speed_mbps",
+        "mobile_internet_upload_speed_mbps",
+        "access_walking_pct",
+        "access_driving_pct",
+        "access_cycling_pct",
+        "total_nighttime_luminosity",
+        "co2e_20yr_total_emissions_tonnes",
+        "co2e_100yr_total_emissions_tonnes",
+        "grade_7_students",
+        "grade_8_students",
+        "grade_9_students",
+        "grade_10_students",
+        "grade_11_students",
+        "grade_12_students",
+        "total_population",
+        "female_students_grade_7_12",
+        "total_enrollment_grade_7_12",
+        "secondary_students_per_1000_people",
+        "rate_grade_7_progressed_to_grade_12_pct",
+        "total_enrollment_grade_7_10",
+        "grade_7_10_students_per_1000_population",
+        "rate_grade_7_progressed_to_grade_10_pct",
+        "school_aged_population",
+        "conflict_events",
+        "conflict_fatalities",
+        "conflict_population_exposure",
+    }
+)
+
+# Kept for callers that still import the old full SQL name; prefer build_choropleth_sql().
+DISTRICTS_CHOROPLETH_SQL = (
+    CHOROPLETH_BASE_SELECT
+    + ",\n       "
+    + ",\n       ".join(sorted(CHOROPLETH_METRIC_COLUMNS))
+    + "\n"
+    + CHOROPLETH_FROM_WHERE
+)
+
+
+def build_choropleth_sql(extra_columns: list[str] | None = None) -> str:
+    """Build a slim choropleth SELECT with optional whitelisted metric columns."""
+    extras: list[str] = []
+    for column in extra_columns or []:
+        if column in {"district_id", "province", "district", "geometry", "priority", "need"}:
+            continue
+        if column not in CHOROPLETH_METRIC_COLUMNS:
+            continue
+        if column not in extras:
+            extras.append(column)
+    if extras:
+        return CHOROPLETH_BASE_SELECT + ",\n       " + ",\n       ".join(extras) + "\n" + CHOROPLETH_FROM_WHERE
+    return CHOROPLETH_BASE_SELECT + "\n" + CHOROPLETH_FROM_WHERE
+
+
 SCHOOLS_SQL = f"""
 select s.school_id, s.school_name, s.locality, s.province, s.district,
-       s.latitude, s.longitude, st_asgeojson(s.geom)::json as geometry,
+       s.latitude, s.longitude,
        s.number_of_available_teachers,
        s.total_number_of_classrooms,
        s.power_source,

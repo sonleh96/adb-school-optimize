@@ -2,14 +2,12 @@
 
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Feature, Geometry } from "geojson";
+import type { FeatureCollection, Geometry, Point } from "geojson";
 import {
-  CircleMarker,
   GeoJSON,
   ImageOverlay,
   MapContainer,
   Pane,
-  Popup,
   TileLayer,
   useMap,
   useMapEvents,
@@ -62,8 +60,10 @@ type LayerState = {
 type Bbox4326 = [number, number, number, number];
 type LayerCacheValue = VectorLayerFeaturesResponse | RasterMetadataResponse;
 
-const VECTOR_LIMIT_DEFAULT = 30000;
-const ACCESS_POINTS_MAX_RENDER = 16000;
+const VECTOR_LIMIT_DEFAULT = 5000;
+const ACCESS_POINTS_MAX_RENDER = 8000;
+const ACCESS_LAYER_MIN_ZOOM = 9;
+const HEAVY_LAYER_MIN_ZOOM = 8;
 
 function FitSchools({ schools }: { schools: SchoolRecord[] }) {
   const map = useMap();
@@ -103,16 +103,27 @@ function FocusSelectedSchool({
   return null;
 }
 
-function ViewportBoundsWatcher({ onChange }: { onChange: (bbox: Bbox4326) => void }) {
+function ViewportBoundsWatcher({
+  onChange,
+}: {
+  onChange: (state: { bbox: Bbox4326; zoom: number }) => void;
+}) {
   const map = useMap();
+  const publish = useCallback(() => {
+    onChange({
+      bbox: boundsToBbox4326(map.getBounds()),
+      zoom: map.getZoom(),
+    });
+  }, [map, onChange]);
+
   useMapEvents({
-    moveend: () => onChange(boundsToBbox4326(map.getBounds())),
-    zoomend: () => onChange(boundsToBbox4326(map.getBounds())),
+    moveend: publish,
+    zoomend: publish,
   });
 
   useEffect(() => {
-    onChange(boundsToBbox4326(map.getBounds()));
-  }, [map, onChange]);
+    publish();
+  }, [publish]);
 
   return null;
 }
@@ -167,6 +178,15 @@ function cacheKey(
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function findNumericProperty(properties: Record<string, unknown>, keys: string[]): number | null {
@@ -255,6 +275,7 @@ export function SchoolMap({
   const [layerStatus, setLayerStatus] = useState<string>("");
   const [showLayerLegend, setShowLayerLegend] = useState(true);
   const [viewportBbox, setViewportBbox] = useState<Bbox4326 | null>(null);
+  const [viewportZoom, setViewportZoom] = useState(6);
   const [debouncedViewportBbox, setDebouncedViewportBbox] = useState<Bbox4326 | null>(null);
   const cacheRef = useRef<Map<string, LayerCacheValue>>(new Map());
 
@@ -262,6 +283,11 @@ export function SchoolMap({
     () => new Set(layers.filter((layer) => layer.active).map((layer) => layer.key)),
     [layers]
   );
+
+  const onViewportChange = useCallback((state: { bbox: Bbox4326; zoom: number }) => {
+    setViewportBbox(state.bbox);
+    setViewportZoom(state.zoom);
+  }, []);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -318,9 +344,47 @@ export function SchoolMap({
         luminosity: null,
       };
 
+      const wantsHeavyVector =
+        activeLayers.has("roads") ||
+        activeLayers.has("air_quality_mean") ||
+        activeLayers.has("air_quality_max") ||
+        activeLayers.has("access_walk") ||
+        activeLayers.has("access_cycle") ||
+        activeLayers.has("access_drive");
+      const wantsAccess =
+        activeLayers.has("access_walk") ||
+        activeLayers.has("access_cycle") ||
+        activeLayers.has("access_drive");
+
+      if (wantsHeavyVector && !district && !debouncedViewportBbox) {
+        if (!cancelled) {
+          setLayerState(next);
+          setLayerStatus("Pan the map to load vector layers for the current view.");
+        }
+        return;
+      }
+
+      if (wantsHeavyVector && viewportZoom < HEAVY_LAYER_MIN_ZOOM) {
+        if (!cancelled) {
+          setLayerState(next);
+          setLayerStatus("Zoom in further to load road / AQI / access layers.");
+        }
+        return;
+      }
+
+      if (wantsAccess && viewportZoom < ACCESS_LAYER_MIN_ZOOM) {
+        // Allow roads/AQI at HEAVY_LAYER_MIN_ZOOM, but keep access denser-only.
+        if (!cancelled && !activeLayers.has("roads") && !activeLayers.has("air_quality_mean") && !activeLayers.has("air_quality_max")) {
+          setLayerState(next);
+          setLayerStatus(`Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.`);
+          return;
+        }
+      }
+
       try {
         const jobs: Promise<void>[] = [];
         let accessThinned = false;
+        let accessSkippedForZoom = false;
 
         if (activeLayers.has("roads")) {
           jobs.push(
@@ -338,7 +402,12 @@ export function SchoolMap({
           );
         }
 
-        if (activeLayers.has("access_walk")) {
+        const canLoadAccess = viewportZoom >= ACCESS_LAYER_MIN_ZOOM;
+        if (!canLoadAccess && wantsAccess) {
+          accessSkippedForZoom = true;
+        }
+
+        if (canLoadAccess && activeLayers.has("access_walk")) {
           jobs.push(
             Promise.all([
               loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT),
@@ -351,7 +420,7 @@ export function SchoolMap({
           );
         }
 
-        if (activeLayers.has("access_cycle")) {
+        if (canLoadAccess && activeLayers.has("access_cycle")) {
           jobs.push(
             Promise.all([
               loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT),
@@ -364,7 +433,7 @@ export function SchoolMap({
           );
         }
 
-        if (activeLayers.has("access_drive")) {
+        if (canLoadAccess && activeLayers.has("access_drive")) {
           jobs.push(
             Promise.all([
               loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT),
@@ -412,7 +481,11 @@ export function SchoolMap({
         if (jobs.length === 0) {
           if (!cancelled) {
             setLayerState(next);
-            setLayerStatus("");
+            setLayerStatus(
+              accessSkippedForZoom
+                ? `Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.`
+                : ""
+            );
           }
           return;
         }
@@ -421,9 +494,13 @@ export function SchoolMap({
         await Promise.all(jobs);
         if (!cancelled) {
           setLayerState(next);
-          setLayerStatus(
-            accessThinned ? "Showing sampled access points to keep map rendering responsive." : ""
-          );
+          if (accessThinned) {
+            setLayerStatus("Showing sampled access points to keep map rendering responsive.");
+          } else if (accessSkippedForZoom) {
+            setLayerStatus(`Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.`);
+          } else {
+            setLayerStatus("");
+          }
         }
       } catch (error) {
         if (cancelled) return;
@@ -436,13 +513,61 @@ export function SchoolMap({
     return () => {
       cancelled = true;
     };
-  }, [activeLayers, district, loadRasterLayer, loadVectorLayer, province]);
+  }, [
+    activeLayers,
+    debouncedViewportBbox,
+    district,
+    loadRasterLayer,
+    loadVectorLayer,
+    province,
+    viewportZoom,
+  ]);
 
   const selectedAQIField = selectedAirField(activeLayers);
   const districtScoreRange = useMemo(
     () => (districtScoreField ? scoreExtent(districtFeatures, districtScoreField) : { min: 0, max: 1 }),
     [districtFeatures, districtScoreField]
   );
+
+  const districtCollection = useMemo<FeatureCollection<Geometry> | null>(() => {
+    if (!districtScoreField || districtFeatures.length === 0) return null;
+    return {
+      type: "FeatureCollection",
+      features: districtFeatures.map((feature) => {
+        const value = getDistrictScore(feature, districtScoreField);
+        return {
+          type: "Feature",
+          geometry: feature.geometry as unknown as Geometry,
+          properties: {
+            district: feature.district,
+            province: feature.province,
+            value,
+          },
+        };
+      }),
+    };
+  }, [districtFeatures, districtScoreField]);
+
+  const schoolCollection = useMemo<FeatureCollection<Point>>(() => {
+    return {
+      type: "FeatureCollection",
+      features: schools.map((school) => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [school.longitude, school.latitude],
+        },
+        properties: {
+          school_id: school.school_id ?? null,
+          school_name: school.school_name,
+          district: school.district,
+          province: school.province,
+          priority: school.priority ?? null,
+          need: school.need ?? null,
+        },
+      })),
+    };
+  }, [schools]);
 
   const renderAccessLayer = (features: VectorLayerFeature[]) => {
     if (!features.length) return null;
@@ -458,6 +583,7 @@ export function SchoolMap({
             fillColor: color,
             fillOpacity: 0.48,
             weight: 0.6,
+            renderer: L.canvas({ padding: 0.5 }),
           });
         }}
       />
@@ -466,10 +592,10 @@ export function SchoolMap({
 
   return (
     <div className="school-map-root">
-      <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom>
+      <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom preferCanvas>
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           crossOrigin="anonymous"
         />
         <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
@@ -479,42 +605,32 @@ export function SchoolMap({
           selectedSchoolId={selectedSchoolId}
           enabled={focusSelectedSchool}
         />
-        <ViewportBoundsWatcher onChange={setViewportBbox} />
+        <ViewportBoundsWatcher onChange={onViewportChange} />
 
-        {districtScoreField && districtFeatures.length > 0 ? (
+        {districtCollection ? (
           <Pane name="district-choropleth-layer" style={{ zIndex: 360 }}>
-            {districtFeatures.map((feature) => {
-              const value = getDistrictScore(feature, districtScoreField);
-              const normalized =
-                value == null || districtScoreRange.max === districtScoreRange.min
-                  ? 0
-                  : (value - districtScoreRange.min) / (districtScoreRange.max - districtScoreRange.min);
-              const geoJsonFeature: Feature<Geometry> = {
-                type: "Feature",
-                geometry: feature.geometry as unknown as Geometry,
-                properties: {
-                  district: feature.district,
-                  province: feature.province,
-                  value,
-                },
-              };
-              return (
-                <GeoJSON
-                  key={`district-${feature.district_id}`}
-                  data={geoJsonFeature}
-                  style={{
-                    color: "rgba(15, 31, 51, 0.28)",
-                    weight: 1,
-                    fillColor: districtIndicatorColor(
-                      districtScoreField === "priority" ? "Priority Score" : "Need Score",
-                      normalized
-                    ),
-                    fillOpacity: value == null ? 0.12 : 0.48,
-                  }}
-                  interactive={false}
-                />
-              );
-            })}
+            <GeoJSON
+              key={`districts-${districtScoreField}-${districtScoreRange.min}-${districtScoreRange.max}`}
+              data={districtCollection}
+              style={(feature) => {
+                const value =
+                  typeof feature?.properties?.value === "number" ? feature.properties.value : null;
+                const normalized =
+                  value == null || districtScoreRange.max === districtScoreRange.min
+                    ? 0
+                    : (value - districtScoreRange.min) / (districtScoreRange.max - districtScoreRange.min);
+                return {
+                  color: "rgba(15, 31, 51, 0.28)",
+                  weight: 1,
+                  fillColor: districtIndicatorColor(
+                    districtScoreField === "priority" ? "Priority Score" : "Need Score",
+                    normalized
+                  ),
+                  fillOpacity: value == null ? 0.12 : 0.48,
+                };
+              }}
+              interactive={false}
+            />
           </Pane>
         ) : null}
 
@@ -547,12 +663,15 @@ export function SchoolMap({
                   selectedAQIField === "aqi_us_max"
                     ? findNumericProperty(properties, ["aqi_us_max"])
                     : findNumericProperty(properties, ["aqi_us_mean"]);
-                const location = String(properties.location ?? properties.feature_name ?? "Unknown tile");
+                const location = escapeHtml(
+                  String(properties.location ?? properties.feature_name ?? "Unknown tile")
+                );
                 const aqiText = value != null ? value.toFixed(2) : "n/a";
                 const maxValue = findNumericProperty(properties, ["aqi_us_max"]);
                 const maxText = maxValue != null ? maxValue.toFixed(2) : "n/a";
+                const modeLabel = selectedAQIField === "aqi_us_max" ? "max" : "mean";
                 layer.bindPopup(
-                  `<strong>Air Quality</strong><br/>Tile: ${location}<br/>AQI (${selectedAQIField === "aqi_us_max" ? "max" : "mean"}): ${aqiText}<br/>AQI (max): ${maxText}<br/>Category: ${airQualityCategory(value)}`
+                  `<strong>Air Quality</strong><br/>Tile: ${location}<br/>AQI (${modeLabel}): ${aqiText}<br/>AQI (max): ${maxText}<br/>Category: ${escapeHtml(airQualityCategory(value))}`
                 );
               }}
             />
@@ -639,42 +758,50 @@ export function SchoolMap({
 
         <Pane name="school-popup-pane" style={{ zIndex: 1100 }} />
         <Pane name="school-markers" style={{ zIndex: 650 }}>
-          {schools.map((school) => {
-            const score = scoreField === "priority" ? school.priority : school.need;
-            const color = scoreToColor(score);
-            const isSelected = school.school_id === selectedSchoolId;
-
-            return (
-              <CircleMarker
-                key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                center={[school.latitude, school.longitude]}
-                radius={isSelected ? 10 : 7}
-                pathOptions={{
+          {schoolCollection.features.length > 0 ? (
+            <GeoJSON
+              key={`schools-${scoreField}-${selectedSchoolId ?? "none"}-${schools.length}`}
+              data={schoolCollection}
+              pointToLayer={(feature, latlng) => {
+                const props = asRecord(feature.properties);
+                const score =
+                  scoreField === "priority"
+                    ? typeof props.priority === "number"
+                      ? props.priority
+                      : null
+                    : typeof props.need === "number"
+                      ? props.need
+                      : null;
+                const isSelected = props.school_id === selectedSchoolId;
+                return L.circleMarker(latlng, {
+                  radius: isSelected ? 10 : 7,
                   color: "#000000",
-                  fillColor: color,
+                  fillColor: scoreToColor(score),
                   fillOpacity: isSelected ? 0.95 : 0.78,
                   weight: isSelected ? 3 : 1,
-                }}
-                eventHandlers={{ click: () => onSelectSchool(school.school_id ?? null) }}
-              >
-                <Popup pane="school-popup-pane">
-                  <strong>{school.school_name}</strong>
-                  {showDistrictProvinceInPopup ? (
-                    <>
-                      <br />
-                      District: {school.district}
-                      <br />
-                      Province: {school.province}
-                    </>
-                  ) : null}
-                  <br />
-                  Priority: {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                  <br />
-                  Need: {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                </Popup>
-              </CircleMarker>
-            );
-          })}
+                  renderer: L.canvas({ padding: 0.5 }),
+                });
+              }}
+              onEachFeature={(feature, layer) => {
+                const props = asRecord(feature.properties);
+                const schoolId = typeof props.school_id === "string" ? props.school_id : null;
+                const name = escapeHtml(String(props.school_name ?? "School"));
+                const priority =
+                  typeof props.priority === "number" ? (props.priority * 100).toFixed(1) : "n/a";
+                const need = typeof props.need === "number" ? (props.need * 100).toFixed(1) : "n/a";
+                const locationBits = showDistrictProvinceInPopup
+                  ? `<br/>District: ${escapeHtml(String(props.district ?? ""))}<br/>Province: ${escapeHtml(String(props.province ?? ""))}`
+                  : "";
+                layer.bindPopup(
+                  `<strong>${name}</strong>${locationBits}<br/>Priority: ${priority}<br/>Need: ${need}`,
+                  { pane: "school-popup-pane" }
+                );
+                layer.on({
+                  click: () => onSelectSchool(schoolId),
+                });
+              }}
+            />
+          ) : null}
         </Pane>
       </MapContainer>
 

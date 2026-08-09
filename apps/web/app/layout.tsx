@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter, Space_Grotesk, Spectral } from "next/font/google";
 
 import { AppShell } from "@/components/AppShell";
+import { QueryProvider } from "@/components/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -40,8 +41,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${displayFont.variable} ${bodyFont.variable} ${proseFont.variable}`}>
-        <AppShell>{children}</AppShell>
-        <Toaster />
+        <QueryProvider>
+          <AppShell>{children}</AppShell>
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

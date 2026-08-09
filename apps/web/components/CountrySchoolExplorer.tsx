@@ -1,14 +1,15 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictChoropleth, fetchSchoolDetail, fetchSchools } from "@/lib/api";
-import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
-import type { DistrictRecord, SchoolRecord } from "@/lib/types";
+import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
+import { queryKeys } from "@/lib/queryKeys";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
@@ -19,69 +20,44 @@ const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => m
 const EMPTY_LAYERS: SchoolLayerToggle[] = [];
 
 export function CountrySchoolExplorer() {
-  const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [selectedSchoolDetail, setSelectedSchoolDetail] = useState<Record<string, unknown> | null>(null);
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
-  const [districtFeatures, setDistrictFeatures] = useState<DistrictRecord[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const choroplethQuery = useQuery({
+    queryKey: queryKeys.choropleth({ fields: "scores" }),
+    queryFn: () => fetchDistrictChoropleth({ fields: "scores" }),
+  });
+
+  const schoolsQuery = useQuery({
+    queryKey: queryKeys.schools({ limit: 10000 }),
+    queryFn: () => fetchSchools({ limit: 10000 }),
+  });
+
+  const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const districtFeatures = useMemo(
+    () => choroplethQuery.data?.features ?? [],
+    [choroplethQuery.data?.features],
+  );
+  const error = schoolsQuery.error ?? choroplethQuery.error;
+  const loading = schoolsQuery.isLoading;
 
   useEffect(() => {
-    let cancelled = false;
-
-    fetchDistrictChoropleth({})
-      .then((result) => {
-        if (!cancelled) setDistrictFeatures(result.features);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) setError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    fetchSchools({ limit: 10000 })
-      .then((rows) => {
-        if (cancelled) return;
-        setSchools(rows);
-        setSelectedSchoolId((current) => current ?? rows[0]?.school_id ?? null);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!selectedSchoolId) {
-      setSelectedSchoolDetail(null);
-      return;
+    if (!selectedSchoolId && schools[0]?.school_id) {
+      setSelectedSchoolId(schools[0].school_id);
     }
+  }, [schools, selectedSchoolId]);
 
-    fetchSchoolDetail(selectedSchoolId)
-      .then((detail) => setSelectedSchoolDetail(detail))
-      .catch(() => setSelectedSchoolDetail(null));
-  }, [selectedSchoolId]);
+  const detailQuery = useQuery({
+    queryKey: queryKeys.schoolDetail(selectedSchoolId ?? ""),
+    queryFn: () => fetchSchoolDetail(selectedSchoolId!),
+    enabled: Boolean(selectedSchoolId),
+  });
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
     [schools, selectedSchoolId],
   );
+  const selectedSchoolDetail = detailQuery.data ?? null;
 
   return (
     <div className="map-workspace">
@@ -149,43 +125,11 @@ export function CountrySchoolExplorer() {
             {error ? (
               <ErrorState message="Could not load schools." className="m-3" />
             ) : (
-              <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>School</th>
-                      <th>Pri</th>
-                      <th>Need</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schools.map((school) => (
-                      <tr
-                        className="data-row"
-                        key={
-                          school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`
-                        }
-                        data-selected={school.school_id === selectedSchoolId}
-                        onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                      >
-                        <td>{school.rank_priority ?? "n/a"}</td>
-                        <td className="school-name-cell">{school.school_name}</td>
-                        <td>
-                          <span className="score-pill" style={scoreToPillStyle(school.priority)}>
-                            {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="score-pill" style={scoreToPillStyle(school.need)}>
-                            {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <VirtualizedSchoolTable
+                schools={schools}
+                selectedSchoolId={selectedSchoolId}
+                onSelectSchool={setSelectedSchoolId}
+              />
             )}
           </div>
         </article>

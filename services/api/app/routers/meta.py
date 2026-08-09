@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from ..db import get_db
 from ..errors import ApiError
 from ..repository import (
+    VECTOR_FEATURE_LIMIT_MAX,
     fetch_districts,
     fetch_indicators,
     fetch_layers,
@@ -45,7 +46,7 @@ def get_layer_features(
     layer_key: str,
     province: str | None = None,
     district: str | None = None,
-    limit: int = 5000,
+    limit: int = Query(5000, ge=1, le=VECTOR_FEATURE_LIMIT_MAX),
     min_lon: float | None = None,
     min_lat: float | None = None,
     max_lon: float | None = None,
