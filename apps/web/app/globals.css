@@ -266,13 +266,209 @@ body {
   z-index: 800;
   left: 12px;
   bottom: 12px;
-  width: min(260px, calc(100% - 24px));
-  max-height: min(240px, 36%);
+  width: min(336px, calc(100% - 24px));
+  max-height: min(500px, 56%);
   overflow: hidden;
 }
 
 .map-overlay-layers .float-panel-body {
   overflow: auto;
+}
+
+.school-layer-panel-head .float-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.school-layer-panel-body {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.school-layer-search-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.school-layer-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--muted);
+  padding: 7px 8px;
+}
+
+.school-layer-search:focus-within {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 2px rgba(0, 108, 183, 0.2);
+}
+
+.school-layer-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.school-layer-group {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid rgba(11, 31, 69, 0.1);
+  padding-top: 10px;
+}
+
+.school-layer-group h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.school-layer-static-row,
+.school-layer-item {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(11, 31, 69, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 8px;
+}
+
+.school-layer-item[data-active="true"] {
+  border-color: rgba(10, 46, 115, 0.3);
+  background: rgba(10, 46, 115, 0.05);
+}
+
+.school-layer-static-title,
+.school-layer-toggle {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.school-layer-static-note {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.school-layer-score-stops {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(11, 31, 69, 0.14);
+  border-radius: 999px;
+}
+
+.school-layer-score-stops span {
+  height: 6px;
+  flex: 1;
+}
+
+.school-layer-item-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.school-layer-toggle {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.25;
+}
+
+.school-layer-toggle input {
+  accent-color: var(--accent);
+}
+
+.school-layer-toggle input:focus-visible,
+.school-layer-solo:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.school-layer-solo {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.school-layer-solo:hover {
+  background: rgba(10, 46, 115, 0.08);
+}
+
+.school-layer-legend,
+.school-layer-legend-landcover,
+.school-layer-legend-gradient {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 7px;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.school-layer-legend-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.school-layer-legend-swatch {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.school-layer-legend-line::before {
+  display: inline-block;
+  width: 18px;
+  height: 2px;
+  margin-right: 6px;
+  background: #a855f7;
+  content: "";
+  vertical-align: middle;
+}
+
+.school-layer-legend-gradient .legend-gradient {
+  width: 72px;
+  height: 7px;
+}
+
+.school-layer-opacity {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.school-layer-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .doc-workspace {
@@ -361,9 +557,13 @@ body {
     max-height: 46%;
   }
 
-  .map-overlay-legend,
-  .map-overlay-layers {
+  .map-overlay-legend {
     display: none;
+  }
+
+  .map-overlay-layers {
+    bottom: calc(46% + 20px);
+    max-height: calc(54% - 32px);
   }
 }
 
