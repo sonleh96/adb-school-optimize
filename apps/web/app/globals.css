@@ -1,17 +1,65 @@
+@import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/*
+ * Design tokens (single source of truth).
+ * ADB-adjacent navy/blue palette, neutral grays, semantic states.
+ * Radiused, border-based elevation (no blur). Dark-mode-ready via CSS vars.
+ */
+@theme {
+  /* Brand / accent */
+  --color-brand: #0a2e73;
+  --color-brand-strong: #082452;
+  --color-brand-2: #006cb7;
+  --color-brand-foreground: #ffffff;
+
+  /* Surfaces */
+  --color-background: #d7dade;
+  --color-surface: rgba(255, 255, 255, 0.92);
+  --color-surface-strong: #ffffff;
+  --color-surface-muted: rgba(255, 255, 255, 0.65);
+
+  /* Ink / text */
+  --color-ink: #0f1f33;
+  --color-muted: #4d5f73;
+  --color-line: rgba(11, 31, 69, 0.14);
+
+  /* Semantic */
+  --color-success: #157f3d;
+  --color-warning: #a8550a;
+  --color-danger: #b42318;
+  --color-danger-ink: #8f1d14;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 30px;
+
+  /* Elevation (border-based; shadow kept subtle) */
+  --shadow-card: 0 12px 34px rgba(16, 38, 75, 0.12);
+  --shadow-pop: 0 10px 24px rgba(16, 38, 75, 0.14);
+
+  /* Type */
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-prose: var(--font-prose), Georgia, serif;
+}
+
+/* Legacy aliases so existing component classes keep working during migration. */
 :root {
-  --bg: #d7dade;
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-strong: #ffffff;
-  --ink: #0f1f33;
-  --muted: #4d5f73;
-  --line: rgba(11, 31, 69, 0.14);
-  --accent: #0a2e73;
-  --accent-2: #006cb7;
-  --danger: #b42318;
-  --shadow: 0 12px 34px rgba(16, 38, 75, 0.12);
-  --radius: 22px;
+  --bg: var(--color-background);
+  --panel: var(--color-surface);
+  --panel-strong: var(--color-surface-strong);
+  --ink: var(--color-ink);
+  --muted: var(--color-muted);
+  --line: var(--color-line);
+  --accent: var(--color-brand);
+  --accent-2: var(--color-brand-2);
+  --danger: var(--color-danger);
+  --shadow: var(--shadow-card);
+  --radius: var(--radius-xl);
 }
 
 * {
@@ -24,8 +72,8 @@ body {
   padding: 0;
   min-height: 100%;
   background: linear-gradient(180deg, #eef1f5 0%, #d7dade 36%, #d3d7dc 100%);
-  color: var(--ink);
-  font-family: var(--font-body), serif;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
 }
 
 a {
@@ -39,6 +87,13 @@ select,
 textarea {
   font: inherit;
 }
+
+/* ------------------------------------------------------------------------ */
+/* Legacy component classes (pre-Tailwind).                                  */
+/* TODO(Phase 1.x): migrate each component to Tailwind + shadcn primitives   */
+/* and delete the corresponding block below. New shell/shared components     */
+/* are built with Tailwind utilities and do not rely on these classes.       */
+/* ------------------------------------------------------------------------ */
 
 .page-shell {
   width: calc(100vw - 24px);
@@ -341,11 +396,11 @@ textarea {
 }
 
 .scenario-json-editor {
-  min-height: 510px !important;
+  min-height: 510px;
 }
 
 .scenario-json-preview {
-  min-height: 180px !important;
+  min-height: 180px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -486,7 +541,7 @@ textarea {
 }
 
 .download-cell {
-  text-align: center !important;
+  text-align: center;
 }
 
 .button {
@@ -1247,6 +1302,7 @@ textarea {
   max-width: none;
   margin: 0 auto;
   color: var(--ink);
+  font-family: var(--font-prose), Georgia, serif;
 }
 
 .methodology-doc h1,

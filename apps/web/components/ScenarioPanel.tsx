@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Download } from "lucide-react";
 
 import { fetchSchools, fetchScenarios, getApiBaseUrl, runScenario } from "@/lib/api";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
@@ -356,7 +357,8 @@ export function ScenarioPanel() {
                               title={`Download ${scenario.scenario_name}`}
                               onClick={(event) => event.stopPropagation()}
                             >
-                              ⬇
+                              <Download className="size-4" aria-hidden />
+                              <span className="sr-only">Download {scenario.scenario_name}</span>
                             </a>
                           </td>
                         </tr>
