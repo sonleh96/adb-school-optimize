@@ -33,6 +33,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       district: null,
       province: null,
       score: "priority",
+      compare: null,
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
@@ -50,6 +51,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       district: "National Capital District",
       province: null,
       score: "priority",
+      compare: null,
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
@@ -67,6 +69,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       district: "National Capital District",
       province: null,
       score: "priority",
+      compare: null,
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
@@ -113,6 +116,8 @@ function parseStoredState(value: unknown): UrlState | null {
         ? normalizeSchoolFilters(value.filters)
         : null;
   if (!filters) return null;
+  const compare = value.compare;
+  if (compare != null && compare !== "priority-need") return null;
   if (
     !Array.isArray(value.layers) ||
     !value.layers.every((layer) => SUPPORTED_SCHOOL_LAYER_KEYS.includes(layer))
@@ -140,6 +145,7 @@ function parseStoredState(value: unknown): UrlState | null {
   if (score) params.set("score", score);
   const serializedFilters = serializeSchoolFilters(filters);
   if (serializedFilters) params.set("filters", serializedFilters);
+  if (compare) params.set("compare", compare);
   if (value.layers.length) params.set("layers", value.layers.join(","));
   if (mapView) {
     params.set("lat", String(mapView.lat));
