@@ -4,14 +4,19 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { BriefingBookmarks } from "@/components/BriefingBookmarks";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import { useChoroplethQuery, useIndicatorsQuery } from "@/lib/hooks";
 import type { DistrictRecord } from "@/lib/types";
-import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
-import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
+import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
+import {
+  clearPersistedScenario,
+  getPersistedScenario,
+  persistSelectedScenario,
+} from "@/lib/scenarioSelection";
 
 const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) => mod.DistrictMap), {
   ssr: false,
@@ -129,6 +134,35 @@ export function DistrictExplorer() {
     () => (topNEnabled ? getTopDistrictIds(features, rankingScoreField, topNCount) : new Set<string>()),
     [features, rankingScoreField, topNCount, topNEnabled]
   );
+  const briefingState = useMemo(
+    () =>
+      mergeUrlState(initialState, {
+        school: null,
+        district: selectedDistrict?.district ?? null,
+        province: selectedDistrict?.province ?? null,
+        score: rankingScoreField,
+        indicator,
+        scenario: scenarioId,
+        layers: [],
+        mapView,
+      }),
+    [indicator, initialState, mapView, rankingScoreField, scenarioId, selectedDistrict]
+  );
+  const applyBookmark = (state: UrlState) => {
+    setIndicator(state.indicator ?? "Average AQI");
+    setRankingScoreField(state.score ?? "priority");
+    setMapView(state.mapView);
+    setScenarioId(state.scenario);
+    setSelectedDistrict(
+      features.find(
+        (feature) =>
+          feature.district === state.district && (!state.province || feature.province === state.province)
+      ) ?? null
+    );
+    if (state.scenario) persistSelectedScenario(state.scenario);
+    else clearPersistedScenario();
+    replaceState(state);
+  };
 
   return (
     <div className="map-workspace">
@@ -195,16 +229,8 @@ export function DistrictExplorer() {
             Need
           </button>
         </div>
-        <CopyLinkButton
-          state={mergeUrlState(initialState, {
-            district: selectedDistrict?.district ?? initialState.district,
-            province: selectedDistrict?.province ?? initialState.province,
-            score: rankingScoreField,
-            indicator,
-            scenario: scenarioId,
-            mapView,
-          })}
-        />
+        <CopyLinkButton state={briefingState} />
+        <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
         <div className="district-topn-toggle-row">
           <label className="district-topn-checkbox" htmlFor="top-n-enabled">
             <input

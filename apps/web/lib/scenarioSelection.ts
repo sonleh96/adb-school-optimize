@@ -5,6 +5,11 @@ export function persistSelectedScenario(scenarioId: string) {
   window.dispatchEvent(new Event("rise-png-scenario-change"));
 }
 
+export function clearPersistedScenario() {
+  window.localStorage.removeItem(SELECTED_SCENARIO_STORAGE_KEY);
+  window.dispatchEvent(new Event("rise-png-scenario-change"));
+}
+
 export function getPersistedScenario(): string | null {
   return window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY)?.trim() || null;
 }

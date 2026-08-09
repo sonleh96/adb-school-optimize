@@ -4,14 +4,19 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { BriefingBookmarks } from "@/components/BriefingBookmarks";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
 import type { SchoolRecord } from "@/lib/types";
 import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
-import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
-import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
+import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
+import {
+  clearPersistedScenario,
+  getPersistedScenario,
+  persistSelectedScenario,
+} from "@/lib/scenarioSelection";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -58,6 +63,7 @@ export function SchoolExplorer() {
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [province, setProvince] = useState<string | null>(initialState.province);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
+  const [suppressNextSelectionFocus, setSuppressNextSelectionFocus] = useState(false);
 
   const districtOptionsQuery = useDistrictOptionsQuery();
   const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
@@ -271,6 +277,37 @@ export function SchoolExplorer() {
     const midpoint = Math.ceil(layers.length / 2);
     return [layers.slice(0, midpoint), layers.slice(midpoint)];
   }, [layers]);
+  const briefingState = useMemo(
+    () =>
+      mergeUrlState(initialState, {
+        school: selectedSchoolId,
+        district,
+        province: selectedProvince ?? null,
+        score: scoreField,
+        scenario: scenarioId,
+        layers: layers.filter((layer) => layer.active).map((layer) => layer.key),
+        mapView,
+      }),
+    [district, initialState, layers, mapView, scenarioId, scoreField, selectedProvince, selectedSchoolId]
+  );
+  const applyBookmark = (state: UrlState) => {
+    const nextDistrict = state.district ?? DEFAULT_DISTRICT;
+    setDistrict(nextDistrict);
+    setDistrictQuery(nextDistrict);
+    setProvince(state.province);
+    setSelectedSchoolId(state.school);
+    setSchoolQuery("");
+    setShowDistrictSuggestions(false);
+    setShowSchoolSuggestions(false);
+    setScoreField(state.score ?? "priority");
+    setLayers(INITIAL_LAYERS.map((layer) => ({ ...layer, active: state.layers.includes(layer.key) })));
+    setMapView(state.mapView);
+    if (state.mapView && state.school !== selectedSchoolId) setSuppressNextSelectionFocus(true);
+    setScenarioId(state.scenario);
+    if (state.scenario) persistSelectedScenario(state.scenario);
+    else clearPersistedScenario();
+    replaceState(state);
+  };
 
   return (
     <div className="map-workspace">
@@ -292,6 +329,8 @@ export function SchoolExplorer() {
               mapView={mapView}
               onMapViewChange={setMapView}
               hasExplicitMapView={initialState.mapView != null}
+              suppressNextSelectionFocus={suppressNextSelectionFocus}
+              onSelectionFocusSuppressed={() => setSuppressNextSelectionFocus(false)}
             />
           )}
         </div>
@@ -322,17 +361,8 @@ export function SchoolExplorer() {
             Need
           </button>
         </div>
-        <CopyLinkButton
-          state={mergeUrlState(initialState, {
-            school: selectedSchoolId,
-            district,
-            province: selectedProvince ?? initialState.province,
-            score: scoreField,
-            scenario: scenarioId,
-            layers: layers.filter((layer) => layer.active).map((layer) => layer.key),
-            mapView,
-          })}
-        />
+        <CopyLinkButton state={briefingState} />
+        <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
         <div className="district-search map-district-search">
           <input
             id="school-search"
