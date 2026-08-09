@@ -1,8 +1,8 @@
 "use client";
 
 import { LatLngBounds } from "leaflet";
-import { useEffect, useMemo } from "react";
-import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
+import { useCallback, useEffect, useMemo } from "react";
+import { GeoJSON, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import type { PathOptions } from "leaflet";
 
@@ -11,10 +11,12 @@ import { MapScreenshotControl } from "@/components/MapScreenshotControl";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import type { DistrictRecord } from "@/lib/types";
 import type { DistrictScoreField } from "@/lib/districtScores";
+import type { MapView } from "@/lib/urlState";
 
-function FitDistricts({ features }: { features: DistrictRecord[] }) {
+function FitDistricts({ features, enabled }: { features: DistrictRecord[]; enabled: boolean }) {
   const map = useMap();
   useEffect(() => {
+    if (!enabled) return;
     const bounds = new LatLngBounds([]);
     for (const feature of features) {
       extendBounds(bounds, feature.geometry.coordinates);
@@ -22,8 +24,40 @@ function FitDistricts({ features }: { features: DistrictRecord[] }) {
     if (bounds.isValid()) {
       map.fitBounds(bounds.pad(0.08));
     }
-  }, [features, map]);
+  }, [enabled, features, map]);
 
+  return null;
+}
+
+function ApplyMapView({ mapView }: { mapView: MapView | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!mapView) return;
+    const center = map.getCenter();
+    if (
+      Math.abs(center.lat - mapView.lat) < 0.000001 &&
+      Math.abs(center.lng - mapView.lng) < 0.000001 &&
+      Math.abs(map.getZoom() - mapView.zoom) < 0.01
+    ) {
+      return;
+    }
+    map.setView([mapView.lat, mapView.lng], mapView.zoom, { animate: false });
+  }, [map, mapView]);
+
+  return null;
+}
+
+function MapViewWatcher({ onChange }: { onChange?: (mapView: MapView) => void }) {
+  const map = useMap();
+  const publish = useCallback(
+    () => onChange?.({ lat: map.getCenter().lat, lng: map.getCenter().lng, zoom: map.getZoom() }),
+    [map, onChange]
+  );
+  useMapEvents({ moveend: publish, zoomend: publish });
+  useEffect(() => {
+    publish();
+  }, [publish]);
   return null;
 }
 
@@ -35,6 +69,9 @@ export function DistrictMap({
   highlightedDistrictIds = new Set(),
   rankingScoreField = "priority",
   showIndicatorLayer = true,
+  mapView = null,
+  onMapViewChange,
+  hasExplicitMapView = false,
 }: {
   features: DistrictRecord[];
   indicator: string;
@@ -43,6 +80,9 @@ export function DistrictMap({
   highlightedDistrictIds?: Set<string>;
   rankingScoreField?: DistrictScoreField;
   showIndicatorLayer?: boolean;
+  mapView?: MapView | null;
+  onMapViewChange?: (mapView: MapView) => void;
+  hasExplicitMapView?: boolean;
 }) {
   const field = districtIndicatorField(indicator);
   const values = features.map((feature) => Number(feature[field])).filter((value) => Number.isFinite(value));
@@ -106,14 +146,21 @@ export function DistrictMap({
   };
 
   return (
-    <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom preferCanvas>
+    <MapContainer
+      center={mapView ? [mapView.lat, mapView.lng] : [-6.314993, 147.0]}
+      zoom={mapView?.zoom ?? 6}
+      scrollWheelZoom
+      preferCanvas
+    >
       <TileLayer
         attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
         url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         crossOrigin="anonymous"
       />
       <MapScreenshotControl filenamePrefix="district-explorer-map" />
-      <FitDistricts features={features} />
+      <ApplyMapView mapView={mapView} />
+      <FitDistricts features={features} enabled={!hasExplicitMapView} />
+      <MapViewWatcher onChange={onMapViewChange} />
       {collection.features.length > 0 ? (
         <GeoJSON
           key={`${indicator}-${selectedDistrictId ?? "none"}-${highlightedDistrictIds.size}-${showIndicatorLayer}`}
