@@ -50,7 +50,7 @@ export function ScenarioPanel() {
       setError(
         scenariosQuery.error instanceof Error
           ? scenariosQuery.error.message
-          : "Failed to initialize Scenario Lab.",
+          : "Failed to initialize Scenario Lab."
       );
     }
   }, [scenariosQuery.error]);
@@ -208,206 +208,206 @@ export function ScenarioPanel() {
 
           <div className="float-panel-body scenario-lab-body">
             <div className="two-up">
-          <article className="panel scenario-run-panel">
-            <div className="panel-head">
-              <div>
-                <h3 className="panel-title">Run A Scenario</h3>
-                <p className="panel-subtitle">Submit weight overrides to the FastAPI scoring endpoint.</p>
-              </div>
-            </div>
-            <div className="panel-body scenario-run-panel-body">
-              <div className="controls">
-                <div className="control" style={{ minWidth: "100%" }}>
-                  <label htmlFor="scenarioName">Scenario name</label>
-                  <input
-                    id="scenarioName"
-                    value={scenarioName}
-                    onChange={(event) => setScenarioName(event.target.value)}
-                  />
-                </div>
-                <div className="control" style={{ minWidth: "100%" }}>
-                  <label htmlFor="scenarioDescription">Description</label>
-                  <input
-                    id="scenarioDescription"
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                  />
-                </div>
-                <div className="action-row">
-                  <button
-                    className="button button-primary"
-                    type="button"
-                    onClick={handleRunScenario}
-                    disabled={running || !WRITE_OPERATIONS_ENABLED}
-                    title={
-                      WRITE_OPERATIONS_ENABLED
-                        ? undefined
-                        : "Scenario writes are disabled in research-only mode."
-                    }
-                  >
-                    {running
-                      ? "Running…"
-                      : WRITE_OPERATIONS_ENABLED
-                        ? "Run And Save Scenario"
-                        : "Scenario Runs Disabled"}
-                  </button>
-                </div>
-                {!WRITE_OPERATIONS_ENABLED ? (
-                  <p className="small-copy research-mode-copy">
-                    Saved scenario runs are disabled until authentication and data-governance controls are
-                    approved.
-                  </p>
-                ) : null}
-                <div className="control" style={{ minWidth: "100%" }}>
-                  <label>Weight Builder</label>
-                  <div className="scenario-weight-builder-header">
-                    <p className="small-copy">
-                      Use sliders or percentage inputs. Each group automatically sums to 100%.
-                    </p>
-                    <button className="button button-secondary" type="button" onClick={resetAll}>
-                      Reset all
-                    </button>
+              <article className="panel scenario-run-panel">
+                <div className="panel-head">
+                  <div>
+                    <h3 className="panel-title">Run A Scenario</h3>
+                    <p className="panel-subtitle">Submit weight overrides to the FastAPI scoring endpoint.</p>
                   </div>
-                  <div className="scenario-weight-builder">
-                    {editableWeightGroups.map((group) => (
-                      <article className="detail-card scenario-weight-editor-card" key={group.key}>
-                        <div className="scenario-weight-editor-card-head">
-                          <h4>{group.label}</h4>
-                          <button
-                            className="button button-secondary"
-                            type="button"
-                            onClick={() => resetGroup(group.key)}
-                          >
-                            Reset group
-                          </button>
-                        </div>
-                        <div className="scenario-weight-editor-list">
-                          {group.entries.map((entry) => (
-                            <div className="scenario-weight-editor-row" key={`${group.key}-${entry.key}`}>
-                              <label className="scenario-weight-editor-label">{entry.label}</label>
-                              <input
-                                className="scenario-weight-slider"
-                                type="range"
-                                min={0}
-                                max={100}
-                                step={0.1}
-                                value={entry.percent}
-                                onChange={(event) =>
-                                  updateWeight(group.key, entry.key, Number(event.target.value))
-                                }
-                              />
-                              <input
-                                className="scenario-weight-number"
-                                type="number"
-                                min={0}
-                                max={100}
-                                step={0.1}
-                                value={entry.percent.toFixed(1)}
-                                onChange={(event) =>
-                                  updateWeight(group.key, entry.key, Number(event.target.value))
-                                }
-                              />
-                              <span className="scenario-weight-percent">%</span>
+                </div>
+                <div className="panel-body scenario-run-panel-body">
+                  <div className="controls">
+                    <div className="control" style={{ minWidth: "100%" }}>
+                      <label htmlFor="scenarioName">Scenario name</label>
+                      <input
+                        id="scenarioName"
+                        value={scenarioName}
+                        onChange={(event) => setScenarioName(event.target.value)}
+                      />
+                    </div>
+                    <div className="control" style={{ minWidth: "100%" }}>
+                      <label htmlFor="scenarioDescription">Description</label>
+                      <input
+                        id="scenarioDescription"
+                        value={description}
+                        onChange={(event) => setDescription(event.target.value)}
+                      />
+                    </div>
+                    <div className="action-row">
+                      <button
+                        className="button button-primary"
+                        type="button"
+                        onClick={handleRunScenario}
+                        disabled={running || !WRITE_OPERATIONS_ENABLED}
+                        title={
+                          WRITE_OPERATIONS_ENABLED
+                            ? undefined
+                            : "Scenario writes are disabled in research-only mode."
+                        }
+                      >
+                        {running
+                          ? "Running…"
+                          : WRITE_OPERATIONS_ENABLED
+                            ? "Run And Save Scenario"
+                            : "Scenario Runs Disabled"}
+                      </button>
+                    </div>
+                    {!WRITE_OPERATIONS_ENABLED ? (
+                      <p className="small-copy research-mode-copy">
+                        Saved scenario runs are disabled until authentication and data-governance controls are
+                        approved.
+                      </p>
+                    ) : null}
+                    <div className="control" style={{ minWidth: "100%" }}>
+                      <label>Weight Builder</label>
+                      <div className="scenario-weight-builder-header">
+                        <p className="small-copy">
+                          Use sliders or percentage inputs. Each group automatically sums to 100%.
+                        </p>
+                        <button className="button button-secondary" type="button" onClick={resetAll}>
+                          Reset all
+                        </button>
+                      </div>
+                      <div className="scenario-weight-builder">
+                        {editableWeightGroups.map((group) => (
+                          <article className="detail-card scenario-weight-editor-card" key={group.key}>
+                            <div className="scenario-weight-editor-card-head">
+                              <h4>{group.label}</h4>
+                              <button
+                                className="button button-secondary"
+                                type="button"
+                                onClick={() => resetGroup(group.key)}
+                              >
+                                Reset group
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      </article>
-                    ))}
+                            <div className="scenario-weight-editor-list">
+                              {group.entries.map((entry) => (
+                                <div className="scenario-weight-editor-row" key={`${group.key}-${entry.key}`}>
+                                  <label className="scenario-weight-editor-label">{entry.label}</label>
+                                  <input
+                                    className="scenario-weight-slider"
+                                    type="range"
+                                    min={0}
+                                    max={100}
+                                    step={0.1}
+                                    value={entry.percent}
+                                    onChange={(event) =>
+                                      updateWeight(group.key, entry.key, Number(event.target.value))
+                                    }
+                                  />
+                                  <input
+                                    className="scenario-weight-number"
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={0.1}
+                                    value={entry.percent.toFixed(1)}
+                                    onChange={(event) =>
+                                      updateWeight(group.key, entry.key, Number(event.target.value))
+                                    }
+                                  />
+                                  <span className="scenario-weight-percent">%</span>
+                                </div>
+                              ))}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
                   </div>
+                  {status ? <p className="small-copy">{status}</p> : null}
+                  {warnings.length ? (
+                    <div className="empty">
+                      <strong>Warnings</strong>
+                      <ul className="methodology-list">
+                        {warnings.map((warning) => (
+                          <li key={warning}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {error ? <div className="error">{error}</div> : null}
                 </div>
-              </div>
-              {status ? <p className="small-copy">{status}</p> : null}
-              {warnings.length ? (
-                <div className="empty">
-                  <strong>Warnings</strong>
-                  <ul className="methodology-list">
-                    {warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {error ? <div className="error">{error}</div> : null}
-            </div>
-          </article>
+              </article>
 
-          <div className="sidebar-stack">
-            <article className="panel">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Saved Scenarios</h3>
-                  <p className="panel-subtitle">{scenarioCountLabel}</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                <div className="table-wrap table-wrap-scroll scenario-saved-table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Default</th>
-                        <th>Updated</th>
-                        <th aria-label="Download column" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scenarios.map((scenario) => (
-                        <tr
-                          className="data-row"
-                          key={scenario.scenario_id}
-                          data-selected={scenario.scenario_id === selectedScenarioId}
-                          onClick={() => void loadScenario(scenario)}
-                        >
-                          <td>{scenario.scenario_name}</td>
-                          <td>{scenario.is_default ? "Yes" : "No"}</td>
-                          <td>
-                            {scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}
-                          </td>
-                          <td className="download-cell">
-                            <a
-                              className="icon-download-link"
-                              href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
-                              title={`Download ${scenario.scenario_name}`}
-                              onClick={(event) => event.stopPropagation()}
+              <div className="sidebar-stack">
+                <article className="panel">
+                  <div className="panel-head">
+                    <div>
+                      <h3 className="panel-title">Saved Scenarios</h3>
+                      <p className="panel-subtitle">{scenarioCountLabel}</p>
+                    </div>
+                  </div>
+                  <div className="panel-body">
+                    <div className="table-wrap table-wrap-scroll scenario-saved-table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Default</th>
+                            <th>Updated</th>
+                            <th aria-label="Download column" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {scenarios.map((scenario) => (
+                            <tr
+                              className="data-row"
+                              key={scenario.scenario_id}
+                              data-selected={scenario.scenario_id === selectedScenarioId}
+                              onClick={() => void loadScenario(scenario)}
                             >
-                              <Download className="size-4" aria-hidden />
-                              <span className="sr-only">Download {scenario.scenario_name}</span>
-                            </a>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </article>
+                              <td>{scenario.scenario_name}</td>
+                              <td>{scenario.is_default ? "Yes" : "No"}</td>
+                              <td>
+                                {scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}
+                              </td>
+                              <td className="download-cell">
+                                <a
+                                  className="icon-download-link"
+                                  href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
+                                  title={`Download ${scenario.scenario_name}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <Download className="size-4" aria-hidden />
+                                  <span className="sr-only">Download {scenario.scenario_name}</span>
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </article>
 
-            <article className="panel">
-              <div className="panel-head">
-                <div>
-                  <h3 className="panel-title">Scenario Result Preview</h3>
-                  <p className="panel-subtitle">All schools for the selected scenario result set.</p>
-                </div>
-              </div>
-              <div className="panel-body">
-                {loadingPreview ? (
-                  <div className="loading">Loading scenario results…</div>
-                ) : previewRows.length ? (
-                  <div className="scenario-preview-wrap" style={{ height: 420 }}>
-                    <VirtualizedSchoolTable
-                      schools={previewRows}
-                      selectedSchoolId={null}
-                      onSelectSchool={() => undefined}
-                    />
+                <article className="panel">
+                  <div className="panel-head">
+                    <div>
+                      <h3 className="panel-title">Scenario Result Preview</h3>
+                      <p className="panel-subtitle">All schools for the selected scenario result set.</p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="empty">
-                    Run or select a scenario to preview all recalculated school results.
+                  <div className="panel-body">
+                    {loadingPreview ? (
+                      <div className="loading">Loading scenario results…</div>
+                    ) : previewRows.length ? (
+                      <div className="scenario-preview-wrap" style={{ height: 420 }}>
+                        <VirtualizedSchoolTable
+                          schools={previewRows}
+                          selectedSchoolId={null}
+                          onSelectSchool={() => undefined}
+                        />
+                      </div>
+                    ) : (
+                      <div className="empty">
+                        Run or select a scenario to preview all recalculated school results.
+                      </div>
+                    )}
                   </div>
-                )}
+                </article>
               </div>
-            </article>
-          </div>
             </div>
           </div>
         </section>

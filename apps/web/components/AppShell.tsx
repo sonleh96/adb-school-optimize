@@ -4,14 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  FlaskConical,
-  Globe2,
-  Layers3,
-  MapPinned,
-  BookOpenText,
-  SlidersHorizontal,
-} from "lucide-react";
+import { FlaskConical, Globe2, Layers3, MapPinned, BookOpenText, SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useScenariosQuery } from "@/lib/hooks";
@@ -77,7 +70,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="mx-1 hidden h-5 w-px bg-[rgba(15,31,51,0.1)] sm:block" aria-hidden />
 
-        <nav aria-label="Dashboard sections" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+        <nav
+          aria-label="Dashboard sections"
+          className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto"
+        >
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
             const Icon = item.icon;
@@ -90,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-[12.5px] transition-colors",
                   active
                     ? "bg-[var(--color-brand)] font-semibold text-white shadow-sm"
-                    : "text-[var(--color-muted)] hover:bg-[rgba(15,31,51,0.05)] hover:text-[var(--color-ink)]",
+                    : "text-[var(--color-muted)] hover:bg-[rgba(15,31,51,0.05)] hover:text-[var(--color-ink)]"
                 )}
               >
                 <Icon className="size-3.5 opacity-90" aria-hidden />
