@@ -1,14 +1,20 @@
 import { CONFIDENCE_BAND_LABELS, type SchoolFilters } from "@/lib/schoolFilters";
 import type { SchoolRecord } from "@/lib/types";
 
-const CSV_COLUMNS: Array<{ label: string; value: (school: SchoolRecord) => string }> = [
+type CsvColumn = {
+  label: string;
+  value: (school: SchoolRecord) => string;
+  protectFormula?: boolean;
+};
+
+const CSV_COLUMNS: CsvColumn[] = [
   { label: "rank_priority", value: (school) => asInteger(school.rank_priority) },
   { label: "rank_need", value: (school) => asInteger(school.rank_need) },
-  { label: "school_id", value: (school) => school.school_id ?? "" },
-  { label: "school_name", value: (school) => school.school_name },
-  { label: "locality", value: (school) => school.locality ?? "" },
-  { label: "district", value: (school) => school.district },
-  { label: "province", value: (school) => school.province },
+  { label: "school_id", value: (school) => school.school_id ?? "", protectFormula: true },
+  { label: "school_name", value: (school) => school.school_name, protectFormula: true },
+  { label: "locality", value: (school) => school.locality ?? "", protectFormula: true },
+  { label: "district", value: (school) => school.district, protectFormula: true },
+  { label: "province", value: (school) => school.province, protectFormula: true },
   { label: "priority", value: (school) => asDecimal(school.priority) },
   { label: "need", value: (school) => asDecimal(school.need) },
   { label: "data_confidence", value: (school) => asDecimal(school.data_confidence) },
@@ -50,8 +56,8 @@ function protectSpreadsheetFormula(value: string): string {
   return /^[\t\r\n ]*[=+\-@]/.test(value) ? `'${value}` : value;
 }
 
-export function escapeCsvCell(value: string): string {
-  const safeValue = protectSpreadsheetFormula(value);
+export function escapeCsvCell(value: string, protectFormula = false): string {
+  const safeValue = protectFormula ? protectSpreadsheetFormula(value) : value;
   return /[",\r\n]/.test(safeValue) ? `"${safeValue.replaceAll('"', '""')}"` : safeValue;
 }
 
@@ -59,7 +65,7 @@ export function escapeCsvCell(value: string): string {
 export function buildSchoolsCsv(schools: readonly SchoolRecord[]): string {
   const header = CSV_COLUMNS.map((column) => escapeCsvCell(column.label)).join(",");
   const rows = schools.map((school) =>
-    CSV_COLUMNS.map((column) => escapeCsvCell(column.value(school))).join(",")
+    CSV_COLUMNS.map((column) => escapeCsvCell(column.value(school), column.protectFormula)).join(",")
   );
   return `${[header, ...rows].join("\r\n")}\r\n`;
 }
