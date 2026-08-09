@@ -50,7 +50,17 @@ export type UrlState = {
 type UrlStatePatch = Partial<UrlState>;
 
 const STRING_KEYS = ["school", "district", "province", "indicator", "scenario"] as const;
-const KNOWN_KEYS = [...STRING_KEYS, "score", "compare", "filters", "catchment", "layers", "lat", "lng", "z"] as const;
+const KNOWN_KEYS = [
+  ...STRING_KEYS,
+  "score",
+  "compare",
+  "filters",
+  "catchment",
+  "layers",
+  "lat",
+  "lng",
+  "z",
+] as const;
 const SUPPORTED_LAYER_SET = new Set<string>(SUPPORTED_SCHOOL_LAYER_KEYS);
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 22;

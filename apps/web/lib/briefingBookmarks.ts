@@ -249,8 +249,6 @@ export function bookmarkMatchesState(bookmark: BriefingBookmark, current: UrlSta
     if (bookmark.state[key] != null && bookmark.state[key] !== current[key]) return false;
   }
   if (bookmark.state.score != null && bookmark.state.score !== current.score) return false;
-  if (serializeSchoolFilters(bookmark.state.filters) !== serializeSchoolFilters(current.filters))
-    return false;
   if (bookmark.state.catchment !== current.catchment) return false;
   if (bookmark.state.compare !== current.compare) return false;
   if (serializeSchoolFilters(bookmark.state.filters) !== serializeSchoolFilters(current.filters))
