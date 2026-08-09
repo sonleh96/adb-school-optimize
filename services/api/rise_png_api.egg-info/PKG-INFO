@@ -6,6 +6,7 @@ Requires-Python: >=3.10
 Requires-Dist: fastapi
 Requires-Dist: uvicorn
 Requires-Dist: psycopg[binary]
+Requires-Dist: psycopg-pool
 Requires-Dist: pandas
 Requires-Dist: numpy
 Requires-Dist: shapely
