@@ -18,6 +18,7 @@ import type {
   VectorLayerFeaturesResponse,
 } from "@/lib/types";
 import type { DistrictScoreField } from "@/lib/districtScores";
+import type { MapView } from "@/lib/urlState";
 
 export type SchoolLayerKey =
   | "roads"
@@ -57,15 +58,16 @@ const ACCESS_POINTS_MAX_RENDER = 8000;
 const ACCESS_LAYER_MIN_ZOOM = 9;
 const HEAVY_LAYER_MIN_ZOOM = 8;
 
-function FitSchools({ schools }: { schools: SchoolRecord[] }) {
+function FitSchools({ schools, enabled }: { schools: SchoolRecord[]; enabled: boolean }) {
   const map = useMap();
   useEffect(() => {
+    if (!enabled) return;
     if (schools.length === 0) return;
     const bounds = new LatLngBounds(
       schools.map((school) => [school.latitude, school.longitude] as [number, number])
     );
     map.fitBounds(bounds.pad(0.18));
-  }, [map, schools]);
+  }, [enabled, map, schools]);
 
   return null;
 }
@@ -74,23 +76,48 @@ function FocusSelectedSchool({
   schools,
   selectedSchoolId,
   enabled = true,
+  suppressInitialFocus = false,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
   enabled?: boolean;
+  suppressInitialFocus?: boolean;
 }) {
   const map = useMap();
+  const hasHandledSelection = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
     if (!selectedSchoolId) return;
     const school = schools.find((item) => item.school_id === selectedSchoolId);
     if (!school) return;
+    const isInitialSelection = !hasHandledSelection.current;
+    hasHandledSelection.current = true;
+    if (suppressInitialFocus && isInitialSelection) return;
     map.flyTo([school.latitude, school.longitude], Math.max(map.getZoom(), 11), {
       animate: true,
       duration: 0.7,
     });
-  }, [enabled, map, schools, selectedSchoolId]);
+  }, [enabled, map, schools, selectedSchoolId, suppressInitialFocus]);
+
+  return null;
+}
+
+function ApplyMapView({ mapView }: { mapView: MapView | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!mapView) return;
+    const center = map.getCenter();
+    if (
+      Math.abs(center.lat - mapView.lat) < 0.000001 &&
+      Math.abs(center.lng - mapView.lng) < 0.000001 &&
+      Math.abs(map.getZoom() - mapView.zoom) < 0.01
+    ) {
+      return;
+    }
+    map.setView([mapView.lat, mapView.lng], mapView.zoom, { animate: false });
+  }, [map, mapView]);
 
   return null;
 }
@@ -98,13 +125,18 @@ function FocusSelectedSchool({
 function ViewportBoundsWatcher({
   onChange,
 }: {
-  onChange: (state: { bbox: Bbox4326; zoom: number }) => void;
+  onChange: (state: { bbox: Bbox4326; zoom: number; mapView: MapView }) => void;
 }) {
   const map = useMap();
   const publish = useCallback(() => {
     onChange({
       bbox: boundsToBbox4326(map.getBounds()),
       zoom: map.getZoom(),
+      mapView: {
+        lat: map.getCenter().lat,
+        lng: map.getCenter().lng,
+        zoom: map.getZoom(),
+      },
     });
   }, [map, onChange]);
 
@@ -239,6 +271,9 @@ export function SchoolMap({
   districtFeatures = [],
   districtScoreField,
   focusSelectedSchool = true,
+  mapView = null,
+  onMapViewChange,
+  hasExplicitMapView = false,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -252,6 +287,9 @@ export function SchoolMap({
   districtFeatures?: DistrictRecord[];
   districtScoreField?: DistrictScoreField;
   focusSelectedSchool?: boolean;
+  mapView?: MapView | null;
+  onMapViewChange?: (mapView: MapView) => void;
+  hasExplicitMapView?: boolean;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -276,10 +314,14 @@ export function SchoolMap({
     [layers]
   );
 
-  const onViewportChange = useCallback((state: { bbox: Bbox4326; zoom: number }) => {
-    setViewportBbox(state.bbox);
-    setViewportZoom(state.zoom);
-  }, []);
+  const onViewportChange = useCallback(
+    (state: { bbox: Bbox4326; zoom: number; mapView: MapView }) => {
+      setViewportBbox(state.bbox);
+      setViewportZoom(state.zoom);
+      onMapViewChange?.(state.mapView);
+    },
+    [onMapViewChange]
+  );
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -587,18 +629,25 @@ export function SchoolMap({
 
   return (
     <div className="school-map-root">
-      <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom preferCanvas>
+      <MapContainer
+        center={mapView ? [mapView.lat, mapView.lng] : [-6.314993, 147.0]}
+        zoom={mapView?.zoom ?? 6}
+        scrollWheelZoom
+        preferCanvas
+      >
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
           url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           crossOrigin="anonymous"
         />
         <MapScreenshotControl filenamePrefix={screenshotFilePrefix} />
-        <FitSchools schools={schools} />
+        <ApplyMapView mapView={mapView} />
+        <FitSchools schools={schools} enabled={!hasExplicitMapView} />
         <FocusSelectedSchool
           schools={schools}
           selectedSchoolId={selectedSchoolId}
           enabled={focusSelectedSchool}
+          suppressInitialFocus={hasExplicitMapView}
         />
         <ViewportBoundsWatcher onChange={onViewportChange} />
 

@@ -3,11 +3,14 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
+import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
 import { useChoroplethQuery, useIndicatorsQuery } from "@/lib/hooks";
 import type { DistrictRecord } from "@/lib/types";
+import { mergeUrlState, useShareableUrlState, type MapView } from "@/lib/urlState";
+import { getPersistedScenario, persistSelectedScenario } from "@/lib/scenarioSelection";
 
 const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) => mod.DistrictMap), {
   ssr: false,
@@ -15,12 +18,17 @@ const DistrictMap = dynamic(() => import("@/components/DistrictMap").then((mod) 
 });
 
 export function DistrictExplorer() {
-  const [indicator, setIndicator] = useState("Average AQI");
+  const { initialState, replaceState } = useShareableUrlState();
+  const [indicator, setIndicator] = useState(initialState.indicator ?? "Average AQI");
   const [distributionScheme, setDistributionScheme] = useState<"everyone" | "selected_group">("everyone");
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictRecord | null>(null);
-  const [rankingScoreField, setRankingScoreField] = useState<"priority" | "need">("priority");
+  const [rankingScoreField, setRankingScoreField] = useState<"priority" | "need">(
+    initialState.score ?? "priority"
+  );
   const [topNEnabled, setTopNEnabled] = useState(true);
   const [topNCount, setTopNCount] = useState(10);
+  const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
+  const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
   const indicatorField = districtIndicatorField(indicator);
 
   const indicatorsQuery = useIndicatorsQuery();
@@ -38,18 +46,53 @@ export function DistrictExplorer() {
     null;
 
   useEffect(() => {
-    if (indicatorsQuery.data?.default) {
-      setIndicator(indicatorsQuery.data.default);
+    if (initialState.scenario) {
+      setScenarioId(initialState.scenario);
+      persistSelectedScenario(initialState.scenario);
+      return;
     }
-  }, [indicatorsQuery.data?.default]);
+    const persistedScenario = getPersistedScenario();
+    if (!persistedScenario) return;
+    setScenarioId(persistedScenario);
+    replaceState({ scenario: persistedScenario });
+  }, [initialState.scenario, replaceState]);
+
+  useEffect(() => {
+    if (!indicators.length || indicators.includes(indicator)) return;
+    const fallback = indicatorsQuery.data?.default ?? indicators[0];
+    if (!fallback) return;
+    setIndicator(fallback);
+    replaceState({ indicator: fallback });
+  }, [indicator, indicators, indicatorsQuery.data?.default, replaceState]);
+
+  const selectDistrict = (district: DistrictRecord) => {
+    setSelectedDistrict(district);
+    replaceState({ district: district.district, province: district.province });
+  };
 
   useEffect(() => {
     if (!features.length) return;
     setSelectedDistrict((current) => {
-      if (!current) return features[0] ?? null;
+      if (!current) {
+        return (
+          features.find(
+            (feature) =>
+              feature.district === initialState.district &&
+              (!initialState.province || feature.province === initialState.province)
+          ) ??
+          features[0] ??
+          null
+        );
+      }
       return features.find((feature) => feature.district_id === current.district_id) ?? features[0] ?? null;
     });
-  }, [features]);
+  }, [features, initialState.district, initialState.province]);
+
+  useEffect(() => {
+    if (!mapView) return;
+    const handle = window.setTimeout(() => replaceState({ mapView }), 240);
+    return () => window.clearTimeout(handle);
+  }, [mapView, replaceState]);
 
   const metricValues = useMemo(
     () =>
@@ -99,10 +142,13 @@ export function DistrictExplorer() {
               indicator={indicator}
               features={features}
               selectedDistrictId={selectedDistrict?.district_id ?? null}
-              onSelectDistrict={setSelectedDistrict}
+              onSelectDistrict={selectDistrict}
               highlightedDistrictIds={highlightedDistrictIds}
               rankingScoreField={rankingScoreField}
               showIndicatorLayer={!topNEnabled}
+              mapView={mapView}
+              onMapViewChange={setMapView}
+              hasExplicitMapView={initialState.mapView != null}
             />
           )}
         </div>
@@ -113,7 +159,14 @@ export function DistrictExplorer() {
         <p className="overlay-copy">Compare administrative indicators across polygons.</p>
         <div className="control" style={{ minWidth: 0 }}>
           <label htmlFor="indicator">Indicator</label>
-          <select id="indicator" value={indicator} onChange={(event) => setIndicator(event.target.value)}>
+          <select
+            id="indicator"
+            value={indicator}
+            onChange={(event) => {
+              setIndicator(event.target.value);
+              replaceState({ indicator: event.target.value });
+            }}
+          >
             {indicators.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -125,18 +178,34 @@ export function DistrictExplorer() {
           <button
             type="button"
             className={`score-toggle-button ${rankingScoreField === "priority" ? "is-active" : ""}`}
-            onClick={() => setRankingScoreField("priority")}
+            onClick={() => {
+              setRankingScoreField("priority");
+              replaceState({ score: "priority" });
+            }}
           >
             Priority
           </button>
           <button
             type="button"
             className={`score-toggle-button ${rankingScoreField === "need" ? "is-active" : ""}`}
-            onClick={() => setRankingScoreField("need")}
+            onClick={() => {
+              setRankingScoreField("need");
+              replaceState({ score: "need" });
+            }}
           >
             Need
           </button>
         </div>
+        <CopyLinkButton
+          state={mergeUrlState(initialState, {
+            district: selectedDistrict?.district ?? initialState.district,
+            province: selectedDistrict?.province ?? initialState.province,
+            score: rankingScoreField,
+            indicator,
+            scenario: scenarioId,
+            mapView,
+          })}
+        />
         <div className="district-topn-toggle-row">
           <label className="district-topn-checkbox" htmlFor="top-n-enabled">
             <input
@@ -282,7 +351,7 @@ export function DistrictExplorer() {
                         key={feature.district_id}
                         data-selected={feature.district_id === selectedDistrict?.district_id}
                         data-highlighted={isHighlighted}
-                        onClick={() => setSelectedDistrict(feature)}
+                        onClick={() => selectDistrict(feature)}
                       >
                         <td>{getDistrictScore(feature, rankingScoreField) == null ? "n/a" : index + 1}</td>
                         <td className="school-name-cell">{feature.district}</td>
