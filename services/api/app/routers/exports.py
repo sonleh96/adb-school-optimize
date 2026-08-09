@@ -10,6 +10,10 @@ from ..repository import export_full_xlsx, export_ranked_csv, export_ranked_xlsx
 
 router = APIRouter(prefix="/api/v1/exports", tags=["exports"])
 
+RESEARCH_EXPORT_HEADERS = {
+    "X-RISE-PNG-Decision-Use": "research-prototype-only",
+}
+
 
 @router.get("/ranked.csv")
 def export_csv(scenario_id: str | None = None):
@@ -18,7 +22,10 @@ def export_csv(scenario_id: str | None = None):
     return Response(
         content=content,
         media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="ranked_schools.csv"'},
+        headers={
+            **RESEARCH_EXPORT_HEADERS,
+            "Content-Disposition": 'attachment; filename="research_prototype_ranked_schools.csv"',
+        },
     )
 
 
@@ -29,7 +36,10 @@ def export_xlsx(scenario_id: str | None = None):
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="ranked_schools.xlsx"'},
+        headers={
+            **RESEARCH_EXPORT_HEADERS,
+            "Content-Disposition": 'attachment; filename="research_prototype_ranked_schools.xlsx"',
+        },
     )
 
 
@@ -40,7 +50,10 @@ def export_scores(scenario_id: str | None = None):
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="Scores.xlsx"'},
+        headers={
+            **RESEARCH_EXPORT_HEADERS,
+            "Content-Disposition": 'attachment; filename="research_prototype_scores.xlsx"',
+        },
     )
 
 
@@ -51,5 +64,8 @@ def export_full(scenario_id: str | None = None):
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": 'attachment; filename="Full.xlsx"'},
+        headers={
+            **RESEARCH_EXPORT_HEADERS,
+            "Content-Disposition": 'attachment; filename="research_prototype_full.xlsx"',
+        },
     )

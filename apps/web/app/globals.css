@@ -83,6 +83,42 @@ textarea {
   white-space: nowrap;
 }
 
+.research-status-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 35, 24, 0.28);
+  border-radius: 14px;
+  background: #fff4f2;
+  color: #5c1d16;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.research-status-banner strong {
+  color: #8f1d14;
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.research-status-banner span {
+  flex: 1 1 560px;
+}
+
+.research-status-banner a {
+  color: #7a271a;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.research-mode-copy {
+  margin: 0;
+  color: var(--danger);
+}
+
 .hero {
   margin-top: 14px;
   padding: 26px 28px;
@@ -1526,6 +1562,10 @@ textarea {
 
   .brand-copy {
     font-size: 0.82rem;
+  }
+
+  .research-status-banner {
+    align-items: flex-start;
   }
 
   .hero-metrics {

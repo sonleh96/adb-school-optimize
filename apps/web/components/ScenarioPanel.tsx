@@ -14,6 +14,8 @@ const DEFAULT_OVERRIDES: WeightOverrides = {
   priority: { Need: 0.7, I: 0.2, P: 0.1 },
 };
 
+const WRITE_OPERATIONS_ENABLED = process.env.NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED === "true";
+
 export function ScenarioPanel() {
   const [scenarios, setScenarios] = useState<ScenarioRecord[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
@@ -218,10 +220,21 @@ export function ScenarioPanel() {
                   />
                 </div>
                 <div className="action-row">
-                  <button className="button button-primary" type="button" onClick={handleRunScenario} disabled={running}>
-                    {running ? "Running…" : "Run And Save Scenario"}
+                  <button
+                    className="button button-primary"
+                    type="button"
+                    onClick={handleRunScenario}
+                    disabled={running || !WRITE_OPERATIONS_ENABLED}
+                    title={WRITE_OPERATIONS_ENABLED ? undefined : "Scenario writes are disabled in research-only mode."}
+                  >
+                    {running ? "Running…" : WRITE_OPERATIONS_ENABLED ? "Run And Save Scenario" : "Scenario Runs Disabled"}
                   </button>
                 </div>
+                {!WRITE_OPERATIONS_ENABLED ? (
+                  <p className="small-copy research-mode-copy">
+                    Saved scenario runs are disabled until authentication and data-governance controls are approved.
+                  </p>
+                ) : null}
                 <div className="control" style={{ minWidth: "100%" }}>
                   <label>Weight Builder</label>
                   <div className="scenario-weight-builder-header">

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from ..db import get_db
 from ..models.api import ScoringRunRequest
 from ..repository import run_and_persist_scenario
+from ..security import require_write_operations
 
 router = APIRouter(prefix="/api/v1/scoring", tags=["scoring"])
 
@@ -16,7 +17,10 @@ def _payload_dict(model):
 
 
 @router.post("/run")
-def run_scoring_endpoint(payload: ScoringRunRequest):
+def run_scoring_endpoint(
+    payload: ScoringRunRequest,
+    _write_access: None = Depends(require_write_operations),
+):
     data = _payload_dict(payload)
     with get_db() as connection:
         return run_and_persist_scenario(
