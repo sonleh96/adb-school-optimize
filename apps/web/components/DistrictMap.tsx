@@ -1,9 +1,10 @@
 "use client";
 
 import { LatLngBounds } from "leaflet";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { GeoJSON, MapContainer, TileLayer, useMap } from "react-leaflet";
-import type { Feature, Geometry } from "geojson";
+import type { Feature, FeatureCollection, Geometry } from "geojson";
+import type { PathOptions } from "leaflet";
 
 import { scaleValue } from "@/lib/color";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
@@ -48,65 +49,86 @@ export function DistrictMap({
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 1;
 
+  const byId = useMemo(() => {
+    const map = new Map<string, DistrictRecord>();
+    for (const feature of features) map.set(feature.district_id, feature);
+    return map;
+  }, [features]);
+
+  const collection = useMemo<FeatureCollection<Geometry>>(() => {
+    return {
+      type: "FeatureCollection",
+      features: features.map((feature) => {
+        const value = Number(feature[field]);
+        return {
+          type: "Feature",
+          geometry: feature.geometry as unknown as Geometry,
+          properties: {
+            district_id: feature.district_id,
+            district: feature.district,
+            province: feature.province,
+            value: Number.isFinite(value) ? value : null,
+          },
+        } satisfies Feature<Geometry>;
+      }),
+    };
+  }, [features, field]);
+
+  const styleFeature = (feature?: Feature<Geometry>): PathOptions => {
+    const districtId = String(feature?.properties?.district_id ?? "");
+    const value = Number(feature?.properties?.value);
+    const normalized = scaleValue(Number.isFinite(value) ? value : null, min, max);
+    const fillColor = districtIndicatorColor(indicator, normalized);
+    const isSelected = selectedDistrictId === districtId;
+    const isHighlighted = highlightedDistrictIds.has(districtId);
+
+    return {
+      color: isSelected ? "#17211f" : isHighlighted ? "#a8550a" : "rgba(23, 33, 31, 0.5)",
+      weight: isSelected ? 3.2 : isHighlighted ? 2.6 : 1,
+      dashArray: isSelected ? undefined : isHighlighted ? "8 4" : undefined,
+      fillColor: isHighlighted
+        ? districtIndicatorColor(rankingScoreField === "priority" ? "Priority Score" : "Need Score", 1)
+        : showIndicatorLayer
+          ? fillColor
+          : "transparent",
+      fillOpacity: isSelected
+        ? isHighlighted
+          ? 0.82
+          : showIndicatorLayer
+            ? 0.82
+            : 0.06
+        : isHighlighted
+          ? 0.78
+          : showIndicatorLayer
+            ? 0.72
+            : 0,
+    };
+  };
+
   return (
-    <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom>
+    <MapContainer center={[-6.314993, 147.0]} zoom={6} scrollWheelZoom preferCanvas>
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap'
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         crossOrigin="anonymous"
       />
       <MapScreenshotControl filenamePrefix="district-explorer-map" />
       <FitDistricts features={features} />
-      {features.map((feature) => {
-        const value = Number(feature[field]);
-        const normalized = scaleValue(Number.isFinite(value) ? value : null, min, max);
-        const fillColor = districtIndicatorColor(indicator, normalized);
-        const isSelected = selectedDistrictId === feature.district_id;
-        const isHighlighted = highlightedDistrictIds.has(feature.district_id);
-        const geoJsonFeature: Feature<Geometry> = {
-          type: "Feature",
-          geometry: feature.geometry as unknown as Geometry,
-          properties: {
-            district: feature.district,
-            province: feature.province,
-            value,
-          },
-        };
-
-        return (
-          <GeoJSON
-            key={feature.district_id}
-            data={geoJsonFeature}
-            style={{
-              color: isSelected ? "#17211f" : isHighlighted ? "#a8550a" : "rgba(23, 33, 31, 0.5)",
-              weight: isSelected ? 3.2 : isHighlighted ? 2.6 : 1,
-              dashArray: isSelected ? undefined : isHighlighted ? "8 4" : undefined,
-              fillColor: isHighlighted
-                ? districtIndicatorColor(
-                    rankingScoreField === "priority" ? "Priority Score" : "Need Score",
-                    1
-                  )
-                : showIndicatorLayer
-                  ? fillColor
-                  : "transparent",
-              fillOpacity: isSelected
-                ? isHighlighted
-                  ? 0.82
-                  : showIndicatorLayer
-                    ? 0.82
-                    : 0.06
-                : isHighlighted
-                  ? 0.78
-                  : showIndicatorLayer
-                    ? 0.72
-                    : 0,
-            }}
-            eventHandlers={{
-              click: () => onSelectDistrict(feature),
-            }}
-          />
-        );
-      })}
+      {collection.features.length > 0 ? (
+        <GeoJSON
+          key={`${indicator}-${selectedDistrictId ?? "none"}-${highlightedDistrictIds.size}-${showIndicatorLayer}`}
+          data={collection}
+          style={styleFeature}
+          onEachFeature={(feature, layer) => {
+            const districtId = String(feature.properties?.district_id ?? "");
+            const record = byId.get(districtId);
+            if (!record) return;
+            layer.on({
+              click: () => onSelectDistrict(record),
+            });
+          }}
+        />
+      ) : null}
     </MapContainer>
   );
 }

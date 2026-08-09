@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
+from .db import close_pool, open_pool
 from .errors import register_exception_handlers
 from .models.api import HealthResponse
 from .routers.districts import router as districts_router
@@ -16,9 +20,22 @@ from .routers.schools import router as schools_router
 from .routers.scoring import router as scoring_router
 from .settings import get_settings
 
-app = FastAPI(title="RISE-PNG API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    settings = get_settings()
+    if settings.database_url:
+        open_pool(settings)
+    try:
+        yield
+    finally:
+        close_pool()
+
+
+app = FastAPI(title="RISE-PNG API", version="0.1.0", lifespan=lifespan)
 settings = get_settings()
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,

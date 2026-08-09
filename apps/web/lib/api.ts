@@ -13,13 +13,15 @@ import type {
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
-    cache: "no-store",
+    // GETs are cacheable; mutations stay uncached.
+    cache: method === "GET" ? "default" : "no-store",
   });
 
   if (!response.ok) {
@@ -127,14 +129,24 @@ export async function fetchDistrictChoropleth(params: {
   indicator?: string;
   province?: string;
   district?: string;
-}): Promise<{ default_indicator: string; selected_indicator: string; features: DistrictRecord[] }> {
+  fields?: "scores" | "indicator" | "full";
+}): Promise<{
+  default_indicator: string;
+  selected_indicator: string;
+  fields?: string;
+  features: DistrictRecord[];
+}> {
   const search = new URLSearchParams();
   if (params.indicator) search.set("indicator", params.indicator);
   if (params.province) search.set("province", params.province);
   if (params.district) search.set("district", params.district);
-  return apiFetch<{ default_indicator: string; selected_indicator: string; features: DistrictRecord[] }>(
-    `/api/v1/districts/choropleth?${search.toString()}`
-  );
+  if (params.fields) search.set("fields", params.fields);
+  return apiFetch<{
+    default_indicator: string;
+    selected_indicator: string;
+    fields?: string;
+    features: DistrictRecord[];
+  }>(`/api/v1/districts/choropleth?${search.toString()}`);
 }
 
 export async function fetchScenarios(): Promise<ScenarioRecord[]> {

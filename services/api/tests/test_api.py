@@ -254,7 +254,7 @@ def test_district_choropleth_returns_selected_indicator(client, monkeypatch):
     monkeypatch.setattr(
         districts,
         "fetch_district_choropleth",
-        lambda connection, province=None, district=None: [
+        lambda connection, province=None, district=None, simplify_tolerance=0.002, fields="indicator", indicator=None: [
             {"district": "National Capital District", "priority": 83.2, "need": 77.9}
         ],
     )
@@ -264,9 +264,11 @@ def test_district_choropleth_returns_selected_indicator(client, monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.headers.get("cache-control", "").startswith("public")
     assert response.json() == {
         "default_indicator": "Average AQI",
         "selected_indicator": "Conflict Events",
+        "fields": "indicator",
         "features": [{"district": "National Capital District", "priority": 83.2, "need": 77.9}],
     }
 

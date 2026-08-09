@@ -25,6 +25,7 @@ from .queries import (
     SCHOOL_DETAIL_SQL,
     SCHOOLS_SQL,
     VECTOR_LAYER_FEATURES_SQL,
+    build_choropleth_sql,
 )
 from .settings import get_settings
 
@@ -50,7 +51,51 @@ INDICATOR_OPTIONS = [
     "Conflict Events",
     "Conflict Fatalities",
     "Conflict Population Exposure",
+    "Priority Score",
+    "Need Score",
 ]
+
+INDICATOR_COLUMN_MAP = {
+    "Average AQI": "average_aqi",
+    "Maximum AQI": "maximum_aqi",
+    "Fixed Broadband Download Speed (MB/s)": "fixed_broadband_download_speed_mbps",
+    "Fixed Broadband Upload Speed (MB/s)": "fixed_broadband_upload_speed_mbps",
+    "Mobile Internet Download Speed (MB/s)": "mobile_internet_download_speed_mbps",
+    "Mobile Internet Upload Speed (MB/s)": "mobile_internet_upload_speed_mbps",
+    "Access Walking (%)": "access_walking_pct",
+    "Access Driving (%)": "access_driving_pct",
+    "Access Cycling (%)": "access_cycling_pct",
+    "Total Nighttime Luminosity": "total_nighttime_luminosity",
+    "CO2e-20yr Total Emissions (tonnes)": "co2e_20yr_total_emissions_tonnes",
+    "CO2e-100yr Total Emissions (tonnes)": "co2e_100yr_total_emissions_tonnes",
+    "Rate of Grade 7 who progressed to Grade 12 (%)": "rate_grade_7_progressed_to_grade_12_pct",
+    "School-Aged Population": "school_aged_population",
+    "Female students grade 7-12": "female_students_grade_7_12",
+    "Total enrollment Grade 7-10": "total_enrollment_grade_7_10",
+    "Secondary students per 1000 people": "secondary_students_per_1000_people",
+    "Rate of Grade 7 who progressed to Grade 10 (%)": "rate_grade_7_progressed_to_grade_10_pct",
+    "Conflict Events": "conflict_events",
+    "Conflict Fatalities": "conflict_fatalities",
+    "Conflict Population Exposure": "conflict_population_exposure",
+    "Priority Score": "priority",
+    "Need Score": "need",
+}
+
+# Vector layers that must never dump the full national table to the browser.
+HEAVY_VECTOR_LAYER_KEYS = frozenset(
+    {
+        "roads",
+        "air_quality",
+        "pop_access_walk",
+        "pop_no_walk",
+        "pop_access_cycle",
+        "pop_no_cycle",
+        "pop_access_drive",
+        "pop_no_drive",
+    }
+)
+
+VECTOR_FEATURE_LIMIT_MAX = 5000
 
 EXPORT_NOTICE_ROWS = [
     ("Status", "Research prototype only"),
@@ -133,6 +178,15 @@ def fetch_vector_layer_features(
             details={"layer_key": layer_key, "layer_type": layer.get("layer_type")},
         )
 
+    capped_limit = max(1, min(int(limit), VECTOR_FEATURE_LIMIT_MAX))
+    if layer_key in HEAVY_VECTOR_LAYER_KEYS and bbox_4326 is None and not district:
+        raise ApiError(
+            "Heavy vector layers require a district filter or bounding box.",
+            status_code=400,
+            code="bbox_or_district_required",
+            details={"layer_key": layer_key},
+        )
+
     items = fetch_all(
         connection,
         VECTOR_LAYER_FEATURES_SQL,
@@ -140,7 +194,7 @@ def fetch_vector_layer_features(
             "layer_key": layer_key,
             "province": province,
             "district": district,
-            "limit": limit,
+            "limit": capped_limit,
             "min_lon": bbox_4326[0] if bbox_4326 else None,
             "min_lat": bbox_4326[1] if bbox_4326 else None,
             "max_lon": bbox_4326[2] if bbox_4326 else None,
@@ -189,8 +243,30 @@ def fetch_district_choropleth(
     connection,
     province: str | None = None,
     district: str | None = None,
+    simplify_tolerance: float = 0.002,
+    *,
+    fields: str = "indicator",
+    indicator: str | None = None,
 ) -> list[dict[str, Any]]:
-    return fetch_all(connection, DISTRICTS_CHOROPLETH_SQL, {"province": province, "district": district})
+    extra_columns: list[str] = []
+    if fields == "full":
+        query = DISTRICTS_CHOROPLETH_SQL
+    else:
+        if fields != "scores":
+            column = INDICATOR_COLUMN_MAP.get(indicator or "Average AQI")
+            if column:
+                extra_columns.append(column)
+        query = build_choropleth_sql(extra_columns)
+
+    return fetch_all(
+        connection,
+        query,
+        {
+            "province": province,
+            "district": district,
+            "simplify_tolerance": max(0.0, float(simplify_tolerance)),
+        },
+    )
 
 
 def fetch_schools(

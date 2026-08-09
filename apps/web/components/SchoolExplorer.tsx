@@ -1,11 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDistrictOptions, fetchSchoolDetail, fetchSchools } from "@/lib/api";
-import { scoreToPillStyle } from "@/lib/color";
 import { ScoreLegend } from "@/components/ScoreLegend";
+import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
+import { queryKeys } from "@/lib/queryKeys";
 import type { SchoolRecord } from "@/lib/types";
 import type { SchoolLayerKey, SchoolLayerToggle } from "@/components/SchoolMap";
 
@@ -43,78 +45,68 @@ export function SchoolExplorer() {
   const [district, setDistrict] = useState(DEFAULT_DISTRICT);
   const [districtQuery, setDistrictQuery] = useState(DEFAULT_DISTRICT);
   const [showDistrictSuggestions, setShowDistrictSuggestions] = useState(false);
-  const [districtOptions, setDistrictOptions] = useState<
-    Array<{ district_id: string; province: string; district: string }>
-  >([]);
   const [schoolQuery, setSchoolQuery] = useState("");
   const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
-  const [schoolSearchOptions, setSchoolSearchOptions] = useState<SchoolRecord[]>([]);
-  const [schools, setSchools] = useState<SchoolRecord[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(null);
-  const [selectedSchoolDetail, setSelectedSchoolDetail] = useState<Record<string, unknown> | null>(null);
   const [scoreField, setScoreField] = useState<"priority" | "need">("priority");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [layers, setLayers] = useState<SchoolLayerToggle[]>(INITIAL_LAYERS);
 
-  useEffect(() => {
-    fetchDistrictOptions()
-      .then((rows) => {
-        setDistrictOptions(rows);
-        if (!rows.some((row) => row.district === DEFAULT_DISTRICT) && rows[0]) {
-          setDistrict(rows[0].district);
-          setDistrictQuery(rows[0].district);
-          return;
-        }
-        setDistrictQuery(DEFAULT_DISTRICT);
-      })
-      .catch((err: Error) => setError(err.message));
-  }, []);
+  const districtOptionsQuery = useQuery({
+    queryKey: queryKeys.districts,
+    queryFn: fetchDistrictOptions,
+  });
+
+  // Single national fetch; district map/table derives from it (no double request).
+  const schoolsQuery = useQuery({
+    queryKey: queryKeys.schools({ limit: 10000 }),
+    queryFn: () => fetchSchools({ limit: 10000 }),
+  });
+
+  const districtOptions = useMemo(
+    () => districtOptionsQuery.data ?? [],
+    [districtOptionsQuery.data],
+  );
+  const schoolSearchOptions = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
+  const errorMessage =
+    (districtOptionsQuery.error instanceof Error && districtOptionsQuery.error.message) ||
+    (schoolsQuery.error instanceof Error && schoolsQuery.error.message) ||
+    null;
+  const loading = schoolsQuery.isLoading;
+
+  const schools = useMemo(
+    () => schoolSearchOptions.filter((school) => school.district === district),
+    [schoolSearchOptions, district],
+  );
 
   useEffect(() => {
-    fetchSchools({ limit: 10000 })
-      .then((rows) => setSchoolSearchOptions(rows))
-      .catch((err: Error) => setError(err.message));
-  }, []);
+    if (!districtOptions.length) return;
+    if (!districtOptions.some((row) => row.district === DEFAULT_DISTRICT) && districtOptions[0]) {
+      setDistrict(districtOptions[0].district);
+      setDistrictQuery(districtOptions[0].district);
+    }
+  }, [districtOptions]);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    fetchSchools({ district, limit: 5000 })
-      .then((rows) => {
-        if (cancelled) return;
-        setSchools(rows);
-        setSelectedSchoolId((current) => current ?? rows[0]?.school_id ?? null);
-      })
-      .catch((err: Error) => {
-        if (cancelled) return;
-        setError(err.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [district]);
-
-  useEffect(() => {
-    if (!selectedSchoolId) {
-      setSelectedSchoolDetail(null);
+    if (!selectedSchoolId && schools[0]?.school_id) {
+      setSelectedSchoolId(schools[0].school_id);
       return;
     }
+    if (selectedSchoolId && !schools.some((school) => school.school_id === selectedSchoolId)) {
+      setSelectedSchoolId(schools[0]?.school_id ?? null);
+    }
+  }, [schools, selectedSchoolId]);
 
-    fetchSchoolDetail(selectedSchoolId)
-      .then((detail) => setSelectedSchoolDetail(detail))
-      .catch(() => setSelectedSchoolDetail(null));
-  }, [selectedSchoolId]);
+  const detailQuery = useQuery({
+    queryKey: queryKeys.schoolDetail(selectedSchoolId ?? ""),
+    queryFn: () => fetchSchoolDetail(selectedSchoolId!),
+    enabled: Boolean(selectedSchoolId),
+  });
+
+  const selectedSchoolDetail = detailQuery.data ?? null;
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
-    [schools, selectedSchoolId]
+    [schools, selectedSchoolId],
   );
 
   const selectedDistrictOption = useMemo(
@@ -311,7 +303,11 @@ export function SchoolExplorer() {
           ) : null}
         </div>
         <ScoreLegend scoreField={scoreField} />
-        {error ? <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>{error}</p> : null}
+        {errorMessage ? (
+          <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
+            {errorMessage}
+          </p>
+        ) : null}
       </div>
 
       <aside className="float-panel map-overlay-layers" aria-label="Layer control">
@@ -356,41 +352,11 @@ export function SchoolExplorer() {
             </div>
           </div>
           <div className="float-panel-body" style={{ padding: 0 }}>
-            <div className="table-wrap" style={{ border: 0, borderRadius: 0, height: "100%" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>School</th>
-                    <th>Pri</th>
-                    <th>Need</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {schools.map((school) => (
-                    <tr
-                      className="data-row"
-                      key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                      data-selected={school.school_id === selectedSchoolId}
-                      onClick={() => setSelectedSchoolId(school.school_id ?? null)}
-                    >
-                      <td>{school.rank_priority ?? "n/a"}</td>
-                      <td className="school-name-cell">{school.school_name}</td>
-                      <td>
-                        <span className="score-pill" style={scoreToPillStyle(school.priority)}>
-                          {school.priority != null ? (school.priority * 100).toFixed(1) : "n/a"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="score-pill" style={scoreToPillStyle(school.need)}>
-                          {school.need != null ? (school.need * 100).toFixed(1) : "n/a"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <VirtualizedSchoolTable
+              schools={schools}
+              selectedSchoolId={selectedSchoolId}
+              onSelectSchool={setSelectedSchoolId}
+            />
           </div>
         </article>
 
