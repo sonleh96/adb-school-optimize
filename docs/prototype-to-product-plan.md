@@ -62,8 +62,10 @@ Goal: a clean base that later diffs stay readable against.
 
 Changes:
 
-- Sync branch onto current `origin/main` before other edits.
+- Commit the pending second-pass fixes first (ingestion NAM_1/NAM_2 preflight fallback, map-height CSS, NEXT_DIST_DIR override, env examples). Resolve the queries.py vs 003 migration provenance drift intentionally: either apply 003 and keep selecting score_version/run_manifest, or defer provenance reads.
+- Sync branch onto current `origin/main` before other edits (done 2026-08-09).
 - Delete `apps/web/components/DashboardShell.tsx` (dead tab-based shell superseded by routes).
+- Fix README deploy-target wording (says Vercel; production API is Cloud Run per docs/architecture.md and infra/cloud-run).
 - Remove or implement dead UI: the no-op "ON SCREEN" distribution scheme button, the duplicated "District Ranking" heading in `DistrictExplorer.tsx`.
 - Move root prototype assets (`test_plot.ipynb`, `score_calculations.ipynb`, `aqi_dask.py`, `__pycache__/`) under `prototype/` to clean the repo root; update `docs/architecture.md` links.
 - Add ESLint (`eslint-config-next`) and Prettier configs; wire `npm run lint` and `npm run format`.
@@ -98,7 +100,7 @@ Changes:
 
 - Add Tailwind v4 (`@tailwindcss/postcss`) and initialize shadcn/ui; keep `globals.css` to tokens and base styles only.
 - Token set: ADB-adjacent navy/blue palette, neutral grays, semantic success/warning/danger, spacing and radius scale, elevation via borders not blur.
-- Typography (locked): Space Grotesk for headings and brand, Inter for UI body text, Spectral retained only for long-form methodology prose.
+- Typography (locked): Space Grotesk for headings and brand, Inter for UI body text, Spectral retained only for long-form methodology prose. Note: `layout.tsx` currently binds Spectral as `--font-body` app-wide - this phase performs the swap, it is not greenfield.
 - shadcn components to add: Button, Card, Table, Tabs, Badge, Select, Slider, Command (combobox), Dialog, Sheet, Tooltip, Skeleton, Alert, Sonner (toasts), DropdownMenu, Separator.
 - New `AppShell` in `app/layout.tsx`: brand block, route-aware nav (Links with `usePathname`), active-scenario badge, user menu slot (wired in Phase 5).
 - Shared state components: `LoadingSkeleton`, `EmptyState`, `ErrorState` with retry; raw API error text never reaches the UI.
@@ -126,8 +128,11 @@ API changes:
 - Add `Cache-Control` per route class: immutable + content-hash ETag for raster overlays, 5-minute shared cache for meta/district endpoints, private no-store for scenario mutations.
 - Replace connect-per-request with a lifespan-managed `psycopg_pool.ConnectionPool`; read `DATABASE_URL` through the pooler port in production notes.
 - Cache `layer_catalog` in-process with a short TTL instead of querying per vector-feature request.
-- Enforce query validation: wire the unused `SchoolFilters` model, cap `limit` at 5000 everywhere.
+- Enforce query validation: wire the unused `SchoolFilters` model, cap `limit` at 5000 everywhere (server-side `Query(le=5000)` on schools and layer-features; lower the client's `VECTOR_LIMIT_DEFAULT` 30000 to match).
+- Require bbox or province/district scoping for heavy vector layers before querying.
 - Fix `SCHOOLS_SQL` to filter on `province_norm`/`district_norm` so the existing index is used.
+- Strip credential/source paths from `/rasters/status` responses.
+- Standardize all error responses on the structured `ApiError` shape (schools/scenarios currently return plain `{"detail"}`).
 - Carry `school_id` through scoring as a passthrough column and persist scores keyed by ID, not school name.
 - Add a cheap raster metadata path: a `raster_clips` manifest table written at ingestion time; `/metadata` reads the manifest instead of performing a clip.
 - Add bounded eviction to the raster disk cache (max size + LRU sweep).
@@ -146,7 +151,7 @@ Changes:
 - Access point layers: canvas-rendered circle markers; at national zoom, request server-side counts instead of raw points (additive endpoint, used only when zoomed out).
 - **Vector scale (live finding):** `vector_layer_features` is ~4.84M rows / ~2.4 GB. Do not ship raw national dumps to the browser. Add bbox + zoom-gated queries (and/or server-side aggregation) for heavy layers; document a follow-up for MVT/tiling if bbox paging is still too heavy.
 - Redesign the layer panel as a grouped shadcn panel with per-layer legends inline; remove the overlay legend panel that floats over the map.
-- Popups become a designed school/district detail card (shadcn `Card` in a Leaflet popup or a side panel on selection).
+- Popups become a designed school/district detail card (shadcn `Card` in a Leaflet popup or a side panel on selection); until then, escape all feature properties in `bindPopup` HTML strings (current AQI popup is an XSS vector).
 - Map screenshot export: keep the DOM-compositing fallback, drop the unpkg `leaflet-image` script injection (third-party runtime dependency, unmaintained since 2015).
 - Fix map heights to fluid containers (`min-h` with aspect fallback) instead of fixed 760 px.
 
@@ -260,3 +265,32 @@ Verified while logged into the `sonleh96` Vercel team and Supabase org. No secre
 - Phase 5 auth/RLS is more urgent than previously framed: tables are reachable via Supabase Data API with RLS off.
 - `vector_layer_features` size should be treated as a dedicated performance workstream (tiling/aggregation/retention), not only frontend thinning.
 - Before Phase 0 implementation: sync the worktree with `origin/main` under the team GitHub identity.
+
+## Appendix B - Second-pass re-audit (2026-08-09, post-merge)
+
+Three parallel passes (frontend, backend, hygiene/performance) on the merged branch. Tests at time of audit: 19 scoring + 26 API passing.
+
+### Status vs first pass
+
+- Phase 0.5 artifacts landed in-repo: `docs/security-baseline.md`, `infra/sql/002_security_lockdown.sql`, `WRITE_OPERATIONS_ENABLED` gate, prototype-labeled exports. Production apply of the SQL and signup disable still needs verification.
+- `/healthz` exists in code; the 404 in Appendix A is a stale-deploy note, not a code gap.
+- Branch merged with `origin/main` (`0c55e18`); active gh identity `sonleh96`.
+
+### New findings (folded into phases above)
+
+1. XSS risk: AQI popups interpolate unsanitized feature properties into `bindPopup` HTML (`SchoolMap.tsx`).
+2. Open read/export surface: write gate covers mutations only; all GETs, exports, and raster overlays are unauthenticated; `created_by` comes from the request body.
+3. Typography drift: Spectral bound as body font app-wide, contradicting the locked Inter decision.
+4. Deploy doc contradiction: README says Vercel for the API; architecture docs and reality say Cloud Run.
+5. `/rasters/status` returns credential/source paths.
+6. Error shape split: `HTTPException` `{"detail"}` vs structured `ApiError`.
+7. Unbounded `limit` on layer-features (client asks 30000; no server cap).
+8. Provenance drift: `repository.py` persists `score_version`/`run_manifest` while uncommitted `queries.py` dropped them from SELECTs - resolve with the 003 migration decision.
+
+### Uncommitted-change assessment at audit time
+
+- `globals.css` map-height breakpoints: intentional UX fix.
+- `next.config.mjs` `NEXT_DIST_DIR`: intentional parallel-build support; document or keep.
+- `package-lock.json`: incidental Next 15.5.15 to 15.5.23 resolution bump; commit consciously or revert.
+- `data_quality.py` / `load_core_data.py` / ingestion test: intentional NAM_1/NAM_2 reference-polygon fallback; keep.
+- `queries.py` provenance SELECT removal: merge hazard; resolve before commit.
