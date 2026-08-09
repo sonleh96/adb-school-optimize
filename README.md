@@ -4,7 +4,7 @@ Decision-support platform for prioritizing secondary school investments in Papua
 
 The target production stack is:
 - `Next.js` frontend on Vercel
-- `FastAPI` backend on Cloud Run
+- `FastAPI` backend on Vercel
 - `Supabase Postgres/PostGIS` for vector and tabular data
 - `GCS` for source rasters
 - standalone Python `school_scoring` package for deterministic scoring
