@@ -31,11 +31,14 @@ export type MapView = {
   zoom: number;
 };
 
+export type CompareMode = "priority-need";
+
 export type UrlState = {
   school: string | null;
   district: string | null;
   province: string | null;
   score: "priority" | "need" | null;
+  compare: CompareMode | null;
   indicator: string | null;
   scenario: string | null;
   filters: SchoolFilters;
@@ -46,7 +49,7 @@ export type UrlState = {
 type UrlStatePatch = Partial<UrlState>;
 
 const STRING_KEYS = ["school", "district", "province", "indicator", "scenario"] as const;
-const KNOWN_KEYS = [...STRING_KEYS, "score", "filters", "layers", "lat", "lng", "z"] as const;
+const KNOWN_KEYS = [...STRING_KEYS, "score", "compare", "filters", "layers", "lat", "lng", "z"] as const;
 const SUPPORTED_LAYER_SET = new Set<string>(SUPPORTED_SCHOOL_LAYER_KEYS);
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 22;
@@ -100,6 +103,7 @@ export function parseUrlState(search: URLSearchParams | ReadonlyURLSearchParams)
     zoom >= MIN_ZOOM &&
     zoom <= MAX_ZOOM;
   const score = trimmed(search.get("score"));
+  const compare = trimmed(search.get("compare"));
   const layers = normalizeLayers((search.get("layers") ?? "").split(",").map((layer) => layer.trim()));
 
   return {
@@ -107,6 +111,7 @@ export function parseUrlState(search: URLSearchParams | ReadonlyURLSearchParams)
     district: trimmed(search.get("district")),
     province: trimmed(search.get("province")),
     score: score === "priority" || score === "need" ? score : null,
+    compare: compare === "priority-need" ? compare : null,
     indicator: trimmed(search.get("indicator")),
     scenario: trimmed(search.get("scenario")),
     filters: parseSchoolFilters(search.get("filters")),
@@ -145,6 +150,7 @@ export function serializeUrlState(
   if (state.score) params.set("score", state.score);
   const filters = serializeSchoolFilters(state.filters ?? EMPTY_SCHOOL_FILTERS);
   if (filters) params.set("filters", filters);
+  if (state.compare === "priority-need") params.set("compare", state.compare);
   const layers = normalizeLayers(state.layers);
   if (layers.length) params.set("layers", layers.join(","));
   setMapView(params, state.mapView);

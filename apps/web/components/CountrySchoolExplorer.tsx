@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { BriefingBookmarks } from "@/components/BriefingBookmarks";
+import { CompareScoreLegend } from "@/components/CompareScoreLegend";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
@@ -32,6 +33,7 @@ export function CountrySchoolExplorer() {
   const { initialState, replaceState } = useShareableUrlState();
   const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(initialState.school);
   const [scoreField, setScoreField] = useState<"priority" | "need">(initialState.score ?? "priority");
+  const [compareMode, setCompareMode] = useState(initialState.compare === "priority-need");
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
   const [filters, setFilters] = useState<SchoolFilters>(initialState.filters);
@@ -109,17 +111,19 @@ export function CountrySchoolExplorer() {
         district: selectedSchool?.district ?? null,
         province: selectedSchool?.province ?? null,
         score: scoreField,
+        compare: compareMode ? "priority-need" : null,
         scenario: scenarioId,
         filters,
         layers: [],
         mapView,
       }),
-    [filters, initialState, mapView, scenarioId, scoreField, selectedSchool, selectedSchoolId]
+    [compareMode, filters, initialState, mapView, scenarioId, scoreField, selectedSchool, selectedSchoolId]
   );
   const applyBookmark = useCallback(
     (state: UrlState) => {
       setSelectedSchoolId(state.school);
       setScoreField(state.score ?? "priority");
+      setCompareMode(state.compare === "priority-need");
       setMapView(state.mapView);
       setScenarioId(state.scenario);
       setFilters(state.filters);
@@ -155,6 +159,7 @@ export function CountrySchoolExplorer() {
               screenshotFilePrefix="all-schools-map"
               districtFeatures={districtFeatures}
               districtScoreField={scoreField}
+              comparePriorityAndNeed={compareMode}
               focusSelectedSchool={false}
               mapView={mapView}
               onMapViewChange={setMapView}
@@ -189,13 +194,26 @@ export function CountrySchoolExplorer() {
             Need
           </button>
         </div>
+        <button
+          type="button"
+          className={`score-toggle-button compare-mode-button ${compareMode ? "is-active" : ""}`}
+          aria-pressed={compareMode}
+          onClick={() => {
+            const nextCompareMode = !compareMode;
+            setCompareMode(nextCompareMode);
+            replaceState({ compare: nextCompareMode ? "priority-need" : null });
+          }}
+        >
+          Compare Priority + Need
+        </button>
+        {compareMode ? <CompareScoreLegend className="compare-score-legend-compact" /> : null}
         <CopyLinkButton state={briefingState} />
         <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
       </div>
 
       <div className="map-overlay-legend">
         <div className="map-legend-block">
-          <ScoreLegend scoreField={scoreField} />
+          {compareMode ? <CompareScoreLegend /> : <ScoreLegend scoreField={scoreField} />}
         </div>
         <div className="map-legend-block">
           <DistrictScoreLegend scoreField={scoreField} />
