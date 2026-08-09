@@ -71,3 +71,14 @@ def test_duplicate_coordinates_are_reported(sample_school_df) -> None:
 
     issue = next(item for item in issues if item["code"] == "duplicate_coordinates")
     assert issue["count"] == 2
+
+
+def test_catchment_area_nesting_uses_area_order_not_polygon_containment(sample_school_df) -> None:
+    frame = sample_school_df.iloc[[0]].copy()
+    frame.loc[0, "cachment_area_walking"] = "POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))"
+    frame.loc[0, "cachment_area_cycling"] = "POLYGON ((10 10, 12 10, 12 12, 10 12, 10 10))"
+    frame.loc[0, "cachment_area_driving"] = "POLYGON ((20 20, 23 20, 23 23, 20 23, 20 20))"
+
+    issues = collect_data_quality_issues(frame, get_default_config())
+
+    assert all(item["code"] != "catchment_not_nested" for item in issues)
