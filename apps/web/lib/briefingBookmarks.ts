@@ -230,6 +230,18 @@ export function sameBookmarkState(left: UrlState, right: UrlState): boolean {
   return serializeUrlState(new URLSearchParams(), left) === serializeUrlState(new URLSearchParams(), right);
 }
 
+export function matchingBriefingBookmarkName(
+  pathname: BookmarkPathname,
+  state: UrlState,
+  storage: Storage
+): string | null {
+  return (
+    [...SEEDED_BRIEFING_BOOKMARKS, ...loadUserBriefingBookmarks(storage)].find(
+      (bookmark) => bookmark.pathname === pathname && bookmarkMatchesState(bookmark, state)
+    )?.name ?? null
+  );
+}
+
 function sameMapView(left: UrlState["mapView"], right: UrlState["mapView"]): boolean {
   if (!left) return true;
   if (!right) return false;

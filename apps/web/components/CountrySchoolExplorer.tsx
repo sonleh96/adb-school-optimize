@@ -6,14 +6,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { BriefingBookmarks } from "@/components/BriefingBookmarks";
 import { CompareScoreLegend } from "@/components/CompareScoreLegend";
+import { ExportBriefingPackButton } from "@/components/ExportBriefingPackButton";
 import { ScoreLegend } from "@/components/ScoreLegend";
 import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { ErrorState, LoadingSkeleton } from "@/components/states";
 import { SchoolFilterControls } from "@/components/SchoolFilterControls";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
-import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
+import { useChoroplethQuery, useSchoolDetailQuery, useSchoolsQuery, useScenariosQuery } from "@/lib/hooks";
 import { createSchoolFilterPredicate, type SchoolFilters } from "@/lib/schoolFilters";
+import { matchingBriefingBookmarkName } from "@/lib/briefingBookmarks";
 import type { SchoolLayerToggle } from "@/components/SchoolMap";
 import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
 import {
@@ -37,9 +39,11 @@ export function CountrySchoolExplorer() {
   const [mapView, setMapView] = useState<MapView | null>(initialState.mapView);
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
   const [filters, setFilters] = useState<SchoolFilters>(initialState.filters);
+  const [mapCapture, setMapCapture] = useState<(() => Promise<Blob>) | null>(null);
 
   const choroplethQuery = useChoroplethQuery({ fields: "scores" });
   const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
+  const scenariosQuery = useScenariosQuery();
 
   const schools = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const schoolFilterPredicate = useMemo(() => createSchoolFilterPredicate(filters), [filters]);
@@ -104,6 +108,10 @@ export function CountrySchoolExplorer() {
     [filteredSchools, selectedSchoolId]
   );
   const selectedSchoolDetail = detailQuery.data ?? null;
+  const scenarioName = useMemo(
+    () => scenariosQuery.data?.find((scenario) => scenario.scenario_id === scenarioId)?.scenario_name ?? null,
+    [scenarioId, scenariosQuery.data]
+  );
   const briefingState = useMemo(
     () =>
       mergeUrlState(initialState, {
@@ -140,6 +148,17 @@ export function CountrySchoolExplorer() {
     },
     [replaceState]
   );
+  const registerMapCapture = useCallback((capture: (() => Promise<Blob>) | null) => {
+    setMapCapture(() => capture);
+  }, []);
+
+  const getActiveBookmarkName = useCallback(() => {
+    try {
+      return matchingBriefingBookmarkName("/all-schools", briefingState, window.localStorage);
+    } catch {
+      return null;
+    }
+  }, [briefingState]);
 
   return (
     <div className="map-workspace national-overview-workspace">
@@ -165,6 +184,7 @@ export function CountrySchoolExplorer() {
               onMapViewChange={setMapView}
               hasExplicitMapView={initialState.mapView != null}
               enableNationalDensity
+              onMapCaptureReady={registerMapCapture}
             />
           )}
         </div>
@@ -209,6 +229,16 @@ export function CountrySchoolExplorer() {
         </button>
         {compareMode ? <CompareScoreLegend className="compare-score-legend-compact" /> : null}
         <CopyLinkButton state={briefingState} />
+        <ExportBriefingPackButton
+          captureMap={mapCapture}
+          schools={filteredSchools}
+          scoreField={scoreField}
+          filters={filters}
+          scenarioId={scenarioId}
+          scenarioName={scenarioName}
+          selectedSchool={selectedSchool}
+          getActiveBookmarkName={getActiveBookmarkName}
+        />
         <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
       </div>
 
