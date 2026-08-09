@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   FlaskConical,
   Globe2,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { fetchScenarios } from "@/lib/api";
+import { useScenariosQuery } from "@/lib/hooks";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
 
 const NAV_ITEMS: Array<{
@@ -30,25 +30,17 @@ const NAV_ITEMS: Array<{
 ];
 
 function ActiveScenarioBadge() {
-  const [label, setLabel] = useState<string | null>(null);
+  const { data: scenarios } = useScenariosQuery();
+  const [scenarioId, setScenarioId] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const id = window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY);
-    if (!id) return;
-    fetchScenarios()
-      .then((scenarios) => {
-        if (cancelled) return;
-        const active = scenarios.find((s) => s.scenario_id === id);
-        if (active) setLabel(active.scenario_name);
-      })
-      .catch(() => {
-        /* optional chrome */
-      });
-    return () => {
-      cancelled = true;
-    };
+    setScenarioId(window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY));
   }, []);
+
+  const label = useMemo(() => {
+    if (!scenarioId || !scenarios) return null;
+    return scenarios.find((scenario) => scenario.scenario_id === scenarioId)?.scenario_name ?? null;
+  }, [scenarioId, scenarios]);
 
   if (!label) return null;
 
