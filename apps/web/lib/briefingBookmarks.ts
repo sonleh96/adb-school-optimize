@@ -37,6 +37,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
+      catchment: false,
       layers: [],
       mapView: NATIONAL_MAP_VIEW,
     },
@@ -55,6 +56,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
+      catchment: false,
       layers: [],
       mapView: null,
     },
@@ -73,6 +75,7 @@ export const SEEDED_BRIEFING_BOOKMARKS: readonly BriefingBookmark[] = [
       indicator: null,
       scenario: null,
       filters: EMPTY_SCHOOL_FILTERS,
+      catchment: false,
       layers: ["air_quality_mean"],
       mapView: PORT_MORESBY_MAP_VIEW,
     },
@@ -118,6 +121,7 @@ function parseStoredState(value: unknown): UrlState | null {
   if (!filters) return null;
   const compare = value.compare;
   if (compare != null && compare !== "priority-need") return null;
+  if (value.catchment != null && typeof value.catchment !== "boolean") return null;
   if (
     !Array.isArray(value.layers) ||
     !value.layers.every((layer) => SUPPORTED_SCHOOL_LAYER_KEYS.includes(layer))
@@ -146,6 +150,7 @@ function parseStoredState(value: unknown): UrlState | null {
   const serializedFilters = serializeSchoolFilters(filters);
   if (serializedFilters) params.set("filters", serializedFilters);
   if (compare) params.set("compare", compare);
+  if (value.catchment === true) params.set("catchment", "1");
   if (value.layers.length) params.set("layers", value.layers.join(","));
   if (mapView) {
     params.set("lat", String(mapView.lat));
@@ -244,6 +249,8 @@ export function bookmarkMatchesState(bookmark: BriefingBookmark, current: UrlSta
     if (bookmark.state[key] != null && bookmark.state[key] !== current[key]) return false;
   }
   if (bookmark.state.score != null && bookmark.state.score !== current.score) return false;
+  if (bookmark.state.catchment !== current.catchment) return false;
+  if (bookmark.state.compare !== current.compare) return false;
   if (serializeSchoolFilters(bookmark.state.filters) !== serializeSchoolFilters(current.filters))
     return false;
   if (bookmark.state.layers.join(",") !== current.layers.join(",")) return false;

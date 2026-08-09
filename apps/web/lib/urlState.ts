@@ -42,6 +42,7 @@ export type UrlState = {
   indicator: string | null;
   scenario: string | null;
   filters: SchoolFilters;
+  catchment: boolean;
   layers: SupportedSchoolLayerKey[];
   mapView: MapView | null;
 };
@@ -49,7 +50,17 @@ export type UrlState = {
 type UrlStatePatch = Partial<UrlState>;
 
 const STRING_KEYS = ["school", "district", "province", "indicator", "scenario"] as const;
-const KNOWN_KEYS = [...STRING_KEYS, "score", "compare", "filters", "layers", "lat", "lng", "z"] as const;
+const KNOWN_KEYS = [
+  ...STRING_KEYS,
+  "score",
+  "compare",
+  "filters",
+  "catchment",
+  "layers",
+  "lat",
+  "lng",
+  "z",
+] as const;
 const SUPPORTED_LAYER_SET = new Set<string>(SUPPORTED_SCHOOL_LAYER_KEYS);
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 22;
@@ -115,6 +126,7 @@ export function parseUrlState(search: URLSearchParams | ReadonlyURLSearchParams)
     indicator: trimmed(search.get("indicator")),
     scenario: trimmed(search.get("scenario")),
     filters: parseSchoolFilters(search.get("filters")),
+    catchment: search.get("catchment") === "1",
     layers,
     mapView: validMapView ? { lat, lng, zoom } : null,
   };
@@ -151,6 +163,7 @@ export function serializeUrlState(
   const filters = serializeSchoolFilters(state.filters ?? EMPTY_SCHOOL_FILTERS);
   if (filters) params.set("filters", filters);
   if (state.compare === "priority-need") params.set("compare", state.compare);
+  if (state.catchment) params.set("catchment", "1");
   const layers = normalizeLayers(state.layers);
   if (layers.length) params.set("layers", layers.join(","));
   setMapView(params, state.mapView);

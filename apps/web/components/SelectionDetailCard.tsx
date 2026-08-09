@@ -34,6 +34,8 @@ type SchoolSelectionDetailCardProps = CommonProps & {
   isLoading: boolean;
   errorMessage?: string | null;
   onRetry?: () => void;
+  catchmentEnabled?: boolean;
+  onCatchmentChange?: (enabled: boolean) => void;
 };
 
 type DistrictSelectionDetailCardProps = CommonProps & {
@@ -185,6 +187,39 @@ function SchoolDetail({ props }: { props: SchoolSelectionDetailCardProps }) {
           { label: "Practicality", value: school.p },
         ]}
       />
+
+      {props.onCatchmentChange ? (
+        <section
+          className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface-muted)] p-3"
+          aria-labelledby="school-proximity-lens"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 id="school-proximity-lens" className="text-sm font-semibold text-[var(--color-ink)]">
+                Catchment / proximity
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-[var(--color-muted)]">
+                Fixed straight-line rings: 4 km walk, 7 km cycle, and 10 km drive. These are not travel times
+                or road-network routes.
+              </p>
+            </div>
+            <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-[var(--color-ink)]">
+              <input
+                type="checkbox"
+                checked={props.catchmentEnabled ?? false}
+                onChange={(event) => props.onCatchmentChange?.(event.target.checked)}
+                aria-describedby="school-proximity-lens-copy"
+              />
+              Show
+            </label>
+          </div>
+          <p id="school-proximity-lens-copy" className="mt-2 text-xs leading-5 text-[var(--color-muted)]">
+            {props.catchmentEnabled
+              ? "Access context layers are on. Turning this off removes only the rings."
+              : "Turning this on also enables the three access context layers."}
+          </p>
+        </section>
+      ) : null}
 
       {props.isLoading ? <LoadingSkeleton lines={2} className="p-3" /> : null}
       {props.errorMessage ? (

@@ -3,7 +3,16 @@
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FeatureCollection, Geometry, Point } from "geojson";
-import { GeoJSON, ImageOverlay, MapContainer, Pane, TileLayer, useMap, useMapEvents } from "react-leaflet";
+import {
+  Circle,
+  GeoJSON,
+  ImageOverlay,
+  MapContainer,
+  Pane,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
@@ -64,6 +73,35 @@ const VECTOR_LIMIT_DEFAULT = 5000;
 const ACCESS_POINTS_MAX_RENDER = 8000;
 const ACCESS_LAYER_MIN_ZOOM = 9;
 const HEAVY_LAYER_MIN_ZOOM = 8;
+const CATCHMENT_RINGS = [
+  { label: "Walking proximity (4 km)", radius: 4000, color: "#059669" },
+  { label: "Cycling proximity (7 km)", radius: 7000, color: "#0891b2" },
+  { label: "Driving proximity (10 km)", radius: 10000, color: "#6366f1" },
+] as const;
+
+function CatchmentRings({ school }: { school: SchoolRecord | null }) {
+  if (!school) return null;
+  const center: [number, number] = [school.latitude, school.longitude];
+  return (
+    <Pane name="school-catchment-rings" style={{ zIndex: 640 }}>
+      {CATCHMENT_RINGS.map((ring) => (
+        <Circle
+          key={ring.radius}
+          center={center}
+          radius={ring.radius}
+          pathOptions={{
+            color: ring.color,
+            fillColor: ring.color,
+            fillOpacity: 0.04,
+            weight: 2,
+            dashArray: "6 5",
+          }}
+          interactive={false}
+        />
+      ))}
+    </Pane>
+  );
+}
 
 function FitSchools({ schools, enabled }: { schools: SchoolRecord[]; enabled: boolean }) {
   const map = useMap();
@@ -329,6 +367,7 @@ export function SchoolMap({
   enableNationalDensity = false,
   suppressNextSelectionFocus = false,
   onSelectionFocusSuppressed,
+  catchmentSchool = null,
 }: {
   schools: SchoolRecord[];
   selectedSchoolId: string | null;
@@ -350,6 +389,7 @@ export function SchoolMap({
   enableNationalDensity?: boolean;
   suppressNextSelectionFocus?: boolean;
   onSelectionFocusSuppressed?: () => void;
+  catchmentSchool?: SchoolRecord | null;
 }) {
   const [layerState, setLayerState] = useState<LayerState>({
     roads: [],
@@ -741,6 +781,7 @@ export function SchoolMap({
           onSelectionFocusSuppressed={onSelectionFocusSuppressed}
         />
         <ViewportBoundsWatcher onChange={onViewportChange} />
+        <CatchmentRings school={catchmentSchool} />
 
         {districtCollection ? (
           <Pane name="district-choropleth-layer" style={{ zIndex: 360 }}>
