@@ -52,10 +52,7 @@ export function SchoolExplorer() {
   const districtOptionsQuery = useDistrictOptionsQuery();
   const schoolsQuery = useSchoolsQuery({ limit: 10000 });
 
-  const districtOptions = useMemo(
-    () => districtOptionsQuery.data ?? [],
-    [districtOptionsQuery.data],
-  );
+  const districtOptions = useMemo(() => districtOptionsQuery.data ?? [], [districtOptionsQuery.data]);
   const schoolSearchOptions = useMemo(() => schoolsQuery.data ?? [], [schoolsQuery.data]);
   const errorMessage =
     (districtOptionsQuery.error instanceof Error && districtOptionsQuery.error.message) ||
@@ -65,7 +62,7 @@ export function SchoolExplorer() {
 
   const schools = useMemo(
     () => schoolSearchOptions.filter((school) => school.district === district),
-    [schoolSearchOptions, district],
+    [schoolSearchOptions, district]
   );
 
   useEffect(() => {
@@ -92,7 +89,7 @@ export function SchoolExplorer() {
 
   const selectedSchool = useMemo(
     () => schools.find((school) => school.school_id === selectedSchoolId) ?? null,
-    [schools, selectedSchoolId],
+    [schools, selectedSchoolId]
   );
 
   const selectedDistrictOption = useMemo(

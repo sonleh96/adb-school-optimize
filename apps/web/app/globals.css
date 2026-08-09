@@ -279,9 +279,7 @@ body {
   position: absolute;
   inset: 0;
   overflow: auto;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(10, 46, 115, 0.06), transparent 55%),
-    #e8ecf1;
+  background: radial-gradient(1200px 500px at 10% -10%, rgba(10, 46, 115, 0.06), transparent 55%), #e8ecf1;
 }
 
 .doc-workspace-inner {

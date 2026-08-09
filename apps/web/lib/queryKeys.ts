@@ -12,12 +12,14 @@ export const queryKeys = {
   indicators: ["indicators"] as const,
   layers: ["layers"] as const,
   districts: ["districts"] as const,
-  schools: (params: {
-    district?: string;
-    province?: string;
-    scenarioId?: string;
-    limit?: number;
-  } = {}) => ["schools", params] as const,
+  schools: (
+    params: {
+      district?: string;
+      province?: string;
+      scenarioId?: string;
+      limit?: number;
+    } = {}
+  ) => ["schools", params] as const,
   schoolDetail: (schoolId: string, scenarioId?: string) =>
     ["school-detail", schoolId, scenarioId ?? null] as const,
   choropleth: (
@@ -26,7 +28,7 @@ export const queryKeys = {
       province?: string;
       district?: string;
       fields?: "scores" | "indicator" | "full";
-    } = {},
+    } = {}
   ) => ["choropleth", params] as const,
   scenarios: ["scenarios"] as const,
   layerFeatures: (params: {

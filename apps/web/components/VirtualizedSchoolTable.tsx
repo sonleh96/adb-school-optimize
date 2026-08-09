@@ -45,8 +45,7 @@ export function VirtualizedSchoolTable({
           {virtualizer.getVirtualItems().map((virtualRow) => {
             const school = schools[virtualRow.index];
             if (!school) return null;
-            const key =
-              school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`;
+            const key = school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`;
             return (
               <div
                 key={key}

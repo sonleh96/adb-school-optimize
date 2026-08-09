@@ -3,15 +3,7 @@
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FeatureCollection, Geometry, Point } from "geojson";
-import {
-  GeoJSON,
-  ImageOverlay,
-  MapContainer,
-  Pane,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet";
+import { GeoJSON, ImageOverlay, MapContainer, Pane, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 import { buildRasterOverlayUrl, fetchLayerFeatures, fetchRasterMetadata } from "@/lib/api";
 import { MapScreenshotControl } from "@/components/MapScreenshotControl";
@@ -374,7 +366,12 @@ export function SchoolMap({
 
       if (wantsAccess && viewportZoom < ACCESS_LAYER_MIN_ZOOM) {
         // Allow roads/AQI at HEAVY_LAYER_MIN_ZOOM, but keep access denser-only.
-        if (!cancelled && !activeLayers.has("roads") && !activeLayers.has("air_quality_mean") && !activeLayers.has("air_quality_max")) {
+        if (
+          !cancelled &&
+          !activeLayers.has("roads") &&
+          !activeLayers.has("air_quality_mean") &&
+          !activeLayers.has("air_quality_max")
+        ) {
           setLayerState(next);
           setLayerStatus(`Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.`);
           return;
@@ -482,9 +479,7 @@ export function SchoolMap({
           if (!cancelled) {
             setLayerState(next);
             setLayerStatus(
-              accessSkippedForZoom
-                ? `Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.`
-                : ""
+              accessSkippedForZoom ? `Zoom to level ${ACCESS_LAYER_MIN_ZOOM}+ to load access grids.` : ""
             );
           }
           return;
