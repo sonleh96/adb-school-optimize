@@ -54,6 +54,13 @@ def _normalize_path(value: str | None) -> str | None:
     return normalized or None
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 @dataclass(frozen=True)
 class Settings:
     database_url: str | None
@@ -78,6 +85,7 @@ class Settings:
     raster_cache_dir: str
     raster_cache_ttl_seconds: int
     cors_origins_raw: str | None
+    write_operations_enabled: bool
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -108,6 +116,7 @@ class Settings:
                 "CORS_ORIGINS",
                 "http://localhost:3000,http://127.0.0.1:3000",
             ),
+            write_operations_enabled=_env_flag("WRITE_OPERATIONS_ENABLED"),
         )
 
     def validate_database(self) -> None:

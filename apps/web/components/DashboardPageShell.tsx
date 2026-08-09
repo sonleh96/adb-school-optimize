@@ -34,6 +34,15 @@ export function DashboardPageShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
+      <aside className="research-status-banner" aria-label="Research prototype status">
+        <strong>Research prototype</strong>
+        <span>
+          Rankings are exploratory, may change with data or methodology updates, and are not approved as the sole basis
+          for investment decisions.
+        </span>
+        <Link href="/methodology-lab">Review methodology</Link>
+      </aside>
+
       <nav className="tabs" aria-label="Dashboard sections">
         {TABS.map((tab) => (
           <Link className="tab-button" key={tab.href} href={tab.href} data-active={pathname === tab.href}>
