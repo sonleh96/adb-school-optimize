@@ -1511,6 +1511,11 @@ textarea {
     height: 500px;
   }
 
+  .map-card-country .map-frame {
+    flex: 0 0 500px;
+    height: 500px;
+  }
+
   .district-explorer {
     min-height: auto;
   }
@@ -1574,6 +1579,11 @@ textarea {
 
   .layer-control-columns {
     grid-template-columns: 1fr;
+  }
+
+  .map-card-country .map-frame {
+    flex-basis: 420px;
+    height: 420px;
   }
 
   .search-control-row {
