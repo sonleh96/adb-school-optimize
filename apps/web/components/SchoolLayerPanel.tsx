@@ -16,6 +16,8 @@ const LAYER_GROUPS: Array<{ title: string; keys: SchoolLayerKey[] }> = [
   },
 ];
 
+const SCHOOL_CONTEXT_SEARCH_TERMS = "scores score schools school priority need";
+
 export function SchoolLayerPanel({
   layers,
   scoreField,
@@ -32,11 +34,11 @@ export function SchoolLayerPanel({
   const [query, setQuery] = useState("");
   const layersByKey = useMemo(() => new Map(layers.map((layer) => [layer.key, layer])), [layers]);
   const normalizedQuery = query.trim().toLowerCase();
-  const showSchools = matchesLayer("Schools", normalizedQuery);
+  const showSchools = matchesLayer(SCHOOL_CONTEXT_SEARCH_TERMS, normalizedQuery);
   const hasMatchingLayer = layers.some((layer) => matchesLayer(layer.label, normalizedQuery));
 
   return (
-    <aside className="float-panel map-overlay-layers school-layer-panel" aria-label="Map layers">
+    <section className="float-panel school-layer-panel" aria-label="Map layers">
       <div className="float-panel-head school-layer-panel-head">
         <div>
           <h2 className="float-panel-title">
@@ -69,9 +71,11 @@ export function SchoolLayerPanel({
                 Markers show {scoreField === "priority" ? "Priority" : "Need"}.
               </span>
               <div className="school-layer-score-stops" aria-label={`${scoreField} score color scale`}>
+                <span className="school-layer-score-label">Low</span>
                 {SCORE_LEGEND_STOPS.map((stop) => (
                   <span key={stop.label} style={{ background: stop.color }} title={stop.label} />
                 ))}
+                <span className="school-layer-score-label">High</span>
               </div>
             </div>
           </section>
@@ -110,7 +114,7 @@ export function SchoolLayerPanel({
           </p>
         ) : null}
       </div>
-    </aside>
+    </section>
   );
 }
 

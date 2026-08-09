@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
 import { BriefingBookmarks } from "@/components/BriefingBookmarks";
 import { SchoolLayerPanel } from "@/components/SchoolLayerPanel";
-import { ScoreLegend } from "@/components/ScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import { useDistrictOptionsQuery, useSchoolDetailQuery, useSchoolsQuery } from "@/lib/hooks";
@@ -319,7 +318,7 @@ export function SchoolExplorer() {
         (layerKey) => layerKey !== "air_quality_max" || !state.layers.includes("air_quality_mean")
       )
     );
-    setLayers(INITIAL_LAYERS.map((layer) => ({ ...layer, active: activeLayerKeys.has(layer.key) })));
+    setLayers(layers.map((layer) => ({ ...layer, active: activeLayerKeys.has(layer.key) })));
     setMapView(state.mapView);
     if (state.mapView && state.school !== selectedSchoolId) setSuppressNextSelectionFocus(true);
     setScenarioId(state.scenario);
@@ -354,116 +353,117 @@ export function SchoolExplorer() {
         </div>
       </div>
 
-      <div className="map-overlay-controls map-overlay-controls-top-left">
-        <p className="overlay-title">School explorer</p>
-        <p className="overlay-copy">Search and inspect a district slice.</p>
-        <div className="score-toggle" role="group" aria-label="Color markers by">
-          <button
-            type="button"
-            className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
-            onClick={() => {
-              setScoreField("priority");
-              replaceState({ score: "priority" });
-            }}
-          >
-            Priority
-          </button>
-          <button
-            type="button"
-            className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
-            onClick={() => {
-              setScoreField("need");
-              replaceState({ score: "need" });
-            }}
-          >
-            Need
-          </button>
-        </div>
-        <CopyLinkButton state={briefingState} />
-        <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
-        <div className="district-search map-district-search">
-          <input
-            id="school-search"
-            type="text"
-            value={schoolQuery}
-            placeholder="Search school…"
-            onFocus={() => setShowSchoolSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
-            onChange={(event) => {
-              setSchoolQuery(event.target.value);
-              setShowSchoolSuggestions(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && schoolSuggestions[0]) {
-                event.preventDefault();
-                applySchool(schoolSuggestions[0]);
-              }
-            }}
-          />
-          {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
-            <div className="district-suggestions">
-              {schoolSuggestions.map((school) => (
-                <button
-                  type="button"
-                  key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
-                  className="district-suggestion-item"
-                  onMouseDown={() => applySchool(school)}
-                >
-                  {school.school_name}
-                </button>
-              ))}
-            </div>
+      <aside className="school-explorer-left-stack" aria-label="School explorer controls">
+        <div className="map-overlay-controls">
+          <p className="overlay-title">School explorer</p>
+          <p className="overlay-copy">Search and inspect a district slice.</p>
+          <div className="score-toggle" role="group" aria-label="Color markers by">
+            <button
+              type="button"
+              className={`score-toggle-button ${scoreField === "priority" ? "is-active" : ""}`}
+              onClick={() => {
+                setScoreField("priority");
+                replaceState({ score: "priority" });
+              }}
+            >
+              Priority
+            </button>
+            <button
+              type="button"
+              className={`score-toggle-button ${scoreField === "need" ? "is-active" : ""}`}
+              onClick={() => {
+                setScoreField("need");
+                replaceState({ score: "need" });
+              }}
+            >
+              Need
+            </button>
+          </div>
+          <CopyLinkButton state={briefingState} />
+          <BriefingBookmarks currentState={briefingState} onApply={applyBookmark} />
+          <div className="district-search map-district-search">
+            <input
+              id="school-search"
+              type="text"
+              value={schoolQuery}
+              placeholder="Search school…"
+              onFocus={() => setShowSchoolSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSchoolSuggestions(false), 120)}
+              onChange={(event) => {
+                setSchoolQuery(event.target.value);
+                setShowSchoolSuggestions(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && schoolSuggestions[0]) {
+                  event.preventDefault();
+                  applySchool(schoolSuggestions[0]);
+                }
+              }}
+            />
+            {showSchoolSuggestions && schoolSuggestions.length > 0 ? (
+              <div className="district-suggestions">
+                {schoolSuggestions.map((school) => (
+                  <button
+                    type="button"
+                    key={school.school_id ?? `${school.school_name}-${school.latitude}-${school.longitude}`}
+                    className="district-suggestion-item"
+                    onMouseDown={() => applySchool(school)}
+                  >
+                    {school.school_name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="district-search map-district-search">
+            <input
+              id="district-search"
+              type="text"
+              value={districtQuery}
+              placeholder="Search district…"
+              onFocus={() => setShowDistrictSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
+              onChange={(event) => {
+                setDistrictQuery(event.target.value);
+                setShowDistrictSuggestions(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && districtSuggestions[0]) {
+                  event.preventDefault();
+                  applyDistrict(districtSuggestions[0]);
+                }
+              }}
+            />
+            {showDistrictSuggestions && districtSuggestions.length > 0 ? (
+              <div className="district-suggestions">
+                {districtSuggestions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.district_id}
+                    className="district-suggestion-item"
+                    onMouseDown={() => applyDistrict(option)}
+                  >
+                    {option.district}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {errorMessage ? (
+            <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
+              {errorMessage}
+            </p>
           ) : null}
         </div>
-        <div className="district-search map-district-search">
-          <input
-            id="district-search"
-            type="text"
-            value={districtQuery}
-            placeholder="Search district…"
-            onFocus={() => setShowDistrictSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowDistrictSuggestions(false), 120)}
-            onChange={(event) => {
-              setDistrictQuery(event.target.value);
-              setShowDistrictSuggestions(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && districtSuggestions[0]) {
-                event.preventDefault();
-                applyDistrict(districtSuggestions[0]);
-              }
-            }}
-          />
-          {showDistrictSuggestions && districtSuggestions.length > 0 ? (
-            <div className="district-suggestions">
-              {districtSuggestions.map((option) => (
-                <button
-                  type="button"
-                  key={option.district_id}
-                  className="district-suggestion-item"
-                  onMouseDown={() => applyDistrict(option)}
-                >
-                  {option.district}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <ScoreLegend scoreField={scoreField} />
-        {errorMessage ? (
-          <p className="overlay-copy" style={{ color: "var(--color-danger)" }}>
-            {errorMessage}
-          </p>
-        ) : null}
-      </div>
 
-      <SchoolLayerPanel
-        layers={layers}
-        scoreField={scoreField}
-        onToggleLayer={toggleLayer}
-        onSoloLayer={soloLayer}
-        onOpacityChange={setLayerOpacity}
-      />
+        <SchoolLayerPanel
+          layers={layers}
+          scoreField={scoreField}
+          onToggleLayer={toggleLayer}
+          onSoloLayer={soloLayer}
+          onOpacityChange={setLayerOpacity}
+        />
+      </aside>
 
       <aside className="map-side-panel" aria-label="School table and snapshot">
         <article className="float-panel map-side-panel-primary">
