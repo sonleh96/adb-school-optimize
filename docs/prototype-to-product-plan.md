@@ -12,7 +12,7 @@ Scoring methodology and data content are explicitly out of scope.
 ## Codex / implementer handoff
 
 Implement **Phase 3.5 first** (PRs A1 → A5), then **Phase 4.5** (PRs B1 → B5), unless Son asks otherwise.
-Do not invent Tier C features (comments, public embed, AI map builders, upload-anything, multiplayer cursors).
+Implement the production Tier C defined below without adding comments, public embeds, AI map builders, upload-anything, or multiplayer cursors.
 Steal Felt/Atlas *interaction patterns* only; RISE-PNG stays a decision workspace for school priority scoring, not a general GIS builder.
 Prefer small sequential PRs matching the A1–A5 / B1–B5 IDs below.
 Keep commits on `plan/prototype-to-product` under the `sonleh96` GitHub identity.
@@ -464,6 +464,51 @@ Acceptance: export contents match on-screen filtered ranking and named scenario;
 - Analyst can filter → compare → inspect density/catchment → export a briefing pack.
 - All of the above round-trip through URL state from Phase 3.5 where applicable.
 
+## Phase 5.5 - Production Tier C (PRs C1-C5) - APPROVED for implementation
+
+Tier C completes the approved production, hardening, and verification work after the briefing and analyst workspaces.
+It does not reopen the deferred general-purpose GIS or collaboration features.
+
+### PR C1 - Performance stabilization
+
+- Reproduce and remove main-thread freezes in Overview and School Explorer.
+- Keep Leaflet renderer, vector cache, and URL-state work bounded across repeated interactions.
+- Abort stale layer requests and avoid route navigations for query-only state updates.
+- Record before and after measurements and add a browser regression guard in C5.
+
+Acceptance: repeated score, comparison, selection, zoom, and layer interactions do not accumulate renderers or trigger page navigations, and production build gates pass.
+
+### PR C2 - Remaining page polish
+
+- Complete the Phase 4 Overview metrics, District Explorer semantics, Scenario Lab archive workflow, Methodology loading behavior, and global state consistency.
+- Preserve the Tier A and Tier B map workspace layouts and URL contracts.
+
+Acceptance: every page has consistent loading, empty, error, keyboard, and responsive behavior without increasing the initial route budget.
+
+### PR C3 - Frontend authentication boundary
+
+- Add the approved Supabase email-allowlist sign-in and session flow.
+- Guard application routes while keeping health, sign-in, and static assets available.
+- Add the signed-in user slot to the application shell.
+
+Acceptance: configured deployments require an allowlisted session, while an explicitly documented local-development bypass keeps contributor setup deterministic.
+
+### PR C4 - API and operational hardening
+
+- Verify Supabase JWTs on `/api/v1` routes and derive `created_by` from the token.
+- Lock CORS, add write-endpoint rate limits, request IDs, structured logs, and deployment configuration.
+- Preserve connection pooling, compression, cache headers, and bounded query behavior.
+
+Acceptance: unauthenticated protected requests return structured `401` responses, random-origin preflight fails, and API tests cover the security and operational middleware.
+
+### PR C5 - Automated QA and launch guardrails
+
+- Implement the Phase 6 unit, browser smoke, bundle budget, and Lighthouse checks.
+- Include a map renderer accumulation regression and export download coverage.
+- Finish the local, staging, production, rollback, and performance runbook.
+
+Acceptance: CI enforces the release gates and the runbook provides a tested rollback path.
+
 ## Phase 6 - QA and launch checklist (1-2 days, PR 7) — APPROVED
 
 - Vitest + Testing Library unit tests for `lib/format.ts`, query hooks, and the weight-normalization logic.
@@ -495,7 +540,7 @@ Acceptance: export contents match on-screen filtered ranking and named scenario;
 | 4 | Phase 1 vs 2 order | Sequential after Phase 0.5. Late overlap of 1 and 2 is OK once lockdown lands. |
 | 5 | Felt/Atlas feature direction | Mix: Tier A briefing workspace now (Phase 3.5), Tier B analyst workspace next (Phase 4.5). |
 | 6 | Plan doc shape | Amend this file; do not create a separate Felt features doc. |
-| 7 | Tier C (comments, embeds, AI, uploads, multiplayer) | Deferred; not in Phase 3.5/4.5 implementation scope. |
+| 7 | Tier C | Production hardening and QA only; comments, embeds, AI, uploads, and multiplayer remain deferred. |
 | 8 | Bookmarks persistence v1 | localStorage + seeded defaults; server/team bookmarks wait for auth. |
 
 Phase 0–1 and much of Phase 2–3 performance work are already on `plan/prototype-to-product`.
