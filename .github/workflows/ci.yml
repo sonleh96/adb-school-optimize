@@ -25,7 +25,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run format:check
       - run: npm test
-      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm audit --omit=dev --audit-level=high
       - run: npm run analyze
         env:
           NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED: "true"
