@@ -5,7 +5,7 @@ import { getAuthConfig, isAllowedEmail, safeNextPath, shouldEnforceAuth } from "
 
 const PUBLIC_PATHS = new Set(["/sign-in", "/auth/callback", "/healthz"]);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (!shouldEnforceAuth() || PUBLIC_PATHS.has(request.nextUrl.pathname)) {
     return NextResponse.next();
   }
