@@ -28,6 +28,9 @@ test("Overview score values fit inside the Priority and Need columns", async ({ 
   await page.goto("/all-schools");
   await expect(page.getByRole("heading", { name: "Ranked schools" })).toBeVisible();
 
+  const panelRect = await page.locator(".map-side-panel").boundingBox();
+  expect(panelRect?.width).toBeCloseTo(442, 0);
+
   const scoreCells = page.locator(".virtual-table-row").first().locator(".virtual-cell-score");
   await expect(scoreCells.nth(0)).toContainText("82.0");
   await expect(scoreCells.nth(1)).toContainText("74.0");
