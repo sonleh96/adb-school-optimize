@@ -23,6 +23,7 @@ import {
   getPersistedScenario,
   persistSelectedScenario,
 } from "@/lib/scenarioSelection";
+import { formatInteger } from "@/lib/format";
 
 const SchoolMap = dynamic(() => import("@/components/SchoolMap").then((mod) => mod.SchoolMap), {
   ssr: false,
@@ -112,6 +113,38 @@ export function CountrySchoolExplorer() {
     () => scenariosQuery.data?.find((scenario) => scenario.scenario_id === scenarioId)?.scenario_name ?? null,
     [scenarioId, scenariosQuery.data]
   );
+  const overviewMetrics = useMemo(() => {
+    const priorityValues = schools
+      .map((school) => school.priority)
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+      .sort((left, right) => left - right);
+    const middle = Math.floor(priorityValues.length / 2);
+    const medianPriority = priorityValues.length
+      ? priorityValues.length % 2
+        ? priorityValues[middle]
+        : (priorityValues[middle - 1] + priorityValues[middle]) / 2
+      : null;
+    const latestScenario = [...(scenariosQuery.data ?? [])].sort(
+      (left, right) => Date.parse(right.updated_at ?? "") - Date.parse(left.updated_at ?? "")
+    )[0];
+
+    return [
+      { label: "Schools", value: formatInteger(schools.length) },
+      { label: "Districts", value: formatInteger(districtFeatures.length) },
+      {
+        label: "Median priority",
+        value: medianPriority == null ? "n/a" : (medianPriority * 100).toFixed(1),
+      },
+      {
+        label: "Last scoring run",
+        value: latestScenario?.updated_at
+          ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+              new Date(latestScenario.updated_at)
+            )
+          : "n/a",
+      },
+    ];
+  }, [districtFeatures.length, scenariosQuery.data, schools]);
   const briefingState = useMemo(
     () =>
       mergeUrlState(initialState, {
@@ -193,6 +226,14 @@ export function CountrySchoolExplorer() {
       <div className="map-overlay-controls map-overlay-controls-top-left national-overview-controls">
         <p className="overlay-title">National overview</p>
         <p className="overlay-copy">Click a marker to sync the ranked table.</p>
+        <dl className="overview-metrics" aria-label="National overview metrics">
+          {overviewMetrics.map((metric) => (
+            <div className="overview-metric" key={metric.label}>
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+        </dl>
         <div className="score-toggle" role="group" aria-label="Color markers by">
           <button
             type="button"

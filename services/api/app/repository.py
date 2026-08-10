@@ -340,9 +340,10 @@ def insert_scenario(connection, payload: dict[str, Any]) -> dict[str, Any]:
         run_manifest = excluded.run_manifest,
         created_by = excluded.created_by,
         is_default = excluded.is_default,
+        archived_at = null,
         updated_at = now()
     returning scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
-              created_by, is_default, created_at, updated_at
+              created_by, is_default, archived_at, created_at, updated_at
     """
     with connection.cursor() as cursor:
         cursor.execute(query, db_payload)
@@ -364,6 +365,8 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
     existing = fetch_scenario(connection, scenario_id)
     if not existing:
         return None
+    if payload.get("archived") is True and existing["is_default"]:
+        raise ValueError("Default scenarios cannot be archived.")
 
     merged = {
         "scenario_name": payload.get("scenario_name", existing["scenario_name"]),
@@ -378,6 +381,7 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
         else None,
         "created_by": payload.get("created_by", existing["created_by"]),
         "is_default": payload.get("is_default", existing["is_default"]),
+        "archived": payload.get("archived"),
         "scenario_id": scenario_id,
     }
 
@@ -391,10 +395,15 @@ def update_scenario(connection, scenario_id: str, payload: dict[str, Any]) -> di
         run_manifest = %(run_manifest)s,
         created_by = %(created_by)s,
         is_default = %(is_default)s,
+        archived_at = case
+            when %(archived)s is true then now()
+            when %(archived)s is false then null
+            else archived_at
+        end,
         updated_at = now()
     where scenario_id = %(scenario_id)s::uuid
     returning scenario_id, scenario_name, description, weights, config, score_version, run_manifest,
-              created_by, is_default, created_at, updated_at
+              created_by, is_default, archived_at, created_at, updated_at
     """
     with connection.cursor() as cursor:
         cursor.execute(query, merged)

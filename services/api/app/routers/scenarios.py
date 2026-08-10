@@ -45,8 +45,11 @@ def patch_scenario(
     payload: ScenarioUpdate,
     _write_access: None = Depends(require_write_operations),
 ):
-    with get_db() as connection:
-        scenario = update_scenario(connection, scenario_id, _payload_dict(payload))
+    try:
+        with get_db() as connection:
+            scenario = update_scenario(connection, scenario_id, _payload_dict(payload))
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
     return scenario

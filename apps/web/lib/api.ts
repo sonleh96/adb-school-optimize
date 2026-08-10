@@ -163,6 +163,21 @@ export async function fetchScenarios(): Promise<ScenarioRecord[]> {
   return apiFetch<ScenarioRecord[]>("/api/v1/scenarios");
 }
 
+export async function updateScenario(
+  scenarioId: string,
+  payload: {
+    scenario_name?: string;
+    description?: string;
+    weights?: Record<string, unknown>;
+    archived?: boolean;
+  }
+): Promise<ScenarioRecord> {
+  return apiFetch<ScenarioRecord>(`/api/v1/scenarios/${encodeURIComponent(scenarioId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function runScenario(payload: {
   scenario_name: string;
   description?: string;

@@ -1,57 +1,58 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
-import { fetchScenarios } from "@/lib/api";
+import { useScenariosQuery } from "@/lib/hooks";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
 import { buildWeightGroups } from "@/lib/scenarioWeights";
 import type { ScenarioRecord } from "@/lib/types";
-import ReactMarkdown from "react-markdown";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
 
-import "katex/dist/katex.min.css";
+const MathBlock = dynamic(
+  () => import("@/components/MethodologyMath").then((module) => module.MethodologyMath),
+  {
+    ssr: false,
+    loading: () => <div className="methodology-code methodology-math-placeholder">Loading formula…</div>,
+  }
+);
 
-function MathBlock({ expression }: { expression: string }) {
-  return (
-    <div className="methodology-code methodology-math">
-      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {`$$${expression}$$`}
-      </ReactMarkdown>
-    </div>
-  );
-}
+const METHODOLOGY_SECTIONS = [
+  ["purpose", "1. Purpose"],
+  ["framework", "2. Conceptual Framework"],
+  ["unit", "3. Unit of Analysis"],
+  ["domains", "4. Data Domains"],
+  ["preparation", "5. Data Preparation"],
+  ["normalization", "6. Normalization"],
+  ["need", "7. Need Score"],
+  ["priority", "8. Priority Score"],
+  ["ranking", "9. Ranking and Selection"],
+  ["robustness", "10. Robustness"],
+  ["geography", "11. Geographic Context"],
+  ["governance", "12. Governance"],
+  ["limitations", "13. Limitations"],
+  ["references", "References"],
+] as const;
 
 export function MethodologyPanel() {
+  const scenariosQuery = useScenariosQuery();
   const [activeScenario, setActiveScenario] = useState<ScenarioRecord | null>(null);
-  const [scenarioError, setScenarioError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const scenarios = scenariosQuery.data;
+    if (!scenarios) return;
+    const persistedId = window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY);
+    const persistedScenario = persistedId
+      ? (scenarios.find((scenario) => scenario.scenario_id === persistedId) ?? null)
+      : null;
+    const defaultScenario = scenarios.find((scenario) => scenario.is_default) ?? scenarios[0] ?? null;
+    setActiveScenario(persistedScenario ?? defaultScenario);
+  }, [scenariosQuery.data]);
 
-    async function loadScenarioWeights() {
-      try {
-        const scenarios = await fetchScenarios();
-        if (cancelled) return;
-
-        const persistedId =
-          typeof window !== "undefined" ? window.localStorage.getItem(SELECTED_SCENARIO_STORAGE_KEY) : null;
-        const persistedScenario = persistedId
-          ? (scenarios.find((scenario) => scenario.scenario_id === persistedId) ?? null)
-          : null;
-        const defaultScenario = scenarios.find((scenario) => scenario.is_default) ?? scenarios[0] ?? null;
-        setActiveScenario(persistedScenario ?? defaultScenario);
-      } catch (error) {
-        if (cancelled) return;
-        setScenarioError(error instanceof Error ? error.message : "Unable to load scenario weights.");
-      }
-    }
-
-    void loadScenarioWeights();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const scenarioError = scenariosQuery.error
+    ? scenariosQuery.error instanceof Error
+      ? scenariosQuery.error.message
+      : "Unable to load scenario weights."
+    : null;
 
   const weightGroups = useMemo(() => buildWeightGroups(activeScenario?.weights), [activeScenario?.weights]);
 
@@ -67,12 +68,22 @@ export function MethodologyPanel() {
               </p>
             </div>
           </div>
-          <div className="float-panel-body">
+          <div className="float-panel-body methodology-layout">
+            <nav className="methodology-toc" aria-label="Methodology sections">
+              <p>On this page</p>
+              <ol>
+                {METHODOLOGY_SECTIONS.map(([id, label]) => (
+                  <li key={id}>
+                    <a href={`#${id}`}>{label}</a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
             <article className="methodology-doc">
               <h1>Methodology for the School Prioritization Scoring Module</h1>
 
               <section>
-                <h2>1. Purpose</h2>
+                <h2 id="purpose">1. Purpose</h2>
                 <p>
                   This platform is designed to support transparent, configurable, and evidence-based
                   prioritization of schools for further review, investment, or intervention. It implements a
@@ -101,7 +112,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>2. Conceptual Framework</h2>
+                <h2 id="framework">2. Conceptual Framework</h2>
                 <p>
                   The module treats school prioritization as a{" "}
                   <strong>multi-criteria decision problem</strong> rather than a single-variable ranking. In
@@ -144,7 +155,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>3. Unit of Analysis</h2>
+                <h2 id="unit">3. Unit of Analysis</h2>
                 <p>
                   The primary unit of analysis is the <strong>individual school</strong>. Each school is
                   represented by a record containing school-level indicators and, where relevant, contextual
@@ -160,7 +171,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>4. Data Domains Used by the Scoring Framework</h2>
+                <h2 id="domains">4. Data Domains Used by the Scoring Framework</h2>
                 <p>
                   The exact variables may differ by country or programme, but the methodology assumes that
                   indicators are grouped into domains. The most common domains in this project are:
@@ -230,7 +241,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>5. Data Preparation</h2>
+                <h2 id="preparation">5. Data Preparation</h2>
 
                 <h3>5.1 Record Linkage and Harmonization</h3>
                 <p>
@@ -280,7 +291,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>6. Normalization</h2>
+                <h2 id="normalization">6. Normalization</h2>
                 <p>
                   Because the indicators come in different units and scales, they must be normalized before
                   aggregation. OECD/JRC guidance recommends normalization as a core step in
@@ -319,7 +330,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>7. Need Score Construction</h2>
+                <h2 id="need">7. Need Score Construction</h2>
                 <p>
                   The <strong>Need score</strong> is the project’s composite measure of deprivation,
                   vulnerability, or service shortfall at the school level.
@@ -399,7 +410,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>8. Priority Score Construction</h2>
+                <h2 id="priority">8. Priority Score Construction</h2>
                 <p>
                   The <strong>Priority score</strong> is the module’s final sequencing metric. It combines the
                   Need score with additional decision factors that the programme considers relevant for
@@ -442,7 +453,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>9. Ranking and Selection</h2>
+                <h2 id="ranking">9. Ranking and Selection</h2>
                 <p>After both scores are computed, schools can be ranked in several ways:</p>
                 <ul className="methodology-list">
                   <li>
@@ -474,7 +485,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>10. Robustness, Sensitivity, and Transparency</h2>
+                <h2 id="robustness">10. Robustness, Sensitivity, and Transparency</h2>
                 <p>
                   OECD/JRC guidance strongly recommends robustness and sensitivity analysis for composite
                   indicators because rankings may shift when assumptions change. This applies directly to
@@ -519,7 +530,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>11. Treatment of Geographic Context</h2>
+                <h2 id="geography">11. Treatment of Geographic Context</h2>
                 <p>
                   Where direct school-level data are incomplete, the module may attach contextual measures
                   from district or raster-based layers, such as flood exposure, land cover, local service
@@ -538,7 +549,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>12. Governance and Configuration</h2>
+                <h2 id="governance">12. Governance and Configuration</h2>
                 <p>
                   To keep the methodology transparent and maintainable, the implementation should externalize
                   the following parameters:
@@ -562,7 +573,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>13. Limitations</h2>
+                <h2 id="limitations">13. Limitations</h2>
                 <p>
                   This methodology is designed for <strong>structured prioritization</strong>, not for fully
                   automated decision-making. Its main limitations are:
@@ -584,7 +595,7 @@ export function MethodologyPanel() {
               </section>
 
               <section>
-                <h2>References</h2>
+                <h2 id="references">References</h2>
                 <ul className="methodology-list">
                   <li>
                     Fernández, R., D’Ayala, D., Turró, M., and colleagues. (2023).{" "}
