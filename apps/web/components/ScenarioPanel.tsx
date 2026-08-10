@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
-import { getApiBaseUrl, fetchScenarios, runScenario } from "@/lib/api";
+import { getApiBaseUrl, fetchScenarios, runScenario, updateScenario } from "@/lib/api";
 import { useScenariosQuery, useSchoolsQuery } from "@/lib/hooks";
 import { queryKeys } from "@/lib/queryKeys";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
@@ -33,17 +33,33 @@ export function ScenarioPanel() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [archiveConfirmationId, setArchiveConfirmationId] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
 
   const previewQuery = useSchoolsQuery({
     scenarioId: selectedScenarioId ?? undefined,
     limit: 10000,
+    enabled: Boolean(selectedScenarioId),
   });
-  const previewRows = previewQuery.data ?? [];
+  const previewRows = selectedScenarioId ? (previewQuery.data ?? []) : [];
   const loadingPreview = previewQuery.isLoading || previewQuery.isFetching;
 
   const scenarioCountLabel = useMemo(() => `${scenarios.length} saved scenarios`, [scenarios.length]);
   const editableWeightGroups = useMemo(() => buildEditableWeightGroups(weightOverrides), [weightOverrides]);
+  const selectedScenario = useMemo(
+    () => scenarios.find((scenario) => scenario.scenario_id === selectedScenarioId) ?? null,
+    [scenarios, selectedScenarioId]
+  );
+  const isDirty = useMemo(() => {
+    if (!selectedScenario) return false;
+    return (
+      scenarioName.trim() !== selectedScenario.scenario_name ||
+      description.trim() !== (selectedScenario.description ?? "") ||
+      JSON.stringify(normalizeWeightOverrides(weightOverrides)) !==
+        JSON.stringify(normalizeWeightOverrides(selectedScenario.weights))
+    );
+  }, [description, scenarioName, selectedScenario, weightOverrides]);
 
   useEffect(() => {
     if (scenariosQuery.error) {
@@ -81,7 +97,56 @@ export function ScenarioPanel() {
   }
 
   async function loadScenario(scenario: ScenarioRecord) {
+    setArchiveConfirmationId(null);
     applyScenario(scenario);
+  }
+
+  async function refreshScenarios() {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.scenarios });
+    return queryClient.fetchQuery({ queryKey: queryKeys.scenarios, queryFn: fetchScenarios });
+  }
+
+  async function handleSaveChanges() {
+    if (!selectedScenario || !isDirty) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateScenario(selectedScenario.scenario_id, {
+        scenario_name: scenarioName.trim(),
+        description: description.trim(),
+        weights: weightOverrides,
+      });
+      await refreshScenarios();
+      applyScenario(updated, false);
+      setStatus(`Updated scenario "${updated.scenario_name}".`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update scenario.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleArchive(scenario: ScenarioRecord) {
+    if (archiveConfirmationId !== scenario.scenario_id) {
+      setArchiveConfirmationId(scenario.scenario_id);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await updateScenario(scenario.scenario_id, { archived: true });
+      await refreshScenarios();
+      if (selectedScenarioId === scenario.scenario_id) {
+        setSelectedScenarioId(null);
+        window.localStorage.removeItem(SELECTED_SCENARIO_STORAGE_KEY);
+      }
+      setArchiveConfirmationId(null);
+      setStatus(`Archived scenario "${scenario.scenario_name}".`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to archive scenario.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleRunScenario() {
@@ -251,6 +316,14 @@ export function ScenarioPanel() {
                             ? "Run And Save Scenario"
                             : "Scenario Runs Disabled"}
                       </button>
+                      <button
+                        className="button button-secondary"
+                        type="button"
+                        onClick={handleSaveChanges}
+                        disabled={saving || !WRITE_OPERATIONS_ENABLED || !isDirty}
+                      >
+                        {saving ? "Saving…" : "Save selected changes"}
+                      </button>
                     </div>
                     {!WRITE_OPERATIONS_ENABLED ? (
                       <p className="small-copy research-mode-copy">
@@ -272,7 +345,13 @@ export function ScenarioPanel() {
                         {editableWeightGroups.map((group) => (
                           <article className="detail-card scenario-weight-editor-card" key={group.key}>
                             <div className="scenario-weight-editor-card-head">
-                              <h4>{group.label}</h4>
+                              <div>
+                                <h4>{group.label}</h4>
+                                <span className="scenario-weight-sum">
+                                  Total{" "}
+                                  {group.entries.reduce((sum, entry) => sum + entry.percent, 0).toFixed(1)}%
+                                </span>
+                              </div>
                               <button
                                 className="button button-secondary"
                                 type="button"
@@ -316,7 +395,12 @@ export function ScenarioPanel() {
                       </div>
                     </div>
                   </div>
-                  {status ? <p className="small-copy">{status}</p> : null}
+                  {isDirty ? <p className="small-copy">Unsaved changes to the selected scenario.</p> : null}
+                  {status ? (
+                    <p className="small-copy" role="status">
+                      {status}
+                    </p>
+                  ) : null}
                   {warnings.length ? (
                     <div className="empty">
                       <strong>Warnings</strong>
@@ -348,6 +432,7 @@ export function ScenarioPanel() {
                             <th>Default</th>
                             <th>Updated</th>
                             <th aria-label="Download column" />
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -356,9 +441,17 @@ export function ScenarioPanel() {
                               className="data-row"
                               key={scenario.scenario_id}
                               data-selected={scenario.scenario_id === selectedScenarioId}
-                              onClick={() => void loadScenario(scenario)}
                             >
-                              <td>{scenario.scenario_name}</td>
+                              <td>
+                                <button
+                                  className="scenario-select-button"
+                                  type="button"
+                                  onClick={() => void loadScenario(scenario)}
+                                  aria-pressed={scenario.scenario_id === selectedScenarioId}
+                                >
+                                  {scenario.scenario_name}
+                                </button>
+                              </td>
                               <td>{scenario.is_default ? "Yes" : "No"}</td>
                               <td>
                                 {scenario.updated_at ? new Date(scenario.updated_at).toLocaleString() : "n/a"}
@@ -373,6 +466,21 @@ export function ScenarioPanel() {
                                   <Download className="size-4" aria-hidden />
                                   <span className="sr-only">Download {scenario.scenario_name}</span>
                                 </a>
+                              </td>
+                              <td>
+                                <button
+                                  className="button button-secondary scenario-archive-button"
+                                  type="button"
+                                  disabled={saving || scenario.is_default || !WRITE_OPERATIONS_ENABLED}
+                                  onClick={() => void handleArchive(scenario)}
+                                  title={
+                                    scenario.is_default ? "Default scenarios cannot be archived." : undefined
+                                  }
+                                >
+                                  {archiveConfirmationId === scenario.scenario_id
+                                    ? "Confirm archive"
+                                    : "Archive"}
+                                </button>
                               </td>
                             </tr>
                           ))}
