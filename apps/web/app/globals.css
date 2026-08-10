@@ -289,6 +289,10 @@ body {
   pointer-events: auto;
 }
 
+.national-overview-workspace .map-side-panel {
+  width: min(442px, calc(100% - 24px));
+}
+
 .map-side-panel-primary {
   flex: 1.4;
   min-height: 0;
@@ -621,6 +625,10 @@ body {
     bottom: 12px;
     width: auto;
     max-height: 46%;
+  }
+
+  .national-overview-workspace .map-side-panel {
+    width: auto;
   }
 
   .map-overlay-legend {
@@ -1749,7 +1757,7 @@ textarea {
   left: 324px;
   display: grid;
   gap: 2px;
-  width: min(320px, calc(100% - 696px));
+  width: min(320px, calc(100% - 798px));
   padding: 8px 10px;
   border: 1px solid rgba(15, 31, 51, 0.1);
   border-radius: 10px;
