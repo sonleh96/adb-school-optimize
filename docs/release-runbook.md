@@ -92,8 +92,8 @@ See `docs/performance-audit-2026-08-10.md` for the full measurements and archite
 
 Reopen performance work if the browser regression exceeds the shared-canvas bound, a route crosses 250 KiB gzip initial JavaScript, desktop Lighthouse performance falls below 90, or production p95 increases by more than 20 percent without an explained data change.
 
-## Known dependency review
+## Dependency security baseline
 
-The August 2026 production dependency audit reports Next.js-linked PostCSS and Sharp advisories whose automated fix is a Next.js 16 major upgrade.
-They are not introduced by the Supabase integration and remain tracked for a dedicated framework upgrade review by 2026-09-15.
-CI blocks critical production advisories immediately and preserves the full audit output for release review.
+The application runs on Next.js 16.3.0 with React 19.2.8.
+The production dependency audit must report zero known vulnerabilities before release.
+CI blocks high and critical production advisories and preserves the full audit output for release review.

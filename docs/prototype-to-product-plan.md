@@ -342,7 +342,7 @@ Goal: safe to put behind the ADB network. Builds on Phase 0.5 RLS baseline.
 
 Changes:
 
-- Supabase Auth: email allowlist (SSO deferred); `@supabase/ssr` session handling with a sign-in route; `middleware.ts` guards all app routes.
+- Supabase Auth: email allowlist (SSO deferred); `@supabase/ssr` session handling with a sign-in route; `proxy.ts` guards all app routes.
 - API: FastAPI dependency verifying Supabase JWTs (JWKS fetch with cache, HS256 legacy fallback); all `/api/v1` routes require a valid user; `created_by` populated from the token, not the request body.
 - After JWT path is live: add least-privilege RLS policies for authenticated roles if any browser→Supabase access is introduced; otherwise keep Data API fully closed and document service-role-only server access.
 - CORS locked to the Vercel production and preview origins; remove `allow_credentials` wildcard combination.
