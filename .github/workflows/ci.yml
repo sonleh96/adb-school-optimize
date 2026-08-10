@@ -24,7 +24,66 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
-      - run: npm run build
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=critical
+      - run: npm run analyze
+        env:
+          NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED: "true"
+      - run: npm run bundle:check
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: |
+            apps/web/.next/analyze/
+            apps/web/.next/bundle-budget.json
+
+  browser:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lighthouse
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: apps/web/.lighthouseci/reports/
 
   api:
     runs-on: ubuntu-latest
