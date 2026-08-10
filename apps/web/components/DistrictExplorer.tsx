@@ -247,6 +247,7 @@ export function DistrictExplorer() {
           <input
             className="district-topn-input"
             type="number"
+            aria-label="Number of top districts"
             min={1}
             step={1}
             value={topNCount}

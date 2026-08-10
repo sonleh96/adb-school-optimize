@@ -101,10 +101,10 @@ function ScoreMetric({
       <dt className="text-xs font-medium text-[var(--color-muted)]">{label}</dt>
       <dd className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold tracking-[-0.03em] text-[var(--color-ink)]">
         {formatScore(value)}
+        <span className="mt-1 block font-sans text-xs font-normal tracking-normal text-[var(--color-muted)]">
+          {comparison === "n/a" ? "Median unavailable" : `${comparison} vs ${medianLabel}`}
+        </span>
       </dd>
-      <p className="mt-1 text-xs text-[var(--color-muted)]">
-        {comparison === "n/a" ? "Median unavailable" : `${comparison} vs ${medianLabel}`}
-      </p>
     </div>
   );
 }
