@@ -71,6 +71,7 @@ export function useChoroplethQuery(
     province?: string;
     district?: string;
     fields?: "scores" | "indicator" | "full";
+    simplifyTolerance?: number;
   } = {}
 ) {
   return useQuery({
