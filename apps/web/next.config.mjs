@@ -5,12 +5,16 @@ const withBundleAnalyzer = bundleAnalyzer({
   openAnalyzer: false,
 });
 
+const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   async rewrites() {
-    const target = (process.env.API_PROXY_TARGET || "").replace(/\/$/, "");
+    const target = (
+      process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
+    ).replace(/\/$/, "");
     if (!target) return [];
     return [
       {
