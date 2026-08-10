@@ -11,13 +11,36 @@ import type {
 
 // Prefer same-origin `/api/v1/*` (Next rewrite proxy) to avoid Cloud Run CORS on local ports.
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
+let cachedAuthState: { required: false } | { required: true; token: string; expiresAt: number } | null = null;
+
+async function getApiAccessToken(): Promise<string | null> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedAuthState?.required === false) return null;
+  if (cachedAuthState?.required && cachedAuthState.expiresAt > now + 30) return cachedAuthState.token;
+  const response = await fetch("/auth/token", { cache: "no-store" });
+  if (!response.ok) throw new Error("Your session has expired. Sign in again.");
+  const data = (await response.json()) as {
+    required: boolean;
+    accessToken: string | null;
+    expiresAt?: number;
+  };
+  if (!data.required) {
+    cachedAuthState = { required: false };
+    return null;
+  }
+  if (!data.accessToken || !data.expiresAt) throw new Error("Your session has expired. Sign in again.");
+  cachedAuthState = { required: true, token: data.accessToken, expiresAt: data.expiresAt };
+  return data.accessToken;
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
+  const accessToken = await getApiAccessToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(init?.headers ?? {}),
     },
     // GETs are cacheable; mutations stay uncached.
@@ -34,6 +57,10 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getApiBaseUrl(): string {
   return API_BASE_URL;
+}
+
+export function getAuthenticatedAssetUrl(path: string): string {
+  return `/api/proxy/${path.replace(/^\/+/, "")}`;
 }
 
 export async function fetchIndicators(): Promise<IndicatorsResponse> {
@@ -104,7 +131,7 @@ export function buildRasterOverlayUrl(params: {
   if (params.province) search.set("province", params.province);
   if (params.opacity != null) search.set("opacity", String(params.opacity));
   if (params.format) search.set("format", params.format);
-  return `${API_BASE_URL}/api/v1/rasters/${params.layer}/overlay?${search.toString()}`;
+  return getAuthenticatedAssetUrl(`rasters/${params.layer}/overlay?${search.toString()}`);
 }
 
 export async function fetchSchools(params: {

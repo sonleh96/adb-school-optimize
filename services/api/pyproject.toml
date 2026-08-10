@@ -19,6 +19,7 @@ dependencies = [
     "python-multipart",
     "google-cloud-storage",
     "rasterio",
+    "PyJWT[crypto]",
 ]
 
 [project.optional-dependencies]
