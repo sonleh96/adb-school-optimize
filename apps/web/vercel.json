@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://rise-png-api-73728254844.asia-southeast1.run.app/api/v1/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/v1/:path*",
+      "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "0" }]
+    }
+  ]
+}
