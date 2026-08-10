@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import io
+import json
+import logging
+import time
 from types import SimpleNamespace
 
+import jwt
 import openpyxl
 from app import repository
 from app.errors import ApiError
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
+from app.security import write_rate_limiter
 from app.services.rasters import RasterClipResult
+from app.settings import get_settings
 
 
 def test_healthz(client):
@@ -17,6 +23,109 @@ def test_healthz(client):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert response.headers["x-request-id"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_request_id_accepts_only_bounded_safe_values(client):
+    accepted = client.get("/healthz", headers={"X-Request-ID": "briefing_123"})
+    replaced = client.get("/healthz", headers={"X-Request-ID": "bad request id"})
+
+    assert accepted.headers["x-request-id"] == "briefing_123"
+    assert replaced.headers["x-request-id"] != "bad request id"
+
+
+def test_request_log_is_structured(client, caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.access")
+
+    response = client.get("/healthz", headers={"X-Request-ID": "trace-1"})
+
+    records = [json.loads(record.message) for record in caplog.records if record.message.startswith("{")]
+    assert response.status_code == 200
+    assert records[-1] == {
+        "event": "http_request",
+        "request_id": "trace-1",
+        "method": "GET",
+        "path": "/healthz",
+        "status": 200,
+        "duration_ms": records[-1]["duration_ms"],
+    }
+    assert isinstance(records[-1]["duration_ms"], float)
+
+
+def test_random_origin_preflight_is_rejected(client):
+    response = client.options(
+        "/api/v1/schools",
+        headers={
+            "Origin": "https://attacker.example",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_protected_api_requires_valid_bearer_token(client, monkeypatch):
+    monkeypatch.setenv("AUTH_REQUIRED", "true")
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", "test-secret-with-sufficient-length")
+    monkeypatch.setenv("AUTH_ALLOWED_EMAIL_DOMAINS", "adb.org")
+    get_settings.cache_clear()
+    try:
+        unauthenticated = client.get("/api/v1/schools")
+        invalid = client.get("/api/v1/schools", headers={"Authorization": "Bearer invalid"})
+    finally:
+        get_settings.cache_clear()
+
+    assert unauthenticated.status_code == 401
+    assert unauthenticated.json() == {
+        "error": {"code": "unauthorized", "message": "Authentication is required."}
+    }
+    assert invalid.status_code == 401
+    assert invalid.json()["error"]["code"] == "unauthorized"
+
+
+def test_valid_supabase_token_reaches_api_and_enforces_allowlist(client, monkeypatch):
+    issuer = "https://example.supabase.co/auth/v1"
+    secret = "test-secret-with-sufficient-length"
+    monkeypatch.setenv("AUTH_REQUIRED", "true")
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", secret)
+    monkeypatch.setenv("AUTH_ALLOWED_EMAIL_DOMAINS", "adb.org")
+    monkeypatch.setattr(schools, "fetch_schools", lambda connection, **kwargs: [{"school_id": "one"}])
+    get_settings.cache_clear()
+    now = int(time.time())
+
+    def token(email):
+        return jwt.encode(
+            {
+                "sub": "user-1",
+                "email": email,
+                "aud": "authenticated",
+                "iss": issuer,
+                "iat": now,
+                "exp": now + 300,
+            },
+            secret,
+            algorithm="HS256",
+        )
+
+    try:
+        allowed = client.get(
+            "/api/v1/schools", headers={"Authorization": f"Bearer {token('analyst@adb.org')}"}
+        )
+        denied = client.get(
+            "/api/v1/schools", headers={"Authorization": f"Bearer {token('user@example.org')}"}
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert allowed.status_code == 200
+    assert allowed.json() == [{"school_id": "one"}]
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "forbidden"
 
 
 def test_export_helpers_drop_header_like_rows(monkeypatch):
@@ -334,9 +443,17 @@ def test_scenarios_crud_routes(write_enabled_client, monkeypatch):
     assert get_response.status_code == 200
     assert get_response.json()["scenario_name"] == "Default"
     assert patch_response.status_code == 200
-    assert patch_response.json() == {"scenario_id": "scenario-1", "description": "patched"}
+    assert patch_response.json() == {
+        "scenario_id": "scenario-1",
+        "description": "patched",
+        "created_by": "local-development",
+    }
     assert archive_response.status_code == 200
-    assert archive_response.json() == {"scenario_id": "scenario-1", "archived": True}
+    assert archive_response.json() == {
+        "scenario_id": "scenario-1",
+        "archived": True,
+        "created_by": "local-development",
+    }
 
 
 def test_default_scenario_cannot_be_archived(write_enabled_client, monkeypatch):
@@ -431,9 +548,36 @@ def test_scoring_run_forwards_payload(write_enabled_client, monkeypatch):
         "config_overrides": {"stage1_quantile": 0.65},
         "scenario_name": "Scenario A",
         "description": "desc",
-        "created_by": "tester",
+        "created_by": "local-development",
         "persist": False,
         "is_default": True,
+    }
+
+
+def test_write_rate_limit_is_structured(write_enabled_client, monkeypatch):
+    monkeypatch.setenv("WRITE_RATE_LIMIT_PER_MINUTE", "1")
+    get_settings.cache_clear()
+    write_rate_limiter.clear()
+    monkeypatch.setattr(
+        scenarios,
+        "insert_scenario",
+        lambda connection, payload: {"scenario_id": "created", **payload},
+    )
+    payload = {"scenario_name": "Rate Test", "weights": {"need": 1.0}}
+    try:
+        first = write_enabled_client.post("/api/v1/scenarios", json=payload)
+        second = write_enabled_client.post("/api/v1/scenarios", json=payload)
+    finally:
+        get_settings.cache_clear()
+        write_rate_limiter.clear()
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.json() == {
+        "error": {
+            "code": "rate_limit_exceeded",
+            "message": "Write rate limit exceeded. Try again shortly.",
+        }
     }
 
 
@@ -540,10 +684,12 @@ def test_raster_status_uses_settings(client, fake_settings, monkeypatch):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["gcs_bucket"] == "adb-school-optimize"
-    assert body["gcs_project"] == "adb-sr"
+    assert body["configured"] is True
     assert body["layers"][0]["layer"] == "flood"
     assert body["layers"][1]["layer"] == "landcover"
+    assert "bucket" not in body["layers"][0]
+    assert "gcs_uri" not in body["layers"][0]
+    assert "google_application_credentials" not in body["layers"][0]
 
 
 def test_raster_metadata_and_overlay_routes(client, monkeypatch):

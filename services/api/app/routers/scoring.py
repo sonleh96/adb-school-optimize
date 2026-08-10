@@ -7,7 +7,11 @@ from fastapi import APIRouter, Depends
 from ..db import get_db
 from ..models.api import ScoringRunRequest
 from ..repository import run_and_persist_scenario
-from ..security import require_write_operations
+from ..security import (
+    CurrentUser,
+    require_write_operations,
+    require_write_rate_limit,
+)
 
 router = APIRouter(prefix="/api/v1/scoring", tags=["scoring"])
 
@@ -21,7 +25,9 @@ def _payload_dict(model):
 @router.post("/run")
 def run_scoring_endpoint(
     payload: ScoringRunRequest,
+    user: CurrentUser,
     _write_access: None = Depends(require_write_operations),
+    _rate_limit: None = Depends(require_write_rate_limit),
 ):
     data = _payload_dict(payload)
     with get_db() as connection:
@@ -31,7 +37,7 @@ def run_scoring_endpoint(
             config_overrides=data.get("config_overrides"),
             scenario_name=data.get("scenario_name"),
             description=data.get("description"),
-            created_by=data.get("created_by"),
+            created_by=user.actor,
             persist=data.get("persist", True),
             is_default=data.get("is_default", False),
         )
