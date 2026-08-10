@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
-import { getApiBaseUrl, fetchScenarios, runScenario, updateScenario } from "@/lib/api";
+import { getAuthenticatedAssetUrl, fetchScenarios, runScenario, updateScenario } from "@/lib/api";
 import { useScenariosQuery, useSchoolsQuery } from "@/lib/hooks";
 import { queryKeys } from "@/lib/queryKeys";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
@@ -261,10 +261,10 @@ export function ScenarioPanel() {
             <div className="scenario-data-actions">
               <p className="scenario-data-label">Data</p>
               <div className="scenario-data-buttons">
-                <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx`}>
+                <a className="button button-secondary" href={getAuthenticatedAssetUrl("exports/scores.xlsx")}>
                   Scores
                 </a>
-                <a className="button button-secondary" href={`${getApiBaseUrl()}/api/v1/exports/full.xlsx`}>
+                <a className="button button-secondary" href={getAuthenticatedAssetUrl("exports/full.xlsx")}>
                   Full
                 </a>
               </div>
@@ -459,7 +459,9 @@ export function ScenarioPanel() {
                               <td className="download-cell">
                                 <a
                                   className="icon-download-link"
-                                  href={`${getApiBaseUrl()}/api/v1/exports/scores.xlsx?scenario_id=${scenario.scenario_id}`}
+                                  href={getAuthenticatedAssetUrl(
+                                    `exports/scores.xlsx?scenario_id=${scenario.scenario_id}`
+                                  )}
                                   title={`Download ${scenario.scenario_name}`}
                                   onClick={(event) => event.stopPropagation()}
                                 >

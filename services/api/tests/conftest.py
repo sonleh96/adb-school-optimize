@@ -8,13 +8,20 @@ from types import SimpleNamespace
 import pytest
 from app.main import app
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
-from app.security import require_write_operations
+from app.security import require_write_operations, write_rate_limiter
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 def fake_connection():
     return object()
+
+
+@pytest.fixture(autouse=True)
+def reset_write_rate_limiter():
+    write_rate_limiter.clear()
+    yield
+    write_rate_limiter.clear()
 
 
 @pytest.fixture

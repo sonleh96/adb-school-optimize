@@ -36,7 +36,9 @@ click-plugins==1.1.1.2
 cligj==0.7.2
     # via rasterio
 cryptography==50.0.0
-    # via google-auth
+    # via
+    #   google-auth
+    #   pyjwt
 et-xmlfile==2.0.0
     # via openpyxl
 fastapi==0.141.1
@@ -119,6 +121,8 @@ pydantic-core==2.46.4
     # via pydantic
 pygments==2.20.0
     # via pytest
+pyjwt==2.13.0
+    # via rise-png-api (services/api/pyproject.toml)
 pyparsing==3.3.2
     # via rasterio
 pyproj==3.7.2
