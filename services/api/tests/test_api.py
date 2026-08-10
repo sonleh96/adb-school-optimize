@@ -325,6 +325,7 @@ def test_scenarios_crud_routes(write_enabled_client, monkeypatch):
     )
     get_response = client.get("/api/v1/scenarios/scenario-1")
     patch_response = client.patch("/api/v1/scenarios/scenario-1", json={"description": "patched"})
+    archive_response = client.patch("/api/v1/scenarios/scenario-1", json={"archived": True})
 
     assert list_response.status_code == 200
     assert list_response.json() == [{"scenario_id": "scenario-1"}]
@@ -334,6 +335,20 @@ def test_scenarios_crud_routes(write_enabled_client, monkeypatch):
     assert get_response.json()["scenario_name"] == "Default"
     assert patch_response.status_code == 200
     assert patch_response.json() == {"scenario_id": "scenario-1", "description": "patched"}
+    assert archive_response.status_code == 200
+    assert archive_response.json() == {"scenario_id": "scenario-1", "archived": True}
+
+
+def test_default_scenario_cannot_be_archived(write_enabled_client, monkeypatch):
+    def reject_archive(connection, scenario_id, payload):
+        raise ValueError("Default scenarios cannot be archived.")
+
+    monkeypatch.setattr(scenarios, "update_scenario", reject_archive)
+
+    response = write_enabled_client.patch("/api/v1/scenarios/scenario-1", json={"archived": True})
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Default scenarios cannot be archived."
 
 
 def test_create_scenario_validation_error_is_structured(write_enabled_client):

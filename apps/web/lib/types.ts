@@ -62,6 +62,7 @@ export type ScenarioRecord = {
   run_manifest?: Record<string, unknown> | null;
   created_by?: string | null;
   is_default: boolean;
+  archived_at?: string | null;
   created_at?: string;
   updated_at?: string;
 };

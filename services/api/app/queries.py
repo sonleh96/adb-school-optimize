@@ -193,16 +193,18 @@ limit 1
 
 SCENARIOS_SQL = """
 select scenario_id, scenario_name, description, weights, config,
-       created_by, is_default, created_at, updated_at
+       created_by, is_default, archived_at, created_at, updated_at
 from scoring_scenarios
+where archived_at is null
 order by updated_at desc, scenario_name
 """
 
 SCENARIO_SQL = """
 select scenario_id, scenario_name, description, weights, config,
-       created_by, is_default, created_at, updated_at
+       created_by, is_default, archived_at, created_at, updated_at
 from scoring_scenarios
 where scenario_id = %(scenario_id)s::uuid
+  and archived_at is null
 limit 1
 """
 

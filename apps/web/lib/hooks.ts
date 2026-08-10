@@ -23,6 +23,7 @@ export function useSchoolsQuery(
     province?: string;
     scenarioId?: string;
     limit?: number;
+    enabled?: boolean;
   } = {}
 ) {
   const limit = params.limit ?? 10000;
@@ -40,6 +41,7 @@ export function useSchoolsQuery(
         scenarioId: params.scenarioId,
         limit,
       }),
+    enabled: params.enabled ?? true,
   });
 }
 
