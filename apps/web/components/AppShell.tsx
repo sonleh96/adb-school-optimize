@@ -51,8 +51,32 @@ function ActiveScenarioBadge() {
   );
 }
 
+function AuthUserSlot() {
+  const [authUser, setAuthUser] = useState<{ required: boolean; email: string | null } | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/auth/user", { cache: "no-store", signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((user) => setAuthUser(user))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  if (!authUser?.required || !authUser.email) return null;
+  return (
+    <div className="auth-user-slot" title={authUser.email}>
+      <span>{authUser.email}</span>
+      <form action="/auth/sign-out" method="post">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  if (pathname === "/sign-in") return children;
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#e8ecf1] text-[var(--color-ink)]">
@@ -101,10 +125,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <div className="flex shrink-0 items-center gap-1.5">
           <ActiveScenarioBadge />
+          <AuthUserSlot />
           <Link
             href="/methodology-lab"
             className="rounded-md border border-[rgba(180,35,24,0.22)] bg-[#fff5f3] px-2 py-1 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-[var(--color-danger-ink)]"
-            title="Research prototype — rankings are exploratory"
+            title="Research prototype - rankings are exploratory"
           >
             Research
           </Link>
