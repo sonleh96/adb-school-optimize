@@ -49,17 +49,22 @@ def _raster_metadata_response(layer: str, district: str, province: str | None, o
 @router.get("/status")
 def raster_status():
     settings = get_settings()
+    layer_statuses = [
+        settings.raster_layer_status("flood"),
+        settings.raster_layer_status("landcover"),
+        settings.raster_layer_status("luminosity"),
+        settings.raster_layer_status("elevation"),
+    ]
     return {
-        "gcs_bucket": settings.gcs_bucket,
-        "gcs_project": settings.gcs_project,
-        "credentials_mode": "service_account_file"
-        if settings.google_application_credentials
-        else "adc_or_workload_identity",
+        "configured": all(bool(status["configured"]) for status in layer_statuses),
         "layers": [
-            settings.raster_layer_status("flood"),
-            settings.raster_layer_status("landcover"),
-            settings.raster_layer_status("luminosity"),
-            settings.raster_layer_status("elevation"),
+            {
+                "layer": status["layer"],
+                "configured": status["configured"],
+                "declared_crs": status["declared_crs"],
+                "missing_settings": status["missing_settings"],
+            }
+            for status in layer_statuses
         ],
     }
 

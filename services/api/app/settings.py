@@ -85,6 +85,12 @@ class Settings:
     raster_cache_ttl_seconds: int
     cors_origins_raw: str | None
     write_operations_enabled: bool
+    auth_required: bool
+    supabase_jwt_secret: str | None
+    supabase_jwt_audience: str
+    auth_allowed_email_domains_raw: str | None
+    auth_allowed_emails_raw: str | None
+    write_rate_limit_per_minute: int
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -124,6 +130,12 @@ class Settings:
                 "http://localhost:3000,http://127.0.0.1:3000",
             ),
             write_operations_enabled=_env_flag("WRITE_OPERATIONS_ENABLED"),
+            auth_required=_env_flag("AUTH_REQUIRED"),
+            supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET"),
+            supabase_jwt_audience=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
+            auth_allowed_email_domains_raw=os.getenv("AUTH_ALLOWED_EMAIL_DOMAINS"),
+            auth_allowed_emails_raw=os.getenv("AUTH_ALLOWED_EMAILS"),
+            write_rate_limit_per_minute=max(1, int(os.getenv("WRITE_RATE_LIMIT_PER_MINUTE", "10"))),
         )
 
     def validate_database(self) -> None:
@@ -137,6 +149,31 @@ class Settings:
         if not self.cors_origins_raw:
             return []
         return [origin.strip() for origin in self.cors_origins_raw.split(",") if origin.strip()]
+
+    @property
+    def supabase_jwt_issuer(self) -> str | None:
+        return f"{self.supabase_url.rstrip('/')}/auth/v1" if self.supabase_url else None
+
+    @property
+    def supabase_jwks_url(self) -> str | None:
+        return f"{self.supabase_jwt_issuer}/.well-known/jwks.json" if self.supabase_jwt_issuer else None
+
+    def is_allowed_email(self, email: str | None) -> bool:
+        normalized = (email or "").strip().lower()
+        if not normalized:
+            return False
+        allowed_emails = {
+            item.strip().lower() for item in (self.auth_allowed_emails_raw or "").split(",") if item.strip()
+        }
+        allowed_domains = {
+            item.strip().lower()
+            for item in (self.auth_allowed_email_domains_raw or "").split(",")
+            if item.strip()
+        }
+        if not allowed_emails and not allowed_domains:
+            return True
+        domain = normalized.rsplit("@", 1)[-1] if "@" in normalized else ""
+        return normalized in allowed_emails or domain in allowed_domains
 
     def raster_source_path(self, layer: str) -> str | None:
         layer = layer.lower()

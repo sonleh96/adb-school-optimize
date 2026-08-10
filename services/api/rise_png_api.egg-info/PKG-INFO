@@ -14,6 +14,7 @@ Requires-Dist: openpyxl
 Requires-Dist: python-multipart
 Requires-Dist: google-cloud-storage
 Requires-Dist: rasterio
+Requires-Dist: PyJWT[crypto]
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: httpx; extra == "dev"
