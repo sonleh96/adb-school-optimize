@@ -28,6 +28,7 @@ export const queryKeys = {
       province?: string;
       district?: string;
       fields?: "scores" | "indicator" | "full";
+      simplifyTolerance?: number;
     } = {}
   ) => ["choropleth", params] as const,
   scenarios: ["scenarios"] as const,
