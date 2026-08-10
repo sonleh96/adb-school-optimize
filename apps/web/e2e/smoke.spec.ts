@@ -24,6 +24,54 @@ test("Overview interactions do not accumulate map renderers", async ({ page }) =
   await expect.poll(() => page.locator("canvas").count()).toBeLessThanOrEqual(Math.max(2, baseline + 1));
 });
 
+test("Overview score values fit inside the Priority and Need columns", async ({ page }) => {
+  await page.goto("/all-schools");
+  await expect(page.getByRole("heading", { name: "Ranked schools" })).toBeVisible();
+
+  const scoreCells = page.locator(".virtual-table-row").first().locator(".virtual-cell-score");
+  await expect(scoreCells.nth(0)).toContainText("82.0");
+  await expect(scoreCells.nth(1)).toContainText("74.0");
+
+  for (const scoreCell of [scoreCells.nth(0), scoreCells.nth(1)]) {
+    const geometry = await scoreCell.evaluate((cell) => {
+      const pill = cell.querySelector<HTMLElement>(".score-pill");
+      if (!pill) return null;
+      const cellRect = cell.getBoundingClientRect();
+      const pillRect = pill.getBoundingClientRect();
+      return {
+        cellLeft: cellRect.left,
+        cellRight: cellRect.right,
+        pillLeft: pillRect.left,
+        pillRight: pillRect.right,
+      };
+    });
+
+    expect(geometry).not.toBeNull();
+    expect(geometry!.pillLeft).toBeGreaterThanOrEqual(geometry!.cellLeft - 0.5);
+    expect(geometry!.pillRight).toBeLessThanOrEqual(geometry!.cellRight + 0.5);
+  }
+});
+
+test("Overview score and density legends do not overlap", async ({ page }) => {
+  await page.goto("/all-schools");
+  const scoreLegends = page.locator(".map-overlay-legend");
+  const densityLegend = page.locator(".national-density-legend");
+  await expect(scoreLegends).toBeVisible();
+  await expect(densityLegend).toBeVisible();
+
+  const scoreRect = await scoreLegends.boundingBox();
+  const densityRect = await densityLegend.boundingBox();
+  expect(scoreRect).not.toBeNull();
+  expect(densityRect).not.toBeNull();
+
+  const intersects =
+    scoreRect!.x < densityRect!.x + densityRect!.width &&
+    scoreRect!.x + scoreRect!.width > densityRect!.x &&
+    scoreRect!.y < densityRect!.y + densityRect!.height &&
+    scoreRect!.y + scoreRect!.height > densityRect!.y;
+  expect(intersects).toBe(false);
+});
+
 test("District indicator state round-trips through the URL", async ({ page }) => {
   await page.goto("/district-explorer");
   await page.getByLabel("Indicator").selectOption("Conflict Events");
