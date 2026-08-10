@@ -27,6 +27,7 @@ class ScenarioUpdate(BaseModel):
     config: dict[str, Any] | None = None
     created_by: str | None = None
     is_default: bool | None = None
+    archived: bool | None = None
 
 
 class ScoringRunRequest(BaseModel):

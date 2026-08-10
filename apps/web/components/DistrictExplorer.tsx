@@ -9,6 +9,8 @@ import { DistrictScoreLegend } from "@/components/DistrictScoreLegend";
 import { SelectionDetailCard } from "@/components/SelectionDetailCard";
 import { getDistrictScore, getTopDistrictIds, sortDistrictsByScore } from "@/lib/districtScores";
 import { districtIndicatorColor, districtIndicatorField } from "@/lib/districtIndicatorPalette";
+import { formatDistrictIndicator } from "@/lib/format";
+import { indicatorMetadata } from "@/lib/indicatorMetadata";
 import { useChoroplethQuery, useIndicatorsQuery } from "@/lib/hooks";
 import type { DistrictRecord } from "@/lib/types";
 import { mergeUrlState, useShareableUrlState, type MapView, type UrlState } from "@/lib/urlState";
@@ -37,6 +39,7 @@ export function DistrictExplorer() {
   const [scenarioId, setScenarioId] = useState<string | null>(initialState.scenario);
   const selectedDistrictRowRef = useRef<HTMLTableRowElement>(null);
   const indicatorField = districtIndicatorField(indicator);
+  const indicatorInfo = indicatorMetadata(indicator);
 
   const indicatorsQuery = useIndicatorsQuery();
   const choroplethQuery = useChoroplethQuery({ indicator, fields: "indicator" });
@@ -281,7 +284,9 @@ export function DistrictExplorer() {
           <div className="float-panel-head">
             <div>
               <h2 className="float-panel-title">Distribution</h2>
-              <p className="float-panel-subtitle">{indicator}</p>
+              <p className="float-panel-subtitle">
+                {indicator} · {indicatorInfo.unit}
+              </p>
             </div>
           </div>
           <div className="float-panel-body">
@@ -316,10 +321,16 @@ export function DistrictExplorer() {
                     );
                   })}
                 </div>
-                <div className="distribution-scheme-row">
+                <div className="distribution-axis" aria-hidden="true">
+                  <span>{formatDistrictIndicator(indicator, distribution.min)}</span>
+                  <span>{formatDistrictIndicator(indicator, distribution.max)}</span>
+                </div>
+                <p className="distribution-direction">{indicatorInfo.direction}</p>
+                <div className="distribution-scheme-row" role="group" aria-label="Histogram emphasis">
                   <button
                     type="button"
                     className={`distribution-scheme-button ${distributionScheme === "everyone" ? "is-active" : ""}`}
+                    aria-pressed={distributionScheme === "everyone"}
                     onClick={() => setDistributionScheme("everyone")}
                   >
                     EVERYONE
@@ -327,6 +338,7 @@ export function DistrictExplorer() {
                   <button
                     type="button"
                     className={`distribution-scheme-button ${distributionScheme === "selected_group" ? "is-active" : ""}`}
+                    aria-pressed={distributionScheme === "selected_group"}
                     onClick={() => setDistributionScheme("selected_group")}
                   >
                     SELECTED GROUP
