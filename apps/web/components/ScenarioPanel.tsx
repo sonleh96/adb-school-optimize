@@ -8,11 +8,9 @@ import { getAuthenticatedAssetUrl, fetchScenarios, runScenario, updateScenario }
 import { useScenariosQuery, useSchoolsQuery } from "@/lib/hooks";
 import { queryKeys } from "@/lib/queryKeys";
 import { SELECTED_SCENARIO_STORAGE_KEY } from "@/lib/scenarioSelection";
-import { displayWeightLabel } from "@/lib/scenarioWeights";
+import { displayWeightLabel, normalizeWeightOverrides, type WeightOverrides } from "@/lib/scenarioWeights";
 import { VirtualizedSchoolTable } from "@/components/VirtualizedSchoolTable";
 import type { ScenarioRecord } from "@/lib/types";
-
-type WeightOverrides = Record<string, Record<string, number>>;
 
 const DEFAULT_OVERRIDES: WeightOverrides = {
   need: { S: 0.55, A: 0.25, R_phys: 0.2 },
@@ -89,7 +87,7 @@ export function ScenarioPanel() {
     setSelectedScenarioId(scenario.scenario_id);
     setScenarioName(scenario.scenario_name);
     setDescription(scenario.description ?? "");
-    setWeightOverrides(normalizeWeightOverrides(scenario.weights));
+    setWeightOverrides(normalizeWeightOverrides(scenario.weights, DEFAULT_OVERRIDES));
     window.localStorage.setItem(SELECTED_SCENARIO_STORAGE_KEY, scenario.scenario_id);
     if (announce) {
       setStatus(`Loaded scenario "${scenario.scenario_name}".`);
@@ -180,7 +178,7 @@ export function ScenarioPanel() {
       if (result.scenario) {
         const saved = latest.find((scenario) => scenario.scenario_id === result.scenario?.scenario_id);
         if (saved) {
-          applyScenario(saved);
+          applyScenario(saved, false);
         } else {
           setSelectedScenarioId(result.scenario.scenario_id);
         }
@@ -542,37 +540,6 @@ function buildEditableWeightGroups(weights: WeightOverrides): EditableWeightGrou
       percent: roundToOneDecimal(finite(entryValue) * 100),
     })),
   }));
-}
-
-function normalizeWeightOverrides(weights: unknown): WeightOverrides {
-  if (!weights || typeof weights !== "object" || Array.isArray(weights)) {
-    return normalizeWeightOverrides(DEFAULT_OVERRIDES);
-  }
-
-  const next: WeightOverrides = {};
-  for (const [groupKey, groupValue] of Object.entries(weights as Record<string, unknown>)) {
-    if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) continue;
-
-    const numericEntries = Object.entries(groupValue as Record<string, unknown>)
-      .map(([entryKey, entryValue]) => [entryKey, parseFinite(entryValue)] as const)
-      .filter((entry): entry is readonly [string, number] => entry[1] != null);
-
-    if (!numericEntries.length) continue;
-    const sum = numericEntries.reduce((total, [, value]) => total + value, 0);
-    const normalizedGroup: Record<string, number> = {};
-
-    if (sum <= 0) {
-      const evenShare = 1 / numericEntries.length;
-      for (const [entryKey] of numericEntries) normalizedGroup[entryKey] = evenShare;
-    } else {
-      for (const [entryKey, value] of numericEntries) normalizedGroup[entryKey] = value / sum;
-    }
-
-    next[groupKey] = normalizedGroup;
-  }
-
-  if (Object.keys(next).length) return next;
-  return normalizeWeightOverrides(DEFAULT_OVERRIDES);
 }
 
 function parseFinite(value: unknown): number | null {

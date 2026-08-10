@@ -3,6 +3,8 @@ export type WeightGroup = {
   entries: Array<{ key: string; label: string; value: string }>;
 };
 
+export type WeightOverrides = Record<string, Record<string, number>>;
+
 const WEIGHT_GROUP_ORDER = [
   "Need",
   "Impact",
@@ -57,6 +59,26 @@ export function buildWeightGroups(weights: Record<string, unknown> | undefined):
 
 export function displayWeightLabel(key: string): string {
   return WEIGHT_LABEL_ALIASES[key] ?? key;
+}
+
+export function normalizeWeightOverrides(weights: unknown, fallback: WeightOverrides = {}): WeightOverrides {
+  const normalized: WeightOverrides = {};
+  const groups = weights && typeof weights === "object" && !Array.isArray(weights) ? weights : {};
+  for (const [groupKey, groupValue] of Object.entries(groups as Record<string, unknown>)) {
+    if (!groupValue || typeof groupValue !== "object" || Array.isArray(groupValue)) continue;
+    const entries = Object.entries(groupValue as Record<string, unknown>)
+      .map(([key, value]) => [key, toFiniteNumber(value)] as const)
+      .filter((entry): entry is readonly [string, number] => entry[1] != null);
+    if (!entries.length) continue;
+
+    const sum = entries.reduce((total, [, value]) => total + value, 0);
+    normalized[groupKey] = Object.fromEntries(
+      entries.map(([key, value]) => [key, sum > 0 ? value / sum : 1 / entries.length])
+    );
+  }
+
+  if (Object.keys(normalized).length) return normalized;
+  return Object.keys(fallback).length ? normalizeWeightOverrides(fallback, {}) : {};
 }
 
 function startCase(value: string): string {
