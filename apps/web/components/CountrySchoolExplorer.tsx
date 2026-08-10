@@ -41,7 +41,7 @@ export function CountrySchoolExplorer() {
   const [filters, setFilters] = useState<SchoolFilters>(initialState.filters);
   const [mapCapture, setMapCapture] = useState<(() => Promise<Blob>) | null>(null);
 
-  const choroplethQuery = useChoroplethQuery({ fields: "scores" });
+  const choroplethQuery = useChoroplethQuery({ fields: "scores", simplifyTolerance: 0.01 });
   const schoolsQuery = useSchoolsQuery({ limit: 10000, scenarioId: scenarioId ?? undefined });
   const scenariosQuery = useScenariosQuery();
 

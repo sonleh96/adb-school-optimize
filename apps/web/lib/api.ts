@@ -58,6 +58,7 @@ export async function fetchLayerFeatures(params: {
   district?: string;
   limit?: number;
   bbox4326?: [number, number, number, number];
+  signal?: AbortSignal;
 }): Promise<VectorLayerFeaturesResponse> {
   const search = new URLSearchParams();
   if (params.province) search.set("province", params.province);
@@ -70,7 +71,9 @@ export async function fetchLayerFeatures(params: {
     search.set("max_lat", String(params.bbox4326[3]));
   }
   const suffix = search.toString() ? `?${search.toString()}` : "";
-  return apiFetch<VectorLayerFeaturesResponse>(`/api/v1/meta/layers/${params.layerKey}/features${suffix}`);
+  return apiFetch<VectorLayerFeaturesResponse>(`/api/v1/meta/layers/${params.layerKey}/features${suffix}`, {
+    signal: params.signal,
+  });
 }
 
 export async function fetchRasterMetadata(params: {
@@ -78,12 +81,15 @@ export async function fetchRasterMetadata(params: {
   district: string;
   province?: string;
   opacity?: number;
+  signal?: AbortSignal;
 }): Promise<RasterMetadataResponse> {
   const search = new URLSearchParams();
   search.set("district", params.district);
   if (params.province) search.set("province", params.province);
   if (params.opacity != null) search.set("opacity", String(params.opacity));
-  return apiFetch<RasterMetadataResponse>(`/api/v1/rasters/${params.layer}/metadata?${search.toString()}`);
+  return apiFetch<RasterMetadataResponse>(`/api/v1/rasters/${params.layer}/metadata?${search.toString()}`, {
+    signal: params.signal,
+  });
 }
 
 export function buildRasterOverlayUrl(params: {
@@ -130,6 +136,7 @@ export async function fetchDistrictChoropleth(params: {
   province?: string;
   district?: string;
   fields?: "scores" | "indicator" | "full";
+  simplifyTolerance?: number;
 }): Promise<{
   default_indicator: string;
   selected_indicator: string;
@@ -141,6 +148,9 @@ export async function fetchDistrictChoropleth(params: {
   if (params.province) search.set("province", params.province);
   if (params.district) search.set("district", params.district);
   if (params.fields) search.set("fields", params.fields);
+  if (params.simplifyTolerance != null) {
+    search.set("simplify_tolerance", String(params.simplifyTolerance));
+  }
   return apiFetch<{
     default_indicator: string;
     selected_indicator: string;

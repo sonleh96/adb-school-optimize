@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import {
   EMPTY_SCHOOL_FILTERS,
@@ -181,7 +181,6 @@ export function buildShareableUrl(state: UrlState): string {
 
 export function useShareableUrlState() {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const latestSearchRef = useRef(searchParams.toString());
   const initialState = useMemo(() => parseUrlState(searchParams), [searchParams]);
@@ -196,9 +195,9 @@ export function useShareableUrlState() {
       const currentSearch = new URLSearchParams(latestSearchRef.current);
       const search = serializeUrlState(currentSearch, patch);
       latestSearchRef.current = search;
-      router.replace(`${pathname}${search ? `?${search}` : ""}`, { scroll: false });
+      window.history.replaceState(window.history.state, "", `${pathname}${search ? `?${search}` : ""}`);
     },
-    [pathname, router]
+    [pathname]
   );
 
   return { initialState, replaceState };

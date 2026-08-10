@@ -2,7 +2,7 @@
 
 import L, { LatLngBounds } from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { FeatureCollection, Geometry, Point } from "geojson";
+import type { Feature, FeatureCollection, Geometry, Point } from "geojson";
 import {
   Circle,
   GeoJSON,
@@ -73,6 +73,7 @@ const VECTOR_LIMIT_DEFAULT = 5000;
 const ACCESS_POINTS_MAX_RENDER = 8000;
 const ACCESS_LAYER_MIN_ZOOM = 9;
 const HEAVY_LAYER_MIN_ZOOM = 8;
+const LAYER_CACHE_MAX_ENTRIES = 12;
 const CATCHMENT_RINGS = [
   { label: "Walking proximity (4 km)", radius: 4000, color: "#059669" },
   { label: "Cycling proximity (7 km)", radius: 7000, color: "#0891b2" },
@@ -192,14 +193,21 @@ function ViewportBoundsWatcher({
   onChange: (state: { bbox: Bbox4326; zoom: number; mapView: MapView }) => void;
 }) {
   const map = useMap();
+  const lastSignatureRef = useRef<string>("");
   const publish = useCallback(() => {
+    const bbox = boundsToBbox4326(map.getBounds());
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const signature = [...bbox, center.lat, center.lng, zoom].map((value) => value.toFixed(6)).join(":");
+    if (signature === lastSignatureRef.current) return;
+    lastSignatureRef.current = signature;
     onChange({
-      bbox: boundsToBbox4326(map.getBounds()),
-      zoom: map.getZoom(),
+      bbox,
+      zoom,
       mapView: {
-        lat: map.getCenter().lat,
-        lng: map.getCenter().lng,
-        zoom: map.getZoom(),
+        lat: center.lat,
+        lng: center.lng,
+        zoom,
       },
     });
   }, [map, onChange]);
@@ -234,6 +242,18 @@ function toFeatureCollection(features: VectorLayerFeature[]) {
   };
 }
 
+function vectorFeatureSignature(features: VectorLayerFeature[]): string {
+  let hash = 2166136261;
+  for (const feature of features) {
+    const value = String(feature.vector_feature_id ?? feature.source_feature_id ?? "");
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return `${features.length}-${(hash >>> 0).toString(36)}`;
+}
+
 function rasterBounds(metadata: RasterMetadataResponse): [[number, number], [number, number]] {
   const [minX, minY, maxX, maxY] = metadata.bounds_4326;
   return [
@@ -262,6 +282,24 @@ function cacheKey(
 ): string {
   const bboxPart = bbox4326 ? bbox4326.map((value) => value.toFixed(5)).join(",") : "none";
   return `${prefix}|province=${province ?? ""}|district=${district}|bbox=${bboxPart}`;
+}
+
+function getCachedLayer(cache: Map<string, LayerCacheValue>, key: string): LayerCacheValue | undefined {
+  const value = cache.get(key);
+  if (!value) return undefined;
+  cache.delete(key);
+  cache.set(key, value);
+  return value;
+}
+
+function cacheLayer(cache: Map<string, LayerCacheValue>, key: string, value: LayerCacheValue) {
+  cache.delete(key);
+  cache.set(key, value);
+  while (cache.size > LAYER_CACHE_MAX_ENTRIES) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey == null) break;
+    cache.delete(oldestKey);
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -345,6 +383,34 @@ function selectedAirField(activeLayers: Set<SchoolLayerKey>): "aqi_us_mean" | "a
   if (activeLayers.has("air_quality_max")) return "aqi_us_max";
   if (activeLayers.has("air_quality_mean")) return "aqi_us_mean";
   return null;
+}
+
+function AccessGeoJson({
+  collection,
+  opacity,
+}: {
+  collection: ReturnType<typeof toFeatureCollection>;
+  opacity: number;
+}) {
+  const style = useCallback(
+    (feature?: Feature<Geometry>): L.CircleMarkerOptions => {
+      const layerKey = String(feature?.properties?.layer_key ?? "");
+      const color = accessLayerColor(layerKey);
+      return {
+        radius: 3,
+        color,
+        fillColor: color,
+        opacity,
+        fillOpacity: opacity,
+        weight: 0.6,
+      };
+    },
+    [opacity]
+  );
+
+  return (
+    <GeoJSON data={collection} pointToLayer={(_feature, latlng) => L.circleMarker(latlng)} style={style} />
+  );
 }
 
 export function SchoolMap({
@@ -445,9 +511,9 @@ export function SchoolMap({
   }, [viewportBbox]);
 
   const loadVectorLayer = useCallback(
-    async (layerKey: string, limit: number): Promise<VectorLayerFeaturesResponse> => {
+    async (layerKey: string, limit: number, signal: AbortSignal): Promise<VectorLayerFeaturesResponse> => {
       const key = cacheKey(`vector:${layerKey}:limit=${limit}`, district, province, debouncedViewportBbox);
-      const cached = cacheRef.current.get(key);
+      const cached = getCachedLayer(cacheRef.current, key);
       if (cached) return cached as VectorLayerFeaturesResponse;
       const response = await fetchLayerFeatures({
         layerKey,
@@ -455,20 +521,24 @@ export function SchoolMap({
         district,
         limit,
         bbox4326: debouncedViewportBbox ?? undefined,
+        signal,
       });
-      cacheRef.current.set(key, response);
+      cacheLayer(cacheRef.current, key, response);
       return response;
     },
     [debouncedViewportBbox, district, province]
   );
 
   const loadRasterLayer = useCallback(
-    async (layer: "flood" | "landcover" | "elevation" | "luminosity"): Promise<RasterMetadataResponse> => {
+    async (
+      layer: "flood" | "landcover" | "elevation" | "luminosity",
+      signal: AbortSignal
+    ): Promise<RasterMetadataResponse> => {
       const key = cacheKey(`raster:${layer}`, district, province, null);
-      const cached = cacheRef.current.get(key);
+      const cached = getCachedLayer(cacheRef.current, key);
       if (cached) return cached as RasterMetadataResponse;
-      const response = await fetchRasterMetadata({ layer, district, province });
-      cacheRef.current.set(key, response);
+      const response = await fetchRasterMetadata({ layer, district, province, signal });
+      cacheLayer(cacheRef.current, key, response);
       return response;
     },
     [district, province]
@@ -476,6 +546,7 @@ export function SchoolMap({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const update = async () => {
       const next: LayerState = {
         roads: [],
@@ -538,7 +609,7 @@ export function SchoolMap({
 
         if (activeLayers.has("roads")) {
           jobs.push(
-            loadVectorLayer("roads", VECTOR_LIMIT_DEFAULT).then((response) => {
+            loadVectorLayer("roads", VECTOR_LIMIT_DEFAULT, controller.signal).then((response) => {
               next.roads = response.items;
             })
           );
@@ -546,7 +617,7 @@ export function SchoolMap({
 
         if (activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max")) {
           jobs.push(
-            loadVectorLayer("air_quality", VECTOR_LIMIT_DEFAULT).then((response) => {
+            loadVectorLayer("air_quality", VECTOR_LIMIT_DEFAULT, controller.signal).then((response) => {
               next.air_quality = response.items;
             })
           );
@@ -560,8 +631,8 @@ export function SchoolMap({
         if (canLoadAccess && activeLayers.has("access_walk")) {
           jobs.push(
             Promise.all([
-              loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT),
-              loadVectorLayer("pop_no_walk", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_access_walk", VECTOR_LIMIT_DEFAULT, controller.signal),
+              loadVectorLayer("pop_no_walk", VECTOR_LIMIT_DEFAULT, controller.signal),
             ]).then((responses) => {
               const merged = responses.flatMap((response) => response.items);
               accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
@@ -573,8 +644,8 @@ export function SchoolMap({
         if (canLoadAccess && activeLayers.has("access_cycle")) {
           jobs.push(
             Promise.all([
-              loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT),
-              loadVectorLayer("pop_no_cycle", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_access_cycle", VECTOR_LIMIT_DEFAULT, controller.signal),
+              loadVectorLayer("pop_no_cycle", VECTOR_LIMIT_DEFAULT, controller.signal),
             ]).then((responses) => {
               const merged = responses.flatMap((response) => response.items);
               accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
@@ -586,8 +657,8 @@ export function SchoolMap({
         if (canLoadAccess && activeLayers.has("access_drive")) {
           jobs.push(
             Promise.all([
-              loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT),
-              loadVectorLayer("pop_no_drive", VECTOR_LIMIT_DEFAULT),
+              loadVectorLayer("pop_access_drive", VECTOR_LIMIT_DEFAULT, controller.signal),
+              loadVectorLayer("pop_no_drive", VECTOR_LIMIT_DEFAULT, controller.signal),
             ]).then((responses) => {
               const merged = responses.flatMap((response) => response.items);
               accessThinned = accessThinned || merged.length > ACCESS_POINTS_MAX_RENDER;
@@ -598,7 +669,7 @@ export function SchoolMap({
 
         if (activeLayers.has("flood")) {
           jobs.push(
-            loadRasterLayer("flood").then((response) => {
+            loadRasterLayer("flood", controller.signal).then((response) => {
               next.flood = response;
             })
           );
@@ -606,7 +677,7 @@ export function SchoolMap({
 
         if (activeLayers.has("landcover")) {
           jobs.push(
-            loadRasterLayer("landcover").then((response) => {
+            loadRasterLayer("landcover", controller.signal).then((response) => {
               next.landcover = response;
             })
           );
@@ -614,7 +685,7 @@ export function SchoolMap({
 
         if (activeLayers.has("elevation")) {
           jobs.push(
-            loadRasterLayer("elevation").then((response) => {
+            loadRasterLayer("elevation", controller.signal).then((response) => {
               next.elevation = response;
             })
           );
@@ -622,7 +693,7 @@ export function SchoolMap({
 
         if (activeLayers.has("luminosity")) {
           jobs.push(
-            loadRasterLayer("luminosity").then((response) => {
+            loadRasterLayer("luminosity", controller.signal).then((response) => {
               next.luminosity = response;
             })
           );
@@ -652,6 +723,7 @@ export function SchoolMap({
         }
       } catch (error) {
         if (cancelled) return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
         const message = error instanceof Error ? error.message : "Failed to load selected layers.";
         setLayerStatus(message);
       }
@@ -660,6 +732,7 @@ export function SchoolMap({
     update();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [
     activeLayers,
@@ -695,6 +768,59 @@ export function SchoolMap({
       }),
     };
   }, [districtFeatures, districtScoreField]);
+  const districtStyle = useCallback(
+    (feature?: Feature<Geometry>): L.PathOptions => {
+      const value = typeof feature?.properties?.value === "number" ? feature.properties.value : null;
+      const normalized =
+        value == null || districtScoreRange.max === districtScoreRange.min
+          ? 0
+          : (value - districtScoreRange.min) / (districtScoreRange.max - districtScoreRange.min);
+      return {
+        color: "rgba(15, 31, 51, 0.28)",
+        weight: 1,
+        fillColor: districtIndicatorColor(
+          districtScoreField === "priority" ? "Priority Score" : "Need Score",
+          normalized
+        ),
+        fillOpacity: value == null ? 0.12 : 0.48,
+      };
+    },
+    [districtScoreField, districtScoreRange.max, districtScoreRange.min]
+  );
+  const roadsCollection = useMemo(() => toFeatureCollection(layerState.roads), [layerState.roads]);
+  const roadsCollectionKey = useMemo(() => vectorFeatureSignature(layerState.roads), [layerState.roads]);
+  const airQualityCollection = useMemo(
+    () => toFeatureCollection(layerState.air_quality),
+    [layerState.air_quality]
+  );
+  const airQualityCollectionKey = useMemo(
+    () => vectorFeatureSignature(layerState.air_quality),
+    [layerState.air_quality]
+  );
+  const accessWalkCollection = useMemo(
+    () => toFeatureCollection(layerState.access_walk),
+    [layerState.access_walk]
+  );
+  const accessWalkCollectionKey = useMemo(
+    () => vectorFeatureSignature(layerState.access_walk),
+    [layerState.access_walk]
+  );
+  const accessCycleCollection = useMemo(
+    () => toFeatureCollection(layerState.access_cycle),
+    [layerState.access_cycle]
+  );
+  const accessCycleCollectionKey = useMemo(
+    () => vectorFeatureSignature(layerState.access_cycle),
+    [layerState.access_cycle]
+  );
+  const accessDriveCollection = useMemo(
+    () => toFeatureCollection(layerState.access_drive),
+    [layerState.access_drive]
+  );
+  const accessDriveCollectionKey = useMemo(
+    () => vectorFeatureSignature(layerState.access_drive),
+    [layerState.access_drive]
+  );
 
   const schoolCollection = useMemo<FeatureCollection<Point>>(() => {
     return {
@@ -735,28 +861,49 @@ export function SchoolMap({
     };
   }, [enableNationalDensity, schools]);
   const showNationalDensity = enableNationalDensity && viewportZoom < NATIONAL_DENSITY_ZOOM_THRESHOLD;
-
-  const renderAccessLayer = (features: VectorLayerFeature[], opacity: number) => {
-    if (!features.length) return null;
-    return (
-      <GeoJSON
-        data={toFeatureCollection(features)}
-        pointToLayer={(feature, latlng) => {
-          const layerKey = String(feature?.properties?.layer_key ?? "");
-          const color = accessLayerColor(layerKey);
-          return L.circleMarker(latlng, {
-            radius: 3,
-            color,
-            fillColor: color,
-            opacity,
-            fillOpacity: opacity,
-            weight: 0.6,
-            renderer: L.canvas({ padding: 0.5 }),
-          });
-        }}
-      />
-    );
-  };
+  const schoolMarkerStyle = useCallback(
+    (feature?: Feature<Geometry>): L.CircleMarkerOptions => {
+      const props = asRecord(feature?.properties);
+      const score =
+        scoreField === "priority"
+          ? typeof props.priority === "number"
+            ? props.priority
+            : null
+          : typeof props.need === "number"
+            ? props.need
+            : null;
+      const priorityScore = typeof props.priority === "number" ? props.priority : null;
+      const needScore = typeof props.need === "number" ? props.need : null;
+      const isSelected = props.school_id === selectedSchoolId;
+      return {
+        radius: isSelected ? 10 : 7,
+        color: comparePriorityAndNeed ? scoreToColor(needScore) : "#000000",
+        fillColor: scoreToColor(comparePriorityAndNeed ? priorityScore : score),
+        fillOpacity: isSelected ? 0.95 : 0.78,
+        weight: comparePriorityAndNeed ? (isSelected ? 4 : 3) : isSelected ? 3 : 1,
+      };
+    },
+    [comparePriorityAndNeed, scoreField, selectedSchoolId]
+  );
+  const roadsStyle = useMemo<L.PathOptions>(
+    () => ({ color: "#a855f7", weight: 1.1, opacity: layerOpacityByKey.get("roads") ?? 1 }),
+    [layerOpacityByKey]
+  );
+  const airQualityStyle = useCallback(
+    (feature?: Feature<Geometry>): L.PathOptions => {
+      const properties = asRecord(feature?.properties);
+      const value =
+        selectedAQIField === "aqi_us_max"
+          ? findNumericProperty(properties, ["aqi_us_max"])
+          : findNumericProperty(properties, ["aqi_us_mean"]);
+      const color = airQualityColor(value);
+      const opacity =
+        layerOpacityByKey.get(selectedAQIField === "aqi_us_max" ? "air_quality_max" : "air_quality_mean") ??
+        1;
+      return { color, fillColor: color, weight: 0.9, opacity, fillOpacity: opacity * 0.33 };
+    },
+    [layerOpacityByKey, selectedAQIField]
+  );
 
   return (
     <div className="school-map-root">
@@ -790,54 +937,25 @@ export function SchoolMap({
             <GeoJSON
               key={`districts-${districtScoreField}-${districtScoreRange.min}-${districtScoreRange.max}`}
               data={districtCollection}
-              style={(feature) => {
-                const value =
-                  typeof feature?.properties?.value === "number" ? feature.properties.value : null;
-                const normalized =
-                  value == null || districtScoreRange.max === districtScoreRange.min
-                    ? 0
-                    : (value - districtScoreRange.min) / (districtScoreRange.max - districtScoreRange.min);
-                return {
-                  color: "rgba(15, 31, 51, 0.28)",
-                  weight: 1,
-                  fillColor: districtIndicatorColor(
-                    districtScoreField === "priority" ? "Priority Score" : "Need Score",
-                    normalized
-                  ),
-                  fillOpacity: value == null ? 0.12 : 0.48,
-                };
-              }}
+              style={districtStyle}
               interactive={false}
             />
           </Pane>
         ) : null}
 
-        {activeLayers.has("roads") && layerState.roads.length > 0 ? (
+        {activeLayers.has("roads") && roadsCollection.features.length > 0 ? (
           <Pane name="roads-layer" style={{ zIndex: 420 }}>
-            <GeoJSON
-              data={toFeatureCollection(layerState.roads)}
-              style={{ color: "#a855f7", weight: 1.1, opacity: layerOpacity("roads") }}
-            />
+            <GeoJSON key={`roads-${roadsCollectionKey}`} data={roadsCollection} style={roadsStyle} />
           </Pane>
         ) : null}
 
         {(activeLayers.has("air_quality_mean") || activeLayers.has("air_quality_max")) &&
-        layerState.air_quality.length > 0 ? (
+        airQualityCollection.features.length > 0 ? (
           <Pane name="air-quality-layer" style={{ zIndex: 430 }}>
             <GeoJSON
-              data={toFeatureCollection(layerState.air_quality)}
-              style={(feature) => {
-                const properties = asRecord(feature?.properties);
-                const value =
-                  selectedAQIField === "aqi_us_max"
-                    ? findNumericProperty(properties, ["aqi_us_max"])
-                    : findNumericProperty(properties, ["aqi_us_mean"]);
-                const color = airQualityColor(value);
-                const opacity = layerOpacity(
-                  selectedAQIField === "aqi_us_max" ? "air_quality_max" : "air_quality_mean"
-                );
-                return { color, fillColor: color, weight: 0.9, opacity, fillOpacity: opacity * 0.33 };
-              }}
+              key={`air-quality-${airQualityCollectionKey}-${selectedAQIField}`}
+              data={airQualityCollection}
+              style={airQualityStyle}
               onEachFeature={(feature, layer) => {
                 const properties = asRecord(feature.properties);
                 const value =
@@ -864,13 +982,31 @@ export function SchoolMap({
         activeLayers.has("access_drive") ? (
           <Pane name="access-layer" style={{ zIndex: 440 }}>
             {activeLayers.has("access_walk")
-              ? renderAccessLayer(layerState.access_walk, layerOpacity("access_walk"))
+              ? accessWalkCollection.features.length > 0 && (
+                  <AccessGeoJson
+                    key={`access-walk-${accessWalkCollectionKey}`}
+                    collection={accessWalkCollection}
+                    opacity={layerOpacity("access_walk")}
+                  />
+                )
               : null}
             {activeLayers.has("access_cycle")
-              ? renderAccessLayer(layerState.access_cycle, layerOpacity("access_cycle"))
+              ? accessCycleCollection.features.length > 0 && (
+                  <AccessGeoJson
+                    key={`access-cycle-${accessCycleCollectionKey}`}
+                    collection={accessCycleCollection}
+                    opacity={layerOpacity("access_cycle")}
+                  />
+                )
               : null}
             {activeLayers.has("access_drive")
-              ? renderAccessLayer(layerState.access_drive, layerOpacity("access_drive"))
+              ? accessDriveCollection.features.length > 0 && (
+                  <AccessGeoJson
+                    key={`access-drive-${accessDriveCollectionKey}`}
+                    collection={accessDriveCollection}
+                    opacity={layerOpacity("access_drive")}
+                  />
+                )
               : null}
           </Pane>
         ) : null}
@@ -955,7 +1091,6 @@ export function SchoolMap({
                   opacity: 0.8,
                   weight: 1.25,
                   interactive: false,
-                  renderer: L.canvas({ padding: 0.5 }),
                 });
               }}
             />
@@ -964,30 +1099,10 @@ export function SchoolMap({
         <Pane name="school-markers" style={{ zIndex: 650 }}>
           {!showNationalDensity && schoolCollection.features.length > 0 ? (
             <GeoJSON
-              key={`schools-${scoreField}-${comparePriorityAndNeed ? "compare" : "single"}-${markerSignature}-${selectedSchoolId ?? "none"}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
+              key={`schools-${markerSignature}-${showDistrictProvinceInPopup ? "location" : "no-location"}`}
               data={schoolCollection}
-              pointToLayer={(feature, latlng) => {
-                const props = asRecord(feature.properties);
-                const score =
-                  scoreField === "priority"
-                    ? typeof props.priority === "number"
-                      ? props.priority
-                      : null
-                    : typeof props.need === "number"
-                      ? props.need
-                      : null;
-                const priorityScore = typeof props.priority === "number" ? props.priority : null;
-                const needScore = typeof props.need === "number" ? props.need : null;
-                const isSelected = props.school_id === selectedSchoolId;
-                return L.circleMarker(latlng, {
-                  radius: isSelected ? 10 : 7,
-                  color: comparePriorityAndNeed ? scoreToColor(needScore) : "#000000",
-                  fillColor: scoreToColor(comparePriorityAndNeed ? priorityScore : score),
-                  fillOpacity: isSelected ? 0.95 : 0.78,
-                  weight: comparePriorityAndNeed ? (isSelected ? 4 : 3) : isSelected ? 3 : 1,
-                  renderer: L.canvas({ padding: 0.5 }),
-                });
-              }}
+              pointToLayer={(_feature, latlng) => L.circleMarker(latlng)}
+              style={schoolMarkerStyle}
               onEachFeature={(feature, layer) => {
                 const props = asRecord(feature.properties);
                 const schoolId = typeof props.school_id === "string" ? props.school_id : null;
