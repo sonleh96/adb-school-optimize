@@ -27,3 +27,6 @@ include = ["school_scoring*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "reproduction: compares the screening engine with frozen research outputs; needs RISE_PNG_REFERENCE_ROOT and RISE_PNG_DATASETS_ROOT",
+]
