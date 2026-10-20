@@ -90,7 +90,8 @@ describe("an urgency value that no loaded rule reads", () => {
 
   it("is read from the stored input when no rule that reads urgency has a run, known or unknown", () => {
     const known = load(withoutUrgencyRules(), "additive_no_u");
-    expect(known.components.U).toBe(body().inputs.urgency_source_scalar);
+    // Known, but the engine's figure is not loaded, and the stored value is on another scale: it is not shown.
+    expect(known.components).not.toHaveProperty("U");
     expect(copy.missingValueKind(known, "urgency")).toBe("recorded");
 
     const b = withoutUrgencyRules();
