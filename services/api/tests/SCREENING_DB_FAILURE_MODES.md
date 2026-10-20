@@ -46,6 +46,7 @@ They also skip when `DATABASE_URL` names a non-local server, because each test c
 | `test_failure_midway_leaves_nothing_behind` | DB3 |
 | `test_changed_inputs_under_an_existing_version_are_refused` | DB5 |
 | `test_record_order_is_part_of_the_version` | DB5 |
+| `test_rerun_refuses_stored_input_rows_that_were_edited` (5 edits) | DB19 |
 | `test_command_refuses_changed_inputs_under_the_same_version` | DB5, DB17 |
 | `test_names_round_trip_byte_for_byte` | DB6 |
 | `test_unmatched_names_are_kept_and_ambiguous_keys_are_not_linked` | DB7 |

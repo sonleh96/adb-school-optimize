@@ -8,7 +8,7 @@ from dataclasses import replace
 import psycopg
 import pytest
 from app import screening_store as store
-from app.ingestion.load_screening_inputs import RunConflict, VersionConflict
+from app.ingestion.load_screening_inputs import InputsConflict, RunConflict, VersionConflict
 from school_scoring.screening import (
     RULES,
     Cohort,
@@ -90,6 +90,28 @@ def test_changed_inputs_under_an_existing_version_are_refused(connection):  # DB
 
     assert snapshot(connection) == before
     assert store.get_input_version(connection, VERSION).input_sha256 == records_sha256(original)
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        "update screening_inputs set permanent_classrooms = permanent_classrooms + 1 where record_position = 3",
+        "update screening_inputs set province = 'Edited Province' where record_position = 3",
+        "update screening_inputs set urgency_source_scalar = null where record_position = 3",
+        "update screening_inputs set record_position = record_position + 100 where record_position = 3",
+        "delete from screening_inputs where record_position = 3",
+    ],
+    ids=["number changed", "text changed", "value blanked", "moved", "row deleted"],
+)
+def test_rerun_refuses_stored_input_rows_that_were_edited(connection, edit):  # DB19
+    load(connection, mixed_records())
+    connection.execute(edit)
+    before = snapshot(connection)
+
+    with pytest.raises(InputsConflict, match="stored input rows of version 'synthetic-v1' no longer equal"):
+        load(connection, mixed_records())
+
+    assert snapshot(connection) == before
 
 
 def test_record_order_is_part_of_the_version(connection):  # DB5
