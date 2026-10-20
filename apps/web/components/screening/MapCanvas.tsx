@@ -18,6 +18,7 @@ import type { SchoolKey } from "@/lib/screening/types";
 
 import { COPY } from "./copy";
 import { buildMarkLayers, buildRingLayers } from "./map-layers";
+import { RankLabels } from "./RankLabels";
 import styles from "./screening.module.css";
 
 /** The light vector basemap. It needs no key. Override it with NEXT_PUBLIC_SCREENING_BASEMAP_STYLE. */
@@ -279,6 +280,7 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding, sta
         }}
       >
         <Overlay layers={layers} pickingRadius={4} onHover={onHover} onClick={onClick} />
+        <RankLabels schools={schools} stale={stale} />
         <NavigationControl position="top-left" showCompass={false} />
       </MapView>
       {basemapFailed ? (

@@ -12,6 +12,7 @@
  *  9. Arrow keys leave the order on screen, or Escape does nothing       -> "arrow keys..."
  * 10. The map or the card traps a keyboard user, or hides focus          -> "the map can be reached..."
  * 11. Attribution text too faint to read                                 -> "credits the basemap..."
+ * 12. A place number missing, wrong or off its dot, or left behind by a pan -> "the first ten places..."
  * The states (stale rows, failures, slow loads, basemap failure) are in screening-states.spec.ts, and the
  * WebGL leak is in screening-leak.spec.ts. The map staying out of the initial bundle is held by `bundle:check`.
  */
@@ -24,6 +25,7 @@ import {
   listNames,
   mapLocator,
   markAt,
+  numberedPlaces,
   openWorkspace,
   orderedNames,
   orderedRow,
@@ -310,4 +312,31 @@ test("credits the basemap in text that can be read", async ({ page }) => {
     };
   });
   expect(contrastRatio(text, background)).toBeGreaterThanOrEqual(4.5);
+});
+
+test("the first ten places carry their number on their dot, and the numbers follow the map", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const numbered = numberedPlaces("additive_u");
+  expect(numbered.length).toBeGreaterThan(5);
+  // Nothing else is numbered: not the places after the tenth, not the ranges, not the incomplete records.
+  await expect(page.locator("[data-rank-label]")).toHaveCount(numbered.length);
+
+  const expectLabelsOnTheirDots = async () => {
+    for (const { key, rank } of numbered) {
+      const dot = await settledMark(page, key);
+      const label = page.locator(`[data-rank-label='${rank}']`);
+      await expect(label).toHaveText(String(rank));
+      const box = (await label.boundingBox())!;
+      expect(Math.abs(box.x + box.width / 2 - dot.x)).toBeLessThan(1.5);
+      expect(Math.abs(box.y + box.height / 2 - dot.y)).toBeLessThan(1.5);
+    }
+  };
+  await expectLabelsOnTheirDots();
+
+  // Zoom out from an empty stretch of map: the labels stay on their dots.
+  await page.mouse.move(1450, 560);
+  await page.mouse.wheel(0, 240);
+  await expectLabelsOnTheirDots();
 });

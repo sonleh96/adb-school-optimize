@@ -11,7 +11,13 @@ const fixture = (file: string) => JSON.parse(readFileSync(path.join(FIXTURES, fi
 
 interface Row {
   cohort: string;
-  school: { source_school_name: string; school_key: string };
+  point_rank?: { rank: number };
+  school: {
+    source_school_name: string;
+    school_key: string;
+    latitude: number | null;
+    longitude: number | null;
+  };
 }
 export const rowsOf = (rule: string): Row[] => fixture(`results/${rule}.json`).rows;
 export const orderedNames = (rule: string) =>
@@ -25,6 +31,11 @@ export const queuedNames = (rule: string) =>
 export const keyOf = (rule: string, name: string) =>
   rowsOf(rule).find((r) => r.school.source_school_name === name)!.school.school_key;
 export const ORDERED_COUNT = orderedNames("additive_u").length;
+/** The dots that carry their place as a number on the map: the first ten complete schools that have coordinates. */
+export const numberedPlaces = (rule: string) =>
+  rowsOf(rule)
+    .filter((r) => r.cohort === "complete" && r.point_rank!.rank <= 10 && r.school.latitude !== null)
+    .map((r) => ({ key: r.school.school_key, rank: r.point_rank!.rank }));
 
 /**
  * Every test fails on console errors and warnings, page errors, failed requests and HTTP errors, except the one

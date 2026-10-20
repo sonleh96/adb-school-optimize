@@ -39,6 +39,11 @@ export function markOf(row: ListedRow): Mark {
   }
 }
 
+/** The number a school carries on the map: its place, for a dot among the first ten. Other marks carry none. */
+export function numberOnMark(mark: Mark): number | null {
+  return mark.kind === "dot" && mark.rank <= LABELLED_PLACES ? mark.rank : null;
+}
+
 export interface MapSchool {
   key: SchoolKey;
   lon: number;
