@@ -55,6 +55,9 @@ export function RuleArea(props: RuleAreaProps) {
   const main = rules.filter((r) => r.primary);
   const other = rules.filter((r) => !r.primary);
   const otherActive = other.some((r) => r.id === requested);
+  // While the rule just pressed loads, the rows on screen are the previous rule's, and so would be the statement or
+  // the rule line beside the new button. Neither shows until the rows are the pressed rule's.
+  const line = shown === requested ? shown : null;
   const { LAYOUT, TERMS } = copy;
 
   return (
@@ -89,7 +92,7 @@ export function RuleArea(props: RuleAreaProps) {
           </button>
         ))}
       </div>
-      {shown === DEFAULT_RULE && statement ? (
+      {line === DEFAULT_RULE && statement ? (
         <p className={styles.statement} data-region="list-statement">
           {statement}{" "}
           <button type="button" className={styles.arrowLink} onClick={onSeeWithout}>
@@ -98,15 +101,15 @@ export function RuleArea(props: RuleAreaProps) {
           </button>
         </p>
       ) : null}
-      {shown && shown !== DEFAULT_RULE ? (
+      {line && line !== DEFAULT_RULE ? (
         <p className={styles.ruleLine} data-region="rule-role">
-          {main.some((r) => r.id === shown) ? null : (
+          {main.some((r) => r.id === line) ? null : (
             <>
-              <RuleSymbol symbol={copy.ruleSymbol(shown)} className={styles.symInline} />
-              <b>{copy.ruleLabel(shown)}.</b>{" "}
+              <RuleSymbol symbol={copy.ruleSymbol(line)} className={styles.symInline} />
+              <b>{copy.ruleLabel(line)}.</b>{" "}
             </>
           )}
-          {copy.ruleOneLine(shown)} <span className={styles.ruleRole}>{copy.ruleRoleLine(shown)}.</span>
+          {copy.ruleOneLine(line)} <span className={styles.ruleRole}>{copy.ruleRoleLine(line)}.</span>
           {comparing ? null : (
             <>
               {" "}

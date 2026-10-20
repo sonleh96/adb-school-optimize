@@ -7,6 +7,8 @@
  *     -> "a comparison that fails to load..."
  *  4. The statement loses the two main rules' figures while What changed reads another pair
  *     -> "the statement keeps the main rules' figures..."
+ *  5. The statement or the rule line of the previous rule shows beside the rule just pressed
+ *     -> "while the rule just pressed loads..."
  */
 import type { Page } from "@playwright/test";
 
@@ -35,7 +37,19 @@ const REASSURANCE =
 const statement = (page: Page) => page.locator("[data-region=list-statement]");
 const changed = (page: Page) => page.locator("[data-region=what-changed]");
 const lead = (page: Page) => changed(page).locator("[data-region=changed-lead]");
+const ruleLine = (page: Page) => page.locator("[data-region=rule-role]");
 const search = (page: Page) => new URL(page.url()).search;
+
+/** Holds the list of `rule` back until the returned function is called. */
+async function holdList(page: Page, rule: string) {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(new RegExp(`/api/v1/screening/results\\?rule=${rule}$`), async (route) => {
+    await held;
+    await route.continue();
+  });
+  return release;
+}
 
 test("a URL that says nothing but defaults and junk is tidied, keeping the keys other layers own", async ({
   page,
@@ -98,4 +112,23 @@ test("the statement keeps the main rules' figures while What changed reads anoth
   await openWorkspace(page, "?compare=need_first_u&view=queue");
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithout}`);
   allowUncapturedComparisons(problems);
+});
+
+test("while the rule just pressed loads, neither the statement nor a rule line speaks for the previous rule", async ({
+  page,
+}) => {
+  const release = await holdList(page, "additive_no_u");
+  await openWorkspace(page);
+  await expect(statement(page)).toBeVisible();
+
+  await mainRule(page, RULE.proposed).click();
+  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(ORDERED)).toHaveAttribute("aria-busy", "true");
+  await expect(statement(page)).toHaveCount(0);
+  await expect(ruleLine(page)).toHaveCount(0);
+
+  release();
+  await expect(page.locator(ORDERED)).toHaveAttribute("aria-busy", "false");
+  await expect(lead(page)).toHaveText(REASSURANCE);
+  await expect(ruleLine(page)).toContainText("leaves urgency out");
 });
