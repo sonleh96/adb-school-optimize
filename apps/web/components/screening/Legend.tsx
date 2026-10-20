@@ -3,11 +3,21 @@ import { RAMP_HEX } from "@/lib/screening/marks";
 import { COPY } from "./copy";
 import styles from "./screening.module.css";
 
-export function Legend({ ruleLabel }: { ruleLabel: string }) {
+/**
+ * Names the rule the marks on the map belong to, taken from the rows on screen (never from the rule just asked
+ * for), and is dimmed and busy while another rule's rows are still showing.
+ */
+export function Legend({ ruleLabel, stale }: { ruleLabel: string; stale: boolean }) {
   return (
-    <section className={`${styles.panel} ${styles.legend}`} data-slot="legend" aria-label="Legend">
-      <div className={styles.legendTitle}>
-        <b>{COPY.legend.place}</b> · {ruleLabel}
+    <section
+      className={`${styles.panel} ${styles.legend} ${stale ? styles.stale : ""}`}
+      data-slot="legend"
+      aria-label={COPY.legendLabel}
+      aria-busy={stale}
+    >
+      <div className={styles.legendTitle} data-testid="legend-rule">
+        <b>{COPY.legend.place}</b>
+        {ruleLabel ? ` · ${ruleLabel}` : ""}
       </div>
       <div className={styles.ramp}>
         {COPY.legend.steps.map((step, index) => (

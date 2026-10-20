@@ -10,12 +10,13 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapLibreOverlay, type MapLibreOverlayProps } from "@deck.gl/maplibre";
 import type { PickingInfo } from "@deck.gl/core";
 import { Map as MapView, NavigationControl, useControl, type MapRef } from "@vis.gl/react-maplibre";
-import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
+import { setWorkerUrl, type Map as MapLibreMap, type StyleSpecification } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { type MapSchool, boundsOf } from "@/lib/screening/marks";
+import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 
+import { COPY } from "./copy";
 import { buildMarkLayers, buildRingLayers } from "./map-layers";
 import styles from "./screening.module.css";
 
@@ -24,6 +25,12 @@ const BASEMAP_STYLE =
   process.env.NEXT_PUBLIC_SCREENING_BASEMAP_STYLE ??
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const TEST_HOOKS = process.env.NEXT_PUBLIC_SCREENING_TEST_HOOKS === "true";
+/** What the map falls back to when the basemap cannot be loaded: plain land, so the marks still draw. */
+const BLANK_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {},
+  layers: [{ id: "background", type: "background", paint: { "background-color": LAND_COLOUR } }],
+};
 
 // MapLibre 6 looks for its worker next to its own file, which a bundler moves. The bundler emits the worker as a
 // static asset and this tells MapLibre where it went. Must run before the first map is created.
@@ -45,6 +52,8 @@ export interface MapCanvasProps {
   onSelect: (key: SchoolKey) => void;
   /** Space the panels take, so the first view and a pan keep marks out from under them. */
   padding: Padding;
+  /** The marks belong to the previous rule while the new one loads: they fade and cannot be picked. */
+  stale: boolean;
 }
 
 interface Hover {
@@ -63,12 +72,44 @@ declare global {
   }
 }
 
+type AttachedDevice = Parameters<NonNullable<MapLibreOverlayProps["onDeviceInitialized"]>>[0];
+
 function Overlay(props: MapLibreOverlayProps) {
-  // `_reuseDevices` is the documented workaround for the overlay under React StrictMode (deck.gl issue 10681).
+  const device = useRef<AttachedDevice | null>(null);
   const overlay = useControl<MapLibreOverlay>(
-    () => new MapLibreOverlay({ interleaved: true, deviceProps: { _reuseDevices: true }, ...props })
+    () =>
+      new MapLibreOverlay({
+        interleaved: true,
+        // React Strict Mode (development only) mounts the overlay twice; this is the documented workaround for
+        // deck.gl issue 10681. It is left out of production, where it would keep every device alive.
+        ...(process.env.NODE_ENV === "development" ? { deviceProps: { _reuseDevices: true } } : {}),
+        ...props,
+        onDeviceInitialized: (created) => {
+          device.current = created;
+        },
+      })
   );
   overlay.setProps(props);
+
+  // deck.gl attaches a luma device to MapLibre's WebGL context and never releases it. The device's canvas
+  // observers then keep the canvas, the context and its GPU memory alive after the map is gone, one set for every
+  // visit to the page. Release the device once its canvas has left the document (not on a Strict Mode remount,
+  // where the canvas stays and the device is reused).
+  useEffect(
+    () => () => {
+      const attached = device.current;
+      device.current = null;
+      if (!attached) return;
+      setTimeout(() => {
+        const canvas = attached.canvasContext?.canvas as HTMLCanvasElement | undefined;
+        if (canvas && !canvas.isConnected) {
+          attached.canvasContext?.destroy();
+          attached.destroy();
+        }
+      }, 0);
+    },
+    []
+  );
   return null;
 }
 
@@ -87,8 +128,8 @@ function calmBasemap(map: MapLibreMap) {
   for (const layer of style.layers) {
     if (hidden.test(layer.id)) map.setLayoutProperty(layer.id, "visibility", "none");
   }
-  paint("background", "background-color", "#ece9e2");
-  paint("water", "fill-color", "#dde3e8");
+  paint("background", "background-color", LAND_COLOUR);
+  paint("water", "fill-color", WATER_COLOUR);
   for (const id of ["boundary_country_outline", "boundary_country_inner"]) paint(id, "line-color", "#c9c5bb");
   for (const layer of style.layers) {
     if (layer.type !== "symbol") continue;
@@ -104,20 +145,31 @@ function calmBasemap(map: MapLibreMap) {
   }
 }
 
+function sameUrl(a: string, b: string): boolean {
+  try {
+    return new URL(a, window.location.href).href === new URL(b, window.location.href).href;
+  } catch {
+    return false;
+  }
+}
+
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export default function MapCanvas({ schools, selectedKey, onSelect, padding }: MapCanvasProps) {
+export default function MapCanvas({ schools, selectedKey, onSelect, padding, stale }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const loaded = useRef(false);
   const [ready, setReady] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [basemapFailed, setBasemapFailed] = useState(false);
   const [hover, setHover] = useState<Hover | null>(null);
 
   const byKey = useMemo(() => new Map(schools.map((s) => [s.key, s])), [schools]);
   const selected = selectedKey ? (byKey.get(selectedKey) ?? null) : null;
 
-  const markLayers = useMemo(() => buildMarkLayers(schools), [schools]);
-  const ringLayers = useMemo(() => buildRingLayers(selected, hover?.school ?? null), [selected, hover]);
+  const markLayers = useMemo(() => buildMarkLayers(schools, stale), [schools, stale]);
+  const hovered = stale ? null : (hover?.school ?? null);
+  const ringLayers = useMemo(() => buildRingLayers(selected, hovered), [selected, hovered]);
   const layers = useMemo(() => [...markLayers, ...ringLayers], [markLayers, ringLayers]);
 
   // The first view is decided once. If no school is known yet, the first schools to arrive set it.
@@ -134,10 +186,10 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
     setFitted(true);
   }, [schools, padding, fitted]);
 
-  // A school chosen in the list is brought into the clear part of the map.
+  // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready || !selected) return;
+    if (!map || !selected) return;
     const point = map.project([selected.lon, selected.lat]);
     const { width, height } = map.getContainer().getBoundingClientRect();
     const inside =
@@ -153,10 +205,10 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
       });
     }
     // Panning on a click would be redundant: the mark is already inside, so this only runs for list picks.
-  }, [selected, ready, padding]);
+  }, [selected, padding]);
 
   useEffect(() => {
-    if (!TEST_HOOKS || !ready) return;
+    if (!TEST_HOOKS) return;
     window.__screeningMapTest = {
       project: (key) => {
         const school = byKey.get(key);
@@ -171,7 +223,7 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
     return () => {
       delete window.__screeningMapTest;
     };
-  }, [ready, byKey]);
+  }, [byKey]);
 
   const onHover = useCallback((info: PickingInfo<MapSchool>) => {
     const canvas = mapRef.current?.getCanvas();
@@ -194,11 +246,14 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
       data-map-ready={ready}
       data-map-moving={moving}
       data-selected-key={selectedKey ?? ""}
+      data-stale={stale}
+      data-basemap={basemapFailed ? "failed" : "ok"}
+      aria-busy={stale}
     >
       <MapView
         ref={mapRef}
         mapLib={import("maplibre-gl")}
-        mapStyle={BASEMAP_STYLE}
+        mapStyle={basemapFailed ? BLANK_STYLE : BASEMAP_STYLE}
         initialViewState={initialView}
         minZoom={3.5}
         maxZoom={13}
@@ -209,27 +264,47 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
         style={{ width: "100%", height: "100%" }}
         onMoveStart={() => setMoving(true)}
         onMoveEnd={() => setMoving(false)}
+        // When the style itself cannot be fetched, fall back to plain land so the marks still draw. A failed
+        // tile, glyph or sprite only degrades the basemap and is left alone.
+        onError={(event) => {
+          const failed = (event.error as { url?: string } | undefined)?.url;
+          if (!loaded.current && failed && sameUrl(failed, BASEMAP_STYLE)) setBasemapFailed(true);
+        }}
         onLoad={(event) => {
+          loaded.current = true;
           calmBasemap(event.target);
+          // The canvas is the one stop on the map: name it, and point to the list as the keyboard route.
+          event.target.getCanvas().setAttribute("aria-label", COPY.mapLabel);
           setReady(true);
         }}
       >
         <Overlay layers={layers} pickingRadius={4} onHover={onHover} onClick={onClick} />
         <NavigationControl position="top-left" showCompass={false} />
       </MapView>
-      {hover ? (
+      {basemapFailed ? (
+        <p className={styles.notice} role="status" data-testid="basemap-notice">
+          {COPY.basemapUnavailable}
+        </p>
+      ) : null}
+      {hover && !stale ? (
         <div className={styles.tooltip} style={{ left: hover.x + 14, top: hover.y + 14 }} role="status">
           <strong>{hover.school.name}</strong>
-          <span>{[hover.school.place, hover.school.province].filter(Boolean).join(" · ")}</span>
+          {hover.school.scope ? (
+            <span>{COPY.placeAmong(hover.school.place, hover.school.scope)}</span>
+          ) : (
+            <span>{COPY.cardNoPlace}</span>
+          )}
+          {hover.school.exact ? <span>{COPY.exactRange}</span> : null}
+          {hover.school.province ? <span>{hover.school.province}</span> : null}
         </div>
       ) : null}
-      <p className={styles.attribution}>
+      <p className={styles.attribution} data-testid="attribution">
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          © OpenStreetMap contributors
+          {COPY.attribution.osm}
         </a>
         ,{" "}
         <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">
-          © CARTO
+          {COPY.attribution.carto}
         </a>
       </p>
     </div>
