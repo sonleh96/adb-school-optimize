@@ -7,6 +7,7 @@ import {
   type Pin,
   type ResultsQuery,
   fetchScreeningCompare,
+  fetchScreeningInputs,
   fetchScreeningResults,
   fetchScreeningRules,
   fetchScreeningSchool,
@@ -29,7 +30,8 @@ export interface RulePair {
 export const screeningKeys = {
   all: ["screening"] as const,
   rules: () => ["screening", "rules"] as const,
-  results: (query: ResultsQuery) => ["screening", "results", query] as const,
+  inputs: (pin: Pin) => ["screening", "inputs", pin] as const,
+  results: (query: ResultsQuery | null) => ["screening", "results", query] as const,
   school: (key: SchoolKey | null, pin: Pin) => ["screening", "school", key, pin] as const,
   compare: (pair: RulePair | null, pin: Pin) => ["screening", "compare", pair, pin] as const,
 };
@@ -64,13 +66,13 @@ export function useScreeningRules() {
 }
 
 /**
- * The ordered list of one rule.
+ * The ordered list of one rule, or nothing while `query` is null.
  * While another rule's list loads, the previous rows stay and `isPlaceholderData` is true, so callers can mark them stale.
  */
-export function useScreeningResults(query: ResultsQuery) {
+export function useScreeningResults(query: ResultsQuery | null) {
   return useQuery({
     queryKey: screeningKeys.results(query),
-    queryFn: ({ signal }) => fetchScreeningResults(query, signal),
+    queryFn: query ? ({ signal }) => fetchScreeningResults(query, signal) : skipToken,
     ...transient,
     placeholderData: keepPreviousData,
   });
@@ -88,6 +90,15 @@ export function useScreeningCompare(pair: RulePair | null, pin: Pin = {}) {
   return useQuery({
     queryKey: screeningKeys.compare(pair, pin),
     queryFn: pair ? ({ signal }) => fetchScreeningCompare(pair.a, pair.b, pin, signal) : skipToken,
+    ...transient,
+  });
+}
+
+/** Every school's stored inputs, in one read. Nothing is asked for until `enabled`. */
+export function useScreeningInputs(enabled: boolean, pin: Pin = {}) {
+  return useQuery({
+    queryKey: screeningKeys.inputs(pin),
+    queryFn: enabled ? ({ signal }) => fetchScreeningInputs(pin, signal) : skipToken,
     ...transient,
   });
 }
