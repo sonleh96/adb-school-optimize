@@ -6,7 +6,15 @@ import psycopg
 import pytest
 from school_scoring.screening import INPUT_CONTRACT, GateFailure
 from screening_db_factories import mixed_records
-from screening_db_helpers import TABLES, VERSION, apply_migrations, load, rows, scalar
+from screening_db_helpers import (
+    SCREENING_MIGRATION,
+    TABLES,
+    VERSION,
+    apply_migrations,
+    load,
+    rows,
+    scalar,
+)
 
 SCHEMA_QUERY = """
 select 'column' as kind, table_name || '.' || column_name as name,
@@ -49,23 +57,61 @@ def test_migrations_keep_rows_when_rerun(connection):  # DB1
 PRIVILEGES = ("select", "insert", "update", "delete", "truncate", "references", "trigger")
 
 
-def test_new_tables_are_closed_to_the_data_api_roles(connection):  # DB2
+def granted_privileges(connection, role: str, table: str) -> list[str]:
+    return [
+        p
+        for p in PRIVILEGES
+        if scalar(connection, "select has_table_privilege(%s, %s, %s)", (role, f"public.{table}", p))
+    ]
+
+
+def test_new_tables_are_closed_to_the_data_api_roles(connection_before_screening):  # DB2
+    connection = connection_before_screening
+    # Supabase can hand every new table to the Data API roles through default privileges.
+    # A plain server does not, so without this the revokes in 005 would have nothing to revoke.
+    connection.execute("alter default privileges in schema public grant all on tables to anon, authenticated")
+    connection.execute("create table grant_probe (id integer)")
+    assert granted_privileges(connection, "anon", "grant_probe") == list(PRIVILEGES)  # the setup works
+
+    connection.execute(SCREENING_MIGRATION.read_text(encoding="utf-8"))
+
     for table in TABLES:
         assert (
             scalar(connection, "select relrowsecurity from pg_class where oid = %s::regclass", (table,))
             is True
         )
         for role in ("anon", "authenticated"):
-            granted = [
-                p
-                for p in PRIVILEGES
-                if scalar(connection, "select has_table_privilege(%s, %s, %s)", (role, f"public.{table}", p))
-            ]
-            assert granted == [], f"{role} can {granted} on {table}"
+            assert granted_privileges(connection, role, table) == [], f"{role} holds a privilege on {table}"
 
-    # The check can fail: a grant is seen.
-    connection.execute("grant select on screening_runs to anon")
-    assert scalar(connection, "select has_table_privilege('anon', 'public.screening_runs', 'select')") is True
+
+def statements(script: str) -> list[str]:
+    """Statements of a migration file that has no semicolon inside a string or a function body."""
+    code = "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("--"))
+    return [part.strip() for part in code.split(";") if part.strip()]
+
+
+def test_a_failed_apply_leaves_no_screening_table_behind(connection_before_screening):  # DB18
+    connection = connection_before_screening
+    # The same file with a failure injected just before its final commit.
+    original = SCREENING_MIGRATION.read_text(encoding="utf-8")
+    broken = original.replace("\ncommit;", "\nselect 1 / 0;\ncommit;")
+    assert broken != original
+
+    # `psql -f` sends one statement at a time and runs each in its own transaction unless the file opens one.
+    # It stops at the first error (ON_ERROR_STOP) and ending the session rolls back what is still open.
+    with pytest.raises(psycopg.errors.DivisionByZero):
+        for statement in statements(broken):
+            connection.execute(statement)
+    connection.execute("rollback")
+
+    assert (
+        scalar(
+            connection,
+            "select count(*) from pg_class where relname like %s and relkind = 'r'",
+            ("screening\\_%",),
+        )
+        == 0
+    )
 
 
 def test_inputs_table_has_one_column_per_contract_field(connection):  # DB12

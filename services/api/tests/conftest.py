@@ -16,7 +16,7 @@ from app.security import require_write_operations, write_rate_limiter
 from fastapi.testclient import TestClient
 from psycopg import sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
-from screening_db_helpers import apply_migrations
+from screening_db_helpers import SCREENING_MIGRATION, apply_migrations, migration_files
 
 
 @pytest.fixture
@@ -147,3 +147,19 @@ def database_url(migrated_template):
 def connection(database_url):
     with psycopg.connect(database_url, autocommit=True) as conn:
         yield conn
+
+
+@pytest.fixture
+def connection_before_screening(migrated_template):
+    """A fresh database with the migrations before 005 applied; the test applies 005 itself."""
+    url = _server_url()
+    name = f"rise_screening_pre_{uuid.uuid4().hex[:8]}"
+    earlier = [path for path in migration_files() if path.name < SCREENING_MIGRATION.name]
+    with psycopg.connect(url, autocommit=True) as admin:
+        admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+        try:
+            with psycopg.connect(make_conninfo(url, dbname=name), autocommit=True) as conn:
+                apply_migrations(conn, earlier)
+                yield conn
+        finally:
+            _drop(admin, name)
