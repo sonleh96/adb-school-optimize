@@ -83,6 +83,8 @@ export interface MountInput {
   /** The last action came from the keyboard: popovers appear at once. */
   keyboard: boolean;
   onSelect: (key: SchoolKey) => void;
+  /** The school under the pointer, kept out of the workspace's state like the map's (the guides own `hover`). */
+  onPointerHover: (key: SchoolKey | null) => void;
   onRule: (rule: CopyRuleId) => void;
   /** Says something briefly in the workspace's status line (a download, a copied record). */
   onNotify: (message: string) => void;
@@ -148,6 +150,7 @@ export function useMethodMounts(input: MountInput): Mounts {
   const detail = useScreeningRules().data?.rules ?? null;
   const filterButton = useRef<HTMLButtonElement>(null);
   const layersButton = useRef<HTMLButtonElement>(null);
+  const exportOpener = useRef<HTMLButtonElement>(null);
 
   // The filters can only hold a province or remoteness class the list has.
   const options = useMemo(() => filterOptions(input.rows), [input.rows]);
@@ -187,6 +190,7 @@ export function useMethodMounts(input: MountInput): Mounts {
   const openSheet = () => store.setState({ panel: "export", pop: null });
   const exportButton = (
     <button
+      ref={exportOpener}
       type="button"
       className={exportStyles.open}
       data-region="export-button"
@@ -226,7 +230,11 @@ export function useMethodMounts(input: MountInput): Mounts {
         layer={layer}
         instant={keyboard}
         onLength={(n) => store.setState({ n })}
-        onClose={() => store.setState({ panel: null })}
+        onClose={() => {
+          store.setState({ panel: null });
+          // The sheet leaves the page as it closes, so focus goes back to the button that opened it.
+          requestAnimationFrame(() => exportOpener.current?.focus({ preventScroll: true }));
+        }}
         onNotify={input.onNotify}
       />
     ) : null;
@@ -400,7 +408,7 @@ export function useMethodMounts(input: MountInput): Mounts {
         hovered={input.hovered}
         onState={(patch) => store.setState(patch)}
         onSelect={input.onSelect}
-        onHover={(key) => store.setState({ hover: key })}
+        onHover={input.onPointerHover}
       />
     ) : null;
   const compareLegend =

@@ -452,6 +452,7 @@ function Workspace() {
     bands,
     keyboard,
     onSelect: select,
+    onPointerHover: setPointerHover,
     onRule: changeRule,
     onNotify: notify,
   });
