@@ -23,12 +23,10 @@ import {
   comparisonSentence,
   defaultListStatement,
   defaultListStatementLong,
-  findPair,
   urgencyReassurance,
 } from "./compare";
-import { TRUST_TAIL, buildHow, buildQuestions, howExample, howExampleSegments } from "./explainer";
-import { GUIDE } from "./guide";
 import { buildIdeas } from "./ideas";
+import type { LaterCopy } from "./later";
 import {
   missingLabels,
   missingSentence,
@@ -82,7 +80,7 @@ import {
   urgencyNote,
 } from "./rules";
 import { buildStrings } from "./strings";
-import { GLOSSARY_GROUPS, type TermKey, buildTerms } from "./terms";
+import { type TermKey, buildTerms } from "./terms";
 import { HELP, KEYS, LAYOUT } from "./words";
 
 /**
@@ -128,23 +126,24 @@ export function copyFor(data: CopyData = {}) {
     countsByRule: data.countsByRule,
   });
   const terms = buildTerms(c);
-  const ideas = buildIdeas(c);
-  const trust = findPair(bound.pairwise, "additive_u", "additive_no_u")
-    ? `${urgencyReassurance(bound)} ${TRUST_TAIL}`
-    : null;
+  let later: Promise<LaterCopy> | undefined;
   return Object.freeze({
     counts: c,
     TERMS: terms,
     STRINGS: buildStrings(c),
-    IDEAS: ideas,
+    IDEAS: buildIdeas(c),
     LAYOUT: Object.freeze({ ...LAYOUT, amongAll124: capitalise(amongAllOrdered(c)) }),
     HELP,
     KEYS,
-    GUIDE,
-    GLOSSARY_GROUPS,
-    HOW_IT_WORKS: buildHow(c, howExample(bound, c, data.countsByRule)),
-    FIRST_QUESTIONS: buildQuestions(ideas, trust),
     RULE_IDS,
+    /**
+     * The guide, How this works, its worked example, the first questions and the glossary, loaded on first use so
+     * the list and the card ship without them. Resolves to the same object every time.
+     */
+    later: (): Promise<LaterCopy> =>
+      (later ??= import("./later").then((m) =>
+        m.laterFor({ counts: c, data: bound, countsByRule: data.countsByRule })
+      )),
     term: (key: TermKey) => {
       const t = terms[key];
       if (!t) throw new Error(`Unknown term: ${key}`);
@@ -211,7 +210,6 @@ export function copyFor(data: CopyData = {}) {
         list: readonly PlacedSchool[] = schools,
         form: "card" | "row" = "card"
       ) => tieNoteSegments(school, ruleId, list, form),
-      howExample: howExampleSegments(bound, c, data.countsByRule),
     }),
     // Functions with no counts, passed through unchanged.
     reasonSentence,

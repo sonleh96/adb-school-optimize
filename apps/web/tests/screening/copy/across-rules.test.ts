@@ -137,22 +137,24 @@ describe("a complete school under two rules whose groups differ", () => {
 describe("the worked example in How this works", () => {
   const placed = placedFromResults(lists.additive_u, lists.additive_no_u);
   const data = { schools: placed, ...pairwiseFromCompare(fixtureCompare()) };
-  const example = (countsByRule: copy.CountsByRule | undefined) =>
-    copy
-      .copyFor({ ...data, counts: countsFromResults(lists.additive_u), countsByRule })
-      .HOW_IT_WORKS.find((x) => x.key === "limits")
-      ?.sentences.find((t) => t.startsWith("For example"));
+  const example = async (countsByRule: copy.CountsByRule | undefined) =>
+    (
+      await copy.copyFor({ ...data, counts: countsFromResults(lists.additive_u), countsByRule }).later()
+    ).HOW_IT_WORKS.find((x) => x.key === "limits")?.sentences.find((t) => t.startsWith("For example"));
 
-  it("names the group of each rule when they differ", () => {
-    const text = example(byRule) as string;
+  it("names the group of each rule when they differ", async () => {
+    const text = (await example(byRule)) as string;
     expect(text).toContain(
       "possible places among all the schools that can be put in order under each rule move from"
     );
     expect(textProblems(text)).toEqual([]);
   });
 
-  it("names one group when they do not", () => {
-    const same = example({ additive_u: byRule.additive_u, additive_no_u: byRule.additive_u }) as string;
+  it("names one group when they do not", async () => {
+    const same = (await example({
+      additive_u: byRule.additive_u,
+      additive_no_u: byRule.additive_u,
+    })) as string;
     expect(same).toContain("possible places among all 21 schools that can be put in order move from");
   });
 });

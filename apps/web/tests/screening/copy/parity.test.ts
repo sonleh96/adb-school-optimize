@@ -19,7 +19,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
+import * as later from "@/lib/screening/copy/later";
 
+import { withLater } from "./helpers";
 import {
   type Api,
   DATASET_DIRS,
@@ -40,6 +42,9 @@ import {
 
 const suite = describe.skipIf(!ready);
 
+/** Everything the port exports, the part that loads on demand included, as the prototype exports it. */
+const everything = { ...port, ...later };
+
 let proto: Api;
 let datasets: Dataset[] = [];
 
@@ -59,7 +64,7 @@ afterAll(() => {
 suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () => {
   it("exports every name the prototype exports", () => {
     // COUNTS is the design fixture's own sizes; the port keeps no counts in module-level copy.
-    const missing = Object.keys(proto).filter((k) => k !== "COUNTS" && !(k in port));
+    const missing = Object.keys(proto).filter((k) => k !== "COUNTS" && !(k in everything));
     expect(missing).toEqual([]);
   });
 
@@ -80,7 +85,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "GUIDE",
       "BANNED",
     ]) {
-      same(k, prototypeValue(k, proto[k]), (port as Api)[k]);
+      same(k, prototypeValue(k, proto[k]), (everything as Api)[k]);
     }
     flush();
   });
@@ -141,8 +146,12 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       same(`${tag} buildTerms`, prototypeValue("TERMS", proto.buildTerms(bag), bag), port.buildTerms(bag));
       same(`${tag} buildStrings`, proto.buildStrings(bag), port.buildStrings(bag));
       same(`${tag} buildIdeas`, proto.buildIdeas(bag), port.buildIdeas(bag));
-      same(`${tag} buildHow`, proto.buildHow(bag), port.buildHow(bag));
-      same(`${tag} buildHow(example)`, proto.buildHow(bag, "An example."), port.buildHow(bag, "An example."));
+      same(`${tag} buildHow`, proto.buildHow(bag), later.buildHow(bag));
+      same(
+        `${tag} buildHow(example)`,
+        proto.buildHow(bag, "An example."),
+        later.buildHow(bag, "An example.")
+      );
       same(`${tag} groupsSentence`, proto.groupsSentence(bag), port.groupsSentence(bag));
       same(`${tag} urgencyDefinition`, proto.urgencyDefinition(bag), port.urgencyDefinition(bag));
       for (const r of proto.RULE_IDS)
@@ -152,11 +161,11 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           port.urgencyNote(r, { counts: bag })
         );
     });
-    same("buildQuestions", proto.buildQuestions(), port.buildQuestions());
+    same("buildQuestions", proto.buildQuestions(), later.buildQuestions());
     same(
       "buildQuestions(trust)",
       proto.buildQuestions(proto.buildIdeas({}), "Trust."),
-      port.buildQuestions(port.buildIdeas({}), "Trust.")
+      later.buildQuestions(port.buildIdeas({}), "Trust.")
     );
     flush();
   });
@@ -258,10 +267,10 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
   describe.each(DATASET_DIRS.map(([name]) => name))("%s data", (name) => {
     const dataset = () => datasets.find((d) => d.name === name) as Dataset;
 
-    it("binds the same counts and fixed copy", () => {
+    it("binds the same counts and fixed copy", async () => {
       const { data } = dataset();
       const P = proto.copyFor(data);
-      const Q: Api = port.copyFor(data as unknown as CopyData);
+      const Q: Api = await withLater(port.copyFor(data as unknown as CopyData));
       same("counts", P.counts, Q.counts);
       for (const k of [
         "TERMS",
@@ -302,7 +311,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           .filter((k) => k !== "COUNTS")
           .sort(),
         Object.keys(Q)
-          .filter((k) => k !== "segments")
+          .filter((k) => !["segments", "later", "GUIDE_SEGMENTS", "howExample"].includes(k))
           .sort()
       );
       flush();

@@ -313,7 +313,7 @@ describe("which list to use", () => {
     );
   });
 
-  it("reassures about the schools both rules ordered only, and says the range schools can still move", () => {
+  it("reassures about the schools both rules ordered only, and says the range schools can still move", async () => {
     const ranges = [1, 2, 3].map((i) => school({ id: `r${i}`, cohort: "interval", bounds: [5, 9] }));
     const full = [school({ id: "c1", place: 1 }), ...ranges];
     const pairwise = pairwiseFromCompare(compare({ overlaps: [10, 20, 30, 40], maximum: 9 })).pairwise;
@@ -332,17 +332,18 @@ describe("which list to use", () => {
       countsByRule: "shared",
       pairwise,
     });
-    expect(P.FIRST_QUESTIONS.find((q) => q.key === "trust")?.answer).toBe(
+    const L = await P.later();
+    expect(L.FIRST_QUESTIONS.find((q) => q.key === "trust")?.answer).toBe(
       `${text} The research team is reviewing the revision that leaves it out, so the screen opens on the paper's main rule.`
     );
     expect(
-      P.HOW_IT_WORKS.flatMap((s) => s.sentences).some((t) =>
+      L.HOW_IT_WORKS.flatMap((s) => s.sentences).some((t) =>
         t.includes("the same 20 schools make the top 20 with or without urgency")
       )
     ).toBe(false);
   });
 
-  it("builds the explainer's example from the range school whose possible places move most", () => {
+  it("builds the explainer's example from the range school whose possible places move most", async () => {
     const moves = (id: string, name: string, u: [number, number], nu: [number, number]) => ({
       ...school({ id, name, cohort: "interval" }),
       results: {
@@ -362,7 +363,7 @@ describe("which list to use", () => {
       countsByRule: "shared",
       pairwise,
     });
-    const limits = P.HOW_IT_WORKS.find((s) => s.key === "limits")?.sentences ?? [];
+    const limits = (await P.later()).HOW_IT_WORKS.find((s) => s.key === "limits")?.sentences ?? [];
     expect(limits).toContain(
       "For example, among the 84 schools with every input recorded, the same 20 schools make the top 20 with or without urgency, and the same 40 make the top 40, but Larch High School's possible places among all 87 schools that can be put in order move from 12th to 18th with urgency to 18th to 30th without it."
     );

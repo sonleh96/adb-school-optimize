@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
-import { GUIDE, LAYOUT, TERMS } from "@/lib/screening/copy";
+import { LAYOUT, TERMS } from "@/lib/screening/copy";
+import { GUIDE } from "@/lib/screening/copy/later";
 
 import { textProblems } from "./helpers";
 

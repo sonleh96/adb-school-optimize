@@ -33,6 +33,7 @@ import {
 } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 
+import { withLater } from "./helpers";
 import {
   type Api,
   DATASET_DIRS,
@@ -527,7 +528,7 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       flush();
     });
 
-    it("says the same about every pair of rules from /compare responses", () => {
+    it("says the same about every pair of rules from /compare responses", async () => {
       const { data } = dataset();
       const schools = withoutFlag(data.schools);
       const counts = proto.countsFrom(schools);
@@ -546,13 +547,15 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
           row.maximum_absolute_rank_shift != null
       );
       const R: Api = proto.copyFor({ schools, pairwise: kept, top20Changes: data.top20Changes });
-      const Q: Api = port.copyFor({
-        schools: placed,
-        counts,
-        countsByRule: "shared",
-        pairwise,
-        top20Changes,
-      });
+      const Q: Api = await withLater(
+        port.copyFor({
+          schools: placed,
+          counts,
+          countsByRule: "shared",
+          pairwise,
+          top20Changes,
+        })
+      );
 
       for (const k of ["TERMS", "STRINGS", "IDEAS", "HOW_IT_WORKS", "FIRST_QUESTIONS", "LAYOUT"])
         same(k, prototypeValue(k, R[k], counts), Q[k]);
