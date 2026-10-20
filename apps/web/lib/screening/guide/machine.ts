@@ -248,16 +248,20 @@ export function stateFromSearch(search: string, memory: Memory): LayerState {
     gloss: glossOpen
       ? { open: true, q: params.get("gq") ?? "", x: params.get("gx") || null }
       : CLOSED_GLOSSARY,
-    apply: { seq: rail.kind === "step" ? 1 : 0, fresh: true },
+    // A link copied mid-guide keeps the school it was copied with, when the step can follow that school.
+    apply: { seq: rail.kind === "step" ? 1 : 0, fresh: false },
   };
 }
 
-/** `search` with the layer keys replaced by `state`'s and every other key kept as it was. */
-export function searchWithLayers(search: string, state: LayerState): string {
+/**
+ * `search` with the layer keys replaced by `state`'s and every other key kept as it was. The start list is written
+ * only when it is not where this person's rail opens anyway, so a first visit keeps a clean address.
+ */
+export function searchWithLayers(search: string, state: LayerState, memory: Memory = EMPTY_MEMORY): string {
   const params = new URLSearchParams(search);
   for (const key of LAYER_KEYS) params.delete(key);
   const { rail } = state;
-  if (rail.kind === "start") params.set("guide", "start");
+  if (rail.kind === "start" && memory.seen) params.set("guide", "start");
   if (rail.kind === "step") {
     params.set("guide", rail.guide);
     params.set("gstep", String(rail.step));

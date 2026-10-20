@@ -9,7 +9,8 @@
  *  6. A returning user is taught twice (the rail opens with no link asking for it), or a first visit starts closed.
  *  7. A pasted link does not land on its step, or loses the help card, glossary search or page.
  *  8. A link to a guide the data cannot teach, or a step past its end, leaves the rail on nothing.
- *  9. Writing the layer keys drops the workspace's keys.
+ *  9. Writing the layer keys drops the workspace's keys, or a first visit's address carries the start list it
+ *     opens on anyway.
  * 10. Malformed local storage breaks the page instead of reading as a first visit.
  * 11. The card and the glossary drawer show together, or leaving help mode leaves its card open.
  * 12. "Show this step again" does not ask the screen to be set again from the guide's own school.
@@ -165,7 +166,7 @@ describe("links", () => {
       help: true,
       card: "term:need_facilities",
       gloss: { open: true, q: "need", x: "school_need" },
-      apply: { seq: 1, fresh: true },
+      apply: { seq: 1, fresh: false },
     });
     expect(searchWithLayers(search, state)).toBe(
       "?rule=additive_no_u&guide=q2&gstep=3&present=1&page=how&help=1&card=term%3Aneed_facilities&gloss=1&gq=need&gx=school_need"
@@ -174,6 +175,14 @@ describe("links", () => {
 
   it("drops its own keys when the layers close and keeps the workspace's", () => {
     expect(searchWithLayers("?guide=q1&gstep=2&school=k1&help=1", INITIAL_STATE)).toBe("?school=k1");
+  });
+
+  it("names the start list only for someone whose rail would otherwise open closed", () => {
+    const onStart = { ...INITIAL_STATE, rail: { kind: "start" as const } };
+    expect(searchWithLayers("?school=k1", onStart, EMPTY_MEMORY)).toBe("?school=k1");
+    expect(searchWithLayers("?school=k1", onStart, { seen: true, done: [], last: null })).toBe(
+      "?school=k1&guide=start"
+    );
   });
 
   it("ignores a card that is not one and a step that is not a number", () => {
