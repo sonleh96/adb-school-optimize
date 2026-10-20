@@ -11,11 +11,12 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { bindCopy, namesIn } from "@/lib/screening/copy";
+import { bindCopy, copyFor, distinctName, namesIn } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 import { compareResponse, inputsResponse, resultsResponse } from "@/lib/screening/types";
 
 import { copy as clone, readFixture } from "../fixtures";
+import { school } from "./helpers";
 
 const D = "worst-names";
 type Row = {
@@ -95,5 +96,30 @@ describe("the schools that move in a comparison", () => {
 
   it("keeps the schools the comparison names among the schools of the list", () => {
     expect(schools.map((s) => s.name)).toContain("Spaced Name School");
+  });
+});
+
+describe("a list that changes after a name was asked for", () => {
+  const twin = (id: string, name: string, district: string) =>
+    school({ id, name, district, province: "Highlands" });
+
+  it("names a school by the list as it is now, for a list changed in place", () => {
+    const list = [twin("a", "Twin School", "North"), twin("b", "Another", "South")];
+    expect(distinctName(list[0], list)).toBe("Twin School");
+    list.push(twin("c", "Twin  School", "East"));
+    expect(distinctName(list[0], list)).toBe("Twin School (North)");
+    list[2] = { ...list[2], name: "Third" };
+    expect(distinctName(list[0], list)).toBe("Twin School");
+    list.length = 0;
+    expect(distinctName(twin("z", "Solo", "North"), list)).toBe("Solo");
+  });
+
+  it("binds a snapshot of the schools, so a list changed afterwards does not change what the copy says", () => {
+    const list = [twin("a", "Twin School", "North"), twin("b", "Twin  School", "East")];
+    const bound = copyFor({ schools: list, countsByRule: "shared" });
+    const before = bound.tieNote(list[0], "additive_u");
+    list.length = 0;
+    expect(bound.distinctName(twin("a", "Twin School", "North"))).toBe("Twin School (North)");
+    expect(bound.tieNote(list[0] ?? twin("a", "Twin School", "North"), "additive_u")).toBe(before);
   });
 });

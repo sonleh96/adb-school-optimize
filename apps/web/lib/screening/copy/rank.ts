@@ -399,17 +399,22 @@ export function locationLine(school: NamedSchool): string {
 export const provinceHeading = (province: string | null | undefined): string =>
   cleanedOrNull(province ?? null) ?? LAYOUT.provinceNotRecorded;
 
-// The schools of a list by the name they display, built once per list so naming each school stays cheap.
+// The schools of a list by the name they display, built once per list so naming each school stays cheap. Only a
+// frozen list is kept, because a list that can change in place would leave the index out of date; the bound copy
+// binds a frozen snapshot of its schools. Any other list is indexed afresh on each call.
 const NAME_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
 function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
-  let index = NAME_INDEX.get(schools);
+  const kept = Object.isFrozen(schools);
+  let index = kept ? NAME_INDEX.get(schools) : undefined;
   if (!index) {
     index = new Map();
     for (const x of schools) {
       const name = displayName(x);
-      index.set(name, [...(index.get(name) ?? []), x]);
+      const same = index.get(name);
+      if (same) same.push(x);
+      else index.set(name, [x]);
     }
-    NAME_INDEX.set(schools, index);
+    if (kept) NAME_INDEX.set(schools, index);
   }
   return index;
 }
