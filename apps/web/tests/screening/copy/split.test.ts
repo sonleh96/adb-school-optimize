@@ -17,7 +17,7 @@ import { copyFor } from "@/lib/screening/copy";
 
 const WEB = path.resolve(__dirname, "../../..");
 const COPY = path.join(WEB, "lib/screening/copy");
-const ON_DEMAND = ["explainer", "glossary", "guide", "later"];
+const ON_DEMAND = ["explainer", "glossary", "guide", "later", "method"];
 
 /** Every .ts and .tsx file under a folder. */
 function sources(dir: string): string[] {
@@ -75,13 +75,16 @@ describe("what loads up front", () => {
     expect(onDemand(probe, "react")).toBeNull();
   });
 
-  it("reaches the on-demand module only through one dynamic import, in the bound copy", () => {
+  it("reaches the on-demand modules only through one dynamic import each, in the bound copy", () => {
     const found = screen.flatMap((file) =>
       dynamicImports(file)
         .filter((s) => onDemand(file, s) !== null)
         .map((s) => `${path.relative(WEB, file)} -> ${s}`)
     );
-    expect(found).toEqual(["lib/screening/copy/bound.ts -> ./later"]);
+    expect(found.sort()).toEqual([
+      "lib/screening/copy/bound.ts -> ./later",
+      "lib/screening/copy/bound.ts -> ./method",
+    ]);
   });
 });
 

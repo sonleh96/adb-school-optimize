@@ -372,7 +372,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       label: "Saved views for meetings",
       line: "Views you save to walk a meeting through, one at a time.",
       help: "A saved view keeps the rule, the selected school, the view and the map position, and opens as a link.",
-      where: "Map bar, export briefing pack",
+      where: "Map bar, saved views for meetings",
     },
     compare: {
       technical: "Rule comparison",

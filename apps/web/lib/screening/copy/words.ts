@@ -58,12 +58,12 @@ export const LAYOUT = Object.freeze({
   notComputedGroup: (name: string, n: number) => `Not computed under ${name} (${n})`,
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
   rulesInPack: "Rules the saved views use",
-  sharedRecord: "Shared by every list in the pack",
+  sharedRecord: "Shared by every list in the saved views",
   fingerprints: (n: number) =>
     n === 1
       ? "1 source file. The downloaded file names it with its fingerprint."
       : `${n} source files. The downloaded file names each one with its fingerprint.`,
-  downloadPack: "Download the pack",
+  downloadPack: "Download the saved views",
   copyRecord: "Copy the method record",
   shares: "How the rule adds up",
   afterDownload: (what: string) => `Downloaded ${what}. The method record is in the first lines of the file.`,
