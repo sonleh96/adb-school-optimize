@@ -57,7 +57,22 @@ It needs only `DATABASE_URL`.
 - A stored run that no longer equals the engine's output is refused. Bump the engine package version when the method changed.
 - Schools are stored under the name exactly as the source has it. A name is linked to `schools.school_id` through `normalize_join_key` when the key is unique; otherwise `school_id` stays null and the name is listed in the output as unmatched or ambiguous. Load `schools` first, or rerun the command afterwards: the links converge.
 
-`app/screening_store.py` reads versions, runs and ordered results back as typed objects.
+To store the top-20 persistence numbers of the recorded experiment with the version, add the table's path under the reference root:
+
+```bash
+  --persistence-csv experiments/decision_rules/<EXP id>/results/persistent_investigation_candidates.csv \
+  --persistence-sha256 <hash the file must have>
+```
+
+`infra/sql/006_screening_persistence.sql` holds them in three more tables, with the file's path and SHA-256, the experiment id, the draws, the three concentration settings and the 0.80 threshold.
+The numbers come from an experiment that included urgency, so the migration stores them for `additive_u` only.
+
+- The file names schools by name. Each name is joined to the version's schools through `normalize_join_key`. A name that matches no school or several, or two names for one school, refuses the whole load.
+- The file's flag column must equal "at or above the threshold in every setting" for every row, and the flagged count must equal its `run_receipt.json`. Otherwise the load is refused.
+- The flag itself is never stored. It is derived on read from the stored frequencies, so it cannot disagree with them.
+- A rerun with the same file changes nothing. A rerun whose file differs from the stored numbers is refused.
+
+`app/screening_store.py` reads versions, runs, ordered results and persistence back as typed objects.
 
 ## Screening API
 
@@ -70,6 +85,7 @@ Unknown rule, input version or school gives 404 in the API's `{"error": {code, m
 | `GET /rules` | The seven rules: id, label, provenance, policy role, score kind, formula, weights as fractions and floats, whether urgency enters, and the input versions that have a run. |
 | `GET /input-versions` | Stored versions, newest first, with the default marked. |
 | `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
+| `GET /inputs?input_version=` | The stored inputs of every school of a version, in the order supplied: `school_key`, `source_school_name` and `inputs` in the shape of the school detail's `inputs`. For a client that shows a list and needs raw readings without one request per school. |
 | `GET /schools/by-key/{school_key}?input_version=` | One school under all seven rules, with its stored raw inputs. Every school has a `school_key`, linked to `schools` or not. |
 | `GET /schools/{school_id}?input_version=` | Every school of the version linked to that `schools` row (normally one), each as above. |
 | `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules (each with its scope), the pairwise metrics, top-20 entrants and exits, the schools left out with the reason, and the bounds of interval schools. |
@@ -81,10 +97,12 @@ Reading the list:
 - `school_key` is derived from the input version and the exact source name. It is the same on every request for a version and differs between versions.
 - Complete schools come by point rank. Interval schools (a missing environmental input) sit at their lower-score position, or at their upper-score position with `placement=upper`, and each row says which. Queued schools come last, by province, district and name.
 - A rank is always paired with the scope label and count of its cohort. A point rank counts complete schools; a rank bound counts eligible schools. They are different scopes.
+- Every rank and the manifest also carry a `scope_code` beside the label: `complete_under_rule` for a point rank, `eligible` for rank bounds. Branch on the code; the label is for reading, and its count comes from the same response.
+- `persistent_candidate` is true when a school's lower top-20 frequency was at or above the threshold in every setting of the random share changes, false when it was not, and null when the school was not in the experiment or the version has no such numbers. It appears only in the list of the circulated rule `additive_u` and in that rule's entry of a school's detail, never for another rule. The `persistence` block says where it came from, and its `limitation` says that it describes the urgency-included rule and is not a result of the proposed rule.
 - Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, and the response says so.
 - `display_order` is the row's place in the full unfiltered display, counting interval and queued schools. It is not a rank: it differs from the point rank wherever an interval school sits above a complete one, and it must not be quoted as a rank.
 - The default input version is the newest one. For each rule the current run is the one with the highest engine package version, not the latest stored. Every read accepts `package_version` to pin a run.
-- Cache policy: no `input_version` gives `private, max-age=60`; an `input_version` alone gives `max-age=300`; an `input_version` with a `package_version` names one stored run and is sent as `immutable`. Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
+- Cache policy: no `input_version` gives `private, max-age=60`; an `input_version` alone gives `max-age=300`; an `input_version` with a `package_version` names one stored run and is sent as `immutable`. `/inputs` holds nothing that depends on `schools`, so naming the `input_version` alone makes it `immutable`. Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
 - The links to the `schools` table (`school_id`, coordinates) are the one part of a stored run that a later `load_screening_inputs` run may change. Do not keep an immutable response across such a run.
 
 Exports:
