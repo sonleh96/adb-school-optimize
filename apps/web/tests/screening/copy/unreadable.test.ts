@@ -44,10 +44,10 @@ describe("a list with one malformed stored input", () => {
 
   it("says that school's inputs cannot be read, and not that they are blank", () => {
     expect(s08.unreadable).toEqual(["classrooms_total", "aqi"]);
-    expect(bound.copy.missingSentences(s08)[0]).toBe(
+    expect(bound.copy.missingSentences(s08, "additive_u")[0]).toBe(
       "The total number of classrooms and the air-quality reading in the record cannot be read, so they are not used."
     );
-    expect(bound.copy.missingSentence(s08)).not.toMatch(/blank/);
+    expect(bound.copy.missingSentence(s08, "additive_u")).not.toMatch(/blank/);
     expect(bound.copy.missingValueNote(s08, "air")).toBe(
       "The air-quality reading in the record cannot be read, so it is not counted as 0."
     );
@@ -65,7 +65,7 @@ describe("a school's detail with a malformed stored input", () => {
     body.inputs.power_source = 7;
     const s = schoolFromDetail(parseWith(schoolDetailResponse, body, "school"), "additive_u");
     expect(s.unreadable).toEqual(["power_source"]);
-    expect(copy.missingSentences(s)[0]).toBe(
+    expect(copy.missingSentences(s, "additive_u")[0]).toBe(
       "The power source in the record cannot be read, so it is not used."
     );
   });

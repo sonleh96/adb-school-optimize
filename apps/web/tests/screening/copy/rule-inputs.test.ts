@@ -106,7 +106,7 @@ describe("a school with a missing reading, under the benchmark", () => {
   it("keeps the old words when no rule is given, or for a rule that reads every input", () => {
     const whole = named(placedFromResults(lists.additive_u, lists.benchmark), "Sample School 08");
     expect(P.missingSentences(whole, "additive_u")).toEqual(["All of its inputs are recorded."]);
-    expect(P.missingSentences(whole)).toEqual(["All of its inputs are recorded."]);
+    expect(P.missingSentences(whole, "additive_u")).toEqual(["All of its inputs are recorded."]);
   });
 });
 

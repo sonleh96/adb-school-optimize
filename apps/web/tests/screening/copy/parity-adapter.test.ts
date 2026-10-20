@@ -498,8 +498,10 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
           );
         one("cohort", (_api, x) => x.cohort);
         one("gate_failures", (_api, x) => x.gate_failures);
-        one("missingSentence", (api, x) => api.missingSentence(x));
-        one("missingSentences", (api, x) => api.missingSentences(x));
+        for (const r of port.RULE_IDS) {
+          one(`${r} missingSentence`, (api, x) => api.missingSentence(x, r));
+          one(`${r} missingSentences`, (api, x) => api.missingSentences(x, r));
+        }
         one("missingLabels", (api, x) => api.missingLabels(x));
         for (const k of ["need", ...proto.INPUT_KEYS]) {
           one(`missingValueKind(${k})`, (api, x) => api.missingValueKind(x, k));

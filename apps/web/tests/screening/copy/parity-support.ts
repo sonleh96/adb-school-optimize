@@ -88,6 +88,11 @@ export const FN_ARGS: Record<string, unknown[][]> = {
  *  - an analyst label for a group names its size only when the counts are bound, and names none otherwise;
  *  - the reason a retired word is banned says "these are", not a count.
  */
+/** The lines the port binds per rule instead of keeping on the fixed strings. */
+export const SCOPE_KEYS = ["groups", "scopeComplete", "scopeRanked", "scopeShort", "scopeDetail"] as const;
+export const withoutScope = (strings: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(strings).filter(([k]) => !(SCOPE_KEYS as readonly string[]).includes(k)));
+
 export function prototypeValue(key: string, value: any, counts?: Record<string, number>): any {
   if (key === "TERMS") {
     const groups: Record<string, [string, string]> = {
@@ -106,6 +111,8 @@ export function prototypeValue(key: string, value: any, counts?: Record<string, 
     }
     return out;
   }
+  // The port keeps the group lines out of the fixed strings, so that they are said per rule (see `scope`).
+  if (key === "STRINGS" || key === "buildStrings") return withoutScope(value);
   if (key === "BANNED") {
     return value.map((b: any) => ({ ...b, why: b.why.replace(/\bthe \d+ are\b/, "these are") }));
   }

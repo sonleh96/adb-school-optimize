@@ -68,13 +68,13 @@ describe("a school held back only because its urgency value is unknown", () => {
 
   it("does not say school need cannot be worked out, because it can", () => {
     expect(copy.missingValueKind(s, "need")).toBe("recorded");
-    expect(copy.missingSentence(s)).not.toMatch(/school need cannot be worked out/i);
+    expect(copy.missingSentence(s, "additive_u")).not.toMatch(/school need cannot be worked out/i);
     expect(copy.missingValueNote(s, "need")).toBe("Recorded in the source.");
   });
 
   it("names the cause in a chip, in the sentences and in the note", () => {
     expect(copy.missingLabels(s)).toEqual(["Urgency value not recorded"]);
-    expect(copy.missingSentences(s)).toEqual([
+    expect(copy.missingSentences(s, "additive_u")).toEqual([
       "Its urgency value is not recorded, and the rules that use urgency need it.",
       "The rules that leave urgency out do not need it, so they can put this school in order.",
       "Until the urgency value is recorded, it has no place in the list under a rule that uses urgency.",
@@ -122,13 +122,13 @@ describe("a school held back for a remoteness category", () => {
     expect(s.gate_failures).toEqual(["locality_disadvantage"]);
     expect(copy.missingLabels(s)).toEqual(["Remoteness off the scale, needs checking"]);
     expect(copy.missingValueKind(s, "locality")).toBe("unusable");
-    expect(copy.missingSentences(s)[0]).toBe(
+    expect(copy.missingSentences(s, "additive_u")[0]).toBe(
       "The recorded remoteness category is not on the study's scale, which needs checking, and until then remoteness cannot be worked out."
     );
     expect(copy.inputSentence(s, "locality")).toBe(
       "Its remoteness category is recorded as Nowhere, which is not on the study's scale."
     );
-    expect(copy.missingSentence(s)).not.toMatch(/blank/);
+    expect(copy.missingSentence(s, "additive_u")).not.toMatch(/blank/);
   });
 
   it("still says a blank category is blank", () => {
@@ -136,7 +136,9 @@ describe("a school held back for a remoteness category", () => {
       const s = withLocality(blank);
       expect(copy.missingLabels(s)).toEqual(["Remoteness blank"]);
       expect(copy.missingValueKind(s, "locality")).toBe("blank");
-      expect(copy.missingSentences(s)[0]).toBe("The remoteness category is blank in the record.");
+      expect(copy.missingSentences(s, "additive_u")[0]).toBe(
+        "The remoteness category is blank in the record."
+      );
     }
   });
 });
@@ -154,7 +156,7 @@ describe("a school held back because a district figure or its reach cannot be wo
 
   it("names the district figures that are missing, and no others", () => {
     expect(s.gate_failures).toEqual(["unresolved_area_context", "unresolved_reach"]);
-    expect(copy.missingSentences(s).slice(0, 2)).toEqual([
+    expect(copy.missingSentences(s, "additive_u").slice(0, 2)).toEqual([
       "The secondary enrolment figure and the night-time light figure for its district are not recorded or cannot be used, so its district context cannot be worked out.",
       "The number of people within modelled walking distance is not recorded or cannot be used, so its walking reach cannot be worked out.",
     ]);
@@ -165,7 +167,7 @@ describe("a school held back because a district figure or its reach cannot be wo
   });
 
   it("closes without claiming school need is unknown, and reads the notes as figures that cannot be worked out", () => {
-    expect(copy.missingSentences(s).slice(2)).toEqual([
+    expect(copy.missingSentences(s, "additive_u").slice(2)).toEqual([
       "Until these are checked, it has no place in the list yet.",
       "Having no place in the list yet does not mean its need is low.",
     ]);
@@ -173,7 +175,7 @@ describe("a school held back because a district figure or its reach cannot be wo
     expect(copy.missingValueNote(s, "reach")).toBe(
       "The number of people within modelled walking distance is not recorded or cannot be used, so its walking reach cannot be worked out. The tool does not fill it in or count it as 0."
     );
-    expect(copy.inputSentence(s, "area")).toBe(copy.missingSentences(s)[0]);
+    expect(copy.inputSentence(s, "area")).toBe(copy.missingSentences(s, "additive_u")[0]);
   });
 
   it("names one district figure in the singular", () => {
@@ -184,10 +186,12 @@ describe("a school held back because a district figure or its reach cannot be wo
         e.result.components.A = null;
       })
     );
-    expect(copy.missingSentences(one)[0]).toBe(
+    expect(copy.missingSentences(one, "additive_u")[0]).toBe(
       "The conflict exposure figure for its district is not recorded or cannot be used, so its district context cannot be worked out."
     );
-    expect(copy.missingSentences(one)[1]).toBe("Until this is checked, it has no place in the list yet.");
+    expect(copy.missingSentences(one, "additive_u")[1]).toBe(
+      "Until this is checked, it has no place in the list yet."
+    );
   });
 });
 
@@ -219,11 +223,11 @@ describe("a school held back for a negative count", () => {
       "Negative teacher count, needs checking",
       "Negative count, needs checking",
     ]);
-    expect(copy.missingSentences(s).slice(0, 2)).toEqual([
+    expect(copy.missingSentences(s, "additive_u").slice(0, 2)).toEqual([
       "The number of teachers is recorded as a negative number, which needs checking, and until then teacher housing cannot be worked out.",
       "The library count is recorded as a negative number, which needs checking.",
     ]);
-    expect(copy.missingSentence(s)).not.toMatch(/blank/);
+    expect(copy.missingSentence(s, "additive_u")).not.toMatch(/blank/);
     expect(copy.missingValueKind(s, "housing")).toBe("unusable");
   });
 
@@ -233,10 +237,10 @@ describe("a school held back for a negative count", () => {
       stockProblem(b, "permanent_classroom_deficit", ["negative_stock_value", "nonpositive_denominator"]);
     });
     expect(copy.missingLabels(one)).toEqual(["Negative classroom count, needs checking"]);
-    expect(copy.missingSentences(one)[0]).toBe(
+    expect(copy.missingSentences(one, "additive_u")[0]).toBe(
       "The total number of classrooms is recorded as a negative number, which needs checking, and until then the share built of permanent materials cannot be worked out."
     );
-    expect(copy.missingSentence(one)).not.toMatch(/blank/);
+    expect(copy.missingSentence(one, "additive_u")).not.toMatch(/blank/);
     expect(copy.missingValueNote(one, "classrooms")).not.toMatch(/blank/);
   });
 
@@ -246,7 +250,7 @@ describe("a school held back for a negative count", () => {
       stockProblem(b, "teacher_housing_deficit", ["nonpositive_denominator"]);
     });
     expect(copy.missingLabels(none)).toEqual(["Record gives 0 teachers, needs checking"]);
-    expect(copy.missingSentence(none)).not.toMatch(/blank/);
+    expect(copy.missingSentence(none, "additive_u")).not.toMatch(/blank/);
   });
 
   it("still says a blank permanent count is blank when the total is recorded", () => {
@@ -263,8 +267,8 @@ describe("a school held back for a negative count", () => {
       everyRule(b, (e) => (e.result.gate_failures = ["negative_stock_value"]));
     });
     expect(copy.missingValueKind(only, "need")).toBe("recorded");
-    expect(copy.missingSentence(only)).not.toMatch(/school need cannot be worked out/i);
-    expect(copy.missingSentences(only)[0]).toBe(
+    expect(copy.missingSentence(only, "additive_u")).not.toMatch(/school need cannot be worked out/i);
+    expect(copy.missingSentences(only, "additive_u")[0]).toBe(
       "The library count is recorded as a negative number, which needs checking."
     );
   });
@@ -305,7 +309,7 @@ describe("a school held back for several reasons", () => {
   });
 
   it("closes on school need only because a need part is among the reasons", () => {
-    const sentences = copy.missingSentences(s);
+    const sentences = copy.missingSentences(s, "additive_u");
     expect(sentences.at(-2)).toBe(
       "Until these are checked, its school need cannot be worked out, so it has no place in the list yet."
     );
@@ -315,7 +319,7 @@ describe("a school held back for several reasons", () => {
   });
 
   it("reads clean", () => {
-    for (const t of copy.missingSentences(s)) expect(textProblems(t)).toEqual([]);
+    for (const t of copy.missingSentences(s, "additive_u")) expect(textProblems(t)).toEqual([]);
     for (const t of copy.missingLabels(s)) expect(textProblems(t, { sentence: false })).toEqual([]);
   });
 });
@@ -325,7 +329,7 @@ describe("a reason this copy has no words for", () => {
     const s = held((b) => everyRule(b, (e) => (e.result.gate_failures = ["a_reason_added_later"])));
     expect(s.gate_failures).toEqual([]);
     expect(copy.missingLabels(s)).toEqual(["Record needs checking"]);
-    expect(copy.missingSentences(s)).toEqual([
+    expect(copy.missingSentences(s, "additive_u")).toEqual([
       "Its record needs checking before it can be put in order.",
       "Having no place in the list yet does not mean its need is low.",
     ]);

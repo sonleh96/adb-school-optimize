@@ -59,7 +59,9 @@ describe.each([
   });
 
   it("makes the range sentence name the reading", () => {
-    expect(copy.missingSentences(s)[0]).toMatch(/is (missing|not recorded)\.$|are not recorded\.$/);
+    expect(copy.missingSentences(s, "additive_u")[0]).toMatch(
+      /is (missing|not recorded)\.$|are not recorded\.$/
+    );
   });
 });
 

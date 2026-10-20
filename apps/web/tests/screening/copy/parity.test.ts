@@ -145,7 +145,17 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     bags.forEach((bag, i) => {
       const tag = `bag ${i}`;
       same(`${tag} buildTerms`, prototypeValue("TERMS", proto.buildTerms(bag), bag), port.buildTerms(bag));
-      same(`${tag} buildStrings`, proto.buildStrings(bag), port.buildStrings(bag));
+      same(
+        `${tag} buildStrings`,
+        prototypeValue("buildStrings", proto.buildStrings(bag)),
+        port.buildStrings(bag)
+      );
+      for (const reads of [undefined, { urgency: false, readings: true }, { urgency: true, readings: false }])
+        same(
+          `${tag} buildScope ${JSON.stringify(reads)}`,
+          proto.buildScope(bag, reads),
+          port.buildScope(bag, reads)
+        );
       same(`${tag} buildIdeas`, proto.buildIdeas(bag), port.buildIdeas(bag));
       same(`${tag} buildHow`, proto.buildHow(bag), later.buildHow(bag));
       same(
@@ -191,8 +201,8 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       for (const fn of ["missingLabels", "missingSentences", "missingSentence"])
         sameOutcome(
           `${fn} ${JSON.stringify(c)}`,
-          run(() => proto[fn](x)),
-          run(() => (port as Api)[fn](x))
+          run(() => proto[fn](x, "additive_u")),
+          run(() => (port as Api)[fn](x, "additive_u"))
         );
       for (const key of ["classrooms", "housing"])
         sameOutcome(
@@ -225,8 +235,8 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       for (const fn of ["missingLabels", "missingSentences", "missingSentence"])
         sameOutcome(
           `${fn} ${JSON.stringify(c)}`,
-          run(() => proto[fn](x)),
-          run(() => (port as Api)[fn](x))
+          run(() => proto[fn](x, "additive_u")),
+          run(() => (port as Api)[fn](x, "additive_u"))
         );
       for (const key of ["classrooms", "housing", "facilities", "services", "air"])
         sameOutcome(
@@ -357,6 +367,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       same("groupsSentence()", P.groupsSentence(), Q.groupsSentence());
       for (const r of proto.RULE_IDS as string[])
         same(`groupsSentence(${r})`, P.groupsSentence(r), Q.groupsSentence(r));
+      for (const r of proto.RULE_IDS as string[]) same(`scope(${r})`, P.scope(r), Q.scope(r));
       same("urgencyDefinition()", P.urgencyDefinition(), Q.urgencyDefinition());
       same(
         "defaultListStatement()",
@@ -506,8 +517,6 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         one("displayName", (api) => api.displayName(s));
         one("distinctName", (api) => api.distinctName(s, data.schools));
         one("locationLine", (api) => api.locationLine(s));
-        one("missingSentence", (api) => api.missingSentence(s));
-        one("missingSentences", (api) => api.missingSentences(s));
         one("missingLabels", (api) => api.missingLabels(s));
         one("missingGroupLabel", (api) => api.missingGroupLabel(s));
         one("provinceHeading", (api) => api.provinceHeading(s.province));
