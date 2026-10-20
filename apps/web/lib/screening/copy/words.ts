@@ -68,6 +68,7 @@ export const LAYOUT = Object.freeze({
   viewOf: (i: number, n: number) => `Saved view ${i} of ${n}`,
   meetingScript: "Meeting script",
   // Round 6: product, landmarks and states.
+  howTitle: "How this works",
   productName: "RISE-PNG",
   productSub: "Screening of secondary schools",
   logoAria: "ADB logo",

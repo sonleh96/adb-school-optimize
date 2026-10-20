@@ -4,7 +4,7 @@ import { countWord } from "./counts";
 import { IDEAS } from "./ideas";
 import { ruleCountWord } from "./rules";
 import { type Segments, nameList, nameSegment, seg, textOf } from "./segments";
-import { KEYS } from "./words";
+import { KEYS, LAYOUT } from "./words";
 
 /* ------------------------------------------------- step lines that name a school */
 // Each is built once from segments. The string form passes a name as plain text and the marked form passes it as a
@@ -45,7 +45,7 @@ export const GUIDE = Object.freeze({
   startEyebrow: "Start here",
   returningEyebrow: "Guides",
   startTitle: "What do you want to find out?",
-  howTitle: "How this works",
+  howTitle: LAYOUT.howTitle,
   explore: "Explore on my own",
   close: "Close guides",
   firstNote: "Guides stay one click away, at the top of the map.",

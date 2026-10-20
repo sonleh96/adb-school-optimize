@@ -20,8 +20,9 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { copyFor } from "@/lib/screening/copy";
+import * as later from "@/lib/screening/copy/later";
 
-import { Corpus, RULES, addFixedCopy, type FixedCopy } from "./helpers";
+import { Corpus, RULES, addFixedCopy, withLater, type FixedCopy } from "./helpers";
 
 const FULL = {
   all: 148,
@@ -51,7 +52,7 @@ const SMALL = {
 describe("every fixed string follows the writing rules", () => {
   it("with no data bound, as the module exports them", () => {
     const corpus = new Corpus();
-    addFixedCopy(corpus, copy, "unbound");
+    addFixedCopy(corpus, { ...copy, ...later }, "unbound");
     expect(corpus.problems).toEqual([]);
     expect(corpus.checked).toBeGreaterThan(200);
   });
@@ -89,9 +90,9 @@ describe("every fixed string follows the writing rules", () => {
         flagged: 0,
       },
     ],
-  ])("with counts for %s", (_name, counts) => {
+  ])("with counts for %s", async (_name, counts) => {
     const corpus = new Corpus();
-    addFixedCopy(corpus, copyFor({ counts }), "bound");
+    addFixedCopy(corpus, await withLater(copyFor({ counts })), "bound");
     expect(corpus.problems).toEqual([]);
   });
 
@@ -144,7 +145,7 @@ describe("every fixed string follows the writing rules", () => {
     for (const [k, v] of Object.entries(copy.KEYS))
       corpus.add(`KEYS.${k}`, v, { sentence: false, keys: true });
 
-    const G = copy.GUIDE;
+    const G = later.GUIDE;
     corpus.add("GUIDE.stepOf", G.stepOf(1, 3), { sentence: false });
     corpus.add("GUIDE.stepCounter", G.stepCounter(2, 5, 1, 3), { sentence: false });
     corpus.add("GUIDE.pointToCard", G.pointToCard(3));
@@ -292,14 +293,14 @@ describe("the term map", () => {
   });
 
   it("puts every term in exactly one glossary group, and only terms", () => {
-    const grouped = copy.GLOSSARY_GROUPS.flatMap((g) => g.keys);
+    const grouped = later.GLOSSARY_GROUPS.flatMap((g) => g.keys);
     for (const key of Object.keys(P.TERMS))
       expect(
         grouped.filter((x) => x === key),
         key
       ).toHaveLength(1);
     for (const key of grouped) expect(P.TERMS, key).toHaveProperty(key);
-    for (const g of copy.GLOSSARY_GROUPS) expect(g.heading.split(/\s+/).length).toBeLessThanOrEqual(4);
+    for (const g of later.GLOSSARY_GROUPS) expect(g.heading.split(/\s+/).length).toBeLessThanOrEqual(4);
   });
 
   it("refuses a term it does not have", () => {
@@ -338,8 +339,8 @@ describe("the three ideas", () => {
   });
 });
 
-describe("the explainer and the questions", () => {
-  const P = copyFor({ counts: FULL });
+describe("the explainer and the questions", async () => {
+  const P = await withLater(copyFor({ counts: FULL }));
 
   it("has six sections of at least three sentences, each key once", () => {
     expect(P.HOW_IT_WORKS.map((s) => s.key)).toEqual([
@@ -379,7 +380,7 @@ describe("the explainer and the questions", () => {
   });
 
   it("holds five guides", () => {
-    expect(copy.GUIDE.tasks.map((t) => t.id)).toEqual(["q1", "q2", "q3", "q4", "q5"]);
+    expect(later.GUIDE.tasks.map((t) => t.id)).toEqual(["q1", "q2", "q3", "q4", "q5"]);
   });
 });
 
@@ -458,12 +459,12 @@ describe("counts belong to the data they came from", () => {
     return corpus.texts.filter(([label]) => !label.endsWith("persistentFlagMethod"));
   };
 
-  it("keeps the counts of one data set out of the copy bound to the other", () => {
+  it("keeps the counts of one data set out of the copy bound to the other", async () => {
     for (const [own, other] of [
       [SET_A, SET_B],
       [SET_B, SET_A],
     ]) {
-      const texts = textsOf(copyFor({ counts: own }));
+      const texts = textsOf(await withLater(copyFor({ counts: own })));
       expect(texts.filter(([, t]) => mentions(other).test(t)).map(([label]) => label)).toEqual([]);
       // The copy does say its own counts, so the check above is not passing on silence.
       expect(texts.filter(([, t]) => mentions(own).test(t)).length).toBeGreaterThan(10);
@@ -471,7 +472,7 @@ describe("counts belong to the data they came from", () => {
   });
 
   it("states no count of either data set with no data bound", () => {
-    const texts = textsOf(copy);
+    const texts = textsOf({ ...copy, ...later });
     for (const set of [SET_A, SET_B]) expect(texts.filter(([, t]) => mentions(set).test(t))).toEqual([]);
   });
 
@@ -479,8 +480,8 @@ describe("counts belong to the data they came from", () => {
     expect(copy.TERMS).toEqual(copy.buildTerms({}));
     expect(copy.STRINGS).toEqual(copy.buildStrings({}));
     expect(copy.IDEAS).toEqual(copy.buildIdeas({}));
-    expect(copy.HOW_IT_WORKS).toEqual(copy.buildHow({}));
-    expect(copy.FIRST_QUESTIONS).toEqual(copy.buildQuestions());
+    expect(later.HOW_IT_WORKS).toEqual(later.buildHow({}));
+    expect(later.FIRST_QUESTIONS).toEqual(later.buildQuestions());
     expect(copy.STRINGS.groups).toBe(
       "Schools with every input recorded have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order."
     );

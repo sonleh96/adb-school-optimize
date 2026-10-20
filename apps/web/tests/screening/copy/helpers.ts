@@ -2,8 +2,9 @@
  * Shared pieces of the copy tests: the text guards, an ordinal written independently of the copy, fixtures that
  * come from the API's own saved responses, and a builder for the school shapes the fixtures do not hold.
  */
-import { BANNED, RULE_IDS, ruleName } from "@/lib/screening/copy";
+import { RULE_IDS, ruleName } from "@/lib/screening/copy";
 import type { copyFor } from "@/lib/screening/copy";
+import { BANNED, type LaterCopy } from "@/lib/screening/copy/later";
 import type {
   CopyCohort,
   CopyRuleId,
@@ -108,10 +109,13 @@ export class Corpus {
 const ANALYST_STRINGS = new Set(["caveat", "caveatAnalyst", "persistentFlagMethod"]);
 const LABEL_STRINGS = new Set(["notRecorded", "noReading", "notPlaced", "cannotWorkOut"]);
 
-export type FixedCopy = Pick<
-  ReturnType<typeof copyFor>,
-  "TERMS" | "STRINGS" | "IDEAS" | "HOW_IT_WORKS" | "FIRST_QUESTIONS" | "LAYOUT"
->;
+export type FixedCopy = Pick<ReturnType<typeof copyFor>, "TERMS" | "STRINGS" | "IDEAS" | "LAYOUT"> &
+  Pick<LaterCopy, "HOW_IT_WORKS" | "FIRST_QUESTIONS">;
+
+/** A bound copy together with the part that loads on demand, for tests that read both. */
+export async function withLater<T extends { later(): Promise<LaterCopy> }>(P: T): Promise<T & LaterCopy> {
+  return { ...P, ...(await P.later()) };
+}
 
 export function addFixedCopy(corpus: Corpus, P: FixedCopy, tag: string): void {
   for (const [k, t] of Object.entries(P.TERMS)) {

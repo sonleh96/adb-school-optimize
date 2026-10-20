@@ -17,7 +17,8 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import type { CopyRuleId, PairwiseRow, PlacedSchool, Top20Change } from "@/lib/screening/copy";
-import { GUIDE, GUIDE_SEGMENTS, LAYOUT } from "@/lib/screening/copy";
+import { LAYOUT } from "@/lib/screening/copy";
+import { GUIDE, GUIDE_SEGMENTS } from "@/lib/screening/copy/later";
 import {
   joinSegments,
   listSegments,
@@ -284,7 +285,7 @@ describe("the names in the comparison of two rules", () => {
 });
 
 describe("the name in the worked example of How this works", () => {
-  it("marks the school the example follows, and leaves its possessive as text", () => {
+  it("marks the school the example follows, and leaves its possessive as text", async () => {
     const range = (id: string, name: string, a: [number, number], b: [number, number]) => ({
       ...school({ id, name, cohort: "interval" }),
       results: {
@@ -304,16 +305,16 @@ describe("the name in the worked example of How this works", () => {
       median_absolute_rank_shift: 1,
       maximum_absolute_rank_shift: 4,
     };
-    const P = copy.copyFor({ schools, pairwise: [row], top20Changes: [] });
-    expect(P.segments.howExample).not.toBeNull();
-    expect(namesIn(P.segments.howExample as copy.Segments)).toEqual(["J"]);
-    expect(textOf(P.segments.howExample as copy.Segments)).toContain("but J's possible places");
+    const P = await copy.copyFor({ schools, pairwise: [row], top20Changes: [] }).later();
+    expect(P.howExample).not.toBeNull();
+    expect(namesIn(P.howExample as copy.Segments)).toEqual(["J"]);
+    expect(textOf(P.howExample as copy.Segments)).toContain("but J's possible places");
     const limits = P.HOW_IT_WORKS.find((x) => x.key === "limits");
-    expect(limits?.sentences).toContain(textOf(P.segments.howExample as copy.Segments));
+    expect(limits?.sentences).toContain(textOf(P.howExample as copy.Segments));
   });
 
-  it("is null where the data holds no range school that moves", () => {
-    expect(copy.copyFor().segments.howExample).toBeNull();
+  it("is null where the data holds no range school that moves", async () => {
+    expect((await copy.copyFor().later()).howExample).toBeNull();
   });
 });
 

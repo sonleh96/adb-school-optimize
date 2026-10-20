@@ -12,12 +12,9 @@ export {
   standardErrorFromResults,
   type ListedSchool,
 } from "./adapter";
-export { BANNED } from "./banned";
 export { bindCopy, type BoundRecords, type CopyResponses } from "./bind";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
 export { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
-export { buildHow, buildQuestions, FIRST_QUESTIONS, HOW_IT_WORKS, howExampleSegments } from "./explainer";
-export { GUIDE, GUIDE_SEGMENTS } from "./guide";
 export { buildIdeas, IDEAS } from "./ideas";
 export { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
 export {
@@ -83,7 +80,7 @@ export {
   type FactorKey,
 } from "./rules";
 export { buildStrings, STRINGS } from "./strings";
-export { buildTerms, GLOSSARY_GROUPS, term, TERMS, type TermKey } from "./terms";
+export { buildTerms, term, TERMS, type TermKey } from "./terms";
 export { HELP, KEYS, LAYOUT, removeViewSegments, savedViewSegments } from "./words";
 export {
   isName,

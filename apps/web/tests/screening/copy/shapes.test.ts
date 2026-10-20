@@ -18,7 +18,7 @@ import * as copy from "@/lib/screening/copy";
 import { copyFor, countsFrom } from "@/lib/screening/copy";
 import type { CopySchool } from "@/lib/screening/copy";
 
-import { Corpus, RULES, addFixedCopy, school } from "./helpers";
+import { Corpus, RULES, addFixedCopy, school, withLater } from "./helpers";
 
 /** Ten schools: five with every input, two that show a range, three with incomplete records. */
 function tenSchools(): CopySchool[] {
@@ -108,9 +108,9 @@ function sized(complete: number, interval: number, queue: number, tag: string): 
 }
 
 /** Every sentence the copy writes about a data set, so a guard can read them all. */
-function everything(schools: CopySchool[], corpus: Corpus, tag: string): void {
+async function everything(schools: CopySchool[], corpus: Corpus, tag: string): Promise<void> {
   const P = copyFor({ schools });
-  addFixedCopy(corpus, P, tag);
+  addFixedCopy(corpus, await withLater(P), tag);
   const names = schools.map((s) => s.name ?? "");
   const opts = { schoolNames: names };
   for (const s of schools) {
@@ -144,14 +144,14 @@ function everything(schools: CopySchool[], corpus: Corpus, tag: string): void {
 }
 
 describe("data of other sizes", () => {
-  it("passes the writing guards for every sentence", () => {
+  it("passes the writing guards for every sentence", async () => {
     const corpus = new Corpus();
-    everything(tenSchools(), corpus, "ten");
+    await everything(tenSchools(), corpus, "ten");
     expect(corpus.problems).toEqual([]);
     expect(corpus.checked).toBeGreaterThan(1000);
   });
 
-  it("states none of another data set's counts", () => {
+  it("states none of another data set's counts", async () => {
     const A = sized(27, 6, 14, "Alder");
     const B = sized(68, 13, 22, "Bramble");
     const numbers = (schools: CopySchool[]) => {
@@ -165,7 +165,7 @@ describe("data of other sizes", () => {
       [B, A],
     ]) {
       const corpus = new Corpus();
-      everything(own, corpus, "set");
+      await everything(own, corpus, "set");
       expect(corpus.problems).toEqual([]);
       expect(
         corpus.texts.filter(([, t]) => mentions(other).test(t)).map(([label, t]) => `${label}: ${t}`)
@@ -243,7 +243,7 @@ describe("data of other sizes", () => {
     ).toBe(2);
   });
 
-  it("reads one range school and one incomplete record in the singular", () => {
+  it("reads one range school and one incomplete record in the singular", async () => {
     const schools = [
       school({ id: "a", place: 1 }),
       school({ id: "b", place: 2 }),
@@ -255,7 +255,7 @@ describe("data of other sizes", () => {
       "2 schools have every input recorded, and one more lacks a reading such as air quality and shows a range of places, so 3 schools can be put in order."
     );
     expect(P.STRINGS.listOrder.startsWith("The one school that shows a range is listed where ")).toBe(true);
-    expect(P.HOW_IT_WORKS.find((s) => s.key === "placed")?.sentences).toContain(
+    expect((await P.later()).HOW_IT_WORKS.find((s) => s.key === "placed")?.sentences).toContain(
       "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
     );
   });
@@ -339,10 +339,10 @@ describe("a record with all three readings missing, or only its remoteness", () 
 });
 
 describe("no schools, and one school", () => {
-  it("writes every fixed sentence for no schools without a stale or broken count", () => {
+  it("writes every fixed sentence for no schools without a stale or broken count", async () => {
     const corpus = new Corpus();
     const P = copyFor({});
-    addFixedCopy(corpus, P, "empty");
+    addFixedCopy(corpus, await withLater(P), "empty");
     corpus.add("empty list starts", P.listStartsSentence([], "additive_u"));
     corpus.add("empty statement", P.defaultListStatement());
     corpus.add("empty reassurance", P.urgencyReassurance());
@@ -365,10 +365,10 @@ describe("no schools, and one school", () => {
     expect(copyFor().counts.all).toBe(0);
   });
 
-  it("writes every sentence for one school", () => {
+  it("writes every sentence for one school", async () => {
     const corpus = new Corpus();
     const one = [school({ id: "only", name: "Only", place: 1, bounds: [1, 1] })];
-    everything(one, corpus, "one");
+    await everything(one, corpus, "one");
     expect(corpus.problems).toEqual([]);
     const P = copyFor({ schools: one });
     expect(P.STRINGS.groups).toBe("1 school has every input recorded, so 1 school can be put in order.");
