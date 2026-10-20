@@ -322,12 +322,41 @@ test("the first ten places carry their number on their dot, and the numbers foll
   expect(numbered.length).toBeGreaterThan(5);
   // Nothing else is numbered: not the places after the tenth, not the ranges, not the incomplete records.
   await expect(page.locator("[data-rank-label]")).toHaveCount(numbered.length);
-  // Where two dots overlap, the earlier place's number must sit on top, as its dot does: later siblings paint
-  // above earlier ones, so the numbers come in falling order.
-  const stacking = await page
-    .locator("[data-rank-label]")
-    .evaluateAll((labels) => labels.map((label) => Number(label.getAttribute("data-rank-label"))));
-  expect(stacking).toEqual([...stacking].sort((a, b) => b - a));
+  // Where two dots overlap, the earlier place's number must sit on top, as its dot does. The stacking is each
+  // marker's z-index, so it must hold after a rule switch redraws the labels too, not just on the first render.
+  const expectEarlierPlacesOnTop = async (rule: string) => {
+    const painted = (
+      await page.locator("[data-rank-label]").evaluateAll((labels) =>
+        labels.map((label) => ({
+          rank: Number(label.getAttribute("data-rank-label")),
+          zIndex: Number(getComputedStyle(label.closest(".maplibregl-marker")!).zIndex),
+        }))
+      )
+    ).sort((a, b) => a.rank - b.rank);
+    expect(painted.map((place) => place.rank)).toEqual(
+      numberedPlaces(rule)
+        .map((place) => place.rank)
+        .sort((a, b) => a - b)
+    );
+    for (let index = 1; index < painted.length; index += 1) {
+      expect(
+        painted[index - 1].zIndex,
+        `place ${painted[index - 1].rank} above place ${painted[index].rank}`
+      ).toBeGreaterThan(painted[index].zIndex);
+    }
+  };
+  await expectEarlierPlacesOnTop("additive_u");
+
+  await page.getByRole("button", { name: "Additive, urgency omitted" }).click();
+  await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(
+    numberedPlaces("additive_no_u").length
+  );
+  await expectEarlierPlacesOnTop("additive_no_u");
+
+  await page.getByRole("button", { name: "Additive, urgency included" }).click();
+  await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(numbered.length);
+  await expectEarlierPlacesOnTop("additive_u");
+
   // The list states every place, so a screen reader is not read the numbers on the map as well.
   for (const label of await page.locator("[data-rank-label]").all()) {
     await expect(label).toHaveAttribute("aria-hidden", "true");
