@@ -123,9 +123,6 @@ export function buildStrings(c: CountBag = {}) {
     scoreNote: "Each input runs from 0 to 1; higher means more reason to look.",
     persistentFlag:
       "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.",
-    // Method detail for analyst views only.
-    persistentFlagMethod:
-      "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80) of the circulated, urgency-included experiment.",
     defaultRuleNote:
       "The screen opens on the paper's main rule, the combined-factors rule with urgency (S). The proposed revision, the combined-factors rule without urgency (S0), is one click away.",
     proposedPending: "Proposed revision. Awaiting the research team's review.",

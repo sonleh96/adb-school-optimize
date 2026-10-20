@@ -92,8 +92,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       group: "Group",
       filterAria: "Show only schools missing this detail",
       groupAria: "Group the list",
-      order: (filtered: boolean, shown: number, total: number) =>
-        `${filtered ? `Showing ${shown} of ${total}. ` : ""}${S.queueOrder}`,
+      // The method-only start of the line under the list head, when a filter hides some of the schools.
+      showing: (shown: number, total: number) => `Showing ${shown} of ${total}.`,
     }),
     compare: Object.freeze({
       eyebrow: "Comparing two rules",
@@ -120,8 +120,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       topEnters: (k: number) => `joins the top ${k}`,
       topLeaves: (k: number) => `leaves the top ${k}`,
       legendTitle: (a: string, b: string) => `Places moved from ${a} to ${b}`,
-      legendSub: (n: number | undefined, numerals: number) =>
-        `among ${commonPhrase(n)} · numbers mark the first ${numerals}`,
+      legendSub: (n: number | undefined, numerals?: number) =>
+        `among ${commonPhrase(n)}${numerals === undefined ? "" : ` · numbers mark the first ${numerals}`}`,
       legendUp: "up",
       legendDown: "down",
       legendSize: (k: number, a: string, b: string) => `Larger dot: top ${k} under ${a} or ${b}`,
@@ -161,6 +161,9 @@ export function buildMethod(ctx: MethodContext = {}) {
       zeroToOne: "0 to 1",
       inputsUnder: (s: string) => `Inputs under ${s}`,
       valueZeroToOne: "value, 0 to 1",
+      // The test behind the persistence flag, in the research team's own terms.
+      persistent:
+        "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80) of the circulated, urgency-included experiment.",
       noSplit:
         "The study records what each input adds for the two combined-factors rules only, so this rule shows input values.",
       produces: `What adds to the ${lcFirst(T.score.label)}`,
