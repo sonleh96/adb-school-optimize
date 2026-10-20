@@ -333,6 +333,18 @@ describe("the three ideas", () => {
     }
   });
 
+  it("never says 'Some schools' of a single school, and uses the plural for several", () => {
+    const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
+    expect(one.ranges.title).toBe("One school shows a range because a reading is missing");
+    expect(one.queue.title).toBe("One school has no place in the list yet because its record is incomplete");
+    for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
+      expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
+    expect(one.queue.long).toMatch(/^One of the 12 schools has an incomplete record/);
+    const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
+    expect(several.ranges.title).toBe("Two schools show a range because a reading is missing");
+    expect(several.queue.short).toMatch(/^4 schools have no place/);
+  });
+
   it("says what an air-quality reading is wherever it names the range", () => {
     expect(copy.IDEAS.ranges.short).toContain("air-pollution");
     expect(copy.IDEAS.ranges.long).toContain("air-pollution");

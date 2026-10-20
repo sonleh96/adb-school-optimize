@@ -271,7 +271,7 @@ describe("one school from /schools/by-key", () => {
     held.result.cohort = "verification_queue";
     const shown = schoolFromDetail(parseWith(schoolDetailResponse, body, "school"), "additive_u");
     expect(shown.results).not.toHaveProperty("benchmark");
-    expect(copy.rankSentence(shown, "benchmark")).toBe("Not computed under the conventional benchmark (B).");
+    expect(copy.rankSentence(shown, "benchmark")).toBe("No result under the conventional benchmark (B).");
   });
 
   it("ignores a rule the copy has no words for, and refuses a view of one the school has no result under", () => {

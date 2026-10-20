@@ -84,12 +84,13 @@ describe("the place sentence", () => {
     expect(rank(q, "additive_u", { name: true })).toMatch(/^School q cannot be put in order yet\./);
   });
 
-  it("says a school is not computed under a rule that has no result for it", () => {
+  it("says a school has no result under a rule that holds none for it, and claims nothing about why", () => {
     const s = { ...school({ id: "a", place: 2 }), results: { additive_no_u: { rank_complete120: 2 } } };
-    expect(rank(s, "benchmark")).toBe("Not computed under the conventional benchmark (B).");
+    expect(rank(s, "benchmark")).toBe("No result under the conventional benchmark (B).");
     const r = { ...school({ id: "r", cohort: "interval", bounds: [3, 4], blank: ["aqi"] }), results: {} };
-    expect(rank(r, "benchmark")).toBe(
-      "Not computed under the conventional benchmark (B). That rule was only run on the 16 schools with every input recorded, and this school has a missing reading."
+    expect(rank(r, "benchmark")).toBe("No result under the conventional benchmark (B).");
+    expect(rank(r, "benchmark", { name: true })).toBe(
+      "School r has no result under the conventional benchmark (B)."
     );
   });
 
@@ -116,7 +117,7 @@ describe("the card's figure and its context", () => {
     expect(P.placeHeadline(school({ id: "q", cohort: "queue" }), "additive_u")).toBe(
       "Cannot be put in order yet"
     );
-    expect(P.placeHeadline({ ...school({ id: "a" }), results: {} }, "benchmark")).toBe("Not computed");
+    expect(P.placeHeadline({ ...school({ id: "a" }), results: {} }, "benchmark")).toBe("No result");
   });
 
   it("never restates the place, and offers a second one only in method details", () => {
@@ -183,10 +184,10 @@ describe("one school under two rules", () => {
     );
     const one = { ...r, results: { additive_u: { rank_best: 4, rank_worst: 4 } } };
     expect(P.rangeComparisonSentence(one, "additive_u", "benchmark")).toBe(
-      "Among the 21 schools that can be put in order, School r sits 4th under the combined-factors rule with urgency (S). It is not computed under the conventional benchmark (B)."
+      "Among the 21 schools that can be put in order, School r sits 4th under the combined-factors rule with urgency (S). It has no result under the conventional benchmark (B)."
     );
     expect(P.rangeComparisonSentence({ ...r, results: {} }, "additive_u", "benchmark")).toBe(
-      "School r is not computed under the combined-factors rule with urgency (S) or the conventional benchmark (B), because both were only run on the 16 schools with every input recorded."
+      "School r has no result under the combined-factors rule with urgency (S) or the conventional benchmark (B)."
     );
   });
 
@@ -283,13 +284,13 @@ describe("one school under two rules, whatever its group under each", () => {
   const S0 = "the combined-factors rule without urgency (S0)";
   const B = "the conventional benchmark (B)";
 
-  it("gives a complete school's place under one rule and says the other did not compute it, instead of throwing", () => {
+  it("gives a complete school's place under one rule and says the other has no result, instead of throwing", () => {
     const a = complete("a", { additive_u: { rank_complete120: 3 } });
     expect(P.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
-      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It is not computed under ${S0}.`
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It has no result under ${S0}.`
     );
     expect(P.rangeComparisonSentence(a, "additive_no_u", "additive_u")).toBe(
-      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It is not computed under ${S0}.`
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It has no result under ${S0}.`
     );
   });
 

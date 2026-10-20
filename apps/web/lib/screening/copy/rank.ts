@@ -140,10 +140,7 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
   }
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
-    if (!res || !hasBounds(res)) {
-      const tail = seg`computed under ${r.name}. That rule was only run on ${completePhrase(c)}, and this school has a missing reading.`;
-      return nm ? seg`${nm} is not ${tail}` : seg`Not ${tail}`;
-    }
+    if (!res || !hasBounds(res)) return noResult(nm, r.name);
     if (res.rank_best === res.rank_worst) {
       const first = nm ? seg`${nm} is ${ordinal(res.rank_best)}` : seg`${capitalise(ordinal(res.rank_best))}`;
       return seg`${first} of ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
@@ -152,7 +149,7 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
     return seg`${first} from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} of ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
   }
   if (!hasPlace(res)) {
-    return nm ? seg`${nm} is not computed under ${r.name}.` : seg`Not computed under ${r.name}.`;
+    return noResult(nm, r.name);
   }
   const head = nm
     ? seg`${nm} is ${ordinal(res.rank_complete120)}`
@@ -161,6 +158,11 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
 }
 export const rankSentence = (school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string =>
   textOf(rankSegments(school, ruleId, opts));
+
+// A school with no result under a rule in the data given. The engine computes every rule for every school, so this
+// means the rule's list is not in the data, not that the rule was skipped; the words claim nothing more.
+const noResult = (nm: Segments[number] | null, ruleName: string): Segments =>
+  nm ? seg`${nm} has no result under ${ruleName}.` : seg`No result under ${ruleName}.`;
 
 // The card's large figure: "3rd", "12th to 18th", "5th of 40", or a status. placeContext never restates it.
 // A range school's figure always carries its range or its scope, so it never reads like a single place among the others.
@@ -174,13 +176,13 @@ export function placeHeadline(
   if (school.cohort === "queue") return STRINGS.notPlaced;
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
-    if (!hasBounds(res)) return "Not computed";
+    if (!hasBounds(res)) return STRINGS.noResult;
     if (res.rank_best !== res.rank_worst) return `${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)}`;
     return known(c, "ranked") && c.ranked > 0
       ? `${ordinal(res.rank_best)} of ${formatCount(c.ranked)}`
       : `${ordinal(res.rank_best)} of all in order`;
   }
-  return hasPlace(res) ? ordinal(res.rank_complete120) : "Not computed";
+  return hasPlace(res) ? ordinal(res.rank_complete120) : STRINGS.noResult;
 }
 
 // What the large figure counts among. Plain views give one place only; opts.method adds
@@ -192,8 +194,7 @@ export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
     return "Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
-    if (!hasBounds(res))
-      return `${capitalise(r.name)} was only run on ${completePhrase(c)}, and this school has a missing reading.`;
+    if (!hasBounds(res)) return `${capitalise(r.name)} has no result for this school.`;
     if (res.rank_best === res.rank_worst)
       return `Among ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
     return `Possible places among ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
@@ -263,7 +264,7 @@ export function rangeComparisonSegments(
   if (sa.kind === "none" && sb.kind === "none") {
     return held
       ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because its record is incomplete.`
-      : seg`${nm} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(cA)}.`;
+      : seg`${nm} has no result under ${a.name} or ${b.name}.`;
   }
   if (sa.kind === "point" && sb.kind === "point") {
     if (sharedSize(cA, cB, "complete", perRule(opts)))
@@ -282,9 +283,9 @@ export function rangeComparisonSegments(
   ) {
     const among = `Among ${orderedPhrase(cA)}`;
     if (sa.kind === "none" && sb.kind === "range")
-      return seg`${among}, ${nm} sits ${where(sb, b)}. It is not computed under ${a.name}.`;
+      return seg`${among}, ${nm} sits ${where(sb, b)}. It has no result under ${a.name}.`;
     if (sb.kind === "none" && sa.kind === "range")
-      return seg`${among}, ${nm} sits ${where(sa, a)}. It is not computed under ${b.name}.`;
+      return seg`${among}, ${nm} sits ${where(sa, a)}. It has no result under ${b.name}.`;
     if (sa.kind === "range" && sb.kind === "range")
       return seg`${among}, ${nm} sits ${where(sa, a)}, and ${where(sb, b)}.`;
   }
@@ -299,7 +300,7 @@ export function rangeComparisonSegments(
         : seg`Under ${rr.name}, ${subject} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
     return held
       ? seg`It cannot be put in order under ${rr.name} yet, because its record is incomplete.`
-      : seg`It is not computed under ${rr.name}.`;
+      : seg`It has no result under ${rr.name}.`;
   };
   const sides: [Standing, { name: string }, CountBag | undefined][] = [
     [sa, a, cA],

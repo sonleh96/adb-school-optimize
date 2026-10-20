@@ -107,7 +107,7 @@ export class Corpus {
 
 /** The fixed copy of a bound or unbound system, through the writing guards. */
 const ANALYST_STRINGS = new Set(["caveat", "caveatAnalyst", "persistentFlagMethod"]);
-const LABEL_STRINGS = new Set(["notRecorded", "noReading", "notPlaced", "cannotWorkOut"]);
+const LABEL_STRINGS = new Set(["notRecorded", "noReading", "notPlaced", "cannotWorkOut", "noResult"]);
 
 export type FixedCopy = Pick<ReturnType<typeof copyFor>, "TERMS" | "STRINGS" | "IDEAS" | "LAYOUT"> &
   Pick<LaterCopy, "HOW_IT_WORKS" | "FIRST_QUESTIONS">;

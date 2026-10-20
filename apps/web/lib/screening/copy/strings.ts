@@ -71,6 +71,7 @@ export function buildStrings(c: CountBag = {}) {
     noReading: "No reading",
     notPlaced: "Cannot be put in order yet",
     cannotWorkOut: "Cannot be worked out",
+    noResult: "No result",
     scoreNote: "Each input runs from 0 to 1; higher means more reason to look.",
     persistentFlag:
       "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.",
