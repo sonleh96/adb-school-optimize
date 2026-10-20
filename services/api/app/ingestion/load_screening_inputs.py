@@ -66,6 +66,10 @@ class VersionConflict(ScreeningLoadError):
     """The input version exists with a different input hash."""
 
 
+class InputsConflict(ScreeningLoadError):
+    """The stored input rows of a version no longer equal its records."""
+
+
 class RunConflict(ScreeningLoadError):
     """A stored run differs from what the engine produces for the same version, rule and package version."""
 
@@ -278,6 +282,26 @@ def _link_schools(
     return matched, unmatched, ambiguous, changed
 
 
+def _check_stored_inputs(
+    connection: psycopg.Connection, input_version: str, records: tuple[SchoolRecord, ...], input_sha256: str
+) -> None:
+    """The version hash says the inputs are identical; the stored rows must say so too.
+
+    The hash covers every field, the order and the names, bit for bit, so one comparison decides.
+    """
+    stored = store.read_inputs(connection, input_version)
+    if records_sha256(stored) == input_sha256:
+        return
+    by_name = {r.school_name: r for r in stored}
+    differing = sorted(r.school_name for r in records if by_name.get(r.school_name) != r)
+    extra = sorted(by_name.keys() - {r.school_name for r in records})
+    raise InputsConflict(
+        f"stored input rows of version {input_version!r} no longer equal its records: "
+        f"{len(stored)} stored for {len(records)} supplied, {len(differing)} supplied school(s) missing or different, "
+        f"{len(extra)} stored school(s) not supplied. Rows were edited after the load; the version is not repaired."
+    )
+
+
 def load_screening(
     connection: psycopg.Connection,
     *,
@@ -303,6 +327,8 @@ def load_screening(
             )
         if existing is None:
             _insert_version(connection, input_version, description, source_manifest, input_sha256, records)
+        else:
+            _check_stored_inputs(connection, input_version, records, input_sha256)
 
         created, unchanged = [], []
         for rule_id, run in runs.items():
