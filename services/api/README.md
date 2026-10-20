@@ -32,6 +32,46 @@ This service is the boundary between the UI and the data/scoring stack.
 6. Run `python -m app.ingestion.seed_default_scenario`.
 7. Start the API with `uvicorn app.main:app --reload`.
 
+## Screening inputs and results
+
+`infra/sql/005_screening.sql` adds four tables next to the old scoring tables, which stay untouched:
+`screening_input_versions`, `screening_inputs`, `screening_runs` and `screening_results`.
+They hold one frozen input version, the seven rules of the screening engine run on it, and every school's result under every rule.
+The tables have row level security on and no privileges for `anon` or `authenticated`, as in `002_security_lockdown.sql`.
+
+Load a version after the migration has been applied:
+
+```bash
+python -m app.ingestion.load_screening_inputs \
+  --input-version paper-2026-10-12 \
+  --reference-root <methodology dir> \
+  --datasets-root <datasets dir> \
+  --description "Inputs of the circulated paper"
+```
+
+The command reads the three source tables of the study, parses them through the engine's input contract, stores the records, runs all rules and stores the runs, in one transaction.
+It needs only `DATABASE_URL`.
+
+- A rerun with identical inputs changes nothing and says so.
+- A version that exists with a different input hash is refused. Pick a new version id.
+- A stored run that no longer equals the engine's output is refused. Bump the engine package version when the method changed.
+- Schools are stored under the name exactly as the source has it. A name is linked to `schools.school_id` through `normalize_join_key` when the key is unique; otherwise `school_id` stays null and the name is listed in the output as unmatched or ambiguous. Load `schools` first, or rerun the command afterwards: the links converge.
+
+`app/screening_store.py` reads versions, runs and ordered results back as typed objects.
+
+### Database tests
+
+The screening database tests use a real PostGIS server and skip when `DATABASE_URL` is unset.
+Each test creates its own database from a migrated template and drops it afterwards, so the server must be local.
+
+```bash
+docker run -d --name rise-screening-pg --platform linux/amd64 -e POSTGRES_PASSWORD=local -p 55432:5432 postgis/postgis:15-3.3
+DATABASE_URL=postgresql://postgres:local@localhost:55432/postgres python -m pytest tests -q
+docker rm -f rise-screening-pg
+```
+
+The failure modes behind each test are in `tests/SCREENING_DB_FAILURE_MODES.md`.
+
 ## Local Frontend CORS
 
 The API now allows these frontend origins by default:
