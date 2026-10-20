@@ -10,7 +10,7 @@ from typing import Any
 import psycopg
 from app.ingestion.load_screening_inputs import LoadReport, load_screening
 from psycopg.conninfo import conninfo_to_dict
-from psycopg.rows import dict_row
+from psycopg.rows import dict_row, tuple_row
 from school_scoring.screening import SchoolRecord
 
 SQL_DIR = Path(__file__).resolve().parents[3] / "infra" / "sql"
@@ -91,7 +91,9 @@ def rows(connection: psycopg.Connection, query: str, params: tuple = ()) -> list
 
 
 def scalar(connection: psycopg.Connection, query: str, params: tuple = ()) -> Any:
-    return connection.execute(query, params).fetchone()[0]
+    with connection.cursor(row_factory=tuple_row) as cursor:
+        cursor.execute(query, params)
+        return cursor.fetchone()[0]
 
 
 def snapshot(connection: psycopg.Connection) -> dict[str, list[str]]:

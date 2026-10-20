@@ -42,6 +42,7 @@ With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of 
 | `test_new_tables_are_closed_to_the_data_api_roles` | DB2 |
 | `test_a_failed_apply_leaves_no_screening_table_behind` | DB18 |
 | `test_load_stores_one_run_per_rule_and_one_result_per_school` | DB4, DB10 |
+| `test_load_works_on_a_connection_that_returns_dict_rows` | DB22 |
 | `test_identical_rerun_changes_nothing` | DB4 |
 | `test_duplicate_run_for_one_version_rule_and_package_is_rejected` | DB4 |
 | `test_failure_midway_leaves_nothing_behind` | DB3 |
