@@ -30,6 +30,7 @@ import { Legend } from "./Legend";
 import type { TipContent } from "./MapTooltip";
 import { RuleArea, focusRuleControl } from "./RuleArea";
 import { SchoolCard } from "./SchoolCard";
+import { useMethodMounts } from "./method/mounts";
 import { IncompleteList, OrderedList, incompleteGroups } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
 import { useScreeningData } from "./useScreeningData";
@@ -431,6 +432,28 @@ function Workspace() {
   };
   const counts = shown?.copy.counts;
   const hovered = pointerHover ?? state.hover;
+  // The method details ("Show method details"): null pieces while they are off, and the plain ones show.
+  const method = useMethodMounts({
+    store,
+    state,
+    copy,
+    rule: shown?.rule ?? null,
+    requested: data.requested,
+    rules: data.rules,
+    ready,
+    stale,
+    rows,
+    ordered,
+    schools,
+    selectedKey,
+    hovered,
+    layer,
+    layout,
+    bands,
+    keyboard,
+    onSelect: select,
+    onRule: changeRule,
+  });
   const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
   // A tab with nothing in it cannot be chosen. The one showing stays enabled even when empty, as after a pasted link or
   // a rule switch that emptied it, so it can always be left.
@@ -497,7 +520,7 @@ function Workspace() {
   return (
     <div
       ref={rootRef}
-      className={styles.root}
+      className={`${styles.root} ${method.rootClassName}`}
       data-testid="screening-workspace"
       data-layout={layout.mode}
       data-has-insp={cardOpen || undefined}
@@ -529,6 +552,7 @@ function Workspace() {
           hoverKey={state.hover}
           onHoverChange={setPointerHover}
           tipFor={tipFor}
+          paint={method.paint}
           emphasis={state.view === "queue" ? "incomplete" : "all"}
           frame={frame}
           instant={keyboard}
@@ -546,10 +570,12 @@ function Workspace() {
           }
         />
         <div className={styles.actions} data-region="actions">
+          {method.methodSwitch}
           {copyLink(false)}
         </div>
+        {method.mapBar}
 
-        {!cardOpen && ready && !guidance.glossary && !guidance.page ? (
+        {!cardOpen && ready && !guidance.glossary && !guidance.page && !method.on ? (
           <p className={`${styles.panel} ${styles.slotHint}`} id="slot-hint" data-region="slot-hint">
             <MousePointerClick size={14} aria-hidden />
             <span>{state.view === "queue" ? copy.LAYOUT.rowHintQueue : copy.LAYOUT.workspaceHint}</span>
@@ -569,9 +595,13 @@ function Workspace() {
             <p className={styles.state} role="status">
               {copy.LAYOUT.loading}
             </p>
+          ) : method.compareColumn ? (
+            method.compareColumn
           ) : (
             <>
-              {data.rules ? (
+              {method.ruleArea ? (
+                method.ruleArea
+              ) : data.rules ? (
                 <RuleArea
                   copy={copy}
                   rules={data.rules}
@@ -644,37 +674,41 @@ function Workspace() {
                             onBack={backFromComparison}
                           />
                         ) : null}
-                        <header className={styles.listHead} data-region="scope">
-                          <p className={styles.scopeLine}>
-                            {shown.copy.scope(shown.rule).scopeShort}{" "}
-                            <button
-                              type="button"
-                              className={styles.moreLink}
-                              aria-expanded={scopeOpen}
-                              aria-controls="screening-scope-detail"
-                              onClick={() => store.setState({ scope: !state.scope })}
-                            >
-                              {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
-                            </button>
-                          </p>
-                          {scopeOpen ? (
-                            <p className={styles.scopeDetail} id="screening-scope-detail">
-                              {shown.copy.scope(shown.rule).scopeDetail}
-                            </p>
-                          ) : null}
-                        </header>
-                        <OrderedList
-                          rows={ordered}
-                          schools={schools}
-                          copy={shown.copy}
-                          rule={shown.rule}
-                          upper={state.place === "upper"}
-                          selected={selectedKey}
-                          hovered={hovered}
-                          onSelect={select}
-                          busy={stale}
-                          label={shown.copy.LAYOUT.orderedTab}
-                        />
+                        {method.rankedList ?? (
+                          <>
+                            <header className={styles.listHead} data-region="scope">
+                              <p className={styles.scopeLine}>
+                                {shown.copy.scope(shown.rule).scopeShort}{" "}
+                                <button
+                                  type="button"
+                                  className={styles.moreLink}
+                                  aria-expanded={scopeOpen}
+                                  aria-controls="screening-scope-detail"
+                                  onClick={() => store.setState({ scope: !state.scope })}
+                                >
+                                  {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
+                                </button>
+                              </p>
+                              {scopeOpen ? (
+                                <p className={styles.scopeDetail} id="screening-scope-detail">
+                                  {shown.copy.scope(shown.rule).scopeDetail}
+                                </p>
+                              ) : null}
+                            </header>
+                            <OrderedList
+                              rows={ordered}
+                              schools={schools}
+                              copy={shown.copy}
+                              rule={shown.rule}
+                              upper={state.place === "upper"}
+                              selected={selectedKey}
+                              hovered={hovered}
+                              onSelect={select}
+                              busy={stale}
+                              label={shown.copy.LAYOUT.orderedTab}
+                            />
+                          </>
+                        )}
                       </>
                     ) : (
                       <>
@@ -741,7 +775,9 @@ function Workspace() {
         </section>
 
         <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
-          {ready ? (
+          {ready && method.legend ? (
+            method.legend
+          ) : ready ? (
             <Legend
               copy={copy}
               rule={shown?.rule ?? null}
@@ -752,7 +788,7 @@ function Workspace() {
             />
           ) : null}
           <p className={styles.caveat} data-region="caveat">
-            {copy.STRINGS.caveatPlain}
+            {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
           </p>
         </div>
 
@@ -768,6 +804,7 @@ function Workspace() {
             stale={stale}
             onStep={step}
             onClose={clearSelection}
+            methodLayer={method.cardLayer}
           />
         ) : null}
       </div>

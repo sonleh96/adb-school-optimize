@@ -148,7 +148,7 @@ const resultParts = {
   need_parts: needParts,
   area_parts: areaParts,
   /** What each component adds to the score under this rule; empty for a school held back. */
-  contributions: list(obj({ component: str, lower: num, upper: num })),
+  contributions: list(obj({ component: str, lower: num, upper: num, weight: optional(num) })),
   need_part_contributions: nullable(needParts),
   /** The share a largest-factor rule gives to its largest factor; null under every other rule. */
   maximum_term: nullable(maximumTerm),

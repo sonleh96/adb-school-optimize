@@ -1,0 +1,354 @@
+/* Compare mode: the column that replaces the rule and the list, and its chart. */
+
+.column {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.head {
+  padding: 12px 20px 16px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.pickers {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.picker:active {
+  transform: scale(0.99);
+}
+@media (hover: hover) and (pointer: fine) {
+  .picker:hover {
+    border-color: rgba(21, 24, 29, 0.28);
+  }
+}
+.picker[aria-expanded="true"] {
+  border-color: var(--navy);
+}
+.pickerMain {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 14px;
+  column-gap: 10px;
+  align-items: start;
+}
+.pickerSym {
+  font-size: 30px;
+  line-height: 30px;
+  color: var(--navy);
+}
+.pickerWords {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.pickerLabel {
+  font: 500 16px/20px var(--serif);
+  overflow-wrap: anywhere;
+}
+.pickerRole {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.pickerChevron {
+  margin-top: 4px;
+  color: var(--ink-3);
+}
+.swap {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  color: var(--ink-2);
+  transition:
+    border-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.swap:active {
+  transform: scale(0.95);
+}
+@media (hover: hover) and (pointer: fine) {
+  .swap:hover {
+    border-color: rgba(21, 24, 29, 0.28);
+    color: var(--ink);
+  }
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.sec {
+  padding: 16px 20px 18px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.secHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lead {
+  margin: 0;
+  font: 400 19px/26px var(--serif);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.more {
+  margin: 8px 0 0;
+  font: 400 15px/22px var(--serif);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.source {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.ioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+.ioCol em {
+  font-style: normal;
+  color: var(--ink-2);
+}
+.io {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.io li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 19px;
+}
+.ioName,
+.rangeName {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: 500 13px/19px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ioName:hover,
+  .rangeName:hover {
+    color: var(--navy);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+.ioMove {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.slopeHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: end;
+  column-gap: 12px;
+  margin-bottom: 8px;
+}
+.cap {
+  font: 500 13px/16px var(--sans);
+}
+.capMid {
+  text-align: center;
+  font-weight: 400;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+.kSeg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  gap: 2px;
+}
+.kSeg button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font: 500 12.5px/1 var(--sans);
+  color: var(--ink-2);
+  transition: background-color 150ms ease;
+}
+.kSeg button[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+.slopeHost {
+  width: 100%;
+  font-family: var(--sans);
+}
+.slope {
+  display: block;
+  overflow: visible;
+}
+.zone {
+  fill: rgba(10, 46, 115, 0.035);
+}
+.axis {
+  stroke: rgba(21, 24, 29, 0.25);
+  stroke-width: 1;
+}
+.breakLine {
+  stroke: rgba(21, 24, 29, 0.18);
+  stroke-dasharray: 3 3;
+}
+.breakText {
+  font-size: 10.5px;
+  fill: var(--ink-3);
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 4px;
+}
+.line {
+  fill: none;
+  transition: d 240ms var(--ease-out);
+}
+[data-instant] .line {
+  transition: none;
+}
+.lineHover,
+.lineSelected {
+  fill: none;
+  stroke: var(--ink);
+  pointer-events: none;
+}
+.lineHover {
+  stroke-width: 2;
+  stroke-opacity: 0.6;
+}
+.lineSelected {
+  stroke-width: 2.5;
+}
+.hits path {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 8;
+  cursor: pointer;
+}
+.name {
+  fill: var(--ink-2);
+  white-space: pre;
+  cursor: pointer;
+}
+.name[data-emph] {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.name[data-hover] {
+  fill: var(--navy);
+}
+.name[data-on] {
+  fill: var(--navy);
+  font-weight: 600;
+}
+.leader {
+  fill: none;
+  stroke: rgba(21, 24, 29, 0.35);
+}
+.tick {
+  font-size: 10px;
+  fill: var(--ink-3);
+}
+
+.note {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.rangeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 14px;
+  row-gap: 4px;
+}
+.rangeRow {
+  display: contents;
+}
+.rangeHead {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.rangeRow[data-on] .rangeName {
+  color: var(--navy);
+}
+.rangeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rangeNum {
+  font-size: 12px;
+  line-height: 15px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.exact,
+.na {
+  color: var(--ink-3);
+  font-style: italic;
+}
+.glyph {
+  display: block;
+}
+.glyphRange {
+  fill: rgba(74, 79, 87, 0.14);
+  stroke: #4a4f57;
+  stroke-width: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line,
+  .picker,
+  .swap {
+    transition: none;
+  }
+}
