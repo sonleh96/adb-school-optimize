@@ -8,16 +8,8 @@
  * Signatures match the module's own functions; data arguments default to the bound data. Build the bound object
  * once, at the data boundary, and pass it down: nothing below the boundary should import the count-free exports.
  */
-import { amongAllOrdered, countsFrom, groupsSentence, urgencyDefinition } from "./counts";
-import {
-  cleanName,
-  displayName,
-  formatApprox,
-  formatCount,
-  formatPercent,
-  capitalise,
-  ordinal,
-} from "./format";
+import { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
+import { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
 import {
   comparisonSegments,
   comparisonSentence,
@@ -109,6 +101,11 @@ export type CopyData = {
 
 type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule" | "schools">;
 
+/** The counts without the sizes of the groups, which belong to one rule. */
+const GROUP_KEYS = ["complete", "range", "ranked", "queue"] as const;
+const groupFree = (c: CountBag): CountBag =>
+  Object.fromEntries(Object.entries(c).filter(([k]) => !(GROUP_KEYS as readonly string[]).includes(k)));
+
 export function copyFor(data: CopyData = {}) {
   // A frozen snapshot: the copy says what the data said when it was bound, and a list kept frozen can be indexed.
   const schools: readonly PlacedSchool[] = Object.freeze([...(data.schools || [])]);
@@ -134,17 +131,31 @@ export function copyFor(data: CopyData = {}) {
     countsByRule: data.countsByRule,
     schools,
   });
-  const terms = buildTerms(c);
+  // The sizes of the groups belong to one rule, and the definitions of the whole method belong to none: the bound
+  // TERMS and the ideas are worded without any group size, the explainer from the paper's main rule, and what a
+  // screen shows under a rule comes from that rule's own counts (`termsFor`, `scope`).
+  const main = countsOf(withCounts(), DEFAULT_RULE) ?? {};
+  const terms = buildTerms(groupFree(c));
+  const countsFor = (ruleId: CopyRuleId): CountBag => {
+    const own = countsOf(withCounts(), ruleId);
+    if (own === c || !own) return own ?? groupFree(c);
+    // Counts taken from the rows of the list bound describe that list, not another rule's.
+    const rest =
+      own.ranked === c.ranked
+        ? groupFree(c)
+        : { ...groupFree(c), emissionsNone: undefined, airMissing: undefined };
+    return { ...rest, ...own };
+  };
   // Resolves to the same object every time, and tries again after a download that failed.
   const loadLater = retryable(() =>
-    import("./later").then((m) => m.laterFor({ counts: c, data: bound, countsByRule: data.countsByRule }))
+    import("./later").then((m) => m.laterFor({ counts: main, data: bound, countsByRule: data.countsByRule }))
   );
   return Object.freeze({
     counts: c,
     TERMS: terms,
     STRINGS: buildStrings(c),
-    IDEAS: buildIdeas(c),
-    LAYOUT: Object.freeze({ ...LAYOUT, amongAll124: capitalise(amongAllOrdered(c)) }),
+    IDEAS: buildIdeas(main),
+    LAYOUT,
     HELP,
     KEYS,
     RULE_IDS,
@@ -160,8 +171,9 @@ export function copyFor(data: CopyData = {}) {
     },
     /** What the groups of schools are under one rule: its counts and the inputs it reads. */
     scope: (ruleId: CopyRuleId) => buildScope(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
-    groupsSentence: (ruleId?: CopyRuleId) =>
-      ruleId ? groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)) : groupsSentence(c),
+    /** The terms worded for one rule: its group sizes and the inputs it reads. */
+    termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId)),
+    groupsSentence: (ruleId: CopyRuleId) => groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
     urgencyDefinition: () => urgencyDefinition(c),
     urgencyNote: (id: CopyRuleId, opts?: WithoutCounts) => urgencyNote(id, withCounts(opts)),
     rankSentence: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>

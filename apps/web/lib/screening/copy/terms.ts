@@ -12,6 +12,7 @@ import {
   completePhrase,
   countSuffix,
   countWord,
+  everyInput,
   groupsSentence,
   known,
   orderedPhrase,
@@ -20,9 +21,9 @@ import {
   rangePhrase,
   theirScore,
   urgencyDefinition,
+  type Reads,
 } from "./counts";
 import type { CountBag, Term } from "./model";
-import { ruleCountWord } from "./rules";
 
 /* ------------------------------------------------------------- term map */
 // label: what the interface shows. line: one sentence, for tooltips and legends.
@@ -42,7 +43,12 @@ const flaggedLine = (c: CountBag): string => {
   return ` ${capitalise(countWord(c.flagged))} ${plural(c.flagged, "school has", "schools have")} the flag.`;
 };
 
-export function buildTerms(c: CountBag = {}) {
+/**
+ * The term map for a set of counts. `reads` says which inputs the rule shown reads, which decides what "every input
+ * recorded" means for its groups; without it the terms are worded for a rule that reads every input. Bound
+ * per rule as `termsFor(ruleId)`; the bound `TERMS` is worded without group sizes (see `groupFree`).
+ */
+export function buildTerms(c: CountBag = {}, reads?: Reads) {
   const terms = {
     screening: {
       technical: "Inspection screening",
@@ -232,27 +238,27 @@ export function buildTerms(c: CountBag = {}) {
       technical: "Point rank",
       label: "Place in the list",
       line: "Where the school falls in the suggested order under the chosen rule; 1st comes first.",
-      help: `Places in the list count among ${completePhrase(c)}, so they can be compared across rules. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
+      help: `Places in the list count among ${completePhrase(c, reads)}. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
       where: "List rank column, school panel, map numerals, export",
     },
     rank_range: {
       technical: "Rank bounds (best and worst rank)",
       label: "Possible places in the list",
       line: "The highest and lowest places in the list a school could take when its air-quality reading is missing.",
-      help: `${groupsSentence(c)} Rather than guess a missing reading, the tool works out the highest and lowest places in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing readings added nothing to their screening score.`,
+      help: `${groupsSentence(c, reads)} Rather than guess a missing reading, the tool works out the highest and lowest places in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing readings added nothing to their screening score.`,
       where: "List rank column for range schools, school panel, map range mark",
     },
     cohort_complete: {
       technical: `Complete-primary cohort${schoolsSuffix(c, "complete")}`,
-      label: `Every input recorded${countSuffix(c, "complete")}`,
-      line: groupsSentence(c),
-      help: `Use the places of these schools to compare rules, because all ${ruleCountWord()} rules were run on ${completePhrase(c)}.`,
+      label: `${capitalise(everyInput(reads))}${countSuffix(c, "complete")}`,
+      line: groupsSentence(c, reads),
+      help: "These schools have a single place in the list under this rule. To compare two rules, use the schools both put in order.",
       where: "Scope line above the list, rank sentences, comparison sentences",
     },
     cohort_ranked: {
       technical: `Condition-eligible cohort${schoolsSuffix(c, "ranked")}`,
       label: `Can be put in order${countSuffix(c, "ranked")}`,
-      line: groupsSentence(c),
+      line: groupsSentence(c, reads),
       help: `${GROUPS_MEANING} Schools that show a range have possible places among ${orderedPhrase(c)} instead of a single place.`,
       where: "Ranked tab count, range sentences, export scope",
     },
@@ -372,7 +378,7 @@ export function buildTerms(c: CountBag = {}) {
       technical: "Rule comparison",
       label: "Compare rules",
       line: "Shows which schools join or leave the top of the list when you switch rules, and how far places move.",
-      help: `Comparisons come from the study's recorded comparison and use ${completePhrase(c)}, the same group under every rule.`,
+      help: "Comparisons come from the study's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next.",
       where: "What changed block, compare mode",
     },
     export: {
@@ -414,7 +420,7 @@ export function buildTerms(c: CountBag = {}) {
       technical: "Point-rank mark",
       label: "Filled dot",
       line: "A school with one place in the list; the darker the blue, the earlier it comes.",
-      help: numbersHelp(c),
+      help: numbersHelp(c, reads),
       where: "Map and key",
     },
     mark_range: {

@@ -210,19 +210,19 @@ describe("one school that shows a range", () => {
   const four = copy.copyFor({ counts: { complete: 9, range: 4, ranked: 13 } });
 
   it("agrees the subject, the verb and the pronouns in the list order", () => {
-    expect(one.STRINGS.listOrder).toBe(
+    expect(one.scope("additive_u").listOrder).toBe(
       "The one school that shows a range is listed where it would sit if its missing readings added nothing to its screening score. The study uses this as its main order."
     );
-    expect(one.STRINGS.listOrderUpper).toBe(
+    expect(one.scope("additive_u").listOrderUpper).toBe(
       "Sensitivity check: the one school that shows a range is listed where it would sit if its missing readings added as much as they can to its screening score."
     );
-    expect(one.TERMS.list_order.line).toBe(
+    expect(one.termsFor("additive_u").list_order.line).toBe(
       "In the list, the one school that shows a range sits where it would if its missing readings added nothing to its screening score."
     );
-    expect(four.STRINGS.listOrder).toBe(
+    expect(four.scope("additive_u").listOrder).toBe(
       "The four schools that show a range are listed where they would sit if their missing readings added nothing to their screening score. The study uses this as its main order."
     );
-    expect(four.TERMS.list_order.line).toBe(
+    expect(four.termsFor("additive_u").list_order.line).toBe(
       "In the list, the four schools that show a range sit where they would if their missing readings added nothing to their screening score."
     );
   });
@@ -1033,7 +1033,8 @@ describe("what is missing from a record", () => {
       "Only its remoteness category is recorded, as remote."
     );
     expect(
-      copyFor({ counts: { ...COUNTS, remotenessOnly: 1 } }).term("missing_all_but_remoteness").help
+      copyFor({ counts: { ...COUNTS, remotenessOnly: 1 } }).termsFor("additive_u").missing_all_but_remoteness
+        .help
     ).toBe(
       "1 of the 4 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );

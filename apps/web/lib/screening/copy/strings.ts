@@ -6,7 +6,7 @@ import {
   SEPARATE_MEASURES,
   SOURCE_LINE,
 } from "./definitions";
-import { formatCount, lowerFirst, plural } from "./format";
+import { capitalise, formatCount, lowerFirst, plural } from "./format";
 import {
   amongAllOrdered,
   completePhrase,
@@ -68,6 +68,16 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
     // Short line for under the tabs; the detail goes in a disclosure or help card.
     scopeShort,
     scopeDetail: `${GROUPS_MEANING} Single places count among ${completePhrase(c, reads)}, and ranges among ${amongAllOrdered(c)}.`,
+    // The label for the scale of a range, with the number of schools the rule puts in order.
+    amongAll: capitalise(amongAllOrdered(c)),
+    filterNote: `Filtered view. Places in the list still count among ${completePhrase(c, reads)}${readsReadings ? `, and ranges among ${amongAllOrdered(c)}` : ""}, because filtering never changes the scale.`,
+    // A rule that reads no air-quality, emissions or land-cover figure shows no range, so it has nothing to place.
+    listOrder: readsReadings
+      ? `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`
+      : "No school shows a range under this rule, because it does not read the air-quality, emissions or land-cover figures.",
+    listOrderUpper: readsReadings
+      ? `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} screening score.`
+      : "The sensitivity check for schools that show a range does not apply under this rule, because no school shows one.",
   });
 }
 
@@ -82,9 +92,6 @@ export function buildStrings(c: CountBag = {}) {
     caveatPlain:
       "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money.",
     groupsMeaning: GROUPS_MEANING,
-    filterNote: `Filtered view. Places in the list still count among ${amongAllOrdered(c)}, because filtering never changes the scale.`,
-    listOrder: `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,
-    listOrderUpper: `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} screening score.`,
     queueIntro:
       "These schools have no place in the list yet because their records are incomplete. Having no place in the list yet does not mean their need is low.",
     queueOrder: "Listed by province, district and school name. This is not an order of priority.",
@@ -109,7 +116,6 @@ export function buildStrings(c: CountBag = {}) {
     separateMeasures: SEPARATE_MEASURES,
     comparisonSource: "These figures come from the study's recorded comparison of the rules.",
     persistentNearLine: persistentNearLine(),
-    notComputedNote: `This rule was only run on ${completePhrase(c)}, and these schools have a missing reading.`,
   });
 }
 export const STRINGS = buildStrings();

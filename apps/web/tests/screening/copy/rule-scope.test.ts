@@ -78,10 +78,10 @@ describe("every scope line", () => {
     const { P } = view("additive_u");
     for (const rule of RULES)
       for (const [key, text] of Object.entries(P.scope(rule)))
-        expect(textProblems(text), `${rule} ${key}`).toEqual([]);
+        expect(textProblems(text, { sentence: key !== "amongAll" }), `${rule} ${key}`).toEqual([]);
     for (const reads of [undefined, { urgency: false, readings: true }, { urgency: true, readings: false }])
       for (const [key, text] of Object.entries(copy.buildScope({}, reads)))
-        expect(textProblems(text), key).toEqual([]);
+        expect(textProblems(text, { sentence: key !== "amongAll" }), key).toEqual([]);
   });
 });
 
