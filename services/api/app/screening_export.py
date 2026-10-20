@@ -13,6 +13,7 @@ import csv
 import datetime as dt
 import io
 import math
+import re
 import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -90,6 +91,19 @@ def _format_anchor(anchor: AnchorOut) -> str:
     return f"{anchor.name} ({anchor.component.value}): {anchor.transformation}; {bounds}; valid {anchor.n_valid} of {anchor.n_records}"
 
 
+FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+
+DISPLAY_NAME_NOTE = (
+    "display_name is source_school_name with an apostrophe in front when the name starts with =, +, -, @, "
+    "a tab or a carriage return, so that a spreadsheet application does not read it as a formula. "
+    "source_school_name is always exact: use it to join and to rebuild the list."
+)
+
+
+def display_name(source_school_name: str) -> str:
+    return "'" + source_school_name if source_school_name.startswith(FORMULA_STARTS) else source_school_name
+
+
 def method_record(
     *,
     export: str,
@@ -128,6 +142,7 @@ def method_record(
         ("cohort_counts", ", ".join(f"{name}={count}" for name, count in manifest.cohort_counts.items())),
         ("filters", filters.describe()),
         ("filters_effect", "Filters only hide rows. Ranks, bounds and anchors are those of the full run."),
+        ("display_name", DISPLAY_NAME_NOTE),
     ]
     if top is not None:
         record += [
@@ -187,7 +202,7 @@ def _identity_columns() -> tuple[str, ...]:
     return (
         "row_kind", "rule_id", "rule_label", "provenance", "policy_role", "score_kind",
         "input_version", "input_sha256", "anchors_sha256", "package_version",
-        "school_key", "school_id", "source_school_name", "province", "district", "locality", "latitude", "longitude",
+        "school_key", "school_id", "source_school_name", "display_name", "province", "district", "locality", "latitude", "longitude",
         "cohort", "gate_failures", "missing_environmental",
     )  # fmt: skip
 
@@ -198,7 +213,7 @@ def _identity_values(kind: str, row: SchoolRow, manifest: ManifestOut, input_ver
     return [
         kind, manifest.rule_id, manifest.rule_label, manifest.provenance.value, manifest.policy_role.value,
         manifest.score_kind, input_version, manifest.input_sha256, manifest.anchors_sha256, manifest.package_version,
-        i.school_key, None if i.school_id is None else str(i.school_id), i.source_school_name, i.province, i.district, i.locality,
+        i.school_key, None if i.school_id is None else str(i.school_id), i.source_school_name, display_name(i.source_school_name), i.province, i.district, i.locality,
         i.latitude, i.longitude, r.cohort.value, ";".join(f.value for f in r.gate_failures),
         ";".join(c for c in ("Q", "E", "L") if components[c] is None),
     ]  # fmt: skip
@@ -323,9 +338,13 @@ def _exact_number_text(value: Any) -> str:
 _openpyxl_safe_string = openpyxl_cell_writer.safe_string
 
 
+# Characters XML cannot hold, plus the carriage return, which an XML reader would turn into a line feed.
+_XLSX_ESCAPED = re.compile(f"{ILLEGAL_CHARACTERS_RE.pattern}|\r")
+
+
 def _xlsx_text(value: str) -> str:
-    """Characters that XML cannot hold are written as Excel's own escape, ``_x0007_``, which Excel reads back."""
-    return ILLEGAL_CHARACTERS_RE.sub(lambda match: f"_x{ord(match.group()):04X}_", value)
+    """These characters are written as Excel's own escape, for example ``_x0007_``, which Excel reads back."""
+    return _XLSX_ESCAPED.sub(lambda match: f"_x{ord(match.group()):04X}_", value)
 
 
 def render_xlsx(record: Sequence[tuple[str, str]], data_sheet: str, table: Table) -> bytes:

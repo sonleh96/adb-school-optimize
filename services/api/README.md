@@ -94,7 +94,7 @@ Exports:
 - To rebuild the list, keep `row_kind=point`, sort by the record's `sort_columns` descending, then `source_school_name` ascending in code point order. The result is the order of `rank_point`.
 - Text parameters (`rule`, `input_version`, `package_version`, `province`, `district`, ids) are rejected with 422 when they contain a control character. Characters that XML cannot hold in stored text are written to the XLSX as Excel's escape, for example `_x0007_`; the CSV keeps them.
 - Floats are written in full precision and unknown values are empty cells. Exports are sent with `Cache-Control: private, no-store` and `X-RISE-PNG-Decision-Use: research-prototype-only`.
-- A CSV opened in a spreadsheet application may read a name that starts with `=`, `+`, `-` or `@` as a formula. The XLSX stores such names as text. The CSV keeps names exact so that it round-trips.
+- `source_school_name` is always the exact name, for joins and for rebuilding the list. `display_name` follows it and is the same name with an apostrophe in front when it starts with `=`, `+`, `-`, `@`, a tab or a carriage return, so that a spreadsheet application does not read it as a formula. Show `display_name` to people.
 
 The failure modes behind the tests are in `tests/SCREENING_API_FAILURE_MODES.md`.
 They run against a real PostGIS server, like the screening database tests below.

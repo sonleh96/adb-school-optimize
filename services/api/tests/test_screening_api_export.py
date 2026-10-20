@@ -46,6 +46,7 @@ TOP_RECORD_KEYS = [
     "cohort_counts",
     "filters",
     "filters_effect",
+    "display_name",
     "k",
     "k_meaning",
     "include_ranges",
@@ -490,3 +491,28 @@ def test_control_characters_in_stored_text_do_not_break_the_xlsx(api, connection
     assert provinces == {"Prov_x0001_ince"}
     # The CSV keeps the characters as they are stored.
     assert {r["source_school_name"] for r in csv_rows} == set(names)
+
+
+def test_display_name_guards_formula_like_names_while_the_source_name_stays_exact(api, connection):  # API24
+    risky = ("=1+1 School", "+Plus School", "-Minus School", "@At School", "\tTab School", "\rReturn School")
+    safe = ("Plain School", "'Quoted School", "Mid=dle School")
+    load_synthetic(connection, tuple(record(name) for name in (*risky, *safe)))
+
+    method, rows = top(api, rule="additive_u", k=50)
+    incomplete_method, incomplete = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+
+    shown = {r["source_school_name"]: r["display_name"] for r in rows}
+    assert set(shown) == {*risky, *safe}  # the exact name is never changed
+    assert {name: shown[name] for name in risky} == {name: "'" + name for name in risky}
+    assert {name: shown[name] for name in safe} == {name: name for name in safe}
+    assert list(rows[0]).index("display_name") == list(rows[0]).index("source_school_name") + 1
+    assert "display_name" in incomplete_method and "apostrophe" in method["display_name"]
+    assert "display_name" in (incomplete[0] if incomplete else rows[0])
+
+    sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=50)))["Top schools"]
+    header = [c.value for c in sheet[1]]
+    in_xlsx = {
+        row[header.index("source_school_name")]: row[header.index("display_name")]
+        for row in sheet.iter_rows(min_row=2, values_only=True)
+    }
+    assert {k.replace("_x000D_", "\r"): v.replace("_x000D_", "\r") for k, v in in_xlsx.items()} == shown
