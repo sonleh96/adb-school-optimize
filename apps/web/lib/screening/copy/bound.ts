@@ -52,6 +52,7 @@ import {
   listStartsSegments,
   listStartsSentence,
   locationLine,
+  countsOf,
   persistenceNote,
   placeContext,
   placeHeadline,
@@ -73,6 +74,7 @@ import {
   ruleLabel,
   ruleName,
   ruleOneLine,
+  ruleReads,
   ruleRelation,
   ruleRole,
   ruleRoleLine,
@@ -153,7 +155,8 @@ export function copyFor(data: CopyData = {}) {
       if (!t) throw new Error(`Unknown term: ${key}`);
       return t;
     },
-    groupsSentence: () => groupsSentence(c),
+    groupsSentence: (ruleId?: CopyRuleId) =>
+      ruleId ? groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)) : groupsSentence(c),
     urgencyDefinition: () => urgencyDefinition(c),
     urgencyNote: (id: CopyRuleId, opts?: WithoutCounts) => urgencyNote(id, withCounts(opts)),
     rankSentence: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>

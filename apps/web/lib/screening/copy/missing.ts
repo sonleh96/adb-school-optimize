@@ -5,9 +5,10 @@ import { REMOTENESS_CATEGORIES } from "./definitions";
 import { SMALL, capitalise, isBlank, joinList } from "./format";
 import { OTHER_GATES, isNeedGate, isOtherGate } from "./gates";
 import { FACILITIES } from "./inputs";
-import type { CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } from "./model";
-import { missingReadingsClause } from "./rank";
+import type { CopyRuleId, CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } from "./model";
+import { missingReadings, missingReadingsClause } from "./rank";
 import { NEED_FIELDS, ORDER, isNeedKey, norm } from "./reasons";
+import { ruleReads } from "./rules";
 import { TERMS } from "./terms";
 import { LAYOUT } from "./words";
 
@@ -262,10 +263,32 @@ export function missingGroupLabel(school: CopySchool): string {
 }
 
 // The same content as missingSentence, one standalone sentence per item, for record lists.
-export function missingSentences(school: CopySchool): string[] {
-  if (school.cohort === "complete") return ["All of its inputs are recorded."];
+export function missingSentences(school: CopySchool, ruleId?: CopyRuleId): string[] {
+  // A rule that leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order
+  // without them, so "recorded" is said of the inputs the rule reads and any figure it does not read is named.
+  const reads = ruleId ? ruleReads(ruleId) : { urgency: true, readings: true };
+  const all = reads.urgency && reads.readings;
+  const notRead = (): string[] => {
+    const out: string[] = [];
+    const readings = reads.readings ? [] : missingReadings(school);
+    if (readings.length)
+      out.push(
+        `${missingReadingsClause(school)}, but this rule does not read ${readings.length === 1 ? "it" : "them"}.`
+      );
+    if (!reads.urgency && school.components.U === null)
+      out.push("Its urgency value is not recorded, but this rule does not use it.");
+    return out;
+  };
+  if (school.cohort === "complete")
+    return all
+      ? ["All of its inputs are recorded."]
+      : ["All of the inputs this rule reads are recorded.", ...notRead()];
   if (school.cohort === "interval")
-    return [`${missingReadingsClause(school)}.`, "Every other input is recorded."];
+    return [
+      `${missingReadingsClause(school)}.`,
+      all ? "Every other input is recorded." : "Every other input this rule reads is recorded.",
+      ...notRead(),
+    ];
   const parts: string[] = [];
   const needs = gateParts(school),
     others = otherGates(school);
@@ -303,6 +326,6 @@ export function missingSentences(school: CopySchool): string[] {
   return parts;
 }
 
-export function missingSentence(school: CopySchool): string {
-  return missingSentences(school).join(" ");
+export function missingSentence(school: CopySchool, ruleId?: CopyRuleId): string {
+  return missingSentences(school, ruleId).join(" ");
 }

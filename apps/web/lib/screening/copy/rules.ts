@@ -1,5 +1,5 @@
 /** The seven rules: their names, roles and plain explanations, and a rule's share of each factor in words. */
-import { countWord, urgencyDefinition } from "./counts";
+import { type Reads, countWord, urgencyDefinition } from "./counts";
 import type { CopyRuleId, CountBag } from "./model";
 
 /* ------------------------------------------------------------------- rules */
@@ -18,6 +18,8 @@ interface RuleInfo {
   readonly relation: string;
   readonly name: string;
   readonly usesUrgency: boolean;
+  /** Whether the rule reads the air-quality, emissions and land-cover figures. Only the benchmark does not. */
+  readonly readsReadings: boolean;
   readonly explanation: string;
 }
 
@@ -33,6 +35,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "The paper's main rule.",
     name: "the combined-factors rule with urgency (S)",
     usesUrgency: true,
+    readsReadings: true,
     explanation:
       "Adds up several factors for each school, each with a fixed share, to give its screening score. " +
       "School need, built from five parts of the school's own record, counts for 60%, district context for 15%, and urgency, walking reach, air quality, emissions and land cover for 5% each. " +
@@ -51,6 +54,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A proposed revision of the paper's main rule that leaves urgency out.",
     name: "the combined-factors rule without urgency (S0)",
     usesUrgency: false,
+    readsReadings: true,
     explanation:
       "The same as the combined-factors rule with urgency, with the urgency value left out because no one could trace where it comes from. " +
       "The other factors keep their shares in proportion: school need, built from five parts of the school's own record, about 63%, district context about 16%, and walking reach, air quality, emissions and land cover about 5% each. " +
@@ -66,6 +70,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A strict alternative from the paper that puts school need first.",
     name: "the need-first rule with urgency (NF)",
     usesUrgency: true,
+    readsReadings: true,
     explanation:
       "Puts schools in order of school need alone, the measure built from five parts of the school's own record. " +
       "The other inputs, urgency included, only decide the order between schools whose school need is exactly equal. " +
@@ -81,6 +86,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A proposed version of the strict alternative that leaves urgency out.",
     name: "the need-first rule without urgency (NF0)",
     usesUrgency: false,
+    readsReadings: true,
     explanation:
       "Puts schools in order of school need alone, the measure built from five parts of the school's own record. " +
       "The other inputs, without urgency, only decide the order between schools whose school need is exactly equal. " +
@@ -96,6 +102,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A sensitivity check from the paper that gives an extra share to each school's largest factor.",
     name: "the largest-factor rule with urgency (T)",
     usesUrgency: true,
+    readsReadings: true,
     explanation:
       "Takes 60% of the screening score from the combined-factors rule with urgency and adds 40% of whichever is largest: the school's need, its district context or its urgency value. " +
       "School need is built from five parts of the school's own record. " +
@@ -112,6 +119,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A proposed version of the sensitivity check that leaves urgency out.",
     name: "the largest-factor rule without urgency (T0)",
     usesUrgency: false,
+    readsReadings: true,
     explanation:
       "Takes 60% of the screening score from the combined-factors rule without urgency and adds 40% of whichever is larger: the school's need or its district context. " +
       "School need is built from five parts of the school's own record. " +
@@ -128,6 +136,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "A conventional mix of factors from the paper, kept for comparison.",
     name: "the conventional benchmark (B)",
     usesUrgency: true,
+    readsReadings: false,
     explanation:
       "A conventional mix of four factors with fixed shares, kept for comparison. " +
       "School need, built from five parts of the school's own record, counts for 55%, district context for 20%, urgency for 15% and walking reach for 10%. " +
@@ -171,6 +180,11 @@ export const ruleName = (id: CopyRuleId) => rule(id).name;
 // Words, for tight spaces such as tabs and chips.
 export const ruleShortName = (id: CopyRuleId) => rule(id).short;
 export const ruleUsesUrgency = (id: CopyRuleId) => rule(id).usesUrgency;
+/** The inputs a rule reads (`required_components` in the engine), which decide what "every input recorded" means. */
+export const ruleReads = (id: CopyRuleId): Reads => ({
+  urgency: rule(id).usesUrgency,
+  readings: rule(id).readsReadings,
+});
 export const urgencyNote = (id: CopyRuleId, opts: { counts?: CountBag } = {}): string =>
   rule(id).usesUrgency
     ? `This rule uses the urgency value. ${urgencyDefinition(opts.counts)}`

@@ -20,9 +20,11 @@ import { parseWith } from "@/lib/screening/schema";
 import { readFixture } from "../fixtures";
 import {
   type CompareResponse,
+  type InputsResponse,
   type ResultsResponse,
   type SchoolDetailResponse,
   compareResponse,
+  inputsResponse,
   resultsResponse,
   schoolDetailResponse,
 } from "@/lib/screening/types";
@@ -151,6 +153,9 @@ export const fixtureResults = (rule: string, upper = false): ResultsResponse =>
 
 export const fixtureDetail = (key: string): SchoolDetailResponse =>
   parseWith(schoolDetailResponse, readFixture(`schools/${key}.json`), `schools/${key}`);
+
+export const fixtureInputs = (): InputsResponse =>
+  parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
 
 export const fixtureCompare = (): CompareResponse =>
   parseWith(compareResponse, readFixture("compare/additive_u__additive_no_u.json"), "compare");

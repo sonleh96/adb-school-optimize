@@ -56,6 +56,16 @@ export const countWord = (n: number): string => (n < 10 ? SMALL[n] : formatCount
 export const countSuffix = (c: CountBag | undefined, k: string): string =>
   known(c, k) ? ` (${formatCount(c[k])})` : "";
 
+/** Which inputs a rule reads: the urgency value, and the air-quality, emissions and land-cover figures. */
+export interface Reads {
+  readonly urgency: boolean;
+  readonly readings: boolean;
+}
+const READS_ALL: Reads = { urgency: true, readings: true };
+/** "every input recorded" for a rule that reads every input, and "every input the rule reads recorded" otherwise. */
+export const everyInput = (reads: Reads = READS_ALL): string =>
+  reads.urgency && reads.readings ? "every input recorded" : "every input the rule reads recorded";
+
 /** "the 36 schools with every input recorded" or, without counts, "the schools with every input recorded". */
 export function theSchools(c: CountBag | undefined, k: string, rest: string): string {
   if (!known(c, k) || c[k] === 0) return `the schools ${rest}`;
@@ -63,8 +73,8 @@ export function theSchools(c: CountBag | undefined, k: string, rest: string): st
   return `the ${formatCount(c[k])} schools ${rest}`;
 }
 
-export const completePhrase = (c: CountBag | undefined): string =>
-  theSchools(c, "complete", "with every input recorded");
+export const completePhrase = (c: CountBag | undefined, reads?: Reads): string =>
+  theSchools(c, "complete", `with ${everyInput(reads)}`);
 export const orderedPhrase = (c: CountBag | undefined): string =>
   theSchools(c, "ranked", "that can be put in order");
 export const rangePhrase = (c: CountBag | null | undefined): string => {
@@ -97,14 +107,19 @@ export const amongAllOrdered = (c: CountBag | undefined): string =>
     : "all schools that can be put in order";
 
 // One sentence for the groups, explained together wherever either count first appears.
-export function groupsSentence(c: CountBag | undefined): string {
+// A rule that reads no air-quality figure has no range schools, so it says nothing about a missing reading.
+export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
+  const every = everyInput(reads);
+  const readsReadings = reads?.readings ?? true;
   // The prototype read `ranked` unchecked; a bag that lacks it now gets the count-free sentence instead of "NaN".
   if (!known(c, "complete") || !known(c, "range") || !known(c, "ranked")) {
-    return "Schools with every input recorded have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order.";
+    return readsReadings
+      ? `Schools with ${every} have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order.`
+      : `Schools with ${every} have one place each, and can be put in order.`;
   }
   const { ranked } = c;
-  const done = `${formatCount(c.complete)} ${plural(c.complete, "school has", "schools have")} every input recorded`;
-  if (c.range === 0)
+  const done = `${formatCount(c.complete)} ${plural(c.complete, "school has", "schools have")} ${every}`;
+  if (c.range === 0 || !readsReadings)
     return `${done}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
   const more = `${countWord(c.range)} more ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of places`;
   return `${done}, and ${more}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
