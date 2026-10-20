@@ -32,6 +32,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
 | API23 | Control characters cause a server error. | A control character in a query or path parameter reaches the database or an export and gives a 500, or text stored with such a character makes the XLSX writer raise. |
 | API24 | A CSV name is read as a formula, or the exact name is lost. | A name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return has no guarded `display_name` column, or `source_school_name` is changed to guard it, or the XLSX turns a carriage return into a line feed. |
+| API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
 
 ## Test map
 
@@ -57,6 +58,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_gate_failure_has_a_plain_description` | API16 |
 | `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
 | `test_display_name_guards_formula_like_names_while_the_source_name_stays_exact` | API24 |
+| `test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line` | API29 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |
 | `test_json_responses_carry_a_cache_policy_and_a_validator` | API10 |
 | `test_a_matching_validator_gets_304_and_any_other_gets_the_body` | API10 |

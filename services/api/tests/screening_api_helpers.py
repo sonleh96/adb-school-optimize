@@ -89,12 +89,17 @@ def load_synthetic(
 
 
 def parse_csv_export(content: bytes) -> tuple[dict[str, str], list[dict[str, str]]]:
-    """Split an export into its ``#`` method record and its data rows. Names are returned exactly as written."""
-    text = content.decode("utf-8")
-    lines = text.split("\n")
-    record_lines = []
-    while lines and lines[0].startswith("# "):
-        record_lines.append(lines.pop(0))
-    method = dict(line[2:].split(": ", 1) for line in record_lines)
-    rows = list(csv.DictReader(io.StringIO("\n".join(lines), newline="")))
-    return method, rows
+    """Split an export into its method record and its data rows, as a reader of the documented format would.
+
+    Decode with a byte order mark, parse as CSV, take the leading one-cell rows that start with ``# `` as the record.
+    Names are returned exactly as written.
+    """
+    parsed = list(csv.reader(io.StringIO(content.decode("utf-8-sig"), newline="")))
+    method = {}
+    position = 0
+    while len(parsed[position]) == 1 and parsed[position][0].startswith("# "):
+        key, value = parsed[position][0][2:].split(": ", 1)
+        method[key] = value
+        position += 1
+    header = parsed[position]
+    return method, [dict(zip(header, row, strict=True)) for row in parsed[position + 1 :]]
