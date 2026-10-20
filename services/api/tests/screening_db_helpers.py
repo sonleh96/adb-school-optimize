@@ -17,9 +17,16 @@ SOURCE_MANIFEST = [{"table": "synthetic", "root": "datasets", "path": "synthetic
 TABLES = ("screening_input_versions", "screening_inputs", "screening_runs", "screening_results")
 
 
-def apply_migrations(connection: psycopg.Connection) -> None:
-    """Apply every file of infra/sql in order, as an operator would."""
-    for path in sorted(SQL_DIR.glob("*.sql")):
+SCREENING_MIGRATION = SQL_DIR / "005_screening.sql"
+
+
+def migration_files() -> list[Path]:
+    return sorted(SQL_DIR.glob("*.sql"))
+
+
+def apply_migrations(connection: psycopg.Connection, files: list[Path] | None = None) -> None:
+    """Apply the files of infra/sql in order (all of them by default), as an operator would."""
+    for path in migration_files() if files is None else files:
         connection.execute(path.read_text(encoding="utf-8"))
 
 

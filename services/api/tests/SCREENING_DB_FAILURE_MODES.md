@@ -9,7 +9,7 @@ They also skip when `DATABASE_URL` names a non-local server, because each test c
 | Id | Failure mode | How it would show |
 | --- | --- | --- |
 | DB1 | The migration is not re-runnable. | A second apply of the migrations errors, changes the schema, or touches rows. |
-| DB2 | The security lockdown is missing on a new table. | Row level security is off, or `anon` or `authenticated` hold a privilege. |
+| DB2 | The security lockdown is missing on a new table. | Row level security is off, or `anon` or `authenticated` hold a privilege. The test grants them default privileges first, as Supabase can, so that removing the `revoke` lines makes it fail. |
 | DB3 | A partial load survives a failure. | A version or some runs stay after the load raised. |
 | DB4 | A rerun duplicates runs or rows. | Run or result counts grow, or timestamps change, on an identical rerun. |
 | DB5 | A version is silently overwritten. | Different inputs under an existing version id replace or mix with the old ones. |
@@ -25,6 +25,12 @@ They also skip when `DATABASE_URL` names a non-local server, because each test c
 | DB15 | A read returns rows in the wrong order. | `read_results` is not ordered by point rank, then best rank, then name in code point order, with unranked schools last. |
 | DB16 | School links go stale. | Schools loaded after the inputs never link, or links differ between `screening_inputs` and `screening_results`. |
 | DB17 | The command misreports or half-fails. | Unmatched names are missing from the output, a contract violation in a source file leaves rows behind, or a rerun is not reported as unchanged. |
+| DB18 | A partial apply of the migration leaves tables without their lockdown. | `psql -f` stops at an error with the tables created and row level security or the revokes not yet run. |
+| DB19 | A stored input row is edited by hand and a rerun calls it identical. | The rerun checks the version hash and the results but not the stored input rows. |
+| DB20 | The test guard reaches a remote server. | `hostaddr`, a host-less URL, a service entry or `PGHOST` points the tests at a server that is not local. |
+| DB21 | CI loses the database and the job still passes. | `DATABASE_URL` is missing or the service is down, the database tests skip, and nothing fails. |
+| DB22 | The load only works on tuple rows. | A connection with `dict_row`, as the API pool uses, breaks indexing by position. |
+| DB23 | The command crashes on a bad source set. | A source table without the key column, an unreadable file or an empty set ends in a traceback instead of a plain message. |
 
 ## Test map
 
@@ -33,6 +39,7 @@ They also skip when `DATABASE_URL` names a non-local server, because each test c
 | `test_migrations_are_rerunnable_and_leave_the_schema_unchanged` | DB1 |
 | `test_migrations_keep_rows_when_rerun` | DB1 |
 | `test_new_tables_are_closed_to_the_data_api_roles` | DB2 |
+| `test_a_failed_apply_leaves_no_screening_table_behind` | DB18 |
 | `test_load_stores_one_run_per_rule_and_one_result_per_school` | DB4, DB10 |
 | `test_identical_rerun_changes_nothing` | DB4 |
 | `test_duplicate_run_for_one_version_rule_and_package_is_rejected` | DB4 |

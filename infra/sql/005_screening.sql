@@ -11,6 +11,9 @@
 -- A school is identified by its source name, byte for byte.
 -- Matching to public.schools goes through normalize_join_key and is optional (school_id may be null).
 
+-- One transaction: either the tables and their lockdown exist together, or nothing of this file does.
+begin;
+
 create table if not exists screening_input_versions (
     input_version text primary key check (input_version <> '' and input_version = btrim(input_version)),
     description text,
@@ -143,9 +146,9 @@ create index if not exists screening_results_run_rank_idx
 create index if not exists screening_results_school_idx on screening_results (school_id);
 
 comment on table screening_input_versions is 'Frozen screening inputs, identified by the engine input hash.';
-comment on table screening_inputs is 'One row per school and input version; one column per field of the engine INPUT_CONTRACT.';
-comment on table screening_runs is 'One screening rule applied to one input version by one engine package version; manifest holds the full run description.';
-comment on table screening_results is 'One row per school and run; rank scopes are stored on every row so that no rank travels without its cohort.';
+comment on table screening_inputs is 'One row per school and input version, with one column per field of the engine INPUT_CONTRACT.';
+comment on table screening_runs is 'One screening rule applied to one input version by one engine package version. The manifest holds the full run description.';
+comment on table screening_results is 'One row per school and run. Rank scopes are stored on every row so that no rank travels without its cohort.';
 comment on column screening_results.rank_point is 'Rank among the complete cohort of the rule, labeled by rank_point_scope.';
 comment on column screening_results.rank_best is 'Best possible rank among the eligible cohort, labeled by rank_bounds_scope.';
 comment on column screening_results.rank_worst is 'Worst possible rank among the eligible cohort, labeled by rank_bounds_scope.';
@@ -160,3 +163,5 @@ revoke all privileges on table public.screening_input_versions from anon, authen
 revoke all privileges on table public.screening_inputs from anon, authenticated;
 revoke all privileges on table public.screening_runs from anon, authenticated;
 revoke all privileges on table public.screening_results from anon, authenticated;
+
+commit;
