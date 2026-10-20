@@ -6,6 +6,9 @@
  *  3. A count is typed instead of taken from the data: the strings that state a count are checked with two sizes.
  *  4. "Legend" and "Key" both name the same thing on screen.
  */
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
@@ -150,5 +153,28 @@ describe("the order of the incomplete records", () => {
     for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
       expect(textProblems(t), t).toEqual([]);
     expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
+  });
+});
+
+describe("the workspace's words for the map, a stale list and an ended session", () => {
+  it("come from the copy system, in sentences that pass the writing guards, and need no interim file", () => {
+    expect(LAYOUT.mapKeyboard).toBe(
+      "To choose a school with the keyboard, use the list or the incomplete records."
+    );
+    expect(LAYOUT.basemapUnavailable).toBe(
+      "The map's background did not load. The schools and the list still work."
+    );
+    expect(LAYOUT.refreshFailed).toBe("The list did not refresh, so this is the last one that loaded.");
+    expect(LAYOUT.sessionEnded).toBe("Your session has ended.");
+    expect(LAYOUT.signIn).toBe("Sign in again");
+    for (const t of [
+      LAYOUT.mapKeyboard,
+      LAYOUT.basemapUnavailable,
+      LAYOUT.refreshFailed,
+      LAYOUT.sessionEnded,
+    ])
+      expect(textProblems(t), t).toEqual([]);
+    expect(textProblems(LAYOUT.signIn, { sentence: false })).toEqual([]);
+    expect(existsSync(path.resolve(__dirname, "../../../components/screening/copy.ts"))).toBe(false);
   });
 });

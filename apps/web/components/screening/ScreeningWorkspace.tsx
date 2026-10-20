@@ -22,7 +22,6 @@ import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
-import { COPY } from "./copy";
 import { Legend } from "./Legend";
 import type { TipContent } from "./MapTooltip";
 import { RuleArea, focusRuleControl } from "./RuleArea";
@@ -534,7 +533,7 @@ function Workspace() {
                   <>
                     {view.kind === "ready" && view.refreshFailed ? (
                       <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
-                        {COPY.refreshFailed}{" "}
+                        {shown.copy.LAYOUT.refreshFailed}{" "}
                         <button type="button" className={styles.linkButton} onClick={data.retry}>
                           {copy.LAYOUT.retry}
                         </button>
@@ -706,9 +705,9 @@ function FullPanelState({
   if (failure === "session") {
     return (
       <div className={styles.fullState} role="alert" data-failure={failure}>
-        <p>{COPY.failure.session}</p>
+        <p>{LAYOUT.sessionEnded}</p>
         <a className={styles.linkButton} href="/sign-in?next=%2Fscreening">
-          {COPY.signIn}
+          {LAYOUT.signIn}
         </a>
       </div>
     );
