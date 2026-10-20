@@ -276,7 +276,13 @@ function Workspace() {
   const viewport = useViewport();
   const cardOpen = selectedSchool !== null;
   const layout = layoutOf({ width: viewport.width, height: viewport.height, cardOpen });
-  const padding = useMemo(() => mapPadding(layout, cardOpen), [layout, cardOpen]);
+  // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
+  const { mode, docked, column, card } = layout;
+  const padding = useMemo(
+    () => mapPadding(layout, cardOpen),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `layout` is rebuilt each render; its fields are the key.
+    [mode, docked, column, card, cardOpen]
+  );
   // Each time the clear part of the map changes shape, the map frames the country in it again.
   const [frame, setFrame] = useState(0);
   const shape = `${layout.mode}:${layout.docked}`;

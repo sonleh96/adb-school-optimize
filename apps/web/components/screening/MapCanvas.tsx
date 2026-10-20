@@ -242,14 +242,18 @@ export default function MapCanvas({
 
   // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
   // While the map is still moving to an earlier choice, where a mark sits now says nothing about where it will
-  // settle, so the map goes to the new school whatever its position mid-pan.
+  // settle, so a newly chosen school is gone to whatever its position mid-pan. A change of the clear part alone
+  // (the list stepping aside) leaves the reframing to finish.
+  const chosen = useRef<SchoolKey | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selected) return;
+    const fresh = chosen.current !== selected.key;
+    chosen.current = selected.key;
     const point = map.project([selected.lon, selected.lat]);
     const { width, height } = map.getContainer().getBoundingClientRect();
     const inside =
-      !map.isMoving() &&
+      !(fresh && map.isMoving()) &&
       point.x >= padding.left &&
       point.x <= width - padding.right &&
       point.y >= padding.top &&
@@ -319,7 +323,8 @@ export default function MapCanvas({
         mapLib={import("maplibre-gl")}
         mapStyle={basemapFailed ? BLANK_STYLE : BASEMAP_STYLE}
         initialViewState={initialView}
-        minZoom={3.5}
+        // Low enough that the whole country fits the narrow layout's shortest map band (160 px at 200 percent zoom).
+        minZoom={2.5}
         maxZoom={13}
         renderWorldCopies={false}
         dragRotate={false}
