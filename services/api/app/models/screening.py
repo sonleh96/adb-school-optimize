@@ -36,12 +36,14 @@ class ScopeCode(str, Enum):
     """Which cohort a rank counts, as a code to branch on. The label beside it is for reading, not for parsing.
 
     The engine writes one label per kind of scope (``point_rank_scope`` and ``rank_bounds_scope`` in the engine's
-    ``engine`` module), and a rank field has exactly one kind: a point rank counts the schools that are complete under
-    its rule, rank bounds count the eligible schools. The code is chosen by the field, never read from the label.
+    ``engine`` module, and the comparison's ``CommonCohort.scope``), and a rank field has exactly one kind: a point
+    rank counts the schools that are complete under its rule, rank bounds count the eligible schools, and a compared
+    rank counts the schools complete under both rules. The code is chosen by the field, never read from the label.
     """
 
     COMPLETE_UNDER_RULE = "complete_under_rule"
     ELIGIBLE = "eligible"
+    COMMON_COMPLETE_COHORT = "common_complete_cohort"
 
 
 class RowPlacement(str, Enum):
@@ -86,6 +88,13 @@ PERSISTENCE_LIMITATION = (
 )
 
 
+PERSISTENCE_ADJACENT_RULE = (
+    "A persistent school is threshold-adjacent when its lowest frequency is less than one standard error above "
+    "the threshold. The standard error is sqrt(threshold * (1 - threshold) / draws), the Monte Carlo error of a "
+    "frequency at the threshold, so such a school could fall below the line on another run of the draws."
+)
+
+
 class PersistenceSettingOut(Out):
     setting_id: str
     top_level_concentration: float
@@ -106,6 +115,8 @@ class PersistenceOut(Out):
     draws: int
     threshold: float
     settings: list[PersistenceSettingOut]
+    standard_error: float
+    threshold_adjacent_rule: str = PERSISTENCE_ADJACENT_RULE
     limitation: str = PERSISTENCE_LIMITATION
 
 
@@ -309,13 +320,24 @@ class ListedRowOut(SchoolResultOut):
     school: SchoolIdentityOut
 
 
-class ListedRowWithPersistenceOut(ListedRowOut):
-    """A row of the circulated rule's list. Rows of every other rule have no ``persistent_candidate`` key at all."""
+class PersistenceFlagsOut(Out):
+    """What the experiment says about one school of the circulated rule. All null when it was not in the experiment."""
 
     persistent_candidate: bool | None = Field(
         description="True or false from the experiment's lower top-20 frequencies; null when the school was not in the "
         "experiment or this input version has no persistence numbers. It describes the circulated rule only."
     )
+    lowest_top20_frequency: float | None = Field(
+        description="The school's lowest lower top-20 frequency over the settings."
+    )
+    threshold_adjacent: bool | None = Field(
+        description="True for a persistent school whose lowest frequency is less than one standard error above the "
+        "threshold (see the provenance block); false for any other school of the experiment."
+    )
+
+
+class ListedRowWithPersistenceOut(ListedRowOut, PersistenceFlagsOut):
+    """A row of the circulated rule's list. Rows of every other rule have none of the persistence keys at all."""
 
 
 # ---------------------------------------------------------------------------------------------
@@ -364,10 +386,8 @@ class SchoolRuleResultOut(Out):
     result: SchoolResultOut
 
 
-class SchoolRuleResultWithPersistenceOut(SchoolRuleResultOut):
+class SchoolRuleResultWithPersistenceOut(SchoolRuleResultOut, PersistenceFlagsOut):
     """The circulated rule's entry. The flag sits here and nowhere else, so it cannot be read as another rule's."""
-
-    persistent_candidate: bool | None
 
 
 class SchoolDetailOut(Out):
@@ -431,6 +451,7 @@ class CommonRankOut(Out):
     rank_a: int
     rank_b: int
     rank_scope: str
+    rank_scope_code: ScopeCode
 
 
 class TopChangeOut(Out):
@@ -439,6 +460,7 @@ class TopChangeOut(Out):
     rank_a: int
     rank_b: int
     rank_scope: str
+    rank_scope_code: ScopeCode
     score_a: float
     score_b: float
 
@@ -450,6 +472,7 @@ class IntervalBoundsOut(Out):
     rank_best: int | None
     rank_worst: int | None
     rank_bounds_scope: str
+    rank_bounds_scope_code: ScopeCode
 
 
 class IntervalSchoolOut(Out):
@@ -473,6 +496,7 @@ class CompareResponse(Out):
     run_a: RunOut
     run_b: RunOut
     common_cohort_scope: str
+    common_cohort_scope_code: ScopeCode
     common_cohort_count: int
     metrics: PairwiseMetricsOut
     ranks: list[CommonRankOut]

@@ -230,6 +230,7 @@ def _persistence_out(found: store.PersistenceSet | None) -> PersistenceOut | Non
         draws=found.draws,
         threshold=found.threshold,
         settings=[PersistenceSettingOut(**asdict(s)) for s in found.settings],
+        standard_error=found.standard_error,
     )
 
 
@@ -364,8 +365,7 @@ def get_results(
         )
         if not circulated:
             return ListedRowOut(**fields_)
-        flag = None if persistence is None else persistence.is_persistent(item.row.name)
-        return ListedRowWithPersistenceOut(**fields_, persistent_candidate=flag)
+        return ListedRowWithPersistenceOut(**fields_, **_persistence_flags(persistence, item.row.name))
 
     parts = dict(
         run=_run_out(run),
@@ -427,14 +427,24 @@ def get_inputs(request: Request, input_version: Text | None = None):
 # ---------------------------------------------------------------------------------------------
 
 
+def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict:
+    """What the experiment says about one school: all null when there are no numbers or the school was not in it."""
+    if persistence is None:
+        return {"persistent_candidate": None, "lowest_top20_frequency": None, "threshold_adjacent": None}
+    return {
+        "persistent_candidate": persistence.is_persistent(name),
+        "lowest_top20_frequency": persistence.lowest_frequency(name),
+        "threshold_adjacent": persistence.is_threshold_adjacent(name),
+    }
+
+
 def _rule_result_out(
     persistence: store.Persistence | None, name: str, **fields
 ) -> SchoolRuleResultOut | SchoolRuleResultWithPersistenceOut:
     """One rule's entry for one school. Only the circulated rule's entry carries the persistence flag."""
     if fields["rule"].rule_id != store.PERSISTENCE_RULE_ID:
         return SchoolRuleResultOut(**fields)
-    flag = None if persistence is None else persistence.is_persistent(name)
-    return SchoolRuleResultWithPersistenceOut(**fields, persistent_candidate=flag)
+    return SchoolRuleResultWithPersistenceOut(**fields, **_persistence_flags(persistence, name))
 
 
 def _school_details(
@@ -557,6 +567,7 @@ def _bounds_out(row: SchoolRow) -> IntervalBoundsOut:
         rank_best=r.rank_best,
         rank_worst=r.rank_worst,
         rank_bounds_scope=r.rank_bounds_scope,
+        rank_bounds_scope_code=ScopeCode.ELIGIBLE,
     )
 
 
@@ -607,6 +618,7 @@ def get_compare(
             rank_a=c.rank_a,
             rank_b=c.rank_b,
             rank_scope=comparison.cohort_scope,
+            rank_scope_code=ScopeCode.COMMON_COMPLETE_COHORT,
             score_a=by_a[c.school_name].result.score_point,
             score_b=by_b[c.school_name].result.score_point,
         )
@@ -617,6 +629,7 @@ def get_compare(
         run_a=_run_out(run_a),
         run_b=_run_out(run_b),
         common_cohort_scope=comparison.cohort_scope,
+        common_cohort_scope_code=ScopeCode.COMMON_COMPLETE_COHORT,
         common_cohort_count=comparison.cohort_count,
         metrics=PairwiseMetricsOut(
             n=m.n,
@@ -636,6 +649,7 @@ def get_compare(
                 rank_a=ra,
                 rank_b=rb,
                 rank_scope=comparison.cohort_scope,
+                rank_scope_code=ScopeCode.COMMON_COMPLETE_COHORT,
             )
             for n, ra, rb in comparison.ranks
         ],

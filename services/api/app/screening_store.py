@@ -8,6 +8,7 @@ Reads never recompute anything. A stored value is exactly what the engine produc
 from __future__ import annotations
 
 import datetime as dt
+import math
 import uuid
 from dataclasses import asdict, dataclass, fields
 from typing import Any
@@ -244,6 +245,11 @@ class PersistenceSet:
     threshold: float
     settings: tuple[PersistenceSetting, ...]
 
+    @property
+    def standard_error(self) -> float:
+        """Monte Carlo standard error of a frequency at the threshold, over ``draws`` draws."""
+        return math.sqrt(self.threshold * (1 - self.threshold) / self.draws)
+
 
 def is_persistent(frequencies: tuple[float, ...], threshold: float) -> bool:
     """At or above the threshold in every setting. The one definition, used when loading and when serving."""
@@ -261,6 +267,21 @@ class Persistence:
         """None when the school was not in the experiment."""
         found = self.frequencies.get(source_school_name)
         return None if found is None else is_persistent(found, self.set.threshold)
+
+    def lowest_frequency(self, source_school_name: str) -> float | None:
+        """The school's lowest frequency over the settings; None when it was not in the experiment."""
+        found = self.frequencies.get(source_school_name)
+        return None if found is None else min(found)
+
+    def is_threshold_adjacent(self, source_school_name: str) -> bool | None:
+        """Persistent, and by less than one standard error. None when the school was not in the experiment."""
+        found = self.frequencies.get(source_school_name)
+        if found is None:
+            return None
+        return (
+            is_persistent(found, self.set.threshold)
+            and min(found) - self.set.threshold < self.set.standard_error
+        )
 
 
 def read_persistence_sets(
