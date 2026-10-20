@@ -147,6 +147,7 @@ class Comparison:
     cohort_count: int
     metrics: PairwiseMetrics
     ranks: tuple[tuple[str, int, int], ...]  # school name, rank under a, rank under b
+    excluded: tuple[str, ...]  # names of schools that are not complete under both rules
     interval_schools: tuple[str, ...]  # names of schools that are interval under either rule
 
 
@@ -170,6 +171,8 @@ def compare_stored(
     ranks_a = ranked(rule_a, complete)
     ranks_b = ranked(rule_b, [by_name_b[r.name] for r in complete])
     by_b = ranks_b.by_school()
+    complete_names = set(cohort.school_names)
+    excluded = tuple(r.name for r in rows_a if r.name not in complete_names)
     interval = tuple(
         r.name
         for r in rows_a
@@ -180,5 +183,6 @@ def compare_stored(
         len(complete),
         compare_ranks(ranks_a, ranks_b),
         tuple(sorted(((name, rank, by_b[name]) for name, rank in ranks_a.ranks), key=lambda t: (t[1], t[0]))),
+        excluded,
         interval,
     )

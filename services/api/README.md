@@ -72,7 +72,7 @@ Unknown rule, input version or school gives 404 in the API's `{"error": {code, m
 | `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
 | `GET /schools/by-key/{school_key}?input_version=` | One school under all seven rules, with its stored raw inputs. Every school has a `school_key`, linked to `schools` or not. |
 | `GET /schools/{school_id}?input_version=` | Every school of the version linked to that `schools` row (normally one), each as above. |
-| `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules, the pairwise metrics, top-20 entrants and exits, and the bounds of interval schools. |
+| `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules (each with its scope), the pairwise metrics, top-20 entrants and exits, the schools left out with the reason, and the bounds of interval schools. |
 | `GET /exports/top.csv`, `top.xlsx` | The shortlist: `rule`, `k`, `include_ranges`, `province`, `district`, `input_version`. |
 | `GET /exports/incomplete.csv` | The verification queue of a rule, with gate failures and missing inputs per school. |
 
