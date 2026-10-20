@@ -1,0 +1,203 @@
+/* How this works: reference, not a step. It covers the workspace beside the rail and fades in. */
+.page {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: var(--rail-w);
+  z-index: 7;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  background: var(--paper);
+  transition: opacity 180ms var(--ease-out);
+}
+@starting-style {
+  .page {
+    opacity: 0;
+  }
+}
+.state {
+  padding: 40px 56px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+.wrap {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 680px);
+  column-gap: 64px;
+  max-width: 1100px;
+  padding: 40px 56px 80px;
+}
+.nav {
+  position: sticky;
+  top: 40px;
+  align-self: start;
+}
+.page .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 14px/20px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .page .link:hover {
+    text-decoration-color: var(--navy);
+  }
+}
+.page .link:focus-visible,
+.nav ol button:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.page .back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  margin-bottom: 28px;
+  font-size: 13px;
+}
+.eyebrow {
+  display: block;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.nav ol {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+}
+.nav li {
+  border-bottom: 1px solid var(--hair-2);
+}
+.nav ol button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink-2);
+}
+.nav ol button[aria-current="true"] {
+  color: var(--navy);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav ol button:hover {
+    color: var(--navy);
+  }
+}
+.n {
+  font: italic 400 15px/18px var(--serif);
+  color: var(--ink-3);
+}
+.glossary {
+  margin: 18px 0 0;
+}
+.page .glossary .link {
+  font-size: 13px;
+}
+.main h1 {
+  margin: 0;
+  font: 400 44px/48px var(--serif);
+  letter-spacing: -0.02em;
+}
+.main h1:focus {
+  outline: none;
+}
+.lede {
+  margin: 14px 0 0;
+  font: 400 19px/28px var(--serif);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.main section {
+  margin-top: 28px;
+  padding: 28px 0 8px;
+  border-top: 1px solid var(--ink);
+  scroll-margin-top: 24px;
+}
+.main h2 {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 12px;
+  font: 500 24px/30px var(--serif);
+  letter-spacing: -0.01em;
+}
+.main h2 .n {
+  font-size: 24px;
+  line-height: 30px;
+}
+.main section p {
+  max-width: 38em;
+  margin: 0 0 10px;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.foot {
+  margin-top: 36px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: rgba(21, 24, 29, 0.045);
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink-2);
+}
+.foot p {
+  margin: 0;
+}
+
+/* Below 1280 px the contents sit above the text. */
+@media (max-width: 1279px) {
+  .wrap {
+    grid-template-columns: minmax(0, 680px);
+    row-gap: 28px;
+    padding: 32px 40px 64px;
+  }
+  .nav {
+    position: static;
+  }
+}
+/* Narrow: the page takes the whole window, back control at the top. */
+@media (max-width: 1023px) {
+  .page {
+    left: 0;
+    z-index: 8;
+  }
+  .wrap {
+    padding: 20px 20px 48px;
+  }
+  .main h1 {
+    font-size: 34px;
+    line-height: 38px;
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 25px;
+  }
+  .main h2 {
+    font-size: 21px;
+    line-height: 26px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page {
+    transition: opacity 180ms ease;
+  }
+}

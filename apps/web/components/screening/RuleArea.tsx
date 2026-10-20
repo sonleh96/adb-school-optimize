@@ -99,6 +99,7 @@ export function RuleArea(props: RuleAreaProps) {
             type="button"
             className={styles.ruleButton}
             aria-pressed={r.id === requested}
+            data-rule={r.id}
             disabled={disabled}
             onClick={() => onRule(r.id)}
           >

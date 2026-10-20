@@ -1,0 +1,760 @@
+/*
+ * The guide rail, its rings, the map bar and the narrow menu (notes/final.md, "Layout", "Components" and
+ * "Interactions"). The tokens are the workspace's, inherited from its root.
+ */
+
+/* ---------- shared pieces ---------- */
+.eyebrow {
+  margin: 0;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.label {
+  display: block;
+  margin-bottom: 1px;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.rail .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+.rail .link[aria-pressed="true"] {
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail .link:hover {
+    text-decoration-color: var(--navy);
+  }
+}
+.rail .quiet,
+.rail .primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: 500 14px/1 var(--sans);
+  white-space: nowrap;
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.rail .quiet {
+  border: 1px solid var(--hair);
+  background: transparent;
+  color: var(--ink);
+}
+.rail .primary {
+  border: 1px solid var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.rail .quiet:not(:disabled):active,
+.rail .primary:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail .quiet:not(:disabled):hover {
+    border-color: rgba(21, 24, 29, 0.3);
+  }
+  .rail .primary:hover {
+    background: #0d3888;
+  }
+}
+.rail .quiet:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.rail .primary kbd {
+  padding: 1px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 3px;
+  font: 500 9.5px/12px var(--mono);
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.72);
+}
+.rail .wide {
+  width: 100%;
+  height: 38px;
+}
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.failed {
+  margin: 20px 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+
+/* ---------- the rail ---------- */
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 5;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  background: var(--rail-bg);
+  border-right: 1px solid var(--hair);
+  transition:
+    opacity 200ms ease,
+    transform 240ms var(--ease-out);
+}
+@starting-style {
+  .rail {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+.railInner {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.railHead {
+  padding: 20px 24px 14px;
+}
+.headRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.guideName {
+  min-width: 0;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.progress {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+}
+.progress i {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(21, 24, 29, 0.12);
+}
+.progress i[data-at="done"] {
+  background: rgba(10, 46, 115, 0.4);
+}
+.progress i[data-at="current"] {
+  background: var(--navy);
+}
+.counter {
+  margin: 8px 0 0;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.railBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 24px 20px;
+  scrollbar-width: thin;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+}
+.railBody :focus {
+  outline: none;
+}
+.railFoot {
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--hair);
+}
+
+/* the start: what do you want to find out */
+.startTitle {
+  margin: 4px 0 10px;
+  font: 500 30px/34px var(--serif);
+  letter-spacing: -0.016em;
+  text-wrap: balance;
+}
+.lede {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.tasks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+}
+/* R23: the step count sits beside the title and the title wraps, so nothing leaves the rail. */
+.rail .task {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: start;
+  width: 100%;
+  padding: 11px 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--hair);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: transform 160ms var(--ease-out);
+}
+.rail .task::before {
+  content: "";
+  position: absolute;
+  inset: 0 -12px;
+  border-radius: 6px;
+  background: var(--navy-wash);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.rail .task > * {
+  position: relative;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail .task:not(:disabled):hover::before {
+    opacity: 1;
+  }
+  .rail .task:not(:disabled):hover .taskTitle {
+    color: var(--navy);
+  }
+}
+.rail .task:not(:disabled):active {
+  transform: scale(0.99);
+}
+.rail .task:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.taskN {
+  font: italic 400 17px/19px var(--serif);
+  color: var(--ink-3);
+}
+.taskText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.taskTitle {
+  font: 500 14px/19px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  transition: color 150ms ease;
+}
+.taskSub {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.taskStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 1px;
+  font: 400 12px/18px var(--sans);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.taskStatus[data-seen] {
+  color: var(--navy);
+}
+.rail .howLink {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: center;
+  width: 100%;
+  margin-top: 14px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--navy);
+}
+.howTitle {
+  font: italic 400 17px/22px var(--serif);
+}
+.rail .howLink .taskSub {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+}
+.rail .howLink svg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  transition: transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail .howLink:hover svg {
+    transform: translateX(2px);
+  }
+}
+.note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+}
+.rail .task:focus-visible,
+.rail .howLink:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* a step */
+.stepTitle {
+  margin: 4px 0 14px;
+  font: 500 26px/30px var(--serif);
+  letter-spacing: -0.012em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.stepBody p {
+  margin: 0 0 12px;
+  font: 400 17px/25px var(--serif);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.stepBody p + p {
+  color: #2b2f36;
+}
+.stepBody b {
+  font-weight: 500;
+}
+.onScreen {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
+.onScreen svg {
+  flex: none;
+  margin-top: 15px;
+  color: var(--navy);
+}
+.tryIt {
+  margin: 12px 0 0 24px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.drift {
+  margin: 14px 0 0;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: rgba(21, 24, 29, 0.05);
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+.drift .link {
+  font-size: 12.5px;
+  white-space: normal;
+}
+.upNext {
+  margin: 0 0 10px;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.nav {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  gap: 8px;
+}
+.foot2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 12px;
+}
+.footRight {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.hint {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* Presentation mode: presenter type in a wider rail, Up next, and the key hints. */
+.rail[data-present] .stepTitle {
+  font-size: 32px;
+  line-height: 36px;
+}
+.rail[data-present] .stepBody p {
+  font-size: 20px;
+  line-height: 29px;
+}
+.rail[data-present] .onScreen {
+  font-size: 15px;
+  line-height: 21px;
+}
+.rail[data-present] .tryIt {
+  display: none;
+}
+
+/* ---------- rings: where the step points ---------- */
+.rings {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+.ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border: 2px solid var(--navy);
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px rgba(10, 46, 115, 0.13);
+}
+/* A ring already on screen moves to the next step's place; the size eases with it (notes/final.md, "Critique pass 2"). */
+.ring[data-moving] {
+  transition:
+    transform 220ms var(--ease-out),
+    width 220ms var(--ease-out),
+    height 220ms var(--ease-out);
+}
+
+/* ---------- the map bar ---------- */
+.mapbar {
+  position: absolute;
+  top: var(--gap);
+  left: calc(var(--rail-w) + var(--gap) + var(--col-w) + var(--gap));
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 0 6px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+:global([data-card-docked]) .mapbar {
+  left: calc(var(--rail-w) + var(--gap));
+}
+.mapbar[data-bar-stack] {
+  top: calc(var(--gap) + 48px);
+}
+.mapbar .barButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.mapbar .barButton svg {
+  flex: none;
+  color: var(--ink-2);
+}
+.mapbar .barButton:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mapbar .barButton:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
+.mapbar .barButton:disabled {
+  color: var(--ink-3);
+}
+.mapbar .barButton[aria-expanded="true"] {
+  background: rgba(21, 24, 29, 0.06);
+}
+.mapbar .barButton[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+.mapbar .barButton[aria-pressed="true"] .keyCap {
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+.keyCap {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(21, 24, 29, 0.25);
+  border-radius: 3px;
+  font: 500 10.5px/1 var(--mono);
+  color: var(--ink-2);
+}
+.badge {
+  margin-left: 2px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(21, 24, 29, 0.06);
+  font: 500 10.5px/1 var(--mono);
+  color: var(--ink-3);
+}
+/* Icons only: when the stepped-down bar would touch the card, and always in the compact layout. */
+.mapbar[data-bar-tight] .squeezable .barLabel,
+:global([data-layout="compact"]) .mapbar .barLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- the masthead link and the narrow menu ---------- */
+.howWrap .mastHow {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .howWrap .mastHow:hover {
+    text-decoration-color: var(--navy);
+  }
+}
+.menuWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.menuWrap .menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+}
+.menuWrap .menuButton[aria-expanded="true"] {
+  background: rgba(21, 24, 29, 0.06);
+}
+.menuWrap .menuButton:active {
+  transform: scale(0.97);
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  transform-origin: top right;
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+@starting-style {
+  .menu {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.menuWrap .menu > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+  cursor: pointer;
+  font: 500 13.5px/1 var(--sans);
+  color: var(--ink);
+}
+.menuWrap .menu > button[aria-pressed="true"],
+.menuWrap .menu > button[aria-expanded="true"] {
+  color: var(--navy);
+}
+.menuWrap .menu > button:disabled {
+  color: var(--ink-3);
+}
+@media (hover: hover) and (pointer: fine) {
+  .menuWrap .menu > button:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
+
+/* ---------- narrow: the rail takes the map band's place; a step on the map is one line over the band ---------- */
+.mapBarStep {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .rail {
+    top: 56px;
+    bottom: auto;
+    right: 0;
+    width: auto;
+    height: var(--band);
+    border-right: 0;
+    border-bottom: 1px solid var(--hair);
+  }
+  @starting-style {
+    .rail {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  .railHead {
+    padding: 12px 16px 8px;
+  }
+  .railBody {
+    padding: 2px 16px 12px;
+  }
+  .railFoot {
+    padding: 10px 16px 12px;
+  }
+  .railHead .progress {
+    margin-top: 8px;
+  }
+  .stepTitle {
+    margin-bottom: 8px;
+    font-size: 21px;
+    line-height: 25px;
+  }
+  .stepBody p {
+    font-size: 15px;
+    line-height: 22px;
+  }
+  .nav {
+    grid-template-columns: 1fr 1.7fr;
+  }
+  .rail .quiet,
+  .rail .primary {
+    height: 36px;
+  }
+  .foot2 {
+    margin-top: 8px;
+  }
+  .startTitle {
+    font-size: 24px;
+    line-height: 28px;
+  }
+  .rail:has(.mapBarStep) {
+    height: auto;
+    background: transparent;
+    border: 0;
+    pointer-events: none;
+  }
+  .mapBarStep {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 6px;
+    margin: 8px;
+    padding: 6px 6px 6px 12px;
+    background: var(--panel);
+    border: 1px solid var(--hair);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .mapBarStep .quiet,
+  .mapBarStep .primary {
+    height: 32px;
+    font-size: 13px;
+  }
+  .compactTitle {
+    margin: 0;
+    font: 500 13px/17px var(--sans);
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail,
+  .menu {
+    transition-property: opacity;
+  }
+  @starting-style {
+    .rail,
+    .menu {
+      transform: none;
+    }
+  }
+  .ring[data-moving] {
+    transition: none;
+  }
+  .rail .task,
+  .rail .howLink svg {
+    transition: none;
+  }
+}
