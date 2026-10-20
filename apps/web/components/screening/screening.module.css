@@ -93,9 +93,12 @@
   left: calc(var(--col-w) + var(--gap) * 2);
   top: var(--gap);
 }
+/* A panel showing the previous rule's rows: its content fades, its paper stays solid so the map does not show through. */
 .stale {
-  opacity: 0.5;
   pointer-events: none;
+}
+.stale > * {
+  opacity: 0.5;
 }
 .scopeLine {
   display: block;
