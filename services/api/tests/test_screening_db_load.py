@@ -9,6 +9,7 @@ import psycopg
 import pytest
 from app import screening_store as store
 from app.ingestion.load_screening_inputs import InputsConflict, RunConflict, VersionConflict
+from psycopg.rows import dict_row
 from school_scoring.screening import (
     RULES,
     Cohort,
@@ -45,6 +46,20 @@ def test_load_stores_one_run_per_rule_and_one_result_per_school(connection):  # 
     assert [r.rule_id for r in store.list_runs(connection, VERSION)] == sorted(RULES)
     assert scalar(connection, "select count(*) from screening_inputs") == len(records)
     assert scalar(connection, "select count(*) from screening_results") == len(RULES) * len(records)
+
+
+def test_load_works_on_a_connection_that_returns_dict_rows(database_url):  # DB22
+    # The API's connection pool opens connections with dict_row.
+    with psycopg.connect(database_url, autocommit=True, row_factory=dict_row) as own:
+        first = load(own, mixed_records())
+        second = load(own, mixed_records())
+
+        assert first.runs_created == tuple(RULES) and first.matched == 0
+        assert second.runs_unchanged == tuple(RULES) and second.links_changed == 0
+        add_school(own, "zed queue")
+        third = load(own, mixed_records())
+        assert (third.matched, third.links_changed) == (1, 1)
+        assert len(store.read_results(own, run_of(own, "additive_u").run_id)) == len(mixed_records())
 
 
 def test_identical_rerun_changes_nothing(connection):  # DB4

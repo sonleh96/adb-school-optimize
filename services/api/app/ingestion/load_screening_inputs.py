@@ -25,6 +25,7 @@ from typing import Any
 import pandas as pd
 import psycopg
 from psycopg import sql
+from psycopg.rows import tuple_row
 from psycopg.types.json import Json
 from school_scoring.screening import (
     INPUT_CONTRACT,
@@ -129,6 +130,13 @@ def read_source_tables(
 # ---------------------------------------------------------------------------------------------
 
 
+def _fetch(connection: psycopg.Connection, query: str, params: Any) -> list[tuple]:
+    """Rows as tuples whatever row factory the caller's connection uses (the API pool uses dict_row)."""
+    with connection.cursor(row_factory=tuple_row) as cursor:
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+
 def _insert_version(
     connection: psycopg.Connection,
     input_version: str,
@@ -177,7 +185,8 @@ def _result_values(row: store.ResultRow) -> list[Any]:
 
 def _insert_run(connection: psycopg.Connection, input_version: str, run: ScreeningRun) -> None:
     manifest = run.manifest
-    run_id = connection.execute(
+    ((run_id,),) = _fetch(
+        connection,
         "insert into screening_runs (input_version, rule_id, provenance, policy_role, score_kind, manifest, "
         "input_sha256, anchors_sha256, package_version) values (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
         "returning run_id",
@@ -192,7 +201,7 @@ def _insert_run(connection: psycopg.Connection, input_version: str, run: Screeni
             manifest.anchors_sha256,
             manifest.package_version,
         ),
-    ).fetchone()[0]
+    )
     columns = [c for c in store.RESULT_COLUMNS if c != "school_id"]
     query = sql.SQL(
         "insert into screening_results (run_id, input_version, {columns}) values ({marks})"
@@ -275,7 +284,7 @@ def _link_schools(
     params = {"version": input_version}
     changed = connection.execute(_LINK_INPUTS, params).rowcount
     connection.execute(_LINK_RESULTS, params)
-    rows = connection.execute(_LINK_STATE, params).fetchall()
+    rows = _fetch(connection, _LINK_STATE, params)
     matched = sum(1 for _, school_id, _ in rows if school_id is not None)
     ambiguous = tuple(name for name, _, same_key in rows if same_key > 1)
     unmatched = tuple(name for name, school_id, same_key in rows if school_id is None and same_key == 1)
