@@ -94,18 +94,19 @@ test("names the scope each place is counted in, in the list header, the card and
     COPY.listScopes("complete under this rule (16)", "eligible (21)")
   );
 
-  await orderedRow(page, "Sample School 15").click();
-  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("complete under this rule (16)"));
-  await orderedRow(page, "Sample School 17").click();
-  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
-
-  // The tooltip names it too.
-  await page.keyboard.press("Escape");
+  // The tooltip names it too. It is checked on the map's first view, where every mark is on screen: choosing
+  // schools in the list pans the map to the last one chosen, and how far depends on how long each pan had run when
+  // the next school was chosen, so afterwards a given mark can be off screen.
   const point = await settledMark(page, keyOf("additive_u", "Sample School 13"));
   await page.mouse.move(point.x, point.y);
   await expect(page.getByRole("status").filter({ hasText: "Sample School 13" })).toContainText(
     COPY.placeAmong("3rd", "complete under this rule (16)")
   );
+
+  await orderedRow(page, "Sample School 15").click();
+  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("complete under this rule (16)"));
+  await orderedRow(page, "Sample School 17").click();
+  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
 });
 
 test("an exact range's tooltip carries the exact note", async ({ page }) => {
