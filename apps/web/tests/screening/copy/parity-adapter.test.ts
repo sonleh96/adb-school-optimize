@@ -30,9 +30,6 @@ import {
   pairwiseFromCompare,
   placedFromResults,
   schoolFromDetail,
-  wireCompare,
-  wireResults,
-  wireSchoolDetail,
 } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 
@@ -53,6 +50,7 @@ import {
   sameOutcome,
   tally,
 } from "./parity-support";
+import { compareResponse, resultsResponse, schoolDetailResponse } from "@/lib/screening/types";
 
 const suite = describe.skipIf(!ready);
 const VIEW = "additive_u";
@@ -80,19 +78,45 @@ const COHORT: Record<string, string> = {
 
 let proto: Api;
 let datasets: Dataset[] = [];
-const skipped = { noResult: 0, inconsistentGate: 0, noAreaParts: 0, noPairRow: 0 };
+const skipped = { noResult: 0, inconsistentGate: 0, noAreaParts: 0, noPairRow: 0, badRanks: 0 };
 /** What each left-out case was, so a test can say why it is left out rather than only how many. */
 const leftOut = {
-  noResult: [] as { cohort: string; rule: string }[],
+  noResult: [] as { id: string; cohort: string; rule: string }[],
   inconsistentGate: [] as { cohort: string; blank: string[]; gate: string[] }[],
   noAreaParts: [] as { cohort: string }[],
   noPairRow: [] as { n: unknown; median: unknown; maximum: unknown }[],
+  badRanks: [] as { id: string; cohort: string; rule: string }[],
 };
+
+/**
+ * The page parser refuses a row whose places contradict its group (a complete school with no single place, say),
+ * which the API cannot send. Where the design record holds one, the result under that rule is dropped from the
+ * record itself, so both sides read the same school, and the drop is counted.
+ */
+function withConsistentRanks(d: Dataset): Dataset {
+  const schools = d.data.schools.map((s: any) => {
+    if (s.cohort === "queue" || !s.results) return s;
+    const results = { ...s.results };
+    for (const [rule, res] of Object.entries(results) as [string, any][]) {
+      if (!res) continue;
+      const point = Number.isInteger(res.rank_complete120);
+      const bounds = Number.isInteger(res.rank_best) && Number.isInteger(res.rank_worst);
+      const agrees = s.cohort === "complete" ? point && bounds : !point && bounds;
+      if (!agrees) {
+        skipped.badRanks += 1;
+        leftOut.badRanks.push({ id: s.id, cohort: s.cohort, rule });
+        results[rule] = null;
+      }
+    }
+    return { ...s, results };
+  });
+  return { ...d, data: { ...d.data, schools } };
+}
 
 beforeAll(() => {
   if (!ready) return;
   proto = loadPrototype(path.join(ROOT as string, "prototype/shared/copy.js"));
-  datasets = loadDatasets();
+  datasets = loadDatasets().map(withConsistentRanks);
 });
 
 afterAll(() => {
@@ -104,12 +128,17 @@ afterAll(() => {
 
 /* ------------------------------------------------- design record to API response */
 
+const runOf = (rule_id: string) => ({ rule_id, input_version: "design", package_version: "design" });
+const gateCodes = (s: any) => [...new Set(s.gate_failures.map((f: string) => GATE_CODE[f]))];
+
 const wireIdentity = (s: any) => ({
   school_key: s.id,
   source_school_name: s.name ?? "",
   province: s.province ?? null,
   district: s.district ?? null,
   locality: s.locality ?? null,
+  latitude: null,
+  longitude: null,
 });
 
 const wireComponents = (s: any, rule: string) => ({
@@ -140,16 +169,18 @@ function wireScores(res: any, rule: string) {
   };
 }
 
-// The adapter reads neither the label nor the count of a scope, only whether a bounds label is "eligible (N)".
+// The adapter reads the scope code, not the label or the count.
 const wirePoint = (res: any) => ({
   rank: res && Number.isInteger(res.rank_complete120) ? res.rank_complete120 : null,
   scope: "complete under this rule (1)",
+  scope_code: "complete_under_rule",
   count: 1,
 });
 const wireBounds = (res: any) => ({
   best: res && Number.isInteger(res.rank_best) ? res.rank_best : null,
   worst: res && Number.isInteger(res.rank_worst) ? res.rank_worst : null,
   scope: "eligible (1)",
+  scope_code: "eligible",
   count: 1,
 });
 
@@ -159,8 +190,12 @@ function wireRow(s: any, rule: string) {
   if (s.cohort !== "queue" && !res) return null;
   return {
     cohort: COHORT[s.cohort],
+    gate_failures: s.cohort === "queue" ? gateCodes(s) : [],
     components: wireComponents(s, rule),
     scores: wireScores(res, rule),
+    need_parts: s.need_parts ?? Object.fromEntries(NEED_FIELDS.map((f) => [f, null])),
+    area_parts: wireArea(s.area_parts ?? {}),
+    ...wireContributions(s, rule),
     point_rank: wirePoint(res),
     rank_bounds: wireBounds(res),
     school: wireIdentity(s),
@@ -171,10 +206,17 @@ function wireResultsFor(data: Dataset["data"], rule: string) {
   const rows = data.schools.map((s) => wireRow(s, rule)).filter((r) => r !== null);
   const count = (c: string) => data.schools.filter((s) => s.cohort === c).length;
   return parseWith(
-    wireResults,
+    resultsResponse,
     {
-      run: { rule_id: rule },
+      run: runOf(rule),
       manifest: {
+        rule_label: rule,
+        point_rank_scope: "complete under this rule (1)",
+        point_rank_scope_code: "complete_under_rule",
+        point_rank_count: 1,
+        rank_bounds_scope: "eligible (1)",
+        rank_bounds_scope_code: "eligible",
+        rank_bounds_count: 1,
         cohort_counts: {
           records: data.schools.length,
           complete: count("complete"),
@@ -258,16 +300,19 @@ function wireDetail(s: any, rules: readonly string[]) {
     const res = s.results ? s.results[rule] : null;
     if (s.cohort !== "queue" && !res) {
       skipped.noResult += 1;
-      leftOut.noResult.push({ cohort: s.cohort, rule });
+      leftOut.noResult.push({ id: s.id, cohort: s.cohort, rule });
       return [];
     }
     return [
       {
-        rule: { rule_id: rule },
+        rule: { rule_id: rule, label: rule },
+        point_rank_scope: "complete under this rule (1)",
+        point_rank_scope_code: "complete_under_rule",
+        rank_bounds_scope: "eligible (1)",
+        rank_bounds_scope_code: "eligible",
         result: {
           cohort: COHORT[s.cohort],
-          gate_failures:
-            s.cohort === "queue" ? [...new Set(s.gate_failures.map((f: string) => GATE_CODE[f]))] : [],
+          gate_failures: s.cohort === "queue" ? gateCodes(s) : [],
           components: wireComponents(s, rule),
           need_parts: s.need_parts,
           area_parts: wireArea(s.area_parts),
@@ -279,7 +324,11 @@ function wireDetail(s: any, rules: readonly string[]) {
       },
     ];
   });
-  return parseWith(wireSchoolDetail, { school: wireIdentity(s), inputs, rules: entries }, `school/${s.id}`);
+  return parseWith(
+    schoolDetailResponse,
+    { input_version: "design", school: wireIdentity(s), inputs, rules: entries },
+    `school/${s.id}`
+  );
 }
 
 function skip(why: keyof typeof skipped): null {
@@ -305,19 +354,35 @@ function wireCompares(data: Dataset["data"]) {
     }
     const move = (c: any) => ({
       status: c.status,
-      school: { source_school_name: c["School Name"] },
+      school: {
+        school_key: `key-${c["School Name"]}`,
+        source_school_name: c["School Name"],
+        province: null,
+        district: null,
+        locality: null,
+        latitude: null,
+        longitude: null,
+      },
       rank_a: c.left_rank,
       rank_b: c.right_rank,
+      rank_scope: "common complete cohort (1)",
+      rank_scope_code: "common_complete_cohort",
     });
     const changes = data.top20Changes.filter(
       (c: any) => c.left_rule === row.left_rule && c.right_rule === row.right_rule
     );
     return [
       parseWith(
-        wireCompare,
+        compareResponse,
         {
-          run_a: { rule_id: row.left_rule },
-          run_b: { rule_id: row.right_rule },
+          input_version: "design",
+          run_a: runOf(row.left_rule),
+          run_b: runOf(row.right_rule),
+          common_cohort_scope: "common complete cohort (1)",
+          common_cohort_scope_code: "common_complete_cohort",
+          common_cohort_count: row.n,
+          ranks: [],
+          excluded_schools: [],
           metrics: {
             n: row.n,
             median_absolute_rank_shift: row.median_absolute_rank_shift,
@@ -507,7 +572,11 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
     // The API sends no entry for a rule that does not run on a school, and the design records that as a null result.
     // Only a school with a range (it lacks a reading the rule reads) can be in that position.
     expect(skipped.noResult).toBe(leftOut.noResult.length);
-    expect(leftOut.noResult.filter((x) => x.cohort !== "interval")).toEqual([]);
+    // The rest are results the design left for a school whose places contradict its group (counted below).
+    const dropped = new Set(leftOut.badRanks.map((x) => `${x.id}|${x.rule}`));
+    expect(
+      leftOut.noResult.filter((x) => x.cohort !== "interval" && !dropped.has(`${x.id}|${x.rule}`))
+    ).toEqual([]);
     // A record whose gate list names more need parts than it has blank ones contradicts itself.
     expect(skipped.inconsistentGate).toBe(leftOut.inconsistentGate.length);
     for (const x of leftOut.inconsistentGate) {
@@ -515,6 +584,9 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       expect(x.blank.length).toBeLessThan(x.gate.length);
       expect(x.blank.every((f) => x.gate.includes(f))).toBe(true);
     }
+    // A school whose places contradict its group under a rule (a complete school with no single place, say) is a row
+    // the API cannot send, and the page parser refuses.
+    expect(skipped.badRanks).toBe(leftOut.badRanks.length);
     // A record with no district parts cannot be sent, and the design always has them.
     expect(leftOut.noAreaParts).toEqual([]);
     // A recorded pair without a school count or a shift has nothing to compare.

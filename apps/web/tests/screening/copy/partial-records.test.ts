@@ -12,10 +12,11 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { ParseError, parseWith } from "@/lib/screening/schema";
-import { schoolFromDetail, wireSchoolDetail } from "@/lib/screening/copy";
+import { schoolFromDetail } from "@/lib/screening/copy";
 
 import { copy as clone, readFixture } from "../fixtures";
 import { KEYS } from "./helpers";
+import { schoolDetailResponse } from "@/lib/screening/types";
 
 type Body = {
   rules: {
@@ -29,7 +30,7 @@ type Body = {
 };
 const body = () => clone(readFixture(`schools/${KEYS.complete}.json`)) as Body;
 const load = (b: Body, view: copy.CopyRuleId) =>
-  schoolFromDetail(parseWith(wireSchoolDetail, b, "school"), view);
+  schoolFromDetail(parseWith(schoolDetailResponse, b, "school"), view);
 const entry = (b: Body, id: string) => {
   const e = b.rules.find((r) => r.rule.rule_id === id);
   if (!e) throw new Error(`no ${id}`);

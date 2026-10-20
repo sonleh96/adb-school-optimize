@@ -1,11 +1,13 @@
 /**
  * Maps the screening API's responses into the records the copy reads, so the copy functions stay the prototype's.
+ * The responses are the page's own parsed types (`../types`): one parser per response, so a field is read in one
+ * place and a new one is added there.
  *
  * Every mapping is a rename or a regrouping; no figure is computed, filled in or guessed. Where the API cannot
  * supply something the copy reads, the function says so (a `ParseError` for a broken response, an absent key for
  * an unknown count) rather than inventing it.
  *
- * Two things differ between the API and the study the copy was written for:
+ * Three things differ between the API and the study the copy was written for:
  *  - A school's group is relative to a rule: a school can lack a reading that one rule reads and another does not.
  *    Each function takes the rule being shown and a school's group is its group under that rule. Its results under
  *    the other rules are kept as the API gave them, so a sentence about another rule reads that rule's own place
@@ -13,10 +15,23 @@
  *  - The API names why it holds a school back (`gate_failures`). The reasons about the stored counts and sources
  *    name no part, so the need parts a record cannot give are read from the need parts that are blank, as the
  *    study listed them. The other reasons (negative count, district context, reach, urgency) are carried as sent.
+ *  - A rank says what it counts by a scope code, never by its label. A place counts the schools complete under its
+ *    rule; a range counts every school that can be put in order. A rank with any other scope is not used as either.
  *
- * Input shapes are in `wire.ts`. Parse a response with them before it reaches these functions.
+ * Three routes give a school: `schoolFromDetail` (one school's detail), `schoolsFromLists` (every row of a list,
+ * with the bulk stored inputs) and `placedFromResults` (a list alone, for places and names only). Most pages want
+ * `bindCopy` in `./bind`, which takes the responses and does all of it, including the group sizes of each rule.
  */
 import { ParseError } from "../schema";
+import type {
+  CompareResponse,
+  DetailResult,
+  InputsResponse,
+  ListedRow,
+  ResultsResponse,
+  SchoolDetailResponse,
+  SchoolIdentity,
+} from "../types";
 
 import type {
   AreaParts,
@@ -37,18 +52,12 @@ import type {
   ResultsByRule,
   Top20Change,
 } from "./model";
+import { countsFrom } from "./counts";
 import { OTHER_GATES } from "./gates";
 import { isCopyRuleId } from "./rules";
-import type {
-  WireCohort,
-  WireCompare,
-  WireResults,
-  WireRow,
-  WireSchoolDetail,
-  WireSchoolResult,
-} from "./wire";
 
-const COHORT: Record<WireCohort, CopyCohort> = {
+type Cohort = ListedRow["cohort"];
+const COHORT: Record<Cohort, CopyCohort> = {
   complete: "complete",
   interval: "interval",
   verification_queue: "queue",
@@ -64,25 +73,23 @@ const NEED_FIELD_ORDER: readonly NeedField[] = [
 
 const isNeedFirstRule = (id: CopyRuleId): boolean => id === "need_first_u" || id === "need_first_no_u";
 
-/** The API labels the scope of the bounds "eligible (N)"; the copy asks only whether they count every school that can be put in order. */
-const ELIGIBLE_SCOPE = /^eligible \(\d+\)$/;
-
-function viewRuleOf(response: WireResults): CopyRuleId {
+function viewRuleOf(response: ResultsResponse): CopyRuleId {
   const id = response.run.rule_id;
   if (!isCopyRuleId(id))
     throw new ParseError(`run.rule_id: the copy has no words for the rule ${JSON.stringify(id)}`);
   return id;
 }
 
-function toResult(
-  id: CopyRuleId,
-  r: Pick<WireSchoolResult, "scores" | "point_rank" | "rank_bounds">
-): CopyResult {
+/** The parts of a result the copy reads as places; a listed row and a school's detail both have them. */
+type Placed = Pick<DetailResult, "scores" | "point_rank" | "rank_bounds">;
+
+function toResult(id: CopyRuleId, r: Placed): CopyResult {
   const base = {
-    rank_complete120: r.point_rank.rank,
-    rank_best: r.rank_bounds.best,
-    rank_worst: r.rank_bounds.worst,
-    rank_bounds_scope: ELIGIBLE_SCOPE.test(r.rank_bounds.scope) ? "eligible124" : null,
+    // A place counts the schools complete under its rule, whatever the label says; any other scope is no place.
+    rank_complete120: r.point_rank.scope_code === "complete_under_rule" ? r.point_rank.rank : null,
+    rank_best: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.best : null,
+    rank_worst: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.worst : null,
+    rank_bounds_scope: r.rank_bounds.scope_code === "eligible" ? "eligible124" : null,
   };
   // Under the need-first rules the primary sort key is school need and the score is the secondary one.
   return isNeedFirstRule(id)
@@ -99,7 +106,7 @@ function present<T>(value: T | null | undefined, path: string): T {
 
 /* ----------------------------------------------------------------- one school */
 
-type Inputs = WireSchoolDetail["inputs"];
+type Inputs = SchoolDetailResponse["inputs"];
 
 function numberInput(inputs: Inputs, key: string): number | null {
   if (!(key in inputs)) throw new ParseError(`inputs.${key}: expected a number or null, got undefined`);
@@ -132,7 +139,7 @@ function conditionFrom(inputs: Inputs): CopyCondition {
   };
 }
 
-function areaPartsFrom(a: WireSchoolResult["area_parts"]): AreaParts {
+function areaPartsFrom(a: DetailResult["area_parts"]): AreaParts {
   return {
     progression10_deficit: a.progression_g10_deficit,
     progression12_deficit: a.progression_g12_deficit,
@@ -144,7 +151,7 @@ function areaPartsFrom(a: WireSchoolResult["area_parts"]): AreaParts {
 }
 
 /** What the two combined-factors rules recorded for each input. Complete and interval schools always have all of it. */
-function recordedContribution(id: "additive_u" | "additive_no_u", r: WireSchoolResult): RecordedContribution {
+function recordedContribution(id: "additive_u" | "additive_no_u", r: DetailResult): RecordedContribution {
   const at = (component: string) => {
     const found = r.contributions.find((c) => c.component === component);
     if (!found) throw new ParseError(`rules.${id}.result.contributions: no entry for component ${component}`);
@@ -187,16 +194,23 @@ function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[
   ];
 }
 
-/**
- * One school with its whole record, as it reads under `view`: the rule the screen is showing.
- * `detail` is the `/schools/by-key` response, which carries the stored inputs and the result under every rule.
- */
-export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): CopySchool {
-  const entries = new Map<CopyRuleId, WireSchoolResult>();
-  for (const entry of detail.rules)
-    if (isCopyRuleId(entry.rule.rule_id)) entries.set(entry.rule.rule_id, entry.result);
+/** What the experiment says about a school, for the circulated rule only. Absent where the rule has no such list. */
+interface Circulated {
+  readonly persistent_candidate?: boolean | null;
+  readonly threshold_adjacent?: boolean | null;
+}
+
+/** One school's whole record from its identity, stored inputs and result under every rule that has one. */
+function buildSchool(
+  identity: SchoolIdentity,
+  inputs: Inputs,
+  view: CopyRuleId,
+  entries: ReadonlyMap<CopyRuleId, DetailResult>,
+  circulated: Circulated | undefined,
+  missingView: string
+): CopySchool {
   const shown = entries.get(view);
-  if (!shown) throw new ParseError(`rules: the school has no result under ${view}`);
+  if (!shown) throw new ParseError(missingView);
   const cohort = COHORT[shown.cohort];
 
   // A school held back under the rule shown can still be in order under another, so keep every result the API
@@ -225,22 +239,22 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
 
   const needParts: NeedParts = shown.need_parts;
   const raw = {
-    Q_raw: numberInput(detail.inputs, "aqi_p95_selected"),
-    E_raw: numberInput(detail.inputs, "emissions_co2e_100yr_10km_tonnes"),
-    L_raw: numberInput(detail.inputs, "water_flooded_vegetation_fraction_500m"),
+    Q_raw: numberInput(inputs, "aqi_p95_selected"),
+    E_raw: numberInput(inputs, "emissions_co2e_100yr_10km_tonnes"),
+    L_raw: numberInput(inputs, "water_flooded_vegetation_fraction_500m"),
   };
 
   return {
-    id: detail.school.school_key,
-    name: detail.school.source_school_name,
-    province: detail.school.province,
-    district: detail.school.district,
-    locality: detail.school.locality,
+    id: identity.school_key,
+    name: identity.source_school_name,
+    province: identity.province,
+    district: identity.district,
+    locality: identity.locality,
     cohort,
     // The engine also nulls a reading that is recorded but out of range, so a missing reading is read off the
     // components, as the list route reads it, and not off the raw value.
     missing_env: { aqi: Q === null, emissions: E === null, land: L === null },
-    condition: conditionFrom(detail.inputs),
+    condition: conditionFrom(inputs),
     need_parts: needParts,
     area_parts: areaPartsFrom(shown.area_parts),
     components,
@@ -248,10 +262,84 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
     gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
     results,
     contributions,
+    ...(circulated
+      ? {
+          persistent_candidate_circulated: circulated.persistent_candidate === true,
+          threshold_adjacent_circulated: circulated.threshold_adjacent === true,
+        }
+      : {}),
   };
 }
 
-/* ------------------------------------------------------------------- the list */
+/**
+ * One school with its whole record, as it reads under `view`: the rule the screen is showing.
+ * `detail` is the `/schools/by-key` response, which carries the stored inputs and the result under every rule.
+ */
+export function schoolFromDetail(detail: SchoolDetailResponse, view: CopyRuleId): CopySchool {
+  const entries = new Map<CopyRuleId, DetailResult>();
+  let circulated: Circulated | undefined;
+  for (const entry of detail.rules) {
+    if (!isCopyRuleId(entry.rule.rule_id)) continue;
+    entries.set(entry.rule.rule_id, entry.result);
+    // Only the circulated rule's entry has the persistence keys.
+    if (entry.rule.rule_id === "additive_u" && "persistent_candidate" in entry) circulated = entry;
+  }
+  return buildSchool(
+    detail.school,
+    detail.inputs,
+    view,
+    entries,
+    circulated,
+    `rules: the school has no result under ${view}`
+  );
+}
+
+/* ------------------------------------------------------------------- the lists */
+
+/**
+ * Every school of a list with its whole record, in the list's order: the rows of the rule shown, the bulk stored
+ * inputs, and the other rules' lists. Pass the list of each rule the screen compares (unfiltered, so a school's
+ * place under it is there), the two combined-factors lists for the reasons that name what each input adds, and the
+ * circulated rule's list for the persistence flag. A school missing from one of those lists simply has no result
+ * under that rule. `inputs` must be of the same input version as the lists.
+ */
+export function schoolsFromLists(
+  inputs: InputsResponse,
+  lists: readonly ResultsResponse[],
+  view: CopyRuleId
+): CopySchool[] {
+  const rowsOf = new Map<CopyRuleId, Map<string, ListedRow>>();
+  for (const list of lists) {
+    if (list.run.input_version !== inputs.input_version)
+      throw new ParseError(
+        `lists: the list for ${list.run.rule_id} is of input version ${list.run.input_version}, not ${inputs.input_version}`
+      );
+    rowsOf.set(viewRuleOf(list), new Map(list.rows.map((row) => [row.school.school_key, row])));
+  }
+  const shown = lists.find((l) => viewRuleOf(l) === view);
+  if (!shown) throw new ParseError(`lists: there is no list for ${view}`);
+  const stored = new Map(inputs.schools.map((s) => [s.school_key as string, s.inputs]));
+  const circulatedRows = rowsOf.get("additive_u");
+  return shown.rows.map((row) => {
+    const key = row.school.school_key;
+    const own = stored.get(key);
+    if (!own) throw new ParseError(`inputs: there are no stored inputs for the school ${key}`);
+    const entries = new Map<CopyRuleId, DetailResult>();
+    for (const [id, rows] of rowsOf) {
+      const r = rows.get(key);
+      if (r) entries.set(id, r);
+    }
+    const circ = circulatedRows?.get(key);
+    return buildSchool(
+      row.school,
+      own,
+      view,
+      entries,
+      circ,
+      `lists: the school ${key} has no row under ${view}`
+    );
+  });
+}
 
 /**
  * The schools of a list, for the place sentences, headlines, ties and names. The first response is the rule being
@@ -259,14 +347,15 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
  * under those rules too, which `comparisonSentence` needs for the top 10, and `rangeComparisonSentence` for a pair.
  *
  * A list row carries no stored inputs, so these are not whole records: the reasons and the missing-detail notes
- * need `schoolFromDetail`. Which readings are missing is read from the components, which are blank for them.
+ * need `schoolsFromLists` or `schoolFromDetail`. Which readings are missing is read from the components, which are
+ * blank for them.
  */
 /** A school of a list: what the place sentences read, and which readings are blank. */
 export type ListedSchool = PlacedSchool & { readonly missing_env: MissingEnv };
 
-export function placedFromResults(first: WireResults, ...others: WireResults[]): ListedSchool[] {
+export function placedFromResults(first: ResultsResponse, ...others: ResultsResponse[]): ListedSchool[] {
   const view = viewRuleOf(first);
-  const index = (response: WireResults): [CopyRuleId, Map<string, WireRow>] => [
+  const index = (response: ResultsResponse): [CopyRuleId, Map<string, ListedRow>] => [
     viewRuleOf(response),
     new Map(response.rows.map((row) => [row.school.school_key, row])),
   ];
@@ -303,10 +392,12 @@ export function placedFromResults(first: WireResults, ...others: WireResults[]):
  *  - how many schools have no air-quality reading, and how many have an urgency value of 0, come from the rows and
  *    only when the list is unfiltered and (for urgency) the rule gives the value;
  *  - how many have no nearby emissions, how many records give only a remoteness category, and how many carry the
- *    circulated candidate flag need the stored inputs of every school, which no list response holds.
- * Counts belong to the run: bind one `copyFor` per rule being shown.
+ *    circulated candidate flag need the whole records of every school (`schools`, from `schoolsFromLists`), and are
+ *    left out without them, with a filtered list, or (for the flag) without the circulated rule's list.
+ * Counts belong to the run: they describe the rule shown. The group sizes of other rules are
+ * `countsByRuleFromResults`.
  */
-export function countsFromResults(response: WireResults): CountBag {
+export function countsFromResults(response: ResultsResponse, schools?: readonly CopySchool[]): CountBag {
   const cc = response.manifest.cohort_counts;
   const out: Record<string, number> = {};
   const { records, complete, interval, verification_queue: queue } = cc;
@@ -316,14 +407,19 @@ export function countsFromResults(response: WireResults): CountBag {
   if (queue !== undefined) out.queue = queue;
   if (complete !== undefined && interval !== undefined) out.ranked = complete + interval;
 
-  if (
-    response.returned_schools === response.total_schools &&
-    response.rows.length === response.total_schools
-  ) {
+  const whole =
+    response.returned_schools === response.total_schools && response.rows.length === response.total_schools;
+  if (whole) {
     const rows = response.rows;
     out.airMissing = rows.filter((r) => r.cohort !== "verification_queue" && r.components.Q === null).length;
     if (rows.every((r) => r.components.U !== undefined)) {
       out.urgencyZero = rows.filter((r) => r.components.U === 0).length;
+    }
+    if (schools && schools.length === rows.length) {
+      const c = countsFrom(schools);
+      out.emissionsNone = c.emissionsNone;
+      out.remotenessOnly = c.remotenessOnly;
+      if (schools.every((s) => s.persistent_candidate_circulated !== undefined)) out.flagged = c.flagged;
     }
   }
   return out;
@@ -333,7 +429,9 @@ export function countsFromResults(response: WireResults): CountBag {
  * The group sizes of each rule's own run, from the lists of those rules, for the sentences that put one school
  * under two rules. Each rule is counted from its own manifest, because the groups differ between rules.
  */
-export function countsByRuleFromResults(...responses: WireResults[]): Partial<Record<CopyRuleId, CountBag>> {
+export function countsByRuleFromResults(
+  ...responses: ResultsResponse[]
+): Partial<Record<CopyRuleId, CountBag>> {
   return Object.fromEntries(responses.map((r) => [viewRuleOf(r), countsFromResults(r)]));
 }
 
@@ -343,10 +441,11 @@ const TOP_SIZES = [10, 20, 30, 40] as const;
 
 /**
  * The study's recorded comparison of two rules, from `/compare`, in the rows `comparisonSentence` reads.
- * Both arrays are empty when the response holds no usable comparison (no common school, or a rule the copy has
- * no words for), so the sentences say none is recorded. A response without one of the four top-list sizes is broken.
+ * Both arrays are empty when the response holds no usable comparison (no common school, a rule the copy has
+ * no words for, or ranks that do not count the common cohort of complete schools), so the sentences say none is
+ * recorded. A response without one of the four top-list sizes is broken.
  */
-export function pairwiseFromCompare(compare: WireCompare): {
+export function pairwiseFromCompare(compare: CompareResponse): {
   pairwise: PairwiseRow[];
   top20Changes: Top20Change[];
 } {
@@ -354,6 +453,10 @@ export function pairwiseFromCompare(compare: WireCompare): {
   const left = compare.run_a.rule_id;
   const right = compare.run_b.rule_id;
   if (!isCopyRuleId(left) || !isCopyRuleId(right)) return none;
+  // The sentences name the schools both rules order, so the ranks must count exactly those.
+  if (compare.common_cohort_scope_code !== "common_complete_cohort") return none;
+  if ([...compare.entrants, ...compare.exits].some((c) => c.rank_scope_code !== "common_complete_cohort"))
+    return none;
   const {
     n,
     median_absolute_rank_shift: median,
@@ -367,7 +470,7 @@ export function pairwiseFromCompare(compare: WireCompare): {
     return found.overlap;
   };
   const [o10, o20, o30, o40] = TOP_SIZES.map(overlap);
-  const change = (c: WireCompare["entrants"][number]): Top20Change => ({
+  const change = (c: CompareResponse["entrants"][number]): Top20Change => ({
     left_rule: left,
     right_rule: right,
     status: c.status,

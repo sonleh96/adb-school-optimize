@@ -152,6 +152,8 @@ export interface CopySchool extends PlacedSchool {
   readonly gate_failures: readonly GateKey[];
   readonly contributions?: Partial<Record<"additive_u" | "additive_no_u", RecordedContribution>>;
   readonly persistent_candidate_circulated?: boolean;
+  /** A flagged school whose lowest frequency is only just above the line (circulated rule only). */
+  readonly threshold_adjacent_circulated?: boolean;
 }
 
 /** What `countsFrom` reads. Every field is optional because a caller may only know some of the school. */

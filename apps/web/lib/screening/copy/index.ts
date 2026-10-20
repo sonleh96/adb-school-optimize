@@ -8,6 +8,7 @@ export {
   pairwiseFromCompare,
   placedFromResults,
   schoolFromDetail,
+  schoolsFromLists,
   type ListedSchool,
 } from "./adapter";
 export { BANNED } from "./banned";
@@ -97,11 +98,3 @@ export {
   type Segment,
   type Segments,
 } from "./segments";
-export {
-  wireCompare,
-  wireResults,
-  wireSchoolDetail,
-  type WireCompare,
-  type WireResults,
-  type WireSchoolDetail,
-} from "./wire";

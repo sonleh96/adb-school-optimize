@@ -12,10 +12,11 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
-import { placedFromResults, schoolFromDetail, wireResults, wireSchoolDetail } from "@/lib/screening/copy";
+import { placedFromResults, schoolFromDetail } from "@/lib/screening/copy";
 
 import { copy as clone, readFixture } from "../fixtures";
 import { KEYS } from "./helpers";
+import { resultsResponse, schoolDetailResponse } from "@/lib/screening/types";
 
 type Body = {
   inputs: Record<string, number | null>;
@@ -33,7 +34,7 @@ function unusable(input: string, component: "Q" | "E" | "L", value: number) {
   return b;
 }
 const load = (b: Body, view: copy.CopyRuleId = "additive_u") =>
-  schoolFromDetail(parseWith(wireSchoolDetail, b, "school"), view);
+  schoolFromDetail(parseWith(schoolDetailResponse, b, "school"), view);
 
 describe.each([
   ["aqi_p95_selected", "Q", -4, "aqi", "air", "air-quality reading"],
@@ -70,7 +71,7 @@ describe("the list route and the detail route", () => {
     const row = list.rows.find((r) => r.school.source_school_name === "Sample School 08");
     if (!row) throw new Error("no row");
     row.components.Q = null;
-    const listed = placedFromResults(parseWith(wireResults, list, "list")).find(
+    const listed = placedFromResults(parseWith(resultsResponse, list, "list")).find(
       (s) => s.name === "Sample School 08"
     );
     const detail = load(unusable("aqi_p95_selected", "Q", -4));
