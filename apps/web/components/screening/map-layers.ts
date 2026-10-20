@@ -1,7 +1,15 @@
 import { ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 
-import { LABELLED_PLACES, RAMP_HEX, RAMP_RADIUS, type MapSchool } from "@/lib/screening/marks";
+import {
+  INCOMPLETE_RING_HEX,
+  LABELLED_PLACES,
+  MARK_PAPER_HEX,
+  RAMP_HEX,
+  RAMP_RADIUS,
+  RANGE_RING_HEX,
+  type MapSchool,
+} from "@/lib/screening/marks";
 
 type Color = [number, number, number, number];
 
@@ -13,9 +21,9 @@ const rgba = (hex: string): Color => [
   255,
 ];
 const RAMP: Color[] = RAMP_HEX.map(rgba);
-const PAPER: Color = [251, 250, 247, 255];
-const RING_INK: Color = [74, 79, 87, 255];
-const QUIET_INK: Color = [141, 138, 130, 255];
+const PAPER = rgba(MARK_PAPER_HEX);
+const RING_INK = rgba(RANGE_RING_HEX);
+const INCOMPLETE_INK = rgba(INCOMPLETE_RING_HEX);
 const SELECTION_INK: Color = [21, 24, 29, 255];
 const RANGE_RADIUS = 6.5;
 const INCOMPLETE_RADIUS = 3.5;
@@ -42,8 +50,11 @@ const LABEL_FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
 /**
  * The marks, bottom to top. A better place is never covered by a worse one:
  * dots go worst first, and each of the first ten is a dot with its own number, again worst first.
+ * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked.
  */
-export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
+export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): Layer[] {
+  const pickable = !stale;
+  const opacity = stale ? 0.4 : 1;
   const incomplete = schools.filter((s) => s.mark.kind === "incomplete");
   const ranges = schools.filter((s) => s.mark.kind === "range");
   const dots = schools.filter(isDot).sort((a, b) => b.mark.rank - a.mark.rank);
@@ -54,7 +65,8 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
     new ScatterplotLayer<MapSchool>({
       id: "incomplete",
       data: incomplete,
-      pickable: true,
+      pickable,
+      opacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: INCOMPLETE_RADIUS,
@@ -62,13 +74,14 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
       getFillColor: [PAPER[0], PAPER[1], PAPER[2], 230],
       stroked: true,
       lineWidthUnits: "pixels",
-      getLineWidth: 1.25,
-      getLineColor: [QUIET_INK[0], QUIET_INK[1], QUIET_INK[2], 235],
+      getLineWidth: 1.5,
+      getLineColor: INCOMPLETE_INK,
     }),
     new ScatterplotLayer<MapSchool>({
       id: "range",
       data: ranges,
-      pickable: true,
+      pickable,
+      opacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: RANGE_RADIUS,
@@ -82,6 +95,7 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
     new ScatterplotLayer<MapSchool>({
       id: "range-centre",
       data: ranges,
+      opacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: 2,
@@ -90,7 +104,8 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
     new ScatterplotLayer<Dot>({
       id: "dots",
       data: rest as Dot[],
-      pickable: true,
+      pickable,
+      opacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: (s) => RAMP_RADIUS[s.mark.step],
@@ -108,7 +123,8 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
       new ScatterplotLayer<Dot>({
         id: `first-${school.mark.rank}`,
         data: [school],
-        pickable: true,
+        pickable,
+        opacity,
         getPosition: position,
         radiusUnits: "pixels",
         getRadius: RAMP_RADIUS[0],
@@ -122,6 +138,7 @@ export function buildMarkLayers(schools: readonly MapSchool[]): Layer[] {
       new TextLayer<Dot>({
         id: `first-${school.mark.rank}-number`,
         data: [school],
+        opacity,
         getPosition: position,
         getText: (s) => String(s.mark.rank),
         characterSet: "0123456789",

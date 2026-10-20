@@ -3,9 +3,17 @@
 import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 
-import { type OrderedRow, groupByProvince, neighbour, ordinal, placeOf } from "@/lib/screening/list";
+import {
+  type OrderedRow,
+  groupByProvince,
+  incompleteInDisplayOrder,
+  neighbour,
+  ordinal,
+  placeOf,
+} from "@/lib/screening/list";
 import type { ListedRow, QueuedRow, SchoolKey } from "@/lib/screening/types";
 
+import { COPY } from "./copy";
 import styles from "./screening.module.css";
 
 /** "3rd" with the suffix raised, as the design sets places. */
@@ -30,10 +38,13 @@ function Place({ row }: { row: OrderedRow }) {
     );
   }
   if (place.kind === "range") {
-    if (place.best === place.worst) {
+    // A range stays a range when both ends are the same place; it reads as that place, in the range colour.
+    if (place.exact) {
       return (
-        <span className={styles.place} data-place="range">
-          <Ordinal n={place.best} />
+        <span className={`${styles.place} ${styles.placeRange}`} data-place="range" data-exact="true">
+          <span>
+            <Ordinal n={place.best} />
+          </span>
         </span>
       );
     }
@@ -42,7 +53,7 @@ function Place({ row }: { row: OrderedRow }) {
         <span>
           <Ordinal n={place.best} />
         </span>
-        <span className={styles.placeTo}>to</span>
+        <span className={styles.placeTo}>{COPY.rangeTo}</span>
         <span>
           <Ordinal n={place.worst} />
         </span>
@@ -60,28 +71,28 @@ interface ListProps<Row extends ListedRow> {
   label: string;
 }
 
-/** Arrow keys move the selection through the rows on screen; the selected row keeps focus. */
+/**
+ * Arrow keys move through `order`, which must be the rows as they appear on screen. They move from the row that
+ * has focus, not from the selection: a key pressed straight after a click can arrive before the selection has
+ * re-rendered.
+ */
 function arrowKeyHandler(
-  rows: readonly ListedRow[],
+  order: readonly ListedRow[],
   selected: SchoolKey | null,
   onSelect: (key: SchoolKey) => void
 ) {
   return (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    // Move from the row that has focus, not from the selection: a key pressed straight after a click can
-    // arrive before the selection has re-rendered.
     const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-school-key]")?.dataset
       .schoolKey;
-    const next = neighbour(rows, focused ?? selected, event.key === "ArrowDown" ? 1 : -1);
+    const next = neighbour(order, focused ?? selected, event.key === "ArrowDown" ? 1 : -1);
     if (next === null) return;
     event.preventDefault();
     onSelect(next);
-    const list = event.currentTarget;
-    requestAnimationFrame(() => {
-      list
-        .querySelector<HTMLElement>(`[data-school-key="${CSS.escape(next)}"]`)
-        ?.focus({ preventScroll: true });
-    });
+    // Focus moves with the selection at once, so the next key press starts from the new row, however fast it comes.
+    event.currentTarget
+      .querySelector<HTMLElement>(`[data-school-key="${CSS.escape(next)}"]`)
+      ?.focus({ preventScroll: true });
   };
 }
 
@@ -98,10 +109,12 @@ export function OrderedList({ rows, selected, onSelect, busy, label }: ListProps
   const list = useRef<HTMLOListElement>(null);
   const onKeyDown = arrowKeyHandler(rows, selected, onSelect);
   useScrollToSelected(list, selected);
+  if (rows.length === 0) return <p className={styles.state}>{COPY.noRows}</p>;
   return (
     <ol ref={list} className={styles.list} aria-label={label} aria-busy={busy} onKeyDown={onKeyDown}>
       {rows.map((row) => {
         const key = row.school.school_key;
+        const exact = row.cohort === "interval" && row.rank_bounds.best === row.rank_bounds.worst;
         return (
           <li key={key}>
             <button
@@ -118,6 +131,7 @@ export function OrderedList({ rows, selected, onSelect, busy, label }: ListProps
                 {row.school.province ? (
                   <span className={styles.province}> · {row.school.province}</span>
                 ) : null}
+                {exact ? <span className={styles.rangeNote}>{COPY.exactRange}</span> : null}
                 {/* The "Why" line goes here with the copy system. */}
               </span>
               <ChevronRight className={styles.chevron} size={14} aria-hidden />
@@ -131,14 +145,16 @@ export function OrderedList({ rows, selected, onSelect, busy, label }: ListProps
 
 export function IncompleteList({ rows, selected, onSelect, busy, label }: ListProps<QueuedRow>) {
   const list = useRef<HTMLOListElement>(null);
-  const onKeyDown = arrowKeyHandler(rows, selected, onSelect);
+  // The keys follow the grouped order on screen, whatever order the rows arrived in.
+  const onKeyDown = arrowKeyHandler(incompleteInDisplayOrder(rows), selected, onSelect);
   useScrollToSelected(list, selected);
+  if (rows.length === 0) return <p className={styles.state}>{COPY.noRows}</p>;
   return (
     <ol ref={list} className={styles.list} aria-label={label} aria-busy={busy} onKeyDown={onKeyDown}>
       {groupByProvince(rows).map((group) => (
         <li key={group.province ?? ""}>
-          <div className={styles.groupHead}>{group.province ?? "Province not recorded"}</div>
-          <ol style={{ margin: 0, padding: 0, listStyle: "none" }}>
+          <div className={styles.groupHead}>{group.province ?? COPY.provinceUnknown}</div>
+          <ol className={styles.groupRows}>
             {group.rows.map((row) => {
               const key = row.school.school_key;
               return (

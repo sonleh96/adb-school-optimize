@@ -16,7 +16,7 @@
   --navy-2: #1c5cab;
   --navy-wash: rgba(10, 46, 115, 0.055);
   --navy-wash-2: rgba(10, 46, 115, 0.1);
-  --queue: #8d8a82;
+  --queue: #6e6b63;
   --shadow: 0 1px 2px rgba(21, 24, 29, 0.05), 0 12px 32px -16px rgba(21, 24, 29, 0.2);
   --serif: var(--font-screening-serif), Georgia, serif;
   --sans: var(--font-screening-sans), system-ui, sans-serif;
@@ -80,13 +80,53 @@
   inset: 0;
   background: #ece9e2;
 }
-.map :global(.maplibregl-canvas:focus) {
-  outline: none;
+/*
+ * The map takes the keyboard like any control, so it shows where focus is. deck.gl writes `outline: none` into the
+ * canvas's style attribute, which only an important rule can beat.
+ */
+.map :global(.maplibregl-canvas):focus-visible {
+  outline: 2px solid var(--navy) !important;
+  outline-offset: -3px;
 }
 /* Zoom buttons sit in the map bar's place, 16 px right of the column. */
 .map :global(.maplibregl-ctrl-top-left) {
   left: calc(var(--col-w) + var(--gap) * 2);
   top: var(--gap);
+}
+.stale {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.scopeLine {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-3);
+}
+.rangeNote {
+  display: block;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--navy-2);
+}
+.groupRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notice {
+  position: absolute;
+  left: calc(var(--col-w) + var(--gap) * 2 + 48px);
+  top: var(--gap);
+  z-index: 2;
+  margin: 0;
+  padding: 6px 10px;
+  max-width: 340px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 6px;
 }
 .mapLoading {
   display: grid;
@@ -577,6 +617,7 @@ li + li > .row::before {
   color: var(--ink);
 }
 .attribution {
+  color: var(--ink-2);
   position: absolute;
   right: var(--gap);
   bottom: 6px;
@@ -584,7 +625,6 @@ li + li > .row::before {
   margin: 0;
   font-size: 10.5px;
   line-height: 14px;
-  color: var(--ink-3);
 }
 .attribution a {
   color: inherit;
