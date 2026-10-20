@@ -69,7 +69,7 @@ Unknown rule, input version or school gives 404 in the API's `{"error": {code, m
 | --- | --- |
 | `GET /rules` | The seven rules: id, label, provenance, policy role, score kind, formula, weights as fractions and floats, whether urgency enters, and the input versions that have a run. |
 | `GET /input-versions` | Stored versions, newest first, with the default marked. |
-| `GET /results?rule=&input_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
+| `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
 | `GET /schools/{school_id}?input_version=` | One school under all seven rules, with its stored raw inputs. |
 | `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules, the pairwise metrics, top-20 entrants and exits, and the bounds of interval schools. |
 | `GET /exports/top.csv`, `top.xlsx` | The shortlist: `rule`, `k`, `include_ranges`, `province`, `district`, `input_version`. |
@@ -81,7 +81,9 @@ Reading the list:
 - A rank is always paired with the scope label and count of its cohort. A point rank counts complete schools; a rank bound counts eligible schools. They are different scopes.
 - Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, and the response says so.
 - `list_position` is the row's place in the full unfiltered list. It differs from the point rank wherever an interval school sits above a complete one.
-- The default input version is the newest one. A request that names its version may be cached longer (`private, max-age=300`) than one that does not (`max-age=60`). Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
+- The default input version is the newest one. For each rule the current run is the one with the highest engine package version, not the latest stored. Every read accepts `package_version` to pin a run.
+- Cache policy: no `input_version` gives `private, max-age=60`; an `input_version` alone gives `max-age=300`; an `input_version` with a `package_version` names one stored run and is sent as `immutable`. Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
+- The links to the `schools` table (`school_id`, coordinates) are the one part of a stored run that a later `load_screening_inputs` run may change. Do not keep an immutable response across such a run.
 
 Exports:
 

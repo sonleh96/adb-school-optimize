@@ -7,6 +7,7 @@ and the coordinates of the matching row of ``schools`` when the ingestion linked
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -64,13 +65,32 @@ def list_versions(connection: psycopg.Connection) -> tuple[VersionEntry, ...]:
     )
 
 
-def current_runs(connection: psycopg.Connection, input_version: str) -> dict[str, store.StoredRun]:
-    """The newest stored run of each rule for a version. A run states its own package version."""
-    newest: dict[str, store.StoredRun] = {}
+def package_version_key(version: str) -> tuple:
+    """Order package versions by their numeric parts, so that 0.10.0 is above 0.9.0."""
+    return tuple(
+        (0, int(part), "") if part.isdigit() else (1, 0, part)
+        for part in re.findall(r"\d+|[A-Za-z]+", version)
+    )
+
+
+def current_runs(
+    connection: psycopg.Connection, input_version: str, package_version: str | None = None
+) -> dict[str, store.StoredRun]:
+    """One stored run per rule for a version.
+
+    With ``package_version`` it is the run of that engine version, if there is one.
+    Without it, it is the run of the highest engine version, whatever order the runs were stored in.
+    """
+    chosen: dict[str, store.StoredRun] = {}
     for run in store.list_runs(connection, input_version):
-        if run.rule_id not in newest or run.created_at > newest[run.rule_id].created_at:
-            newest[run.rule_id] = run
-    return newest
+        if package_version is not None and run.package_version != package_version:
+            continue
+        best = chosen.get(run.rule_id)
+        if best is None or package_version_key(run.package_version) > package_version_key(
+            best.package_version
+        ):
+            chosen[run.rule_id] = run
+    return chosen
 
 
 def read_identities(connection: psycopg.Connection, input_version: str) -> dict[str, SchoolIdentity]:

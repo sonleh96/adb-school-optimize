@@ -28,6 +28,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API18 | The school detail is wrong. | It shows another school, omits a rule, shows the stored raw inputs altered, or answers for a school that is not in the input version. |
 | API19 | A spreadsheet reads a name as a formula. | An XLSX cell holding a school name that starts with `=` is stored as a formula. |
 | API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
+| API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
 
 ## Test map
 
@@ -78,3 +79,4 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_compare_gives_the_bounds_of_interval_schools_under_both_rules` | API2, API13 |
 | `test_compare_of_a_rule_with_itself_agrees_completely` | API13 |
 | `test_compare_lists_top_twenty_entrants_and_exits_with_both_ranks_and_scores` | API13 |
+| `test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinned` | API22 |

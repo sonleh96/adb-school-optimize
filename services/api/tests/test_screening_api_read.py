@@ -7,6 +7,7 @@ import uuid
 from dataclasses import asdict, replace
 
 import pytest
+from app import screening_store as store
 from school_scoring.screening import RULES, pairwise_metrics
 from screening_api_helpers import load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
@@ -616,3 +617,94 @@ def test_compare_lists_top_twenty_entrants_and_exits_with_both_ranks_and_scores(
     assert (exit_["score_a"], exit_["score_b"]) == (scores_a["School 06"], scores_b["School 06"])
     assert (entrant["score_a"], entrant["score_b"]) == (scores_a["School 00"], scores_b["School 00"])
     assert body["metrics"]["top_k"][1]["overlap"] == 19
+
+
+# ---------------------------------------------------------------------------------------------
+# Which run is current, and pinning one.
+# ---------------------------------------------------------------------------------------------
+
+
+def add_run_copy(connection, rule_id: str, package_version: str) -> str:
+    """Store a second run of a rule under another engine package version, with the same results."""
+    old = connection.execute("select run_id from screening_runs where rule_id = %s", (rule_id,)).fetchone()[0]
+    new = connection.execute(
+        "insert into screening_runs (input_version, rule_id, provenance, policy_role, score_kind, manifest, "
+        "input_sha256, anchors_sha256, package_version) "
+        "select input_version, rule_id, provenance, policy_role, score_kind, "
+        "jsonb_set(manifest, '{package_version}', to_jsonb(%s::text)), input_sha256, anchors_sha256, %s "
+        "from screening_runs where run_id = %s returning run_id",
+        (package_version, package_version, old),
+    ).fetchone()[0]
+    columns = ", ".join(c for c in store.RESULT_COLUMNS)
+    connection.execute(
+        f"insert into screening_results (run_id, input_version, {columns}) "
+        f"select %s, input_version, {columns} from screening_results where run_id = %s",
+        (new, old),
+    )
+    return str(new)
+
+
+def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinned(
+    api, connection, loaded
+):  # API22
+    # Stored in this order, the newest by time is 0.9.0, the highest as text is 0.9.0, and the highest version is 0.10.0.
+    newer = add_run_copy(connection, "additive_u", "0.10.0")
+    older = add_run_copy(connection, "additive_u", "0.9.0")
+    path = "/api/v1/screening/results"
+
+    current = api.get(path, params={"rule": "additive_u"}).json()
+    assert current["run"]["package_version"] == "0.10.0" and current["run"]["run_id"] == newer
+    assert current["manifest"]["package_version"] == "0.10.0"
+
+    pinned = api.get(path, params={"rule": "additive_u", "package_version": "0.9.0"}).json()
+    assert pinned["run"]["package_version"] == "0.9.0" and pinned["run"]["run_id"] == older
+    original = api.get(path, params={"rule": "additive_u", "package_version": "0.1.0"}).json()
+    assert original["run"]["package_version"] == "0.1.0" and original["run"]["run_id"] not in (newer, older)
+
+    # Other rules have one run, which stays current; a pin to a version without a run is unknown.
+    assert api.get(path, params={"rule": "benchmark"}).json()["run"]["package_version"] == "0.1.0"
+    missing = api.get(path, params={"rule": "benchmark", "package_version": "0.9.0"})
+    assert missing.status_code == 404 and missing.json()["error"]["code"] == "run_not_found"
+    assert missing.json()["error"]["details"]["package_version"] == "0.9.0"
+    assert api.get(path, params={"package_version": "9.9.9"}).status_code == 404
+
+    # Every read accepts the pin.
+    detail = api.get(
+        f"/api/v1/screening/schools/{loaded.school_ids[AWK[7]]}", params={"package_version": "0.9.0"}
+    ).json()
+    assert [e["rule"]["rule_id"] for e in detail["rules"]] == ["additive_u"]
+    assert detail["rules"][0]["run"]["run_id"] == older
+    compare = api.get(
+        "/api/v1/screening/compare", params={"a": "additive_u", "b": "additive_u", "package_version": "0.9.0"}
+    )
+    assert (
+        compare.status_code == 200
+        and compare.json()["run_a"]["run_id"] == older == compare.json()["run_b"]["run_id"]
+    )
+    assert (
+        api.get(
+            "/api/v1/screening/compare",
+            params={"a": "additive_u", "b": "benchmark", "package_version": "0.9.0"},
+        ).status_code
+        == 404
+    )
+    for export in ("top.csv", "top.xlsx", "incomplete.csv"):
+        assert (
+            api.get(f"/api/v1/screening/exports/{export}", params={"package_version": "0.9.0"}).status_code
+            == 200
+        )
+        assert (
+            api.get(f"/api/v1/screening/exports/{export}", params={"package_version": "9.9.9"}).status_code
+            == 404
+        )
+
+    # A request that names the input version and the package version is immutable; naming the version alone is not.
+    both = api.get(path, params={"input_version": loaded.input_version, "package_version": "0.9.0"})
+    assert both.headers["cache-control"] == "private, max-age=31536000, immutable"
+    version_only = api.get(path, params={"input_version": loaded.input_version})
+    assert version_only.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
+    assert (
+        api.get(path, params={"package_version": "0.9.0"})
+        .headers["cache-control"]
+        .startswith("private, max-age=60")
+    )

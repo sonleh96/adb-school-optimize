@@ -22,6 +22,9 @@ def set_cache_control(response: Response, value: str) -> None:
 SCREENING_PINNED_CACHE_CONTROL = "private, max-age=300, stale-while-revalidate=600"
 SCREENING_DEFAULT_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=120"
 
+# A request that names both the input version and the engine package version asks for one stored run, which never changes.
+SCREENING_IMMUTABLE_CACHE_CONTROL = "private, max-age=31536000, immutable"
+
 # Exports carry their generation time and are downloaded on purpose.
 NO_STORE_CACHE_CONTROL = "private, no-store"
 
