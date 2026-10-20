@@ -619,6 +619,24 @@ li + li > .row::before {
   font: 500 13px/17px var(--sans);
   color: var(--ink);
 }
+/* The place number on each of the first ten dots; the dot itself is drawn on the map's canvas. */
+.rankLabel {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  color: #fbfaf7; /* MARK_PAPER_HEX in lib/screening/marks.ts, the paper of the marks */
+  font:
+    600 10px/1 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.rankLabel span[data-stale="true"] {
+  opacity: 0.4;
+}
 .attribution {
   color: var(--ink-2);
   position: absolute;

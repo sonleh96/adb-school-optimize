@@ -1,9 +1,8 @@
-import { ScatterplotLayer, TextLayer } from "@deck.gl/layers";
+import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 
 import {
   INCOMPLETE_RING_HEX,
-  LABELLED_PLACES,
   MARK_PAPER_HEX,
   RAMP_HEX,
   RAMP_RADIUS,
@@ -44,12 +43,9 @@ export function radiusOf(school: MapSchool): number {
 
 const position = (school: MapSchool): [number, number] => [school.lon, school.lat];
 
-/** Fonts the label atlas can rely on without waiting for a web font to arrive. */
-const LABEL_FONT = "system-ui, -apple-system, 'Segoe UI', sans-serif";
-
 /**
- * The marks, bottom to top. A better place is never covered by a worse one:
- * dots go worst first, and each of the first ten is a dot with its own number, again worst first.
+ * The marks, bottom to top. A better place is never covered by a worse one: dots go worst first.
+ * The numbers on the first ten dots are not drawn here (see RankLabels).
  * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked.
  */
 export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): Layer[] {
@@ -58,10 +54,8 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
   const incomplete = schools.filter((s) => s.mark.kind === "incomplete");
   const ranges = schools.filter((s) => s.mark.kind === "range");
   const dots = schools.filter(isDot).sort((a, b) => b.mark.rank - a.mark.rank);
-  const rest = dots.filter((s) => s.mark.rank > LABELLED_PLACES);
-  const labelled = dots.filter((s) => s.mark.rank <= LABELLED_PLACES);
 
-  const layers: Layer[] = [
+  return [
     new ScatterplotLayer<MapSchool>({
       id: "incomplete",
       data: incomplete,
@@ -103,7 +97,7 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
     }),
     new ScatterplotLayer<Dot>({
       id: "dots",
-      data: rest as Dot[],
+      data: dots,
       pickable,
       opacity,
       getPosition: position,
@@ -117,43 +111,6 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       getLineColor: PAPER,
     }),
   ];
-
-  for (const school of labelled as Dot[]) {
-    layers.push(
-      new ScatterplotLayer<Dot>({
-        id: `first-${school.mark.rank}`,
-        data: [school],
-        pickable,
-        opacity,
-        getPosition: position,
-        radiusUnits: "pixels",
-        getRadius: RAMP_RADIUS[0],
-        filled: true,
-        getFillColor: RAMP[0],
-        stroked: true,
-        lineWidthUnits: "pixels",
-        getLineWidth: 1.5,
-        getLineColor: PAPER,
-      }),
-      new TextLayer<Dot>({
-        id: `first-${school.mark.rank}-number`,
-        data: [school],
-        opacity,
-        getPosition: position,
-        getText: (s) => String(s.mark.rank),
-        characterSet: "0123456789",
-        fontFamily: LABEL_FONT,
-        fontWeight: 600,
-        getSize: 10,
-        sizeUnits: "pixels",
-        getColor: PAPER,
-        getTextAnchor: "middle",
-        getAlignmentBaseline: "center",
-      })
-    );
-  }
-
-  return layers;
 }
 
 /** The selection ring, and a lighter ring under the pointer. They change on every hover, so they stay apart. */

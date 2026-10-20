@@ -56,6 +56,8 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(list).toHaveAttribute("aria-busy", "true");
   await expect(mapLocator(page)).toHaveAttribute("data-stale", "true");
   await expect(mapLocator(page)).toHaveAttribute("aria-busy", "true");
+  await expect(page.locator("[data-rank-label][data-stale=true]").first()).toBeVisible();
+  await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(0);
   await expect(page.getByTestId("legend-rule")).toContainText("Additive, urgency included");
   await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency included"));
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
@@ -73,6 +75,8 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(card).toHaveAttribute("aria-busy", "false");
   await expect(list).toHaveAttribute("aria-busy", "false");
   await expect(mapLocator(page)).toHaveAttribute("data-stale", "false");
+  await expect(page.locator("[data-rank-label][data-stale=true]")).toHaveCount(0);
+  await expect(page.locator("[data-rank-label][data-stale=false]").first()).toBeVisible();
 });
 
 test("a slow first load shows that it is loading, with no counts, then the counts", async ({ page }) => {
