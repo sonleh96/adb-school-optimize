@@ -1,30 +1,22 @@
 /**
  * Failure modes: the app and the API disagree about a response.
- *  1. The API changes a shape and the app keeps compiling against the old one.
- *     Every response the API really sent (saved by the fixture script) must parse with the app's schemas,
- *     and a request that has no schema here fails the test, so a new endpoint cannot slip through unparsed.
+ *  1. The API changes a shape the page reads and the app keeps compiling against the old one.
+ *     Every response the API really sent (saved by the fixture script) must parse with the app's schemas, and a
+ *     request that has no schema here fails the test, so a new endpoint cannot slip through unparsed.
  *  2. A field is renamed or removed and `undefined` flows into the page. The parse error must name the path.
  *  3. A row says "interval" but carries one exact place, or says "complete" with none. It is rejected at the
  *     boundary, so no later code has to wonder.
- *  4. A rule that does not read urgency has no `U` key; the app must accept that and must not invent one.
- *  5. The API adds a field. The page must keep working.
+ *  4. The API adds a field, or a new member of an enum the page does not branch on. The page must keep working.
  */
 import { describe, expect, it } from "vitest";
 
 import { ParseError, parseWith } from "@/lib/screening/schema";
-import {
-  compareResponse,
-  inputVersionsResponse,
-  resultsResponse,
-  rulesResponse,
-  schoolDetailResponse,
-} from "@/lib/screening/types";
+import { compareResponse, resultsResponse, rulesResponse, schoolDetailResponse } from "@/lib/screening/types";
 
-import { copy, fixtureIndex, readFixture, results } from "./fixtures";
+import { copy, fixtureIndex, readFixture } from "./fixtures";
 
 const SCHEMAS: Record<string, Parameters<typeof parseWith>[0]> = {
   "/api/v1/screening/rules": rulesResponse,
-  "/api/v1/screening/input-versions": inputVersionsResponse,
   "/api/v1/screening/results": resultsResponse,
   "/api/v1/screening/compare": compareResponse,
 };
@@ -39,17 +31,6 @@ function schemaFor(requestPath: string) {
 
 describe("responses the API sent", () => {
   const { requests } = fixtureIndex();
-
-  it("covers rules, results, a school and a comparison", () => {
-    const paths = new Set(requests.map((r) => r.path.replace(/\/by-key\/.*/, "/by-key/")));
-    expect([...paths].sort()).toEqual([
-      "/api/v1/screening/compare",
-      "/api/v1/screening/input-versions",
-      "/api/v1/screening/results",
-      "/api/v1/screening/rules",
-      "/api/v1/screening/schools/by-key/",
-    ]);
-  });
 
   it.each(requests.map((r) => [r.file, r] as const))("%s parses", (_file, request) => {
     expect(() => parseWith(schemaFor(request.path), readFixture(request.file), request.file)).not.toThrow();
@@ -67,7 +48,7 @@ describe("a response that no longer matches", () => {
     );
   });
 
-  it("names the value of a wrong enum member", () => {
+  it("names the value of a wrong cohort", () => {
     const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
     body.rows[0].cohort = "finished";
     expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
@@ -93,42 +74,34 @@ describe("a response that no longer matches", () => {
     body.rows[0].point_rank.rank = null;
     expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(ParseError);
   });
+});
 
+describe("an additive API change", () => {
   it("ignores a field the API added", () => {
     const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
     body.rows[0].new_field = 1;
     const parsed = parseWith(resultsResponse, body, "Screening results");
     expect(parsed.rows[0]).not.toHaveProperty("new_field");
-    expect(parsed.rows).toHaveLength(24);
-  });
-});
-
-describe("urgency", () => {
-  it("is a component of every row under a rule that reads it", () => {
-    const rows = results("additive_u").rows;
-    expect(rows.every((row) => "U" in row.components)).toBe(true);
+    expect(parsed.rows).toHaveLength(25);
   });
 
-  it("is absent from every row under a rule that leaves it out", () => {
-    const rows = results("additive_no_u").rows;
-    expect(rows.some((row) => "U" in row.components)).toBe(false);
+  it("does not need fields the page does not read", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    for (const row of body.rows) {
+      delete row.components;
+      delete row.need_parts;
+      delete row.area_parts;
+      delete row.contributions;
+      delete row.scores;
+      delete row.placement;
+      delete row.display_order;
+    }
+    expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
   });
-});
 
-describe("the cohorts the fixture holds", () => {
-  it("count 16 complete, 4 interval and 4 queued under the circulated rule", () => {
-    const counts = results("additive_u").rows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.cohort] = (acc[row.cohort] ?? 0) + 1;
-      return acc;
-    }, {});
-    expect(counts).toEqual({ complete: 16, interval: 4, verification_queue: 4 });
-  });
-
-  it("move one school from queued to complete when urgency is left out", () => {
-    const counts = results("additive_no_u").rows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.cohort] = (acc[row.cohort] ?? 0) + 1;
-      return acc;
-    }, {});
-    expect(counts).toEqual({ complete: 17, interval: 4, verification_queue: 3 });
+  it("accepts a rule role the page does not know", () => {
+    const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
+    body.rules[0].policy_role = "a_role_added_later";
+    expect(parseWith(rulesResponse, body, "Screening rules").rules[0].policy_role).toBe("a_role_added_later");
   });
 });

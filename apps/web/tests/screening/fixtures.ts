@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { parseWith } from "@/lib/screening/schema";
-import { compareResponse, resultsResponse, rulesResponse, schoolDetailResponse } from "@/lib/screening/types";
+import { resultsResponse } from "@/lib/screening/types";
 
 /** The API's own responses for invented schools, saved by services/api/scripts/generate_screening_fixtures.py. */
 const ROOT = path.resolve(__dirname, "../../e2e/fixtures/screening");
@@ -19,10 +19,6 @@ export function fixtureIndex(): {
 
 export const results = (rule: string, upper = false) =>
   parseWith(resultsResponse, readFixture(`results/${rule}${upper ? ".upper" : ""}.json`), `results/${rule}`);
-export const rules = () => parseWith(rulesResponse, readFixture("rules.json"), "rules");
-export const compare = () =>
-  parseWith(compareResponse, readFixture("compare/additive_u__additive_no_u.json"), "compare");
-export const school = (file: string) => parseWith(schoolDetailResponse, readFixture(`schools/${file}`), file);
 
 /** A deep copy that a test can break without touching the shared fixture. */
 export const copy = <T>(value: T): T => structuredClone(value);
