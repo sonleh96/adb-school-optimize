@@ -533,6 +533,53 @@ describe("the bounds scope", () => {
   });
 });
 
+describe("the scope codes of a comparison", () => {
+  const body = () =>
+    clone(readFixture("compare/additive_u__additive_no_u.json")) as {
+      common_cohort_scope: string;
+      common_cohort_scope_code: string;
+      entrants: { rank_scope: string; rank_scope_code: string }[];
+      exits: { rank_scope: string; rank_scope_code: string }[];
+    };
+  const load = (b: unknown) => pairwiseFromCompare(parseWith(compareResponse, b, "compare"));
+
+  it("are common_complete_cohort in the saved response, and the comparison is used", () => {
+    const b = body();
+    expect(b.common_cohort_scope_code).toBe("common_complete_cohort");
+    expect(load(b).pairwise).toHaveLength(1);
+  });
+
+  it("decide whether the comparison is used, whatever the labels say", () => {
+    const wrongCohort = body();
+    wrongCohort.common_cohort_scope_code = "eligible";
+    expect(load(wrongCohort)).toEqual({ pairwise: [], top20Changes: [] });
+    const unknown = body();
+    unknown.common_cohort_scope_code = "a_scope_added_later";
+    expect(load(unknown)).toEqual({ pairwise: [], top20Changes: [] });
+    // The label alone is never read: a label that reads like the common cohort with another code is not used.
+    const label = body();
+    label.common_cohort_scope = "common complete cohort (16)";
+    label.common_cohort_scope_code = "complete_under_rule";
+    expect(load(label).pairwise).toEqual([]);
+  });
+
+  it("must hold for every rank of a move too", () => {
+    const b = body();
+    b.entrants = [
+      {
+        status: "entrant",
+        school: clone(readFixture("results/additive_u.json") as { rows: { school: unknown }[] }).rows[0]
+          .school,
+        rank_a: 21,
+        rank_b: 18,
+        rank_scope: "eligible (21)",
+        rank_scope_code: "eligible",
+      },
+    ] as never;
+    expect(load(b)).toEqual({ pairwise: [], top20Changes: [] });
+  });
+});
+
 describe("a comparison from /compare", () => {
   it("maps the saved response to the study's recorded comparison row", () => {
     const raw = readFixture("compare/additive_u__additive_no_u.json") as {
