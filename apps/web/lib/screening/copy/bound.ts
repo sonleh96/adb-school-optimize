@@ -19,13 +19,14 @@ import {
   ordinal,
 } from "./format";
 import {
+  comparisonSegments,
   comparisonSentence,
   defaultListStatement,
   defaultListStatementLong,
   findPair,
   urgencyReassurance,
 } from "./compare";
-import { TRUST_TAIL, buildHow, buildQuestions, howExample } from "./explainer";
+import { TRUST_TAIL, buildHow, buildQuestions, howExample, howExampleSegments } from "./explainer";
 import { GUIDE } from "./guide";
 import { buildIdeas } from "./ideas";
 import {
@@ -49,13 +50,17 @@ import {
   type PlaceOpts,
   distinctName,
   fullRankingSentence,
+  listStartsSegments,
   listStartsSentence,
   locationLine,
   placeContext,
   placeHeadline,
+  rangeComparisonSegments,
   rangeComparisonSentence,
+  rankSegments,
   rankSentence,
   tieNote,
+  tieNoteSegments,
 } from "./rank";
 import { contributions, inputSentence, reasonSentence, topDrivers } from "./reasons";
 import {
@@ -164,6 +169,35 @@ export function copyFor(data: CopyData = {}) {
     ) => tieNote(school, ruleId, list, form),
     distinctName: (school: PlacedSchool, list: readonly PlacedSchool[] = schools) =>
       distinctName(school, list),
+    /**
+     * The sentences that put a name in them, as segments: the plain text with each name marked (see `segments.ts`).
+     * `textOf` of one is exactly what the matching string function returns. `howExample` is the worked example in
+     * How this works, or null when the data holds none.
+     */
+    segments: Object.freeze({
+      rankSentence: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
+        rankSegments(school, ruleId, withCounts(opts)),
+      rangeComparisonSentence: (school: PlacedSchool, a: CopyRuleId, b: CopyRuleId, opts?: WithoutCounts) =>
+        rangeComparisonSegments(school, a, b, withCounts(opts)),
+      listStartsSentence: (
+        list: readonly PlacedSchool[] = schools,
+        ruleId: CopyRuleId = DEFAULT_RULE,
+        n = 3
+      ) => listStartsSegments(list, ruleId, n),
+      comparisonSentence: (
+        a: CopyRuleId,
+        b: CopyRuleId,
+        d: ComparisonData & { top20Changes: readonly Top20Change[] } = bound,
+        opts?: { top?: number }
+      ) => comparisonSegments(a, b, { schools, ...d }, opts),
+      tieNote: (
+        school: PlacedSchool,
+        ruleId: CopyRuleId,
+        list: readonly PlacedSchool[] = schools,
+        form: "card" | "row" = "card"
+      ) => tieNoteSegments(school, ruleId, list, form),
+      howExample: howExampleSegments(bound, c, data.countsByRule),
+    }),
     // Functions with no counts, passed through unchanged.
     reasonSentence,
     inputSentence,

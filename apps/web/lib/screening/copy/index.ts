@@ -13,11 +13,12 @@ export {
 export { BANNED } from "./banned";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
 export { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
-export { buildHow, buildQuestions, FIRST_QUESTIONS, HOW_IT_WORKS } from "./explainer";
-export { GUIDE } from "./guide";
+export { buildHow, buildQuestions, FIRST_QUESTIONS, HOW_IT_WORKS, howExampleSegments } from "./explainer";
+export { GUIDE, GUIDE_SEGMENTS } from "./guide";
 export { buildIdeas, IDEAS } from "./ideas";
 export { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
 export {
+  comparisonSegments,
   comparisonSentence,
   defaultListStatement,
   defaultListStatementLong,
@@ -35,13 +36,17 @@ export type * from "./model";
 export {
   distinctName,
   fullRankingSentence,
+  listStartsSegments,
   listStartsSentence,
   locationLine,
   placeContext,
   placeHeadline,
+  rangeComparisonSegments,
   rangeComparisonSentence,
+  rankSegments,
   rankSentence,
   tieNote,
+  tieNoteSegments,
   type PlaceOpts,
 } from "./rank";
 export {
@@ -75,7 +80,23 @@ export {
 } from "./rules";
 export { buildStrings, STRINGS } from "./strings";
 export { buildTerms, GLOSSARY_GROUPS, term, TERMS, type TermKey } from "./terms";
-export { HELP, KEYS, LAYOUT } from "./words";
+export { HELP, KEYS, LAYOUT, removeViewSegments, savedViewSegments } from "./words";
+export {
+  isName,
+  joinSegments,
+  listSegments,
+  nameList,
+  nameSegment,
+  namesIn,
+  seg,
+  spansOf,
+  textOf,
+  type NameKind,
+  type NameSegment,
+  type NameSpan,
+  type Segment,
+  type Segments,
+} from "./segments";
 export {
   wireCompare,
   wireResults,

@@ -3,7 +3,38 @@ import { SMALL, capitalise, ordinal, plural } from "./format";
 import { countWord } from "./counts";
 import { IDEAS } from "./ideas";
 import { ruleCountWord } from "./rules";
+import { type Segments, nameList, nameSegment, seg, textOf } from "./segments";
 import { KEYS } from "./words";
+
+/* ------------------------------------------------- step lines that name a school */
+// Each is built once from segments. The string form passes a name as plain text and the marked form passes it as a
+// name, so the two read the same and the marked form knows where each name sits.
+const whyTitle = (who: Segments, place: string | null): Segments =>
+  place ? seg`What puts ${who} ${place}` : seg`${who} has no place in the list yet`;
+const rangeTitle = (who: Segments, place: string | null): Segments =>
+  place ? seg`${who} could be ${place}` : seg`${who} has no place under this rule`;
+const rangeTryIt = (names: Segments, n: number): Segments =>
+  Number.isInteger(n) && n > 0
+    ? seg`The ${countWord(n)} are ${names}. Select any of them.`
+    : seg`They are ${names}. Select any of them.`;
+const orderBody = (who: Segments, a: Segments, aPlace: string, b: Segments, bPlace: string): Segments =>
+  seg`So ${who} sits between ${a}, ${aPlace}, and ${b}, ${bPlace}.`;
+const mapBody = (who: Segments): Segments =>
+  seg`The map draws it without the blue used for places in the list, so ${who} never looks like it has one place.`;
+const schoolTitle = (who: Segments): Segments => seg`What ${who} is missing`;
+const rangesBody = (who: Segments): Segments => seg`The example under it follows ${who} under both rules.`;
+
+/** The same lines with each school's name marked, for a screen that sets names apart. `names` are plain names. */
+export const GUIDE_SEGMENTS = Object.freeze({
+  whyTitle: (name: string, place: string | null) => whyTitle([nameSegment(name)], place),
+  rangeTitle: (name: string, place: string | null) => rangeTitle([nameSegment(name)], place),
+  rangeTryIt: (names: readonly string[], n: number) => rangeTryIt(nameList(names), n),
+  orderBody: (name: string, a: string, aPlace: string, b: string, bPlace: string) =>
+    orderBody([nameSegment(name)], [nameSegment(a)], aPlace, [nameSegment(b)], bPlace),
+  mapBody: (name: string) => mapBody([nameSegment(name)]),
+  schoolTitle: (name: string) => schoolTitle([nameSegment(name)]),
+  rangesBody: (name: string) => rangesBody([nameSegment(name)]),
+});
 
 /* ------------------------------------------------------------------ guides */
 // Shared guide copy for task-first guidance. Bodies come from the functions above;
@@ -100,8 +131,7 @@ export const GUIDE = Object.freeze({
         steps: [
           {
             key: "why",
-            title: (name: string, place: string | null) =>
-              place ? `What puts ${name} ${place}` : `${name} has no place in the list yet`,
+            title: (name: string, place: string | null) => textOf(whyTitle([name], place)),
             onScreen: "The school card, on the right",
             tryIt: "Select any other school in the list or on the map. This step follows your choice.",
           },
@@ -126,28 +156,23 @@ export const GUIDE = Object.freeze({
         steps: [
           {
             key: "range",
-            title: (name: string, place: string | null) =>
-              place ? `${name} could be ${place}` : `${name} has no place under this rule`,
+            title: (name: string, place: string | null) => textOf(rangeTitle([name], place)),
             onScreen: "The school card, on the right",
             body: "The card on the right gives its highest and lowest places in the list, and whether it is in the top 20 either way.",
-            tryIt: (names: string, n: number) =>
-              Number.isInteger(n) && n > 0
-                ? `The ${countWord(n)} are ${names}. Select any of them.`
-                : `They are ${names}. Select any of them.`,
+            tryIt: (names: string, n: number) => textOf(rangeTryIt([names], n)),
           },
           {
             key: "order",
             title: "Where it sits in the list",
             onScreen: "Its row in the list, and the note above the list",
             body: (name: string, a: string, aPlace: string, b: string, bPlace: string) =>
-              `So ${name} sits between ${a}, ${aPlace}, and ${b}, ${bPlace}.`,
+              textOf(orderBody([name], [a], aPlace, [b], bPlace)),
           },
           {
             key: "map",
             title: "On the map, a ring with a centre dot",
             onScreen: "The school on the map, and the key",
-            body: (name: string) =>
-              `The map draws it without the blue used for places in the list, so ${name} never looks like it has one place.`,
+            body: (name: string) => textOf(mapBody([name])),
           },
         ],
       },
@@ -169,7 +194,7 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "school",
-            title: (name: string) => `What ${name} is missing`,
+            title: (name: string) => textOf(schoolTitle([name])),
             onScreen: "The school card, on the right",
             tryIt: "Select any other school in the list. This step follows your choice.",
           },
@@ -198,7 +223,7 @@ export const GUIDE = Object.freeze({
             key: "ranges",
             title: "Schools with possible places move more",
             onScreen: 'The example in "What changed"',
-            body: (name: string) => `The example under it follows ${name} under both rules.`,
+            body: (name: string) => textOf(rangesBody([name])),
           },
           {
             key: "use",

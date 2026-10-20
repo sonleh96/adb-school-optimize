@@ -1,6 +1,13 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
 import { RULE_IDS } from "./rules";
+import { type Segments, nameSegment, seg, textOf } from "./segments";
+
+/** The remove button's name for a saved view, with the name a person gave the view marked. */
+export const removeViewSegments = (name: string): Segments =>
+  seg`Remove the saved view ${nameSegment(name, "saved-view")}`;
+/** A saved view's own name as a heading: all of it is a name. */
+export const savedViewSegments = (name: string): Segments => [nameSegment(name, "saved-view")];
 
 // Short interface words, so every variant names the same controls the same way.
 export const LAYOUT = Object.freeze({
@@ -89,7 +96,7 @@ export const LAYOUT = Object.freeze({
   recordCopied: "Method record copied",
   linksCopied: "Links to the saved views copied",
   savedToast: (n: number) => `Saved as view ${n}`,
-  removeView: (name: string) => `Remove the saved view ${name}`,
+  removeView: (name: string) => textOf(removeViewSegments(name)),
   afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",
   afterDownloadPack:
     "Downloaded the saved views for meetings. The method record is in the first lines of the file.",
