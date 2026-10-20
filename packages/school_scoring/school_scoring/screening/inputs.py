@@ -381,7 +381,7 @@ def parse_records(frame: pd.DataFrame) -> tuple[SchoolRecord, ...]:
             parse(value, field, row) for row, value in enumerate(frame[field.name].tolist())
         ]
     names = parsed["school_name"]
-    if any(name is None or name == "" for name in names):
+    if any(name is None or name.strip() == "" for name in names):
         raise InputContractError("school_name must be present on every record")
     if len(set(names)) != len(names):
         duplicates = sorted({name for name in names if names.count(name) > 1})
