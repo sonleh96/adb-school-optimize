@@ -478,7 +478,7 @@ describe("a list from /results", () => {
     expect(P.TERMS.emissions.help).toBe(
       "The sum of yearly CO2-equivalent emissions from fixed point sources within 10 km in the Climate TRACE inventory, log-scaled and rescaled. It is not a health or climate measure for the school, and it is never added to air quality or land cover."
     );
-    expect(P.TERMS.persistent_flag.help).toContain("Some schools have the flag.");
+    expect(P.TERMS.persistent_flag.help).not.toMatch(/the flag\./);
     expect(P.TERMS.missing_all_but_remoteness.help).toBe(
       "Classroom, teacher, housing, facility, power and water details are all blank."
     );

@@ -268,7 +268,9 @@ function buildSchool(
     gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
     results,
     contributions,
-    ...(circulated
+    // Only a list that carries the experiment's keys says anything about the flag. Without them the flag is not
+    // false for every school, it is unknown, so the record leaves it out.
+    ...(circulated && circulated.persistent_candidate !== undefined
       ? {
           persistent_candidate_circulated: circulated.persistent_candidate === true,
           threshold_adjacent_circulated: circulated.threshold_adjacent === true,
