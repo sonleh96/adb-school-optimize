@@ -1,0 +1,429 @@
+/* The export sheet: a 620 px drawer from the right over a light scrim; full screen in the narrow layout. */
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: auto;
+  background: rgba(21, 24, 29, 0.18);
+  transition: opacity 200ms ease;
+}
+@starting-style {
+  .scrim {
+    opacity: 0;
+  }
+}
+.sheet {
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 31;
+  width: min(620px, 100%);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--hair);
+  box-shadow: -24px 0 48px -24px rgba(21, 24, 29, 0.25);
+  transition: transform 240ms var(--ease-drawer);
+}
+@starting-style {
+  .sheet {
+    transform: translateX(100%);
+  }
+}
+.sheet[data-instant],
+.scrim[data-instant] {
+  transition: none;
+}
+.sheet:focus {
+  outline: none;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 20px 36px 28px;
+}
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.closeButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.closeButton:active {
+  transform: scale(0.95);
+}
+@media (hover: hover) and (pointer: fine) {
+  .closeButton:hover {
+    background: rgba(21, 24, 29, 0.05);
+    color: var(--ink);
+  }
+}
+.title {
+  margin: 14px 0 0;
+  font: 400 30px/36px var(--serif);
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.title em {
+  font-style: italic;
+}
+.lede {
+  margin: 12px 0 0;
+  max-width: 34em;
+  font: 400 16px/24px var(--serif);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.sec {
+  margin-top: 26px;
+}
+.sec > p:first-child {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ink);
+}
+.size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 12px 0 14px;
+}
+.seg {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  gap: 2px;
+}
+.seg button {
+  min-width: 40px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.seg button:active {
+  transform: scale(0.97);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+.sizeNote {
+  flex: 1 1 200px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+
+/* Tables keep the sheet's width: fixed columns, names wrap anywhere, numbers never wrap (R3). */
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 18px;
+}
+.table th {
+  padding: 6px 8px 6px 0;
+  text-align: left;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  vertical-align: bottom;
+}
+.table td {
+  padding: 8px 8px 8px 0;
+  border-top: 1px solid var(--hair-2);
+  vertical-align: top;
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: 0;
+}
+.colPlace {
+  width: 72px;
+}
+.colProvince {
+  width: 22%;
+}
+.colScore {
+  width: 104px;
+}
+.colRange {
+  width: 104px;
+}
+.colMissing {
+  width: 22%;
+}
+.colScoreRange {
+  width: 128px;
+}
+.num {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* A heading over numbers wraps; only the numbers stay on one line. */
+.table th.num {
+  white-space: normal;
+  padding-right: 16px;
+}
+.table th.num:last-child {
+  padding-right: 0;
+}
+.place {
+  padding-right: 16px !important;
+  font-weight: 500;
+}
+.range {
+  padding-right: 16px !important;
+  color: var(--navy-2);
+}
+.name {
+  overflow-wrap: anywhere;
+}
+.quiet {
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.note {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.dl {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+}
+.dl dt {
+  color: var(--ink-3);
+}
+.dl dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.sym {
+  margin-right: 6px;
+  font-size: 18px;
+  line-height: 18px;
+  color: var(--navy);
+}
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.hashes {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-2);
+}
+.hashes li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.limits {
+  margin: 10px 0 0;
+  font: 400 15px/22px var(--serif);
+  text-wrap: pretty;
+}
+.close {
+  margin: 22px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 36px;
+  border-top: 1px solid var(--hair);
+  background: var(--panel);
+}
+.spacer {
+  flex: 1;
+}
+.hint {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  max-width: 220px;
+}
+.quietButton,
+.primary {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  font: 500 13px/1 var(--sans);
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.quietButton {
+  border: 1px solid var(--hair);
+  background: var(--panel);
+  color: var(--ink);
+}
+.primary {
+  border: 1px solid var(--navy);
+  background: var(--navy);
+  color: #fff;
+}
+.quietButton:not(:disabled):active,
+.primary:not(:disabled):active {
+  transform: scale(0.97);
+}
+.quietButton:disabled,
+.primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The button in the actions that opens the sheet. */
+.open {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--navy);
+  border-radius: 6px;
+  background: var(--navy);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  white-space: nowrap;
+  font: 500 13px/1 var(--sans);
+  color: #fff;
+  transition: transform 160ms var(--ease-out);
+}
+.open:not(:disabled):active {
+  transform: scale(0.97);
+}
+.open:disabled {
+  background: var(--panel);
+  border-color: var(--hair);
+  color: var(--ink-3);
+  box-shadow: none;
+  cursor: default;
+}
+.openIcon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .sheet {
+    width: 100%;
+    border-left: 0;
+  }
+  .scroll {
+    padding: 16px 20px 24px;
+  }
+  .foot {
+    flex-wrap: wrap;
+    padding: 12px 20px;
+  }
+  .hint {
+    display: none;
+  }
+  .dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .dl dd {
+    margin-bottom: 8px;
+  }
+  .colProvince,
+  .colMissing {
+    width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    transition: opacity 200ms ease;
+  }
+  @starting-style {
+    .sheet {
+      transform: none;
+      opacity: 0;
+    }
+  }
+  .seg button,
+  .closeButton,
+  .open,
+  .quietButton,
+  .primary {
+    transition: none;
+  }
+}
+
+/* The workspace sets every button's colour to inherit; these keep their own. */
+.primary.primary,
+.open.open:not(:disabled) {
+  color: #fff;
+}
+.closeButton.closeButton {
+  color: var(--ink-2);
+}
+.seg.seg button[aria-pressed="true"] {
+  color: #fff;
+}

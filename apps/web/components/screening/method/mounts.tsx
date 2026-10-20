@@ -6,7 +6,7 @@
  * the plain one shows. The method layer's code (`layer.ts`) and words (`methodFor`) load on first use, in parallel.
  * Every change goes through the workspace controller, so a guide, a pasted link and a click land on the same screen.
  */
-import { Layers } from "lucide-react";
+import { Download, Layers } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type BoundCopy, type CopyRuleId, type ListedSchool, RULE_IDS } from "@/lib/screening/copy";
@@ -27,6 +27,7 @@ import type { RuleChoice } from "../useScreeningData";
 import base from "../screening.module.css";
 import { MethodSwitch } from "./MethodSwitch";
 import { useMethod } from "./useMethod";
+import exportStyles from "../export/export.module.css";
 import styles from "./method.module.css";
 
 /** Loads a chunk once; a failed load is tried again on the next call. */
@@ -40,6 +41,7 @@ function once<T>(load: () => Promise<T>): () => Promise<T> {
 }
 const loadLayer = once(() => import("./layer"));
 const loadCompare = once(() => import("../compare/layer"));
+const loadExport = once(() => import("../export/layer"));
 
 /** A chunk's exports, once `wanted` has held or `load` has been called (the switch pointed at, for one). */
 function useChunk<T>(load: () => Promise<T>, wanted: boolean) {
@@ -82,12 +84,19 @@ export interface MountInput {
   keyboard: boolean;
   onSelect: (key: SchoolKey) => void;
   onRule: (rule: CopyRuleId) => void;
+  /** Says something briefly in the workspace's status line (a download, a copied record). */
+  onNotify: (message: string) => void;
 }
 
 export interface Mounts {
   /** The method details are drawn. */
   on: boolean;
   methodSwitch: ReactNode;
+  /** "Download the top list", in the actions, and the compact one for the narrow top bar. */
+  exportButton: ReactNode;
+  exportIcon: ReactNode;
+  /** The export sheet while it is open. */
+  exportSheet: ReactNode | null;
   ruleArea: ReactNode | null;
   rankedList: ReactNode | null;
   /** Compare mode's column, which replaces the rule, the tabs and the list. */
@@ -109,6 +118,8 @@ export function useMethodMounts(input: MountInput): Mounts {
   const { mod, load } = useChunk(loadLayer, state.analyst);
   const comparing = state.mode === "compare";
   const { mod: compareMod } = useChunk(loadCompare, comparing);
+  const exporting = state.panel === "export" && ready && rule !== null;
+  const { mod: exportMod, load: loadSheet } = useChunk(loadExport, exporting);
   const { method } = useMethod(copy, rule, state.analyst && ready);
   const on = state.analyst && ready && mod !== null && method !== null && rule !== null;
 
@@ -173,10 +184,60 @@ export function useMethodMounts(input: MountInput): Mounts {
     />
   );
 
+  const openSheet = () => store.setState({ panel: "export", pop: null });
+  const exportButton = (
+    <button
+      type="button"
+      className={exportStyles.open}
+      data-region="export-button"
+      disabled={!ready}
+      title={ready ? undefined : copy.LAYOUT.availableAfterLoad}
+      aria-haspopup="dialog"
+      aria-expanded={state.panel === "export"}
+      onPointerEnter={loadSheet}
+      onFocus={loadSheet}
+      onClick={openSheet}
+    >
+      {copy.TERMS.export.label}
+    </button>
+  );
+  const exportIcon = (
+    <button
+      type="button"
+      className={`${exportStyles.open} ${exportStyles.openIcon}`}
+      disabled={!ready}
+      aria-label={copy.TERMS.export.label}
+      title={copy.TERMS.export.label}
+      aria-haspopup="dialog"
+      onClick={openSheet}
+    >
+      <Download size={15} aria-hidden />
+    </button>
+  );
+  const exportSheet =
+    exporting && exportMod && rule ? (
+      <exportMod.ExportSheet
+        copy={copy}
+        method={on ? method : null}
+        rule={rule}
+        comparedWith={comparing && on ? a : null}
+        n={state.n}
+        schools={schools}
+        layer={layer}
+        instant={keyboard}
+        onLength={(n) => store.setState({ n })}
+        onClose={() => store.setState({ panel: null })}
+        onNotify={input.onNotify}
+      />
+    ) : null;
+
   if (!on || !mod || !method || !rule) {
     return {
       on: false,
       methodSwitch,
+      exportButton,
+      exportIcon,
+      exportSheet,
       ruleArea: null,
       rankedList: null,
       compareColumn: null,
@@ -385,6 +446,9 @@ export function useMethodMounts(input: MountInput): Mounts {
 
   return {
     on: true,
+    exportButton,
+    exportIcon,
+    exportSheet,
     cardLayer,
     methodSwitch,
     ruleArea,

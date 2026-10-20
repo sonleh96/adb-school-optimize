@@ -704,3 +704,16 @@
     transition: none;
   }
 }
+
+/* The workspace sets every button's colour to inherit; these keep their own. */
+.compareToggle.compareToggle,
+.chip.chip {
+  color: var(--navy);
+}
+.filterButton.filterButton:not([aria-expanded="true"]),
+.otherName.otherName:not([aria-pressed="true"]) {
+  color: var(--ink-2);
+}
+.otherName.otherName[aria-pressed="true"] {
+  color: #fff;
+}
