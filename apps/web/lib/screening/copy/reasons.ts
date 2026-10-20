@@ -11,6 +11,7 @@ import {
   formatApprox,
   formatCount,
   formatPercent,
+  isBlank,
   joinList,
   plural,
 } from "./format";
@@ -213,8 +214,7 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
       return `Its power comes from ${p}${join}its water ${w}.`;
     }
     case "locality":
-      if (school.locality == null || String(school.locality).trim() === "")
-        return "Its remoteness category is not recorded.";
+      if (isBlank(school.locality)) return "Its remoteness category is not recorded.";
       if (!REMOTENESS_CATEGORIES.includes(norm(school.locality)))
         return `Its remoteness category is recorded as ${String(school.locality).trim()}, which is not on the study's scale.`;
       return `Its record classes it as ${norm(school.locality)}, on ${REMOTENESS_SCALE}.`;

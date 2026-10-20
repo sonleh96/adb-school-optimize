@@ -300,6 +300,39 @@ describe("a school's name and where it is", () => {
     expect(copy.displayName({ name: "  Alder   Junior High  School " })).toBe("Alder Junior High School");
   });
 
+  it("reads a name made only of zero-width characters as blank, because that is how a blank name arrives", () => {
+    // U+200B to U+200D, U+2060 and U+FEFF show nothing, and the engine refuses a name that is truly empty.
+    for (const name of ["\u200B", "\u200B\u200C\u200D\u2060\uFEFF", " \u200B ", "\u2060"])
+      expect(copy.displayName({ name }), JSON.stringify(name)).toBe("Unnamed school");
+    // A name with letters keeps them, and keeps a zero-width character that sits among them.
+    expect(copy.displayName({ name: "\u200BAlder" })).toBe("\u200BAlder");
+    expect(copy.displayName({ name: "Al\u200Bder" })).toBe("Al\u200Bder");
+  });
+
+  it("shows the record id for two schools whose names are blank in different ways", () => {
+    const a = school({ id: "z1", name: "\u200B" });
+    const b = school({ id: "z2", name: "" });
+    const c = school({ id: "z3", name: "   " });
+    const list = [a, b, c];
+    expect(list.map((x) => copy.distinctName(x, list))).toEqual([
+      "Unnamed school (record z1)",
+      "Unnamed school (record z2)",
+      "Unnamed school (record z3)",
+    ]);
+    expect(P.rankSentence(a, "additive_u", { name: true })).toMatch(/^Unnamed school is /);
+  });
+
+  it("reads a district, province or remoteness made only of zero-width characters as blank", () => {
+    expect(copy.locationLine({ id: "x", name: "x", district: "\u200B", province: "Western" })).toBe(
+      "District not recorded, Western"
+    );
+    expect(copy.locationLine({ id: "x", name: "x", district: "Middle Fly", province: "\uFEFF\u200B" })).toBe(
+      "Middle Fly, province not recorded"
+    );
+    const s = school({ id: "z", locality: "\u200B" });
+    expect(copy.inputSentence(s, "locality")).toBe("Its remoteness category is not recorded.");
+  });
+
   it("says where a school is in words when the district or province is blank", () => {
     const loc = (district: string | null, province: string | null) =>
       copy.locationLine({ id: "x", name: "x", district, province });

@@ -35,8 +35,15 @@ export function formatPercent(fraction: number): string {
 /** Display only: trims and collapses repeated spaces ("Alder Junior High  School"). Joins use school.id. */
 export const cleanName = (name: string): string => String(name).trim().replace(/\s+/g, " ");
 
+/**
+ * True when nothing is left once whitespace and zero-width characters (U+200B to U+200D, U+2060 and U+FEFF) go.
+ * The engine refuses an empty school name, so a name made only of such characters is how a blank one can arrive.
+ */
+export const isBlank = (value: string | null | undefined): boolean =>
+  value == null || String(value).replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, "") === "";
+
 export const displayName = (school: Pick<NamedSchool, "name">): string =>
-  school.name == null || String(school.name).trim() === "" ? "Unnamed school" : cleanName(school.name);
+  isBlank(school.name) ? "Unnamed school" : cleanName(school.name as string);
 
 export const joinList = (items: readonly string[], conj = "and"): string => {
   if (items.length === 0) throw new Error("joinList needs at least one item");
@@ -49,4 +56,4 @@ export const plural = (n: number, one: string, many: string): string => (n === 1
 
 /** A district or province as shown, or `null` when the record leaves it blank. */
 export const cleanedOrNull = (value: string | null): string | null =>
-  value == null || String(value).trim() === "" ? null : cleanName(value);
+  isBlank(value) ? null : cleanName(value as string);
