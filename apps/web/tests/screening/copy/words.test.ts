@@ -138,3 +138,17 @@ describe("the strings that state a count", () => {
     expect(copy.TERMS.mark_dot.help).toBe("Numbered dots are the first 10 under the chosen rule.");
   });
 });
+
+describe("the order of the incomplete records", () => {
+  it("is said for the grouping the list is in, and neither sentence claims the other's order", () => {
+    expect(copy.STRINGS.queueOrder).toBe(
+      "Listed by province, district and school name. This is not an order of priority."
+    );
+    expect(copy.STRINGS.queueOrderMissing).toBe(
+      "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
+    );
+    for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
+      expect(textProblems(t), t).toEqual([]);
+    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
+  });
+});

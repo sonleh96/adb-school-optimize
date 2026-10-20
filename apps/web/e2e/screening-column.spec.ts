@@ -206,6 +206,9 @@ test("the incomplete records are grouped by province or by what is missing, with
   const byMissing = page.getByRole("button", { name: "Missing details" });
   await expect(byProvince).toHaveAttribute("aria-pressed", "true");
   await expect(headings).toHaveText(["North Province2", "South Province2"]);
+  await expect(page.locator("[data-region=queue-order]")).toHaveText(
+    "Listed by province, district and school name. This is not an order of priority."
+  );
   await expect(rows.first()).toHaveText("Sample School 21 · North OneTeacher count blank");
   await expect(rows.nth(3).locator("[data-region=queue-chips] > span")).toHaveText([
     "Teacher count blank",
@@ -226,6 +229,10 @@ test("the incomplete records are grouped by province or by what is missing, with
     "Urgency value not recorded1",
   ]);
   await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
+  // Each grouping says how the list is ordered.
+  await expect(page.locator("[data-region=queue-order]")).toHaveText(
+    "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
+  );
 
   // The arrow keys follow the groups on screen, not the order the rows arrived in.
   await rows.first().click();

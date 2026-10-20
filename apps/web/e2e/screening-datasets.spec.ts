@@ -2,7 +2,8 @@
  * The column on the mock API's worst-case datasets (see scripts/mock-api.mjs). Failure modes and the test for each:
  *  1. An empty or failed list never tells the guide layer the map is ready, or shows counts beside its failure
  *     -> "an empty store and a failed list..."
- *  2. An empty Incomplete records tab says schools are in it, or can be chosen      -> "an empty Incomplete records tab..."
+ *  2. An empty Incomplete records tab says schools are in it, offers a grouping, or can be chosen
+ *     -> "an empty Incomplete records tab..."
  *  3. Exact ties go unmarked, or the tie sentence is missing or repeated (R15)     -> "exact ties..."
  *  4. A blank name shows a raw value, a long unbroken name overflows its row, or "·" ends a line apart from its
  *     province (R6, R8)                                                             -> "blank and unbroken names..."
@@ -91,13 +92,16 @@ test("an empty Incomplete records tab says no school is in it and cannot be chos
   await expect(list).toBeFocused();
   await expect(list).toHaveAttribute("aria-selected", "true");
 
-  // A link can still open it. It claims no school, and it can be left.
+  // A link can still open it. It says no school is in it, offers nothing to group, and it can be left.
   await open(page, "?view=queue");
   await expect(queue).toHaveAttribute("aria-selected", "true");
   await expect(queue).toBeEnabled();
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(0);
+  await expect(page.locator("#screening-list header p").first()).toHaveText(
+    "No school lacks a place in the list yet through an incomplete record. One would show what is missing. That says nothing about its need."
+  );
   await expect(page.locator("#screening-list")).not.toContainText("Some schools");
-  await expect(page.locator("#screening-list")).not.toContainText("what is missing");
+  await expect(page.locator("[data-region=queue-missing], [data-region=queue-order]")).toHaveCount(0);
   await list.click();
   await expect(queue).toBeDisabled();
 });

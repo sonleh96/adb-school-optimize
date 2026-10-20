@@ -112,6 +112,9 @@ export function buildStrings(c: CountBag = {}) {
     queueIntro:
       "These schools have no place in the list yet because their records are incomplete. Having no place in the list yet does not mean their need is low.",
     queueOrder: "Listed by province, district and school name. This is not an order of priority.",
+    // The order when the incomplete records are grouped by what is missing, the largest group first.
+    queueOrderMissing:
+      "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority.",
     notRecorded: "Not recorded",
     noReading: "No reading",
     notPlaced: "Cannot be put in order yet",
