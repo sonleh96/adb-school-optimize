@@ -17,6 +17,7 @@ import {
   type WorkspaceState,
   applyPatch,
   revalidate,
+  sameState,
   searchWithState,
   shownRule,
   stateFromSearch,
@@ -43,7 +44,10 @@ export interface WorkspaceStore extends WorkspaceController {
   known(): Known;
   /** Tell the store what the loaded data holds, so it can check values against it. */
   setKnown(known: Partial<Known>): void;
-  /** Read the URL once, on the page's first render in the browser, and keep it in step from then on. */
+  /**
+   * Read the URL once, on the page's first render in the browser, and keep it in step from then on. A URL that says
+   * more than its state, such as an invalid value or a default spelled out, is rewritten at once.
+   */
   attachUrl(
     location: Pick<Location, "search" | "pathname" | "hash">,
     history: Pick<History, "replaceState">
@@ -65,19 +69,31 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
 
   const resolve = (s: WorkspaceState): ResolvedState => ({ ...s, rule: shownRule(s, known) });
 
+  /** Write the state into the URL if the URL says anything else. */
+  function writeUrl() {
+    if (!url) return;
+    const search = searchWithState(url.location.search, state);
+    if (search !== url.location.search) {
+      url.history.replaceState(null, "", `${url.location.pathname}${search}${url.location.hash}`);
+    }
+  }
+
   function commit(next: WorkspaceState, previousKnown: Known = known) {
     if (next === state && previousKnown === known) return;
     const previous = resolve(state);
     state = next;
-    if (url) {
-      const search = searchWithState(url.location.search, state);
-      if (search !== url.location.search) {
-        url.history.replaceState(null, "", `${url.location.pathname}${search}${url.location.hash}`);
-      }
-    }
+    writeUrl();
     raw.forEach((listener) => listener());
     const current = resolve(state);
     listeners.forEach((listener) => listener(current, previous));
+  }
+
+  function readUrl() {
+    if (!url) return;
+    const next = stateFromSearch(url.location.search, known);
+    if (!sameState(next, state)) commit(next);
+    // A URL whose state is the one already held can still carry junk or spelled-out defaults.
+    writeUrl();
   }
 
   return {
@@ -104,7 +120,7 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
     attachUrl(location, history) {
       if (url) return;
       url = { location, history };
-      commit(stateFromSearch(location.search, known));
+      readUrl();
     },
     markReady: () => markReady(),
   };
