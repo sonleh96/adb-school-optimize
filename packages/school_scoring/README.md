@@ -22,47 +22,73 @@ It sits beside the older Need and Priority model and does not change it.
 from school_scoring.screening import parse_records, prepare, screen
 
 records = parse_records(frame)  # boundary: typed records, missing cells stay None
-prepared = prepare(records)  # components, anchors, evidence gate, cohorts
-run = screen(prepared, "additive_no_u")
+prepared = prepare(records)  # components, anchors, gate failures, missing components
+run = screen(prepared, "additive_no_u")  # cohorts, scores, bounds and ranks for one rule
 run.manifest.to_dict()  # rule, weights, anchors, hashes, scopes, version
 run.to_frame()  # flat export, one row per input record, in input order
 ```
 
 ### Rules
 
-| Id | Role | Formula |
-| --- | --- | --- |
-| `additive_u` | circulated reference | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L` |
-| `additive_no_u` | proposed primary, pending author review | `S0 = (S - 0.05U) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
-| `need_first_u` | strict alternative | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
-| `need_first_no_u` | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
-| `bottleneck_u` | policy sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
-| `bottleneck_no_u` | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
-| `benchmark` | conventional reference | `B = 0.55N + 0.20A + 0.15U + 0.10R` |
+| Id | Provenance | Policy role | Formula |
+| --- | --- | --- | --- |
+| `additive_u` | circulated paper | primary | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L` |
+| `additive_no_u` | proposed follow-up, pending author review | primary | `S0 = (S - 0.05U) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
+| `need_first_u` | circulated paper | strict alternative | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
+| `need_first_no_u` | proposed follow-up, pending author review | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
+| `bottleneck_u` | circulated paper | policy sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
+| `bottleneck_no_u` | proposed follow-up, pending author review | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
+| `benchmark` | circulated paper | conventional reference | `B = 0.55N + 0.20A + 0.15U + 0.10R` |
 
 Weights are exact fractions in the registry and become floats once, at scoring.
-Under an urgency-omitted rule the engine never reads U, never reports it, and leaves its anchor out of the manifest.
-Under need-first ordering the reported score is the secondary score, and N is the primary key.
-Under a bottleneck rule the contributions describe the additive score S before the 0.60 and 0.40 blend, and `maximum_component` holds the maximum that was used.
+Each rule has a score kind that the manifest and every export row carry: additive score, need-first secondary score, or bottleneck score.
+Under need-first ordering N is the primary sort key and not a summand, so the manifest lists only the secondary weights and names N as `primary_sort_key`.
+The export has a `sort_key_primary` column for it, and the secondary score is `score_point`.
+Under a bottleneck rule the contributions are scaled by 0.60 and a separate maximum term, 0.40 times the maximum, names the components that attain it.
+The contributions plus the maximum term add up to the bottleneck score.
+
+Under an urgency-omitted rule the output does not depend on the urgency scalar.
+The engine does not read U for that rule, reports no U value, and leaves the U anchor out of the manifest.
+The manifest `input_sha256` still covers the whole input, including the urgency scalar, so it changes when the scalar changes.
 
 ### Invariants
 
 - No imputation. An unknown value stays `None`, and a missing environmental input ranges over 0 to 1.
 - Anchors are fit on every record passed in. Filter the results, not the input.
 - Order is exact numeric comparison, with school name ascending as the last tie-break.
-- Point ranks exist only for the complete cohort and use that cohort as scope.
-- Best and worst ranks use the eligible cohort (complete plus interval) as scope.
 - An interval school never receives a point rank.
+- A point rank and the best and worst ranks are different scopes, and every export row names both.
 
 ### Cohorts and gate
 
-- Complete: passes the gate and has Q, E and L.
-- Interval: passes the gate and lacks at least one of Q, E, L.
-- Verification queue: fails the gate.
+A cohort belongs to a school under one rule, because rules read different components.
+
+- Verification queue: the gate fails, or the rule reads U and U is unknown.
+- Interval: the rule reads an environmental component (Q, E or L) that is missing.
+- Complete: otherwise.
+
+The benchmark reads no environmental component, so all 124 eligible schools are complete under it.
+Under the other six rules the complete cohort is 120 on the frozen data.
+`prepare` records the rule-agnostic facts (gate failures and missing components), and `screen` decides the cohort.
 
 Gate reasons from the study are a missing stock field, a negative stock count, and a denominator (total classrooms, teachers) that is not positive.
-The engine adds unrecognized power or water text, unrecognized locality, unresolved area context or reach, and unknown urgency under a rule that uses it.
+The engine adds unrecognized power or water text, unrecognized locality, unresolved area context or reach, and unknown urgency under a rule that reads it.
 The added reasons are inert on the frozen data.
+
+### Rank scopes
+
+- `rank_point` ranks a complete school among the schools complete under that rule. The scope label reads `complete under this rule (n)`.
+- `rank_best` and `rank_worst` bound the rank among the eligible schools, complete and interval together. The scope label reads `eligible (n)`.
+
+A complete school's point rank can therefore lie outside its own bounds.
+With one interval school certainly ahead of a complete school, the point rank is 1 and the bounds are 2 and 2.
+Never read the two as one number.
+
+Ranks from different rules use different cohorts.
+`common_cohort(*runs)` returns the schools complete under every compared run.
+`rank_in_common_cohort(run, cohort)` ranks one run's point scores within it, with the same tie rule, and returns the scope label and the count.
+Use it for matched comparisons and for a rule switch in a user interface.
+On the frozen data the cohort shared by all seven rules is the 120 schools.
 
 ### Input contract
 
@@ -108,7 +134,12 @@ All reference paths are under `.audit-work/methodology/`.
 | urgency-omitted rules | weights divided by 0.95, U out of the sum and the maximum | `publication_followup/20261020/comparison/run_comparison.py` |
 
 `scale` clips to the observed 5th and 95th percentile over all records, then rescales linearly to 0..1.
-A constant column scales to 0.5.
+A constant column scales to 0.5, and its anchor is flagged `degenerate` in the manifest.
+
+Two limits are faithful to the study and should not be read as bugs:
+
+- Power and water text is coded by substring and the first matching group wins, so "no generator" codes as a generator.
+- A negative AQI, emissions or land value becomes unknown, so the school is interval under rules that read it. A negative walking catchment population makes reach unresolved, and the school fails the gate.
 
 ### Reproduction check
 
@@ -122,10 +153,24 @@ RISE_PNG_DATASETS_ROOT=<repo>/datasets \
 python -I -m pytest tests/test_screening_reproduction.py -m reproduction
 ```
 
-It writes `reproduction_report.json` and `mismatching_rows.csv` to `RISE_PNG_REPRODUCTION_OUTPUT`.
+It writes `reproduction_report.json`, `mismatching_rows.csv` and `need_first_scope_differences.csv` to `RISE_PNG_REPRODUCTION_OUTPUT`.
 The default is `<reference root>/../reproduction/screening-engine-20261020/`.
 Identities, cohorts and ranks must match exactly.
 Scores must match within 1e-12.
+Every check name states its scope.
+
+What the frozen outputs cover:
+
+- All seven rules are compared on the common 120-school cohort, with ranks produced by `rank_in_common_cohort`.
+- The benchmark is compared over all 124 eligible schools against EXP-21 `benchmark_replay.csv`.
+- For `additive_u`, `need_first_u` and `bottleneck_u`, scores, bounds and point ranks are compared against EXP-21.
+- For `additive_no_u`, the bounds and point ranks over the eligible cohort are compared against the comparison package.
+- For `need_first_no_u` and `bottleneck_no_u`, the eligible-scope bounds have no frozen reference. Unit tests cover them and nothing else does.
+
+EXP-21 numbers each complete school's `need_first_rank_point` by its position among all 124 eligible schools.
+The engine's point rank counts only the complete cohort, so the two differ for schools that sit below interval schools.
+The reproduction reports every such school in `need_first_scope_differences.csv`.
+It also checks that the EXP-21 position equals the engine's best rank wherever best equals worst.
 
 The EXP-15 prepared table stores component values that were read back from a CSV with pandas' default float parser.
 Those values sit up to 1.7e-16 from the exact result.

@@ -53,11 +53,12 @@ Each failure is recorded as a gate failure reason.
 
 ## Cohort
 
-The group a record falls into after the gate and the environmental check.
-Complete means the gate passed and Q, E and L are known.
-Interval means the gate passed but at least one of Q, E and L is unknown.
-Verification queue means the gate failed.
+The group a school falls into under one rule, after the gate and the check of what that rule reads.
+Complete means the gate passed and every component the rule reads is known.
+Interval means the gate passed but the rule reads an environmental component (Q, E or L) that is unknown.
+Verification queue means the gate failed, or the rule reads U and U is unknown.
 Being in the queue does not mean low need.
+The benchmark reads no environmental component, so every school that passes the gate is complete under it.
 
 ## Normalization anchors
 
@@ -95,14 +96,31 @@ A missing component adds nothing to the lower score and its full weight to the u
 
 ## Point rank
 
-A school's rank among the complete cohort, from its exact score.
+A school's rank among the schools that are complete under the same rule, from its exact score.
 An interval school has no point rank.
+The scope label reads `complete under this rule (n)`.
 
 ## Rank envelope
 
 The best and worst rank a school can have among all eligible schools, given the score bounds.
 Best is one plus the schools that are certainly ahead.
 Worst is one plus the schools that are possibly ahead.
+The scope label reads `eligible (n)`.
+It is a different scope from the point rank, so a complete school's point rank can fall outside its envelope.
+
+## Common cohort
+
+The schools that are complete under every rule being compared.
+Matched comparisons rank each rule's point scores inside it.
+
+## Score kind
+
+What the exported score column means under a rule: an additive score, a need-first secondary score, or a bottleneck score.
+
+## Provenance and policy role
+
+Provenance says where a rule comes from: the circulated paper, or the proposed follow-up that is pending author review.
+Policy role says how the rule is meant to be used: primary, strict alternative, policy sensitivity, or conventional reference.
 
 ## Tie rule
 
@@ -112,7 +130,7 @@ Rounded values never decide a rank.
 ## Run manifest
 
 The record that makes a run reproducible.
-It holds the rule, weights, normalization anchors with their hash, tie rule, cohort scopes, input hash and package version.
+It holds the rule, score kind, weights, normalization anchors with their hash, tie rule, rank scopes with counts, input hash and package version.
 
 ## Input contract
 
