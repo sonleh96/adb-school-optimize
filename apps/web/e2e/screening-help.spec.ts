@@ -82,19 +82,20 @@ test("Escape closes the card, then the glossary, then help mode, and focus retur
   await expect.poll(async () => (await layers(page)).help).toBe(false);
 });
 
-test("a card's example is not the sentence the open school card already shows", async ({ page }) => {
+test("a card's example never says what the open school card already says", async ({ page }) => {
   await openWorkspace(page);
   await openFirstSchool(page);
   await page.keyboard.press("?");
-  const open = await page.locator("[data-region=inspector] h2").textContent();
-  for (const term of ["need_facilities", "need_classrooms", "rank"]) {
+  const onCard = (await page.locator("[data-region=inspector]").innerText()).replace(/\s+/g, " ");
+  const terms = ["need_facilities", "need_classrooms", "need_housing", "need_services", "need_locality"];
+  for (const term of [...terms, "area_context", "reach", "rank", "score"]) {
     await page.evaluate(
       (id) => window.__screeningGuide!.dispatch({ type: "card", id: id as `term:${string}` }),
       `term:${term}`
     );
     await expect(card(page)).toBeVisible();
-    const example = await card(page).locator("p").allTextContents();
-    expect(example.join(" "), term).not.toContain(open!);
+    for (const example of await card(page).locator("[data-example]").allInnerTexts())
+      expect(onCard, term).not.toContain(example.replace(/\s+/g, " ").trim());
   }
 });
 

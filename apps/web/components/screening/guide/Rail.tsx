@@ -32,7 +32,7 @@ import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "../Sentence";
 import { useWorkspace, useWorkspaceState } from "../WorkspaceProvider";
-import { scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
+import { acted, scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
 import { useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
 import { Rings } from "./Rings";
 import type { GuideData } from "./types";
@@ -84,7 +84,7 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
   const title = useRef<HTMLHeadingElement>(null);
   const keyboard = useKeyboardRef();
   useEffect(() => {
-    if (!keyboard.current) title.current?.focus({ preventScroll: true });
+    if (acted()) title.current?.focus({ preventScroll: true });
   }, [keyboard]);
   const guides = plan ? guidesOf({ later, plan }) : [];
   return (
@@ -286,7 +286,7 @@ function Stepper({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- announced once per step, not on each retitle.
   }, [stepId, Boolean(stepName)]);
   useLayoutEffect(() => {
-    if (!keyboard.current && rail?.step === 1) title.current?.focus({ preventScroll: true });
+    if (acted() && !keyboard.current && rail?.step === 1) title.current?.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a guide's first step, once.
   }, [rail?.guide]);
 

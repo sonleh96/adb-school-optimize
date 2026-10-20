@@ -395,7 +395,9 @@ function HelpCard({
               <p key={i} className={styles.example}>
                 {who ? <span className={styles.who}>{who}</span> : null}
                 {example.label ? <span className={styles.exampleLabel}>{example.label}</span> : null}
-                <Sentence segments={example.text} />
+                <span data-example="">
+                  <Sentence segments={example.text} />
+                </span>
               </p>
             );
           })}
