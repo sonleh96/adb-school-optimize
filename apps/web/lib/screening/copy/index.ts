@@ -25,6 +25,7 @@ export {
   urgencyReassurance,
 } from "./compare";
 export {
+  missingGroupLabel,
   missingLabels,
   missingSentence,
   missingSentences,
@@ -42,10 +43,13 @@ export {
   persistenceNote,
   placeContext,
   placeHeadline,
+  provinceHeading,
   rangeComparisonSegments,
   rangeComparisonSentence,
   rankSegments,
   rankSentence,
+  rowPlace,
+  scopesMix,
   tieNote,
   tieNoteSegments,
   type PlaceOpts,

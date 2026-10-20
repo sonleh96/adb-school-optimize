@@ -440,6 +440,8 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         one("missingSentence", (api) => api.missingSentence(s));
         one("missingSentences", (api) => api.missingSentences(s));
         one("missingLabels", (api) => api.missingLabels(s));
+        one("missingGroupLabel", (api) => api.missingGroupLabel(s));
+        one("provinceHeading", (api) => api.provinceHeading(s.province));
         for (const k of keys) {
           one(`missingValueKind(${k})`, (api) => api.missingValueKind(s, k));
           one(`missingValueNote(${k})`, (api) => api.missingValueNote(s, k));
@@ -460,6 +462,14 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
             );
           }
           one(`${t} placeHeadline`, (api, mode) => api.placeHeadline(s, r, counts(api, mode)));
+          // A list that shows places and ranges together, and one that shows only ranges and incomplete records.
+          for (const [name, list] of [
+            ["mixed", data.schools],
+            ["ranges only", data.schools.filter((x: { cohort: string }) => x.cohort !== "complete")],
+          ] as const) {
+            one(`${t} rowPlace ${name}`, (api, mode) => api.rowPlace(s, r, list, counts(api, mode)));
+            one(`${t} scopesMix ${name}`, (api) => api.scopesMix(list, r));
+          }
           for (const opts of [{}, { method: true }, { shortlist: 20 }, { method: true, shortlist: 10 }]) {
             one(`${t} placeContext ${JSON.stringify(opts)}`, (api, mode) =>
               api.placeContext(s, r, { ...opts, ...counts(api, mode) })

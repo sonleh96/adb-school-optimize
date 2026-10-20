@@ -9,6 +9,7 @@ import type { CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } fro
 import { missingReadingsClause } from "./rank";
 import { NEED_FIELDS, ORDER, isNeedKey, norm } from "./reasons";
 import { TERMS } from "./terms";
+import { LAYOUT } from "./words";
 
 const PART_OF_GATE: Record<NeedField, NeedKey> = {
   permanent_classroom_deficit: "classrooms",
@@ -219,6 +220,14 @@ export function missingLabels(school: CopySchool): string[] {
   if (isRemotenessOnly(school)) return [TERMS.missing_all_but_remoteness.label, ...others];
   const labels = [...gateParts(school).map((p) => partCause(school, p).label), ...others];
   return labels.length ? labels : ["Record needs checking"];
+}
+
+// The heading of a school in the list of incomplete records grouped by what is missing: the one cause when there is
+// one, and a count when several details are missing. A school can sit under only one heading.
+export function missingGroupLabel(school: CopySchool): string {
+  if (school.cohort !== "queue") throw new Error("missingGroupLabel: only an incomplete record has a group");
+  const labels = missingLabels(school);
+  return labels.length === 1 ? labels[0] : LAYOUT.groupMany(labels.length);
 }
 
 // The same content as missingSentence, one standalone sentence per item, for record lists.
