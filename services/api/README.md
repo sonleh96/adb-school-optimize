@@ -59,6 +59,41 @@ It needs only `DATABASE_URL`.
 
 `app/screening_store.py` reads versions, runs and ordered results back as typed objects.
 
+## Screening API
+
+`app/routers/screening.py` serves the stored runs under `/api/v1/screening`, behind the same authentication as every other route.
+It reads `screening_*` tables and recomputes nothing; the old Need/Priority endpoints are unchanged and share nothing with it.
+Unknown rule, input version or school gives 404 in the API's `{"error": {code, message, details}}` envelope.
+
+| Route | Returns |
+| --- | --- |
+| `GET /rules` | The seven rules: id, label, provenance, policy role, score kind, formula, weights as fractions and floats, whether urgency enters, and the input versions that have a run. |
+| `GET /input-versions` | Stored versions, newest first, with the default marked. |
+| `GET /results?rule=&input_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
+| `GET /schools/{school_id}?input_version=` | One school under all seven rules, with its stored raw inputs. |
+| `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules, the pairwise metrics, top-20 entrants and exits, and the bounds of interval schools. |
+| `GET /exports/top.csv`, `top.xlsx` | The shortlist: `rule`, `k`, `include_ranges`, `province`, `district`, `input_version`. |
+| `GET /exports/incomplete.csv` | The verification queue of a rule, with gate failures and missing inputs per school. |
+
+Reading the list:
+
+- Complete schools come by point rank. Interval schools (a missing environmental input) sit at their lower-score position, or at their upper-score position with `placement=upper`, and each row says which. Queued schools come last, by province, district and name.
+- A rank is always paired with the scope label and count of its cohort. A point rank counts complete schools; a rank bound counts eligible schools. They are different scopes.
+- Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, and the response says so.
+- `list_position` is the row's place in the full unfiltered list. It differs from the point rank wherever an interval school sits above a complete one.
+- The default input version is the newest one. A request that names its version may be cached longer (`private, max-age=300`) than one that does not (`max-age=60`). Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
+
+Exports:
+
+- The CSV opens with the method record as `# key: value` lines. Skip the leading `#` lines, then parse the header row. The XLSX has the same record on its first sheet, "Method record".
+- `k` cuts the rule's full list: point rows have a point rank of at most `k`. Range rows (`include_ranges=true`) are interval schools whose best possible rank is at most `k`. They carry bounds only, in rows flagged `row_kind=range`, after the point rows.
+- To rebuild the list, keep `row_kind=point`, sort by the record's `sort_columns` descending, then `source_school_name` ascending in code point order. The result is the order of `rank_point`.
+- Floats are written in full precision and unknown values are empty cells. Exports are sent with `Cache-Control: private, no-store` and `X-RISE-PNG-Decision-Use: research-prototype-only`.
+- A CSV opened in a spreadsheet application may read a name that starts with `=`, `+`, `-` or `@` as a formula. The XLSX stores such names as text. The CSV keeps names exact so that it round-trips.
+
+The failure modes behind the tests are in `tests/SCREENING_API_FAILURE_MODES.md`.
+They run against a real PostGIS server, like the screening database tests below.
+
 ### Database tests
 
 The screening database tests use a real PostGIS server and skip when `DATABASE_URL` is unset.
