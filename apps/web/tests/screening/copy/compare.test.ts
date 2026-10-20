@@ -313,6 +313,22 @@ describe("which list to use", () => {
     );
   });
 
+  it("reads a largest move of one place in the singular, in both sentences that state it", () => {
+    const pairwise = pairwiseFromCompare(compare({ median: 1, maximum: 1 })).pairwise;
+    const P = copyFor({
+      schools: [school({ id: "c1", place: 1 })],
+      counts: { complete: 84 },
+      countsByRule: "shared",
+      pairwise,
+    });
+    expect(P.comparisonSentence("additive_u", "additive_no_u")).toContain(
+      "Half of the schools move 1 place or fewer, and the largest move is 1 place."
+    );
+    expect(P.urgencyReassurance()).toContain("the largest move for any school is 1 place.");
+    for (const text of [P.comparisonSentence("additive_u", "additive_no_u"), P.urgencyReassurance()])
+      expect(text).not.toMatch(/\b1 places\b/);
+  });
+
   it("reassures about the schools both rules ordered only, and says the range schools can still move", async () => {
     const ranges = [1, 2, 3].map((i) => school({ id: `r${i}`, cohort: "interval", bounds: [5, 9] }));
     const full = [school({ id: "c1", place: 1 }), ...ranges];

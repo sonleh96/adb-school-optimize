@@ -158,7 +158,7 @@ export function comparisonSegments(
   sentences.push(
     half === 0
       ? seg`At least half of the schools keep the same place in the list, and the largest move is ${most} ${plural(most, "place", "places")}.`
-      : seg`Half of the schools move ${half} ${plural(half, "place", "places")} or fewer, and the largest move is ${most} places.`
+      : seg`Half of the schools move ${half} ${plural(half, "place", "places")} or fewer, and the largest move is ${most} ${plural(most, "place", "places")}.`
   );
   return joinSegments(sentences);
 }
@@ -178,7 +178,7 @@ export function urgencyReassurance(data: ComparisonData): string {
   const rc = data.schools ? countsFrom(data.schools) : null;
   return [
     `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency value"))}`,
-    `Leaving it out changes the order in the list, and the largest move for any school is ${most} places.`,
+    `Leaving it out changes the order in the list, and the largest move for any school is ${most} ${plural(most, "place", "places")}.`,
     `For ${rangePhrase(rc)}, leaving it out can still move ${theirScore(rc)} possible places.`,
   ].join(" ");
 }
