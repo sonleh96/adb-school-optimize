@@ -323,6 +323,7 @@ class CommonRankOut(Out):
     school: SchoolIdentityOut
     rank_a: int
     rank_b: int
+    rank_scope: str
 
 
 class TopChangeOut(Out):
@@ -330,6 +331,7 @@ class TopChangeOut(Out):
     school: SchoolIdentityOut
     rank_a: int
     rank_b: int
+    rank_scope: str
     score_a: float
     score_b: float
 
@@ -349,6 +351,15 @@ class IntervalSchoolOut(Out):
     under_b: IntervalBoundsOut
 
 
+class ExcludedSchoolOut(Out):
+    """A school the comparison does not rank, because it is not complete under both rules."""
+
+    school: SchoolIdentityOut
+    cohort_a: Cohort
+    cohort_b: Cohort
+    reason: str
+
+
 class CompareResponse(Out):
     input_version: str
     input_sha256: str
@@ -360,4 +371,5 @@ class CompareResponse(Out):
     ranks: list[CommonRankOut]
     entrants: list[TopChangeOut]
     exits: list[TopChangeOut]
+    excluded_schools: list[ExcludedSchoolOut]
     interval_schools: list[IntervalSchoolOut]

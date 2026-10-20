@@ -15,7 +15,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request, Response
 from pydantic import AfterValidator, BaseModel
 from pydantic_core import PydanticCustomError
-from school_scoring.screening import RULES, Rule, TopChange, UnknownRuleError, get_rule
+from school_scoring.screening import RULES, Cohort, Rule, TopChange, UnknownRuleError, get_rule
 
 from .. import screening_store as store
 from ..db import get_db
@@ -33,6 +33,7 @@ from ..models.screening import (
     CompareResponse,
     ComponentsOut,
     ContributionOut,
+    ExcludedSchoolOut,
     FiltersOut,
     InputVersionOut,
     InputVersionsResponse,
@@ -456,6 +457,26 @@ def _bounds_out(row: SchoolRow) -> IntervalBoundsOut:
     )
 
 
+COHORT_WORDS = {
+    Cohort.COMPLETE: "complete",
+    Cohort.INTERVAL: "interval (an environmental input is missing)",
+    Cohort.VERIFICATION_QUEUE: "held for verification",
+}
+
+
+def _excluded_out(row_a: SchoolRow, row_b: SchoolRow, a: str, b: str) -> ExcludedSchoolOut:
+    cohort_a, cohort_b = row_a.result.cohort, row_b.result.cohort
+    return ExcludedSchoolOut(
+        school=_identity_out(row_a.identity),
+        cohort_a=cohort_a,
+        cohort_b=cohort_b,
+        reason=(
+            f"{COHORT_WORDS[cohort_a].capitalize()} under {a} and {COHORT_WORDS[cohort_b]} under {b}. "
+            "Ranks compare only the schools that are complete under both rules."
+        ),
+    )
+
+
 @router.get("/compare", response_model=CompareResponse)
 def get_compare(
     request: Request,
@@ -482,6 +503,7 @@ def get_compare(
             school=_identity_out(by_a[c.school_name].identity),
             rank_a=c.rank_a,
             rank_b=c.rank_b,
+            rank_scope=comparison.cohort_scope,
             score_a=by_a[c.school_name].result.score_point,
             score_b=by_b[c.school_name].result.score_point,
         )
@@ -506,11 +528,17 @@ def get_compare(
             ],
         ),
         ranks=[
-            CommonRankOut(school=_identity_out(by_a[n].identity), rank_a=ra, rank_b=rb)
+            CommonRankOut(
+                school=_identity_out(by_a[n].identity),
+                rank_a=ra,
+                rank_b=rb,
+                rank_scope=comparison.cohort_scope,
+            )
             for n, ra, rb in comparison.ranks
         ],
         entrants=[change(c, TopChange.ENTRANT) for c in m.top20_changes if c.status is TopChange.ENTRANT],
         exits=[change(c, TopChange.EXIT) for c in m.top20_changes if c.status is TopChange.EXIT],
+        excluded_schools=[_excluded_out(by_a[n], by_b[n], a, b) for n in comparison.excluded],
         interval_schools=[
             IntervalSchoolOut(
                 school=_identity_out(by_a[n].identity),

@@ -34,6 +34,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API24 | A CSV name is read as a formula, or the exact name is lost. | A name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return has no guarded `display_name` column, or `source_school_name` is changed to guard it, or the XLSX turns a carriage return into a line feed. |
 | API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
 | API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
+| API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
 
 ## Test map
 
@@ -93,3 +94,4 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_school_has_a_key_and_a_detail_route_even_when_it_is_not_linked` | API21 |
 | `test_the_school_key_is_stable_per_version_and_differs_between_versions` | API21 |
 | `test_the_route_on_a_school_id_returns_every_school_that_shares_the_link` | API21 |
+| `test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leaves_out` | API26 |

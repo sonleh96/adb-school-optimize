@@ -621,6 +621,8 @@ def test_compare_lists_top_twenty_entrants_and_exits_with_both_ranks_and_scores(
     assert (exit_["score_a"], exit_["score_b"]) == (scores_a["School 06"], scores_b["School 06"])
     assert (entrant["score_a"], entrant["score_b"]) == (scores_a["School 00"], scores_b["School 00"])
     assert body["metrics"]["top_k"][1]["overlap"] == 19
+    scope = "common complete cohort of additive_u, additive_no_u (30)"
+    assert (exit_["rank_scope"], entrant["rank_scope"]) == (scope, scope)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -783,3 +785,32 @@ def test_the_route_on_a_school_id_returns_every_school_that_shares_the_link(api,
     for d in body["schools"]:
         single = fetch(api, f"/api/v1/screening/schools/by-key/{d['school']['school_key']}")
         assert single["school"] == d["school"] and single["inputs"] == d["inputs"]
+
+
+def test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leaves_out(api, loaded):  # API26
+    body = fetch(api, "/api/v1/screening/compare", a="additive_u", b="additive_no_u")
+
+    scope = "common complete cohort of additive_u, additive_no_u (9)"
+    assert body["common_cohort_scope"] == scope
+    assert {r["rank_scope"] for r in body["ranks"]} == {scope}
+    excluded = body["excluded_schools"]
+    assert [(e["school"]["source_school_name"], e["cohort_a"], e["cohort_b"]) for e in excluded] == [
+        ("Interval No Air", "interval", "interval"),
+        ("Interval No Land", "interval", "interval"),
+        ("Beta queue", "verification_queue", "verification_queue"),
+        ("Zed queue", "verification_queue", "verification_queue"),
+        ("alpha queue", "verification_queue", "verification_queue"),
+        ("Éclair queue", "verification_queue", "complete"),
+    ]
+    assert excluded[-1]["reason"] == (
+        "Held for verification under additive_u and complete under additive_no_u. "
+        "Ranks compare only the schools that are complete under both rules."
+    )
+    assert excluded[0]["reason"].startswith(
+        "Interval (an environmental input is missing) under additive_u and interval"
+    )
+    # Every school is either ranked or listed as left out, and none is both.
+    ranked = {r["school"]["source_school_name"] for r in body["ranks"]}
+    left_out = {e["school"]["source_school_name"] for e in excluded}
+    assert ranked.isdisjoint(left_out) and len(ranked) + len(left_out) == 15
+    assert body["common_cohort_count"] == len(ranked)
