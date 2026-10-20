@@ -83,13 +83,12 @@ describe("the scope codes and the persistence flag", () => {
     }
   });
 
-  it("keeps the margin fields where the flag is, and they agree with it", () => {
+  it("keeps the margin flag where the flag is, and it agrees with it", () => {
     const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
     for (const row of circulated.rows) {
       if (row.persistent_candidate === null) {
-        expect([row.lowest_top20_frequency, row.threshold_adjacent]).toEqual([null, null]);
+        expect(row.threshold_adjacent).toBeNull();
       } else {
-        expect(typeof row.lowest_top20_frequency).toBe("number");
         // Adjacent only when persistent, and only when just above the 0.80 line.
         if (row.threshold_adjacent) expect(row.persistent_candidate).toBe(true);
         if (row.persistent_candidate === false) expect(row.threshold_adjacent).toBe(false);
@@ -98,9 +97,7 @@ describe("the scope codes and the persistence flag", () => {
     expect(circulated.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
     expect(circulated.rows.some((row) => row.threshold_adjacent === false)).toBe(true);
     const other = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
-    expect(
-      other.rows.every((row) => !("lowest_top20_frequency" in row) && !("threshold_adjacent" in row))
-    ).toBe(true);
+    expect(other.rows.every((row) => !("threshold_adjacent" in row))).toBe(true);
   });
 
   it("carries the scope code of a comparison's ranks and cohort", () => {
@@ -141,6 +138,41 @@ describe("the scope codes and the persistence flag", () => {
     expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
       'rows[0].persistent_candidate: expected a boolean, got string "yes"'
     );
+  });
+});
+
+describe("fields the page does not read", () => {
+  it("are not parsed, so a change to one cannot blank a list", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<Record<string, unknown> & { scores: Record<string, unknown> }>;
+    };
+    for (const row of body.rows) {
+      row.lowest_top20_frequency = "a text now";
+      row.scores.upper = "a text now";
+    }
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.rows).toHaveLength(25);
+    expect(parsed.rows[0]).not.toHaveProperty("lowest_top20_frequency");
+    const inputs = copy(readFixture("inputs.json")) as Record<string, unknown>;
+    delete inputs.input_sha256;
+    expect(() => parseWith(inputsResponse, inputs, "inputs")).not.toThrow();
+  });
+
+  it("include the provenance block, which only adds a margin, so a changed one leaves the list whole", () => {
+    for (const changed of [
+      { standard_error: "n/a" },
+      "a text now",
+      { rule_id: 3, threshold: "x", draws: null },
+      { standard_error: 0.006 },
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = changed;
+      const parsed = parseWith(resultsResponse, body, "results");
+      expect(parsed.rows, JSON.stringify(changed)).toHaveLength(25);
+    }
+    const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+    body.persistence = { standard_error: 0.006 };
+    expect(parseWith(resultsResponse, body, "results").persistence?.standard_error).toBe(0.006);
   });
 });
 
