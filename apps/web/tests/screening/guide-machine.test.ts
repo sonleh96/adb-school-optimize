@@ -1,0 +1,202 @@
+/**
+ * Failure modes of the guidance layers' state:
+ *  1. Next or Page Down at a guide's last step does not open the next guide, or forgets to count the guide as seen.
+ *  2. Next at the last guide's last step leaves the rail open, or the guide uncounted.
+ *  3. Back at a first step jumps into another guide when not presenting; Page Up at a first step does not return
+ *     to the previous guide's last step; either moves before the first guide.
+ *  4. Skip counts a guide as seen that the person left half way; Skip at a last step does not count it.
+ *  5. Presenting outlives the rail: it survives closing or going back to the start list.
+ *  6. A returning user is taught twice (the rail opens with no link asking for it), or a first visit starts closed.
+ *  7. A pasted link does not land on its step, or loses the help card, glossary search or page.
+ *  8. A link to a guide the data cannot teach, or a step past its end, leaves the rail on nothing.
+ *  9. Writing the layer keys drops the workspace's keys.
+ * 10. Malformed local storage breaks the page instead of reading as a first visit.
+ * 11. The card and the glossary drawer show together, or leaving help mode leaves its card open.
+ * 12. "Show this step again" does not ask the screen to be set again from the guide's own school.
+ */
+import { describe, expect, it } from "vitest";
+
+import {
+  type Catalog,
+  EMPTY_MEMORY,
+  INITIAL_STATE,
+  type LayerEvent,
+  type Model,
+  parseMemory,
+  reduce,
+  revalidate,
+  searchWithLayers,
+  seenCount,
+  stateFromSearch,
+  statusOf,
+} from "@/lib/screening/guide/machine";
+
+const CATALOG: Catalog = [
+  { id: "q1", steps: 3 },
+  { id: "q2", steps: 3 },
+  { id: "q5", steps: 4 },
+];
+const start: Model = { state: INITIAL_STATE, memory: EMPTY_MEMORY };
+const run = (model: Model, ...events: LayerEvent[]) => events.reduce((m, e) => reduce(m, e, CATALOG), model);
+const at = (guide: "q1" | "q2" | "q5", step: number, present = false): Model => ({
+  state: { ...INITIAL_STATE, rail: { kind: "step", guide, step }, present },
+  memory: { seen: true, done: [], last: { guide, step } },
+});
+
+describe("stepping through the guides", () => {
+  it("opens the next guide at step 1 after a last step, and counts the finished guide as seen", () => {
+    const after = run(at("q1", 3), { type: "next" });
+    expect(after.state.rail).toEqual({ kind: "step", guide: "q2", step: 1 });
+    expect(after.memory.done).toEqual(["q1"]);
+    expect(after.state.apply.fresh).toBe(true);
+  });
+
+  it("does the same on Page Down, across a guide the data cannot teach", () => {
+    expect(run(at("q2", 3), { type: "pageDown" }).state.rail).toEqual({ kind: "step", guide: "q5", step: 1 });
+  });
+
+  it("closes the rail after the last guide's last step and counts that guide", () => {
+    const after = run(at("q5", 4), { type: "next" });
+    expect(after.state.rail).toEqual({ kind: "off" });
+    expect(after.memory.done).toEqual(["q5"]);
+    expect(after.memory.last).toBeNull();
+  });
+
+  it("keeps Back inside the guide unless presenting", () => {
+    expect(run(at("q2", 1), { type: "back" }).state.rail).toEqual({ kind: "step", guide: "q2", step: 1 });
+    expect(run(at("q2", 1, true), { type: "back" }).state.rail).toEqual({
+      kind: "step",
+      guide: "q1",
+      step: 3,
+    });
+    expect(run(at("q2", 2), { type: "back" }).state.rail).toEqual({ kind: "step", guide: "q2", step: 1 });
+  });
+
+  it("returns Page Up at a first step to the previous guide's last step, and stops at the first guide", () => {
+    expect(run(at("q5", 1), { type: "pageUp" }).state.rail).toEqual({ kind: "step", guide: "q2", step: 3 });
+    expect(run(at("q1", 1), { type: "pageUp" }).state.rail).toEqual({ kind: "step", guide: "q1", step: 1 });
+  });
+
+  it("asks for the screen to be set on every step it lands on", () => {
+    const first = at("q1", 1);
+    const seqs = [first, run(first, { type: "next" }), run(first, { type: "next" }, { type: "back" })].map(
+      (m) => m.state.apply.seq
+    );
+    expect(seqs).toEqual([0, 1, 2]);
+  });
+
+  it("does not step before the data says which guides it can teach", () => {
+    expect(reduce(at("q1", 1), { type: "next" }, null).state.rail).toEqual({
+      kind: "step",
+      guide: "q1",
+      step: 1,
+    });
+  });
+});
+
+describe("leaving a guide", () => {
+  it("does not count a guide skipped half way as seen, but remembers the person has been here", () => {
+    const after = run(at("q2", 2), { type: "skip" });
+    expect(after.state.rail).toEqual({ kind: "off" });
+    expect(after.memory).toEqual({ seen: true, done: [], last: { guide: "q2", step: 2 } });
+  });
+
+  it("counts a guide skipped at its last step as seen", () => {
+    expect(run(at("q2", 3), { type: "skip" }).memory.done).toEqual(["q2"]);
+  });
+
+  it("ends presenting when the rail closes or goes back to the start list", () => {
+    expect(run(at("q1", 2, true), { type: "close" }).state.present).toBe(false);
+    expect(run(at("q1", 2, true), { type: "allGuides" }).state).toMatchObject({
+      rail: { kind: "start" },
+      present: false,
+    });
+  });
+
+  it("offers presenting only while a guide runs", () => {
+    const onStart = run(start, { type: "toggleGuides" }, { type: "present", on: true });
+    expect(onStart.state.present).toBe(false);
+  });
+
+  it("starts again from the guide's own school on Show this step again", () => {
+    const after = run(at("q2", 1), { type: "restore" });
+    expect(after.state.apply).toEqual({ seq: 1, fresh: true });
+    expect(after.state.rail).toEqual({ kind: "step", guide: "q2", step: 1 });
+  });
+
+  it("does not open a guide the data cannot teach", () => {
+    expect(run(start, { type: "openGuide", guide: "q3" })).toBe(start);
+  });
+});
+
+describe("first and returning visits", () => {
+  it("opens the start list on a first visit and keeps the rail closed for a returning user", () => {
+    expect(stateFromSearch("", EMPTY_MEMORY).rail).toEqual({ kind: "start" });
+    expect(stateFromSearch("", { seen: true, done: ["q1", "q2"], last: null }).rail).toEqual({ kind: "off" });
+  });
+
+  it("says each guide's status: seen, where it was left, or how many steps it has", () => {
+    const memory = { seen: true, done: ["q1" as const], last: { guide: "q2" as const, step: 2 } };
+    expect(statusOf(memory, "q1", 3)).toEqual({ kind: "seen" });
+    expect(statusOf(memory, "q2", 3)).toEqual({ kind: "left", step: 2, of: 3 });
+    expect(statusOf(memory, "q5", 4)).toEqual({ kind: "new", steps: 4 });
+    expect(seenCount({ ...memory, done: ["q1", "q3"] }, CATALOG)).toBe(1);
+  });
+
+  it("reads malformed storage as a first visit", () => {
+    expect(parseMemory("{not json")).toEqual(EMPTY_MEMORY);
+    expect(parseMemory('{"seen":"yes","done":["q9","q1","q1"],"last":{"guide":"q2","step":0}}')).toEqual({
+      seen: false,
+      done: ["q1"],
+      last: null,
+    });
+  });
+});
+
+describe("links", () => {
+  it("lands a pasted link on its step, with the page, help card and glossary search", () => {
+    const search =
+      "?rule=additive_no_u&guide=q2&gstep=3&present=1&page=how&help=1&card=term%3Aneed_facilities&gloss=1&gq=need&gx=school_need";
+    const state = stateFromSearch(search, { seen: true, done: [], last: null });
+    expect(state).toEqual({
+      rail: { kind: "step", guide: "q2", step: 3 },
+      present: true,
+      page: "how",
+      help: true,
+      card: "term:need_facilities",
+      gloss: { open: true, q: "need", x: "school_need" },
+      apply: { seq: 1, fresh: true },
+    });
+    expect(searchWithLayers(search, state)).toBe(
+      "?rule=additive_no_u&guide=q2&gstep=3&present=1&page=how&help=1&card=term%3Aneed_facilities&gloss=1&gq=need&gx=school_need"
+    );
+  });
+
+  it("drops its own keys when the layers close and keeps the workspace's", () => {
+    expect(searchWithLayers("?guide=q1&gstep=2&school=k1&help=1", INITIAL_STATE)).toBe("?school=k1");
+  });
+
+  it("ignores a card that is not one and a step that is not a number", () => {
+    const state = stateFromSearch("?guide=q1&gstep=two&card=hello", EMPTY_MEMORY);
+    expect(state.rail).toEqual({ kind: "step", guide: "q1", step: 1 });
+    expect(state.card).toBeNull();
+  });
+
+  it("falls back to the start list for a guide the data cannot teach, and clamps a step past the end", () => {
+    const missing = stateFromSearch("?guide=q3&gstep=1&present=1", EMPTY_MEMORY);
+    expect(revalidate(missing, CATALOG)).toMatchObject({ rail: { kind: "start" }, present: false });
+    const past = stateFromSearch("?guide=q2&gstep=9", EMPTY_MEMORY);
+    expect(revalidate(past, CATALOG).rail).toEqual({ kind: "step", guide: "q2", step: 3 });
+  });
+});
+
+describe("help mode and the glossary", () => {
+  it("never shows the card and the drawer together, and closes the card with help mode", () => {
+    const helping = run(start, { type: "help", on: true }, { type: "card", id: "term:rank" });
+    const drawer = run(helping, { type: "gloss", open: true, x: "rank" });
+    expect(drawer.state).toMatchObject({ card: null, gloss: { open: true, x: "rank" } });
+    const card = run(drawer, { type: "card", id: "rule:benchmark" });
+    expect(card.state.gloss.open).toBe(false);
+    expect(run(card, { type: "help", on: false }).state).toMatchObject({ help: false, card: null });
+  });
+});
