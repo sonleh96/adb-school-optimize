@@ -67,6 +67,7 @@ export function buildStrings(c: CountBag = {}) {
     urgencyDefinition: urgencyDefinition(c),
     separateMeasures: SEPARATE_MEASURES,
     comparisonSource: "These figures come from the study's recorded comparison of the rules.",
+    notComputedNote: `This rule was only run on ${completePhrase(c)}, and these schools have a missing reading.`,
   });
 }
 export const STRINGS = buildStrings();

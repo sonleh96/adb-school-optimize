@@ -105,8 +105,31 @@ describe("every fixed string follows the writing rules", () => {
       fingerprints: [15],
       afterDownload: ["the top list"],
       viewOf: [2, 4],
+      positionOf: [3, 20],
+      placeRange: ["3rd", "12th"],
+      valueRange: ["0.487", "0.537"],
+      underRule: ["Place in the list", "the combined-factors rule with urgency (S)"],
+      groupMany: [3],
+      tooltipMissing: ["classroom count blank, power source blank"],
+      tipNotComputed: ["Need first"],
+      savedToast: [3],
+      removeView: ["Top of the list"],
     };
-    const LAYOUT_SENTENCES = new Set(["workspaceHint", "rowHintQueue", "fingerprints", "afterDownload"]);
+    const LAYOUT_SENTENCES = new Set([
+      "workspaceHint",
+      "rowHintQueue",
+      "fingerprints",
+      "afterDownload",
+      "emptyFiltered",
+      "emptyIncompleteFiltered",
+      "afterDownloadList",
+      "afterDownloadPack",
+      "copyNotDone",
+      "linkNotCopied",
+      "emptyData",
+      "loadFailed",
+      "availableAfterLoad",
+    ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
       corpus.add(`LAYOUT.${k}`, text, { sentence: LAYOUT_SENTENCES.has(k) });
@@ -130,6 +153,27 @@ describe("every fixed string follows the writing rules", () => {
     corpus.add("GUIDE.needNumbered all", G.needNumbered(3, 3));
     corpus.add("GUIDE.pageHint", G.pageHint, { sentence: false, keys: true });
     corpus.add("GUIDE.pointToMissing", G.pointToMissing);
+    for (const k of ["railAria", "sectionsAria", "seen", "viewFallbackOnScreen"] as const)
+      corpus.add(`GUIDE.${k}`, G[k], { sentence: false });
+    corpus.add("GUIDE.drift", G.drift);
+    corpus.add("GUIDE.driftRestore", G.driftRestore, { sentence: false });
+    corpus.add("GUIDE.stepCount", G.stepCount(4), { sentence: false });
+    corpus.add("GUIDE.stepCount(1)", G.stepCount(1), { sentence: false });
+    corpus.add("GUIDE.howCount", G.howCount(6), { sentence: false });
+    corpus.add("GUIDE.howCount(1)", G.howCount(1), { sentence: false });
+    corpus.add("GUIDE.seenCount", G.seenCount(2, 5), { sentence: false });
+    corpus.add("GUIDE.rangeWords", G.rangeWords(5, 6), { sentence: false });
+    corpus.add("GUIDE.rangeWords(equal)", G.rangeWords(5, 5), { sentence: false });
+    for (const [k, v] of Object.entries(G.seedViews)) {
+      corpus.add(`GUIDE.seedViews.${k}.name`, v.name, { sentence: false });
+      const on = "onScreen" in v ? v.onScreen : null;
+      if (on)
+        corpus.add(
+          `GUIDE.seedViews.${k}.onScreen`,
+          typeof on === "function" ? on("Incomplete records") : on,
+          { sentence: false }
+        );
+    }
     for (const t of G.tasks) {
       corpus.add(`GUIDE ${t.id}.title`, t.title, { sentence: false });
       corpus.add(`GUIDE ${t.id}.sub`, t.sub, { sentence: /\?$/.test(t.sub) });

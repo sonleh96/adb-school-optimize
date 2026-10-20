@@ -1,5 +1,5 @@
 /** Guide copy for task-first guidance: titles, "On screen" and "Try it" lines, and the rail's own words. */
-import { SMALL, capitalise } from "./format";
+import { SMALL, capitalise, ordinal, plural } from "./format";
 import { countWord } from "./counts";
 import { IDEAS } from "./ideas";
 import { ruleCountWord } from "./rules";
@@ -33,6 +33,31 @@ export const GUIDE = Object.freeze({
   // One counter for the rail: "Guide 2 of 5, step 1 of 3".
   stepCounter: (g: number, guides: number, i: number, n: number) =>
     `Guide ${g} of ${guides}, step ${i} of ${n}`,
+  // Round 6: rail chrome.
+  railAria: "Guide",
+  sectionsAria: "Sections",
+  seen: "Seen",
+  stepCount: (n: number) => `${n} ${plural(n, "step", "steps")}`,
+  howCount: (n: number) => `${n} short ${plural(n, "section", "sections")} on how the list is made`,
+  seenCount: (n: number, m: number) => `${n} of ${m} seen`,
+  drift: "The screen has moved on from this step.",
+  driftRestore: "Show this step again",
+  // "anywhere from 5th to 6th", or "5th" when the ends meet; fills the place slot of a step title.
+  rangeWords: (best: number, worst: number) =>
+    best === worst ? ordinal(best) : `anywhere from ${ordinal(best)} to ${ordinal(worst)}`,
+  viewFallbackOnScreen: "The list, the map and the school card",
+  seedViews: Object.freeze({
+    top: Object.freeze({
+      name: "Top of the list under the paper's main rule",
+      onScreen: "The list and the map",
+    }),
+    urgency: Object.freeze({ name: "With and without urgency" }),
+    range: Object.freeze({ name: "A school with possible places" }),
+    queue: Object.freeze({
+      name: "Schools with incomplete records",
+      onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what is missing`,
+    }),
+  }),
   // Show only in presentation mode; see KEYS.
   pageHint: KEYS.pageHint,
   pointToCard: (n: number) =>
@@ -56,7 +81,7 @@ export const GUIDE = Object.freeze({
           {
             key: "map",
             title: "The map shows the same order",
-            onScreen: "The first school on the map, and the legend",
+            onScreen: "The first school on the map, and the key",
             body: "Numbered dots are the first 10. The darker the blue, the earlier the school comes in the list.",
             tryIt: "Move the pointer over any dot to read its place in the list.",
           },
@@ -120,7 +145,7 @@ export const GUIDE = Object.freeze({
           {
             key: "map",
             title: "On the map, a ring with a centre dot",
-            onScreen: "The school on the map, and the legend",
+            onScreen: "The school on the map, and the key",
             body: (name: string) =>
               `The map draws it without the blue used for places in the list, so ${name} never looks like it has one place.`,
           },
