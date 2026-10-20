@@ -34,6 +34,14 @@ const schoolsSuffix = (c: CountBag, k: string): string =>
   known(c, k) ? `, ${formatCount(c[k])} ${plural(c[k], "school", "schools")}` : "";
 
 // The term map for a set of counts; TERMS is the count-free version.
+// How many schools have the persistence flag, when the data says. Without a count nothing is claimed, and a count of
+// 0 is said as a zero.
+const flaggedLine = (c: CountBag): string => {
+  if (!known(c, "flagged")) return "";
+  if (c.flagged === 0) return " No school has the flag.";
+  return ` ${capitalise(countWord(c.flagged))} ${plural(c.flagged, "school has", "schools have")} the flag.`;
+};
+
 export function buildTerms(c: CountBag = {}) {
   const terms = {
     screening: {
@@ -392,7 +400,7 @@ export function buildTerms(c: CountBag = {}) {
       technical: "Persistent candidate (circulated 0.80 list)",
       label: "Often in the top 20 when shares change (paper's main rule only)",
       line: "In the paper's test that changed the factors' shares at random, it stayed in the top 20 in at least 8 of every 10 tries, in each of the three test settings.",
-      help: `That test used the paper's main rule, which includes urgency, and has not been redone for the proposed revision, so the flag shows only under the combined-factors rule with urgency (S). ${known(c, "flagged") && c.flagged > 0 ? `${capitalise(countWord(c.flagged))} ${plural(c.flagged, "school has", "schools have")} the flag.` : "Some schools have the flag."}`,
+      help: `That test used the paper's main rule, which includes urgency, and has not been redone for the proposed revision, so the flag shows only under the combined-factors rule with urgency (S).${flaggedLine(c)}`,
       where: "School panel under S only",
     },
     shortlist: {
