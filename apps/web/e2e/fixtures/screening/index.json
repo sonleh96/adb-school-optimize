@@ -1,109 +1,109 @@
 {
-  "input_version": "synthetic-fixture-v1",
-  "pinned": "uuids (run ids, school ids) and timestamps",
-  "requests": [
-    {
-      "file": "rules.json",
-      "path": "/api/v1/screening/rules",
-      "query": {}
-    },
-    {
-      "file": "input-versions.json",
-      "path": "/api/v1/screening/input-versions",
-      "query": {}
-    },
-    {
-      "file": "results/additive_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "additive_u"
-      }
-    },
-    {
-      "file": "results/additive_no_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "additive_no_u"
-      }
-    },
-    {
-      "file": "results/need_first_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "need_first_u"
-      }
-    },
-    {
-      "file": "results/need_first_no_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "need_first_no_u"
-      }
-    },
-    {
-      "file": "results/bottleneck_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "bottleneck_u"
-      }
-    },
-    {
-      "file": "results/bottleneck_no_u.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "bottleneck_no_u"
-      }
-    },
-    {
-      "file": "results/benchmark.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "rule": "benchmark"
-      }
-    },
-    {
-      "file": "results/additive_u.upper.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "placement": "upper",
-        "rule": "additive_u"
-      }
-    },
-    {
-      "file": "results/additive_no_u.upper.json",
-      "path": "/api/v1/screening/results",
-      "query": {
-        "placement": "upper",
-        "rule": "additive_no_u"
-      }
-    },
-    {
-      "file": "schools/4e65114f0b8790b6b906088a6d549020.json",
-      "path": "/api/v1/screening/schools/by-key/4e65114f0b8790b6b906088a6d549020",
-      "query": {}
-    },
-    {
-      "file": "schools/299ec8fe96b5bb7a121b9d6ff0aaddf9.json",
-      "path": "/api/v1/screening/schools/by-key/299ec8fe96b5bb7a121b9d6ff0aaddf9",
-      "query": {}
-    },
-    {
-      "file": "schools/52f5775bbd7f52d844925499e8c3aa83.json",
-      "path": "/api/v1/screening/schools/by-key/52f5775bbd7f52d844925499e8c3aa83",
-      "query": {}
-    },
-    {
-      "file": "schools/369ff3a44a83d14b6ed9f102fe1b458c.json",
-      "path": "/api/v1/screening/schools/by-key/369ff3a44a83d14b6ed9f102fe1b458c",
-      "query": {}
-    },
-    {
-      "file": "compare/additive_u__additive_no_u.json",
-      "path": "/api/v1/screening/compare",
-      "query": {
-        "a": "additive_u",
-        "b": "additive_no_u"
-      }
-    }
-  ]
+ "input_version": "synthetic-fixture-v1",
+ "pinned": "uuids (run ids, school ids) and timestamps",
+ "requests": [
+  {
+   "file": "rules.json",
+   "path": "/api/v1/screening/rules",
+   "query": {}
+  },
+  {
+   "file": "input-versions.json",
+   "path": "/api/v1/screening/input-versions",
+   "query": {}
+  },
+  {
+   "file": "results/additive_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "results/need_first_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "results/need_first_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "results/benchmark.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "results/additive_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "schools/4e65114f0b8790b6b906088a6d549020.json",
+   "path": "/api/v1/screening/schools/by-key/4e65114f0b8790b6b906088a6d549020",
+   "query": {}
+  },
+  {
+   "file": "schools/299ec8fe96b5bb7a121b9d6ff0aaddf9.json",
+   "path": "/api/v1/screening/schools/by-key/299ec8fe96b5bb7a121b9d6ff0aaddf9",
+   "query": {}
+  },
+  {
+   "file": "schools/52f5775bbd7f52d844925499e8c3aa83.json",
+   "path": "/api/v1/screening/schools/by-key/52f5775bbd7f52d844925499e8c3aa83",
+   "query": {}
+  },
+  {
+   "file": "schools/369ff3a44a83d14b6ed9f102fe1b458c.json",
+   "path": "/api/v1/screening/schools/by-key/369ff3a44a83d14b6ed9f102fe1b458c",
+   "query": {}
+  },
+  {
+   "file": "compare/additive_u__additive_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "additive_no_u"
+   }
+  }
+ ]
 }
