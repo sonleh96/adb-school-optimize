@@ -18,8 +18,8 @@ import {
 } from "./counts";
 import { agreementSentence, findPair, pairPhrase } from "./compare";
 import { IDEAS } from "./ideas";
-import type { ComparisonData, CountBag } from "./model";
-import { hasBounds, resultFor } from "./rank";
+import type { ComparisonData, CountBag, CountsByRule } from "./model";
+import { hasBounds, resultFor, sharedSize } from "./rank";
 
 /* ------------------------------------------- explainer and first questions */
 
@@ -120,7 +120,7 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
 export const HOW_IT_WORKS = buildHow();
 
 // The explainer's example: the range school whose possible places move most between the two main rules.
-export function howExample(data: ComparisonData, c: CountBag): string | null {
+export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRule): string | null {
   const row = findPair(data.pairwise || [], "additive_u", "additive_no_u");
   if (!row) return null;
   const moved = (data.schools || [])
@@ -140,7 +140,12 @@ export function howExample(data: ComparisonData, c: CountBag): string | null {
       ? ordinal(r.rank_best)
       : `${ordinal(r.rank_best)} to ${ordinal(r.rank_worst)}`;
   const agree = lowerFirst(agreementSentence(row, 20, "with or without urgency")).replace(/\.$/, "");
-  return `For example, among ${pairPhrase(row)}, ${agree}, but ${displayName(x)}'s possible places among ${amongAllOrdered(c)} move from ${span(a)} with urgency to ${span(b)} without it.`;
+  const cA = byRule?.additive_u ?? c,
+    cB = byRule?.additive_no_u ?? c;
+  const among = sharedSize(cA, cB, "ranked")
+    ? amongAllOrdered(cA)
+    : "all the schools that can be put in order under each rule";
+  return `For example, among ${pairPhrase(row)}, ${agree}, but ${displayName(x)}'s possible places among ${among} move from ${span(a)} with urgency to ${span(b)} without it.`;
 }
 
 // The five acceptance questions from the round-2 brief, with short answers.

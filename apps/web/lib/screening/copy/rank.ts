@@ -21,7 +21,7 @@ import {
   ordinal,
   plural,
 } from "./format";
-import type { CopyResult, CopyRuleId, CountBag, NamedSchool, PlacedSchool } from "./model";
+import type { CopyResult, CopyRuleId, CountBag, CountsByRule, NamedSchool, PlacedSchool } from "./model";
 import { rule } from "./rules";
 import { STRINGS } from "./strings";
 
@@ -39,6 +39,15 @@ export const hasBounds = (r: CopyResult | null | undefined): r is WithBounds =>
 export const hasPlace = (r: CopyResult | null | undefined): r is WithPlace =>
   !!r && Number.isInteger(r.rank_complete120);
 
+/** The group sizes of the run that gave `ruleId` its places: that rule's own when known, otherwise `opts.counts`. */
+export const countsOf = (
+  opts: { counts?: CountBag; countsByRule?: CountsByRule },
+  ruleId: CopyRuleId
+): CountBag | undefined => opts.countsByRule?.[ruleId] ?? opts.counts;
+/** True when two rules count a group the same size, or nothing says they differ. */
+export const sharedSize = (a: CountBag | undefined, b: CountBag | undefined, k: string): boolean =>
+  a === b || (known(a, k) && known(b, k) && a[k] === b[k]);
+
 export interface PlaceOpts {
   /** Start the sentence with the school's name. */
   name?: boolean;
@@ -48,6 +57,8 @@ export interface PlaceOpts {
   method?: boolean;
   /** From `countsFrom`. */
   counts?: CountBag;
+  /** The group sizes of each rule's own run, when they differ from `counts`. */
+  countsByRule?: CountsByRule;
 }
 
 /* ------------------------------------------------------- rank sentences */
@@ -109,7 +120,7 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
 // which adds whether a range school is inside it either way. opts.counts: from countsFrom.
 export function rankSentence(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
   const r = rule(ruleId);
-  const c = opts.counts;
+  const c = countsOf(opts, ruleId);
   const lead = opts.name ? `${displayName(school)} is` : "It is";
   if (school.cohort === "queue") {
     return `${opts.name ? `${displayName(school)} cannot` : "Cannot"} be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.`;
@@ -142,10 +153,10 @@ export function rankSentence(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
 export function placeHeadline(
   school: PlacedSchool,
   ruleId: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
 ): string {
   rule(ruleId);
-  const c = opts.counts;
+  const c = countsOf(opts, ruleId);
   if (school.cohort === "queue") return STRINGS.notPlaced;
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
@@ -162,7 +173,7 @@ export function placeHeadline(
 // what counting the range schools could do. opts.shortlist as in rankSentence. opts.counts: from countsFrom.
 export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
   const r = rule(ruleId);
-  const c = opts.counts;
+  const c = countsOf(opts, ruleId);
   if (school.cohort === "queue")
     return "Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
   const res = resultFor(school, ruleId);
@@ -190,7 +201,7 @@ export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
 // Detail view only: what counting the range schools does to a school with every input recorded.
 // rankSentence already carries this in one sentence, so do not show both.
 export function fullRankingSentence(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
-  const c = opts.counts;
+  const c = countsOf(opts, ruleId);
   if (school.cohort !== "complete") return rankSentence(school, ruleId, opts);
   const res = resultFor(school, ruleId);
   if (!hasBounds(res) || res.rank_bounds_scope !== "eligible124") {
@@ -204,40 +215,93 @@ export function fullRankingSentence(school: PlacedSchool, ruleId: CopyRuleId, op
   return `Once ${rangePhrase(c)} are counted, it would sit ${where} of ${amongAllOrdered(c)}.`;
 }
 
+type Standing =
+  | { readonly kind: "point"; readonly place: number }
+  | { readonly kind: "range"; readonly best: number; readonly worst: number }
+  | { readonly kind: "none" };
+
+// How a school stands under one rule: one place, a range of places (or a range whose ends meet), or none.
+// A school with a range under the rule shown reads its range first; any other school reads its place first.
+function standing(school: PlacedSchool, res: CopyResult | null): Standing {
+  const point: Standing | null = hasPlace(res) ? { kind: "point", place: res.rank_complete120 } : null;
+  const range: Standing | null = hasBounds(res)
+    ? { kind: "range", best: res.rank_best, worst: res.rank_worst }
+    : null;
+  return (school.cohort === "interval" ? (range ?? point) : (point ?? range)) ?? { kind: "none" };
+}
+
 // One school under two rules: a range school's possible places, or a single place for the others.
+// Each place is said against the group of the rule that gave it, because the groups differ between rules.
 export function rangeComparisonSentence(
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
 ): string {
   const a = rule(ruleA),
     b = rule(ruleB);
-  const c = opts.counts;
+  const cA = countsOf(opts, ruleA),
+    cB = countsOf(opts, ruleB);
   const name = displayName(school);
-  if (school.cohort === "queue")
-    return `${name} cannot be put in order under any rule yet, because its record is incomplete.`;
-  const ra = resultFor(school, ruleA),
-    rb = resultFor(school, ruleB);
-  if (school.cohort === "complete") {
-    if (!hasPlace(ra) || !hasPlace(rb))
-      throw new Error(`${name} has no single place under both ${a.name} and ${b.name}`);
-    return `Among ${completePhrase(c)}, ${name} is ${ordinal(ra.rank_complete120)} under ${a.name} and ${ordinal(rb.rank_complete120)} under ${b.name}.`;
+  const sa = standing(school, resultFor(school, ruleA)),
+    sb = standing(school, resultFor(school, ruleB));
+  const held = school.cohort === "queue";
+  if (sa.kind === "none" && sb.kind === "none") {
+    return held
+      ? `${name} cannot be put in order under ${a.name} or ${b.name} yet, because its record is incomplete.`
+      : `${name} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(cA)}.`;
   }
-  const where = (res: CopyResult | null, rr: { name: string }): string | null => {
-    if (!hasBounds(res)) return null;
-    return res.rank_best === res.rank_worst
-      ? `${ordinal(res.rank_best)} under ${rr.name}`
-      : `anywhere from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} under ${rr.name}`;
+  if (sa.kind === "point" && sb.kind === "point") {
+    if (sharedSize(cA, cB, "complete"))
+      return `Among ${completePhrase(cA)}, ${name} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
+    return `Under ${a.name}, ${name} is ${ordinal(sa.place)} among ${completePhrase(cA)}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB)}.`;
+  }
+  const where = (st: Standing & { kind: "range" }, rr: { name: string }): string =>
+    st.best === st.worst
+      ? `${ordinal(st.best)} under ${rr.name}`
+      : `anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} under ${rr.name}`;
+  if (
+    school.cohort === "interval" &&
+    sa.kind !== "point" &&
+    sb.kind !== "point" &&
+    sharedSize(cA, cB, "ranked")
+  ) {
+    const among = `Among ${orderedPhrase(cA)}`;
+    if (sa.kind === "none" && sb.kind === "range")
+      return `${among}, ${name} sits ${where(sb, b)}. It is not computed under ${a.name}.`;
+    if (sb.kind === "none" && sa.kind === "range")
+      return `${among}, ${name} sits ${where(sa, a)}. It is not computed under ${b.name}.`;
+    if (sa.kind === "range" && sb.kind === "range")
+      return `${among}, ${name} sits ${where(sa, a)}, and ${where(sb, b)}.`;
+  }
+  // Each side on its own, with its own group.
+  const clause = (
+    st: Standing,
+    rr: { name: string },
+    c: CountBag | undefined,
+    lead: string,
+    it: string
+  ): string => {
+    if (st.kind === "point")
+      return `Under ${rr.name}, ${lead} ${ordinal(st.place)} among ${completePhrase(c)}.`;
+    if (st.kind === "range")
+      return st.best === st.worst
+        ? `Under ${rr.name}, ${lead} ${ordinal(st.best)} among ${orderedPhrase(c)}.`
+        : `Under ${rr.name}, ${it} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
+    return held
+      ? `${capitalise(it)} cannot be put in order under ${rr.name} yet, because its record is incomplete.`
+      : `${capitalise(it)} is not computed under ${rr.name}.`;
   };
-  const wa = where(ra, a),
-    wb = where(rb, b);
-  const among = `Among ${orderedPhrase(c)}`;
-  if (!wa && !wb)
-    return `${name} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(c)}.`;
-  if (!wa) return `${among}, ${name} sits ${wb}. It is not computed under ${a.name}.`;
-  if (!wb) return `${among}, ${name} sits ${wa}. It is not computed under ${b.name}.`;
-  return `${among}, ${name} sits ${wa}, and ${wb}.`;
+  const sides: [Standing, { name: string }, CountBag | undefined][] = [
+    [sa, a, cA],
+    [sb, b, cB],
+  ];
+  if (sa.kind === "none") sides.reverse();
+  return sides
+    .map(([st, rr, c], i) =>
+      i === 0 ? clause(st, rr, c, `${name} is`, name) : clause(st, rr, c, "it is", "it")
+    )
+    .join(" ");
 }
 
 // Question 1: which schools a rule puts first. schools: the full schools array; counts come from it.

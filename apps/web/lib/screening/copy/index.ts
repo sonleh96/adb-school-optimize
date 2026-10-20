@@ -3,6 +3,7 @@
  * screening API's responses. Bind the data once with `copyFor`, then pass the bound object down.
  */
 export {
+  countsByRuleFromResults,
   countsFromResults,
   pairwiseFromCompare,
   placedFromResults,

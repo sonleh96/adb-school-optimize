@@ -22,7 +22,7 @@ import * as copy from "@/lib/screening/copy";
 import { countsFromResults, copyFor, schoolFromDetail } from "@/lib/screening/copy";
 import type { CopyRuleId, CopySchool, InputKey } from "@/lib/screening/copy";
 
-import { Corpus, KEYS, RULES, fixtureDetail, fixtureResults, school } from "./helpers";
+import { Corpus, KEYS, RULES, fixtureDetail, fixtureResults, school, textProblems } from "./helpers";
 
 const COUNTS = { all: 25, complete: 16, range: 5, ranked: 21, queue: 4 };
 const P = copyFor({ counts: COUNTS });
@@ -190,9 +190,106 @@ describe("one school under two rules", () => {
     );
   });
 
-  it("says a school with an incomplete record has no place under any rule", () => {
+  it("says a school with an incomplete record has no place under either rule when it has no result under both", () => {
     expect(P.rangeComparisonSentence(school({ id: "q", cohort: "queue" }), "additive_u", "benchmark")).toBe(
-      "School q cannot be put in order under any rule yet, because its record is incomplete."
+      "School q cannot be put in order under the combined-factors rule with urgency (S) or the conventional benchmark (B) yet, because its record is incomplete."
+    );
+  });
+
+  it("gives a place under the rule that has one for a school held back under the other", () => {
+    const q = { ...school({ id: "q", cohort: "queue" }), results: { benchmark: { rank_complete120: 7 } } };
+    expect(P.rangeComparisonSentence(q, "additive_u", "benchmark")).toBe(
+      "Under the conventional benchmark (B), School q is 7th among the 16 schools with every input recorded. It cannot be put in order under the combined-factors rule with urgency (S) yet, because its record is incomplete."
+    );
+  });
+});
+
+describe("one school under two rules, whatever its group under each", () => {
+  const complete = (
+    id: string,
+    results: copy.PlacedSchool["results"],
+    cohort: copy.CopyCohort = "complete"
+  ) => ({
+    ...school({ id, cohort }),
+    results,
+  });
+  const S = "the combined-factors rule with urgency (S)";
+  const S0 = "the combined-factors rule without urgency (S0)";
+  const B = "the conventional benchmark (B)";
+
+  it("gives a complete school's place under one rule and says the other did not compute it, instead of throwing", () => {
+    const a = complete("a", { additive_u: { rank_complete120: 3 } });
+    expect(P.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It is not computed under ${S0}.`
+    );
+    expect(P.rangeComparisonSentence(a, "additive_no_u", "additive_u")).toBe(
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. It is not computed under ${S0}.`
+    );
+  });
+
+  it("gives a complete school's place under one rule and its range under the other", () => {
+    const a = complete("a", {
+      additive_u: { rank_complete120: 3 },
+      additive_no_u: { rank_best: 3, rank_worst: 5, rank_bounds_scope: "eligible124" },
+    });
+    expect(P.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. Under ${S0}, it could be anywhere from 3rd to 5th among the 21 schools that can be put in order.`
+    );
+  });
+
+  it("gives a range school's single place under a rule that does not read the missing reading", () => {
+    const r = complete(
+      "r",
+      {
+        additive_u: { rank_best: 12, rank_worst: 18 },
+        benchmark: { rank_complete120: 9 },
+      },
+      "interval"
+    );
+    expect(P.rangeComparisonSentence(r, "additive_u", "benchmark")).toBe(
+      `Under ${S}, School r could be anywhere from 12th to 18th among the 21 schools that can be put in order. Under ${B}, it is 9th among the 16 schools with every input recorded.`
+    );
+  });
+
+  it("answers for every pair of cohorts, with a result or none, and never throws", () => {
+    const standings = [
+      undefined,
+      { rank_complete120: 4 },
+      { rank_best: 4, rank_worst: 4 },
+      { rank_best: 4, rank_worst: 9 },
+    ];
+    for (const cohort of ["complete", "interval", "queue"] as const)
+      for (const a of standings)
+        for (const b of standings) {
+          const results = { ...(a ? { additive_u: a } : {}), ...(b ? { benchmark: b } : {}) };
+          const text = P.rangeComparisonSentence(complete("x", results, cohort), "additive_u", "benchmark");
+          expect(textProblems(text), text).toEqual([]);
+          expect(text).toContain("School x");
+        }
+  });
+
+  it("names a different group for each rule when their groups differ, and one group when they do not", () => {
+    const a = complete("a", { additive_u: { rank_complete120: 3 }, additive_no_u: { rank_complete120: 5 } });
+    const same = copy.copyFor({ counts: { complete: 16, range: 5, ranked: 21 } });
+    expect(same.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
+      `Among the 16 schools with every input recorded, School a is 3rd under ${S} and 5th under ${S0}.`
+    );
+    const differ = copy.copyFor({
+      counts: { complete: 16, range: 5, ranked: 21 },
+      countsByRule: {
+        additive_u: { complete: 16, range: 5, ranked: 21 },
+        additive_no_u: { complete: 17, range: 5, ranked: 22 },
+      },
+    });
+    expect(differ.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. Under ${S0}, it is 5th among the 17 schools with every input recorded.`
+    );
+    const equal = copy.copyFor({
+      counts: { complete: 16, range: 5, ranked: 21 },
+      countsByRule: { additive_u: { complete: 16, ranked: 21 }, additive_no_u: { complete: 16, ranked: 21 } },
+    });
+    expect(equal.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
+      same.rangeComparisonSentence(a, "additive_u", "additive_no_u")
     );
   });
 });
@@ -985,13 +1082,6 @@ describe("what the port refuses where the prototype would have coerced", () => {
     expect(() => copy.inputSentence(noUrgency, "urgency")).toThrow("has no urgency value");
     expect(() => copy.inputSentence(noReach, "reach")).toThrow("has no reach value");
     expect(() => copy.contributions(noUrgency, "benchmark")).toThrow("has no urgency value");
-  });
-
-  it("refuses to compare a complete school under two rules when it has no single place under one", () => {
-    const a = { ...school({ id: "a", place: 3 }), results: { additive_u: { rank_complete120: 3 } } };
-    expect(() => copy.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toThrow(
-      "has no single place under both"
-    );
   });
 
   it("falls back to the count-free groups sentence when the range count is known but the ordered count is not", () => {

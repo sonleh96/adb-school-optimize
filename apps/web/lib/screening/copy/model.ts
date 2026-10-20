@@ -171,6 +171,12 @@ export interface CountableSchool {
  */
 export type CountBag = Readonly<Partial<Record<string, number>>>;
 
+/**
+ * The group sizes of each rule's own run. The groups differ between rules (a rule that leaves urgency out can put
+ * more schools in order), so a sentence about a rule counts that rule's group.
+ */
+export type CountsByRule = Readonly<Partial<Record<CopyRuleId, CountBag>>>;
+
 export type Counts = {
   readonly all: number;
   readonly complete: number;
