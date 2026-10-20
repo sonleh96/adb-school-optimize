@@ -53,6 +53,7 @@ import {
   listStartsSegments,
   listStartsSentence,
   locationLine,
+  persistenceNote,
   placeContext,
   placeHeadline,
   rangeComparisonSegments,
@@ -94,6 +95,8 @@ export type CopyData = {
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
   readonly countsByRule?: CountsByRule;
+  /** The persistence test's standard error as a fraction (the circulated list's provenance block). */
+  readonly standardError?: number;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
@@ -167,6 +170,8 @@ export function copyFor(data: CopyData = {}) {
       list: readonly PlacedSchool[] = schools,
       form: "card" | "row" = "card"
     ) => tieNote(school, ruleId, list, form),
+    persistenceNote: (school: CopySchool, ruleId: CopyRuleId) =>
+      persistenceNote(school, ruleId, { standardError: data.standardError }),
     distinctName: (school: PlacedSchool, list: readonly PlacedSchool[] = schools) =>
       distinctName(school, list),
     /**

@@ -19,6 +19,25 @@ import {
 } from "./counts";
 import type { CountBag } from "./model";
 
+/* ------------------------------------------------------ the persistence flag */
+
+// The margin in percentage points to one decimal, or null when it is unknown or rounds to 0.
+function marginPoints(se: number | undefined): number | null {
+  if (se === undefined || !(se > 0)) return null;
+  const v = Number((se * 100).toFixed(1));
+  return v > 0 ? v : null;
+}
+
+/**
+ * A flagged school whose lowest frequency is within one standard error of the line, in one sentence. The margin is
+ * the test's standard error from the circulated list's provenance block, as a fraction; without it the sentence
+ * states no number.
+ */
+export function persistentNearLine(standardError?: number): string {
+  const pts = marginPoints(standardError);
+  return `In that test it stayed in the top 20 only just often enough to be flagged${pts === null ? "" : `, within ${pts} percentage points of the line`}, so another round of random changes to the shares could take the flag away.`;
+}
+
 /* --------------------------------------------------------- fixed strings */
 
 // The fixed strings for a set of counts; STRINGS is the count-free version.
@@ -67,6 +86,7 @@ export function buildStrings(c: CountBag = {}) {
     urgencyDefinition: urgencyDefinition(c),
     separateMeasures: SEPARATE_MEASURES,
     comparisonSource: "These figures come from the study's recorded comparison of the rules.",
+    persistentNearLine: persistentNearLine(),
     notComputedNote: `This rule was only run on ${completePhrase(c)}, and these schools have a missing reading.`,
   });
 }

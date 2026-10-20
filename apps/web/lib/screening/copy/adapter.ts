@@ -435,6 +435,16 @@ export function countsByRuleFromResults(
   return Object.fromEntries(responses.map((r) => [viewRuleOf(r), countsFromResults(r)]));
 }
 
+/**
+ * The persistence test's standard error as a fraction, from the circulated list's provenance block, for
+ * `copyFor`'s `standardError`. Nothing when the list is not the circulated rule's or the version has no such numbers.
+ */
+export function standardErrorFromResults(response: ResultsResponse): number | undefined {
+  return viewRuleOf(response) === "additive_u"
+    ? (response.persistence?.standard_error ?? undefined)
+    : undefined;
+}
+
 /* ----------------------------------------------------------------- comparison */
 
 const TOP_SIZES = [10, 20, 30, 40] as const;

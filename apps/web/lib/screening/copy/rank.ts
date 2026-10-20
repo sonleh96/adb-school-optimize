@@ -13,10 +13,18 @@ import {
   rangePhrase,
 } from "./counts";
 import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
-import type { CopyResult, CopyRuleId, CountBag, CountsByRule, NamedSchool, PlacedSchool } from "./model";
+import type {
+  CopyResult,
+  CopyRuleId,
+  CopySchool,
+  CountBag,
+  CountsByRule,
+  NamedSchool,
+  PlacedSchool,
+} from "./model";
 import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
 import { rule } from "./rules";
-import { STRINGS } from "./strings";
+import { STRINGS, persistentNearLine } from "./strings";
 
 /* ------------------------------------------------------ fixture helpers */
 
@@ -401,4 +409,24 @@ export function tieNote(
 ): string | null {
   const s = tieNoteSegments(school, ruleId, schools, form);
   return s === null ? null : textOf(s);
+}
+
+/* ------------------------------------------------------ the persistence flag */
+
+/**
+ * What to say about the persistence flag of a school, for the circulated rule only. The flag comes from the paper's
+ * test under the rule with urgency, so it is said under no other rule. A flagged school whose lowest frequency is
+ * only just above the line also says that another run could change it, with the size of that margin when known.
+ * `opts.standardError`: the test's standard error as a fraction, from the circulated list's provenance block.
+ */
+export function persistenceNote(
+  school: Pick<CopySchool, "persistent_candidate_circulated" | "threshold_adjacent_circulated">,
+  ruleId: CopyRuleId,
+  opts: { standardError?: number } = {}
+): string[] {
+  rule(ruleId);
+  if (ruleId !== "additive_u" || !school.persistent_candidate_circulated) return [];
+  const out: string[] = [STRINGS.persistentFlag];
+  if (school.threshold_adjacent_circulated) out.push(persistentNearLine(opts.standardError));
+  return out;
 }
