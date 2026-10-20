@@ -646,6 +646,7 @@ describe("a comparison from /compare", () => {
         left_rank: 17,
         right_rank: 22,
         "School Name": "Out One ",
+        school_key: "key-Out One",
       },
       {
         left_rule: "additive_u",
@@ -654,6 +655,7 @@ describe("a comparison from /compare", () => {
         left_rank: 24,
         right_rank: 18,
         "School Name": "In One",
+        school_key: "key-In One",
       },
     ]);
   });

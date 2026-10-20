@@ -484,13 +484,18 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       const schools = withoutFlag(data.schools);
       const counts = proto.countsFrom(schools);
       const R: Api = proto.copyFor({ schools, pairwise: [], top20Changes: [] });
-      const Q: Api = port.copyFor({ schools: [], counts });
-      let covered = 0;
+      // The list the copy names a school among, so a twin's name is told apart as the prototype tells it.
+      const adapted = new Map<string, any>();
       for (const o of schools) {
         const detail = wireDetail(o, port.RULE_IDS);
-        if (!detail) continue;
+        if (detail) adapted.set(o.id, schoolFromDetail(detail, VIEW));
+      }
+      const Q: Api = port.copyFor({ schools: [...adapted.values()], counts, countsByRule: "shared" });
+      let covered = 0;
+      for (const o of schools) {
+        const s = adapted.get(o.id);
+        if (!s) continue;
         covered += 1;
-        const s = schoolFromDetail(detail, VIEW);
         const tag = o.id;
         const one = (label: string, f: (api: Api, school: any) => unknown) =>
           sameOutcome(

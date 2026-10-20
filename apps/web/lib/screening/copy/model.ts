@@ -222,6 +222,8 @@ export interface Top20Change {
   readonly left_rank: number;
   readonly right_rank: number;
   readonly "School Name": string;
+  /** The school's id, when the source gives one, so the name can be told apart from a twin's. */
+  readonly school_key?: string;
 }
 
 /** What `comparisonSentence` and its relatives read. `schools` is needed only for the top-10 names. */

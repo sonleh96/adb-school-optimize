@@ -320,9 +320,9 @@ describe("a record with all three readings missing, or only its remoteness", () 
     );
   });
 
-  it("reads a blank name, district and province in words", () => {
+  it("reads a blank name, district and province in words, and tells an unnamed school from the other unnamed ones", () => {
     expect(P.rankSentence(i2, "additive_u", { name: true })).toMatch(
-      /^Unnamed school could be anywhere from 6th to 9th/
+      /^Unnamed school \(record i2\) could be anywhere from 6th to 9th/
     );
     expect(P.locationLine(i2)).toBe("Location not recorded");
     expect(P.locationLine(schools[0])).toBe("District not recorded, Highlands");

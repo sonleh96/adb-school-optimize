@@ -21,7 +21,7 @@ import {
 import { agreementSentence, findPair, pairPhrase } from "./compare";
 import { IDEAS } from "./ideas";
 import type { ComparisonData, CountBag, CountsByRule, CountsByRuleArg } from "./model";
-import { hasBounds, perRule, resultFor, sharedSize } from "./rank";
+import { distinctName, hasBounds, perRule, resultFor, sharedSize } from "./rank";
 import { nameSegment, seg, textOf, type Segments } from "./segments";
 
 /* ------------------------------------------- explainer and first questions */
@@ -153,7 +153,7 @@ export function howExampleSegments(
   const among = sharedSize(cA, cB, "ranked", strict)
     ? amongAllOrdered(cA)
     : "all the schools that can be put in order under each rule";
-  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(displayName(x))}'s possible places among ${among} move from ${span(a)} with urgency to ${span(b)} without it.`;
+  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(distinctName(x, data.schools))}'s possible places among ${among} move from ${span(a)} with urgency to ${span(b)} without it.`;
 }
 export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRuleArg): string | null {
   const s = howExampleSegments(data, c, byRule);

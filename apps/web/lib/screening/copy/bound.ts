@@ -106,7 +106,7 @@ export type CopyData = {
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
 );
 
-type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule">;
+type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule" | "schools">;
 
 export function copyFor(data: CopyData = {}) {
   const schools: readonly PlacedSchool[] = data.schools || [];
@@ -130,6 +130,7 @@ export function copyFor(data: CopyData = {}) {
     ...(opts || {}),
     counts: c,
     countsByRule: data.countsByRule,
+    schools,
   });
   const terms = buildTerms(c);
   let later: Promise<LaterCopy> | undefined;

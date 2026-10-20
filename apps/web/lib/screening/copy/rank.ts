@@ -73,6 +73,8 @@ export interface PlaceOpts {
   counts?: CountBag;
   /** The group sizes of each rule's own run, when they differ from `counts`. */
   countsByRule?: CountsByRuleArg;
+  /** The schools of the list, so a name is told apart from a twin's. */
+  schools?: readonly NamedSchool[];
 }
 
 /* ------------------------------------------------------- rank sentences */
@@ -135,7 +137,7 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
 export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): Segments {
   const r = rule(ruleId);
   const c = countsOf(opts, ruleId);
-  const nm = opts.name ? nameSegment(displayName(school)) : null;
+  const nm = opts.name ? nameSegment(distinctName(school, opts.schools)) : null;
   if (school.cohort === "queue") {
     const rest =
       "be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
@@ -280,13 +282,13 @@ export function rangeComparisonSegments(
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "schools"> = {}
 ): Segments {
   const a = rule(ruleA),
     b = rule(ruleB);
   const cA = countsOf(opts, ruleA),
     cB = countsOf(opts, ruleB);
-  const nm = nameSegment(displayName(school));
+  const nm = nameSegment(distinctName(school, opts.schools));
   const sa = standing(school, resultFor(school, ruleA)),
     sb = standing(school, resultFor(school, ruleB));
   const held = school.cohort === "queue";
@@ -370,13 +372,13 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
     const res = resultFor(s, ruleId);
     return s.cohort === "interval" && hasBounds(res) && res.rank_best <= k;
   });
-  const names = nameList(firsts.map((s) => displayName(s)));
+  const names = nameList(firsts.map((s) => distinctName(s, schools)));
   const sentence =
     k === 1
       ? seg`Under ${r.name}, the first of ${completePhrase(c, ruleReads(ruleId))} is ${names}.`
       : seg`Under ${r.name}, the first ${countWord(k)} of ${completePhrase(c, ruleReads(ruleId))} are ${names}.`;
   if (!ranges.length) return sentence;
-  return seg`${sentence} ${nameList(ranges.map((s) => displayName(s)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
+  return seg`${sentence} ${nameList(ranges.map((s) => distinctName(s, schools)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
 }
 export const listStartsSentence = (schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): string =>
   textOf(listStartsSegments(schools, ruleId, n));
@@ -397,11 +399,26 @@ export function locationLine(school: NamedSchool): string {
 export const provinceHeading = (province: string | null | undefined): string =>
   cleanedOrNull(province ?? null) ?? LAYOUT.provinceNotRecorded;
 
+// The schools of a list by the name they display, built once per list so naming each school stays cheap.
+const NAME_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
+function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
+  let index = NAME_INDEX.get(schools);
+  if (!index) {
+    index = new Map();
+    for (const x of schools) {
+      const name = displayName(x);
+      index.set(name, [...(index.get(name) ?? []), x]);
+    }
+    NAME_INDEX.set(schools, index);
+  }
+  return index;
+}
+
 // A display name that tells apart two schools whose names differ only in spacing.
 // schools: the full schools array. Joins and exports keep the original string and the id.
 export function distinctName(school: NamedSchool, schools: readonly NamedSchool[] = []): string {
   const name = displayName(school);
-  const twins = schools.filter((x) => x.id !== school.id && displayName(x) === name);
+  const twins = (byDisplayName(schools).get(name) ?? []).filter((x) => x.id !== school.id);
   if (!twins.length) return name;
   const district = cleanedOrNull(school.district);
   if (district && twins.every((x) => cleanedOrNull(x.district) !== district)) return `${name} (${district})`;
