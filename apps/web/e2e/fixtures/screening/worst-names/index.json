@@ -1,0 +1,122 @@
+{
+ "dataset": "worst-names",
+ "input_version": "synthetic-fixture-v1",
+ "pinned": "uuids (run ids, school ids) and timestamps",
+ "requests": [
+  {
+   "file": "rules.json",
+   "path": "/api/v1/screening/rules",
+   "query": {}
+  },
+  {
+   "file": "results/additive_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "results/need_first_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "results/need_first_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "results/benchmark.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "results/additive_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "inputs.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {}
+  },
+  {
+   "file": "inputs.pinned.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {
+    "input_version": "synthetic-fixture-v1"
+   }
+  },
+  {
+   "file": "schools/dbea9a37ee104d2af4c506403aef5b8f.json",
+   "path": "/api/v1/screening/schools/by-key/dbea9a37ee104d2af4c506403aef5b8f",
+   "query": {}
+  },
+  {
+   "file": "schools/c64b1545886f33da42447fa9325a3e21.json",
+   "path": "/api/v1/screening/schools/by-key/c64b1545886f33da42447fa9325a3e21",
+   "query": {}
+  },
+  {
+   "file": "schools/4f0df5879f0df148dcd45c418d5304c7.json",
+   "path": "/api/v1/screening/schools/by-key/4f0df5879f0df148dcd45c418d5304c7",
+   "query": {}
+  },
+  {
+   "file": "schools/276e547e8c634f6b5e2527e28438adfb.json",
+   "path": "/api/v1/screening/schools/by-key/276e547e8c634f6b5e2527e28438adfb",
+   "query": {}
+  },
+  {
+   "file": "schools/40339dc16751008617fec339ce30b383.json",
+   "path": "/api/v1/screening/schools/by-key/40339dc16751008617fec339ce30b383",
+   "query": {}
+  },
+  {
+   "file": "compare/additive_u__additive_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "additive_no_u"
+   }
+  }
+ ]
+}

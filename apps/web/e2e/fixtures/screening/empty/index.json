@@ -1,0 +1,31 @@
+{
+ "dataset": "empty",
+ "input_version": null,
+ "pinned": "uuids (run ids, school ids) and timestamps",
+ "requests": [
+  {
+   "file": "rules.json",
+   "path": "/api/v1/screening/rules",
+   "query": {}
+  },
+  {
+   "file": "input-versions.json",
+   "path": "/api/v1/screening/input-versions",
+   "query": {}
+  },
+  {
+   "file": "results/additive_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "inputs.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {},
+   "status": 404
+  }
+ ]
+}
