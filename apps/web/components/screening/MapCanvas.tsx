@@ -55,7 +55,7 @@ export interface MapCanvasProps {
   padding: Padding;
   /** The marks belong to the previous rule while the new one loads: they fade and cannot be picked. */
   stale: boolean;
-  /** Called once, after the first frame that drew the schools' marks. */
+  /** Called after every frame; the first one drew the schools' marks, or the map alone when there are none. */
   onDrawn?: () => void;
 }
 
@@ -241,11 +241,9 @@ export default function MapCanvas({
     setHover(info.object ? { school: info.object, x: info.x, y: info.y } : null);
   }, []);
 
-  // deck.gl calls this after every frame; the first frame with marks in it is the one the controller waits for.
-  const hasMarks = schools.length > 0;
-  const afterRender = useCallback(() => {
-    if (hasMarks) onDrawn?.();
-  }, [hasMarks, onDrawn]);
+  // deck.gl calls this after every frame. The map is created only once the list, or its failure, is on screen, so
+  // its first frame holds every mark the list has: none, for an empty or failed list. The controller waits for it.
+  const afterRender = useCallback(() => onDrawn?.(), [onDrawn]);
 
   const onClick = useCallback(
     (info: PickingInfo<MapSchool>) => {

@@ -3,7 +3,7 @@
  * read and change the workspace. React components subscribe to it; nothing reaches into another component's markup.
  *
  *   const ws = useWorkspace();
- *   await ws.ready;                        // the map and its marks have drawn
+ *   await ws.ready;                        // the map has drawn, with every mark the list has
  *   ws.setState({ rule: "additive_no_u", compare: "additive_u" });
  *   ws.getState().rule;                    // the rule on screen, never null
  *   const stop = ws.onChange((state, previous) => { ... });
@@ -32,7 +32,7 @@ export interface WorkspaceController {
   setState(patch: Patch): void;
   /** Called after every change with the new and the previous state. Returns the unsubscribe function. */
   onChange(listener: (state: ResolvedState, previous: ResolvedState) => void): () => void;
-  /** Resolves once the map and its marks have drawn. */
+  /** Resolves once the map has drawn, with every mark the list has: none, for an empty or failed list. */
   readonly ready: Promise<void>;
 }
 
