@@ -69,9 +69,11 @@ async function expectSound(page: Page, minMap: number | null) {
   }
 }
 
+/** The first row can be read without scrolling: its name and its Why line (not its padding) are in the window. */
 async function firstRowInView(page: Page) {
   const row = page.locator(`${ORDERED} button`).first();
-  const box = (await row.boundingBox())!;
+  await expect(row.locator("[data-region=row-why]")).toBeVisible();
+  const box = (await row.locator("> span").last().boundingBox())!;
   const height = await page.evaluate(() => window.innerHeight);
   expect(box.y + box.height).toBeLessThanOrEqual(height);
 }
