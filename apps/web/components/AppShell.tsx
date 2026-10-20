@@ -74,9 +74,12 @@ function AuthUserSlot() {
   );
 }
 
+/** Routes that bring their own frame: sign-in, and the screening workspace, which carries its own masthead. */
+const FULL_BLEED = new Set(["/sign-in", "/screening"]);
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  if (pathname === "/sign-in") return children;
+  if (FULL_BLEED.has(pathname)) return children;
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#e8ecf1] text-[var(--color-ink)]">
