@@ -1,5 +1,14 @@
 """Screening engine for the circulated method and the urgency-omitted scenario."""
 
+from .components import (
+    Anchor,
+    AreaParts,
+    ComponentValues,
+    NeedParts,
+    PreparedRecord,
+    PreparedRecords,
+    prepare,
+)
 from .inputs import (
     INPUT_CONTRACT,
     InputContractError,
@@ -27,11 +36,17 @@ __all__ = [
     "INPUT_CONTRACT",
     "PACKAGE_VERSION",
     "RULES",
+    "Anchor",
+    "AreaParts",
     "Cohort",
     "Component",
+    "ComponentValues",
     "GateFailure",
     "InputContractError",
     "InputField",
+    "NeedParts",
+    "PreparedRecord",
+    "PreparedRecords",
     "Rule",
     "RuleKind",
     "RuleRole",
@@ -41,5 +56,6 @@ __all__ = [
     "assemble_frame",
     "get_rule",
     "parse_records",
+    "prepare",
     "records_sha256",
 ]
