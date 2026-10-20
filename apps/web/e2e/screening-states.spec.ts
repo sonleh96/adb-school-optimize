@@ -89,6 +89,37 @@ test("a slow first load shows that it is loading, with no counts, then the count
   await waitForMap(page);
 });
 
+test("the map's scripts are not fetched until the list has loaded, so they never compete with it", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(RESULTS("additive_u"), async (route) => {
+    await held;
+    await route.continue();
+  });
+  const scripts = new Set<string>();
+  page.on("request", (request) => {
+    if (request.resourceType() === "script") scripts.add(request.url());
+  });
+  await page.goto("/screening");
+  await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
+
+  // Let the page's own scripts finish arriving. With the list still held back, no map may have started.
+  let seen = -1;
+  while (seen !== scripts.size) {
+    seen = scripts.size;
+    await page.waitForTimeout(1000);
+  }
+  await expect(page.locator(".maplibregl-canvas")).toHaveCount(0);
+  const before = scripts.size;
+
+  release();
+  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
+  await waitForMap(page);
+  expect(scripts.size).toBeGreaterThan(before);
+});
+
 test.describe("tells a session that ended, a missing list, a failing service and an unreadable answer apart", () => {
   const cases = [
     { name: "401", status: 401, body: '{"error":{"code":"unauthorized"}}', failure: "session" },
