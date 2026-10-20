@@ -352,3 +352,12 @@
     transition: none;
   }
 }
+
+/* The workspace sets every button's colour to inherit; these keep their own. */
+.kSeg.kSeg button[aria-pressed="true"] {
+  color: #fff;
+}
+.kSeg.kSeg button:not([aria-pressed="true"]),
+.swap.swap {
+  color: var(--ink-2);
+}

@@ -453,6 +453,7 @@ function Workspace() {
     keyboard,
     onSelect: select,
     onRule: changeRule,
+    onNotify: notify,
   });
   const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
   // A tab with nothing in it cannot be chosen. The one showing stays enabled even when empty, as after a pasted link or
@@ -572,6 +573,7 @@ function Workspace() {
         <div className={styles.actions} data-region="actions">
           {method.methodSwitch}
           {copyLink(false)}
+          {method.exportButton}
         </div>
         {method.mapBar}
 
@@ -809,6 +811,7 @@ function Workspace() {
         ) : null}
       </div>
       <GuidanceLayer root={rootElement} data={guideData} />
+      {method.exportSheet}
       <div ref={setLayer} className={styles.layer} />
       <p className={styles.toast} role="status" aria-live="polite" data-on={toast ? "" : undefined}>
         {toast?.message}
