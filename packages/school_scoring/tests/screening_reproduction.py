@@ -27,8 +27,10 @@ from school_scoring.screening import (
     ScreeningRun,
     Table,
     assemble_frame,
+    common_cohort,
     parse_records,
     prepare,
+    rank_in_common_cohort,
     screen_all,
 )
 
@@ -206,7 +208,7 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
     }
     prepared = prepare(parse_records(assemble_frame(tables)))
     runs = screen_all(prepared)
-    cohorts = {p.record.school_name: p.cohort for p in prepared.records}
+    cohorts = {r.school_name: r.cohort for r in runs["additive_u"].results}
     h = Harness(cohorts)
     eligible = {n for n, c in cohorts.items() if c is not Cohort.VERIFICATION_QUEUE}
     cohort_value = {n: c.value for n, c in cohorts.items()}
@@ -382,11 +384,11 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
         load(f"{COMPARISON}/rule_scores_common120.csv"),
         f"{COMPARISON}/rule_scores_common120.csv",
     )
+    common_120 = common_cohort(*runs.values())
     for rule_id, run in runs.items():
         rows = common[common["rule_id"] == rule_id]
         keep = set(rows["School Name"])
         for column, getter, exact in (
-            ("rank", lambda r: r.rank_point, True),
             ("score_point", lambda r: r.score_point, False),
             ("score_lower", lambda r: r.score_lower, False),
             ("score_upper", lambda r: r.score_upper, False),
@@ -398,6 +400,14 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
                 _column(rows, column),
                 exact=exact,
             )
+        ranks = rank_in_common_cohort(run, common_120).by_school()
+        h.compare(
+            f"{rule_id} rank ({common_120.scope})",
+            ref_file,
+            {n: ranks.get(n) for n in keep},
+            _column(rows, "rank"),
+            exact=True,
+        )
         if rule_id.startswith("need_first"):
             h.compare(
                 f"{rule_id} school_need_primary (common 120)",
