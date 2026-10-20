@@ -23,6 +23,7 @@ import { retryable } from "./once";
 import {
   missingGroupLabel,
   missingLabels,
+  rangeRowWhy,
   missingSentence,
   missingSentences,
   missingValueKind,
@@ -252,6 +253,7 @@ export function copyFor(data: CopyData = {}) {
     missingSentences,
     missingLabels,
     missingGroupLabel,
+    rangeRowWhy,
     provinceHeading,
     missingValueKind,
     missingValueNote,
