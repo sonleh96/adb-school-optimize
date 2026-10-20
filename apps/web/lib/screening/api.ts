@@ -4,7 +4,7 @@
  */
 import { apiFetch } from "@/lib/api";
 
-import { parseWith } from "./schema";
+import { ParseError, type Schema, parseWith } from "./schema";
 import {
   type CompareResponse,
   type Placement,
@@ -46,15 +46,31 @@ export function screeningUrl(path: string, params: Record<string, string | undef
 
 const pinParams = (pin: Pin) => ({ input_version: pin.inputVersion, package_version: pin.packageVersion });
 
-export async function fetchScreeningRules(signal?: AbortSignal): Promise<RulesResponse> {
-  const body = await apiFetch<unknown>(screeningUrl("/rules", {}), { signal });
-  return parseWith(rulesResponse, body, "Screening rules");
+/**
+ * One read: fetch, then parse before anything else sees the body. A body that is not JSON or does not match the
+ * schema is logged to the console, where a developer looks first, and thrown for the page to show in plain words.
+ */
+async function read<T>(schema: Schema<T>, url: string, label: string, signal?: AbortSignal): Promise<T> {
+  let body: unknown;
+  try {
+    body = await apiFetch<unknown>(url, { signal });
+  } catch (error) {
+    if (error instanceof SyntaxError) console.error(`${label}: the response was not JSON.`, error);
+    throw error;
+  }
+  try {
+    return parseWith(schema, body, label);
+  } catch (error) {
+    if (error instanceof ParseError) console.error(error);
+    throw error;
+  }
 }
 
-export async function fetchScreeningResults(
-  query: ResultsQuery,
-  signal?: AbortSignal
-): Promise<ResultsResponse> {
+export function fetchScreeningRules(signal?: AbortSignal): Promise<RulesResponse> {
+  return read(rulesResponse, screeningUrl("/rules", {}), "Screening rules", signal);
+}
+
+export function fetchScreeningResults(query: ResultsQuery, signal?: AbortSignal): Promise<ResultsResponse> {
   const url = screeningUrl("/results", {
     rule: query.rule,
     placement: query.placement,
@@ -62,24 +78,24 @@ export async function fetchScreeningResults(
     district: query.district,
     ...pinParams(query),
   });
-  return parseWith(resultsResponse, await apiFetch<unknown>(url, { signal }), "Screening results");
+  return read(resultsResponse, url, "Screening results", signal);
 }
 
-export async function fetchScreeningSchool(
+export function fetchScreeningSchool(
   key: SchoolKey,
   pin: Pin = {},
   signal?: AbortSignal
 ): Promise<SchoolDetailResponse> {
   const url = screeningUrl(`/schools/by-key/${encodeURIComponent(key)}`, pinParams(pin));
-  return parseWith(schoolDetailResponse, await apiFetch<unknown>(url, { signal }), "Screening school");
+  return read(schoolDetailResponse, url, "Screening school", signal);
 }
 
-export async function fetchScreeningCompare(
+export function fetchScreeningCompare(
   a: RuleId,
   b: RuleId,
   pin: Pin = {},
   signal?: AbortSignal
 ): Promise<CompareResponse> {
   const url = screeningUrl("/compare", { a, b, ...pinParams(pin) });
-  return parseWith(compareResponse, await apiFetch<unknown>(url, { signal }), "Screening comparison");
+  return read(compareResponse, url, "Screening comparison", signal);
 }

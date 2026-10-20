@@ -24,22 +24,40 @@ export function splitRows(rows: readonly ListedRow[]): SplitRows {
   return { ordered, incomplete };
 }
 
-/** Where a school stands: one exact place, a range of possible places, or none. */
+/**
+ * Where a school stands: one exact place, a range of possible places, or none. Every place carries the scope the
+ * API counted it in (for example "complete under this rule (16)"), because a place means nothing without it.
+ */
 export type Place =
-  | { kind: "point"; rank: number; of: number }
-  | { kind: "range"; best: number; worst: number; of: number }
+  | { kind: "point"; rank: number; of: number; scope: string }
+  | {
+      kind: "range";
+      best: number;
+      worst: number;
+      of: number;
+      scope: string;
+      /** Both ends are the same place. It is still a range school: the place holds whatever its missing input is. */
+      exact: boolean;
+    }
   | { kind: "none" };
 
 export function placeOf(row: ListedRow): Place {
   switch (row.cohort) {
     case "complete":
-      return { kind: "point", rank: row.point_rank.rank, of: row.point_rank.count };
+      return {
+        kind: "point",
+        rank: row.point_rank.rank,
+        of: row.point_rank.count,
+        scope: row.point_rank.scope,
+      };
     case "interval":
       return {
         kind: "range",
         best: row.rank_bounds.best,
         worst: row.rank_bounds.worst,
         of: row.rank_bounds.count,
+        scope: row.rank_bounds.scope,
+        exact: row.rank_bounds.best === row.rank_bounds.worst,
       };
     case "verification_queue":
       return { kind: "none" };
@@ -61,7 +79,10 @@ export function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
-/** "3rd", or "12th to 27th" for a range. Equal bounds read as one place. Empty when the school has none. */
+/**
+ * "3rd", or "12th to 27th" for a range. Empty when the school has none.
+ * A range whose ends are equal reads as that one place; callers show it with the range treatment and its note.
+ */
 export function placeLabel(place: Place): string {
   switch (place.kind) {
     case "point":
@@ -96,6 +117,11 @@ export function groupByProvince(rows: readonly QueuedRow[]): ProvinceGroup[] {
     else groups.set(key, [row]);
   }
   return [...groups].map(([province, members]) => ({ province, rows: members }));
+}
+
+/** The incomplete records as the list shows them, province by province. Arrow keys follow this order. */
+export function incompleteInDisplayOrder(rows: readonly QueuedRow[]): QueuedRow[] {
+  return groupByProvince(rows).flatMap((group) => group.rows);
 }
 
 /** The selected school if the rows still hold it, otherwise nothing. */

@@ -108,6 +108,11 @@ export function oneOf<const V extends readonly [string, ...string[]]>(...values:
   };
 }
 
+/** A string the page may compare with known members but never has to reject: a new member must not break parsing. */
+export function looseEnum<Known extends string>(): Schema<Known | (string & {})> {
+  return { parse: (value, path) => str.parse(value, path) };
+}
+
 export function obj<S extends Shape>(shape: S): Schema<ObjectOf<S>> {
   return {
     parse: (value, path) => {

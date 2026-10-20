@@ -1,6 +1,6 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, skipToken, useQuery } from "@tanstack/react-query";
 
 import {
   type Pin,
@@ -10,7 +10,15 @@ import {
   fetchScreeningRules,
   fetchScreeningSchool,
 } from "./api";
+import { classifyFailure } from "./errors";
 import type { RuleId, SchoolKey } from "./types";
+
+/** Retry what may pass (a failing server, a dropped connection) once; a 401, a 404 or a bad body will not improve. */
+const transient = {
+  retry: (failures: number, error: unknown) =>
+    failures < 1 && ["server", "network"].includes(classifyFailure(error)),
+  retryDelay: 400,
+};
 
 export interface RulePair {
   a: RuleId;
@@ -29,6 +37,7 @@ export function useScreeningRules() {
   return useQuery({
     queryKey: screeningKeys.rules(),
     queryFn: ({ signal }) => fetchScreeningRules(signal),
+    ...transient,
   });
 }
 
@@ -39,8 +48,8 @@ export function useScreeningRules() {
 export function useScreeningResults(query: ResultsQuery | null) {
   return useQuery({
     queryKey: screeningKeys.results(query),
-    queryFn: ({ signal }) => fetchScreeningResults(query!, signal),
-    enabled: query !== null,
+    queryFn: query ? ({ signal }) => fetchScreeningResults(query, signal) : skipToken,
+    ...transient,
     placeholderData: keepPreviousData,
   });
 }
@@ -48,15 +57,15 @@ export function useScreeningResults(query: ResultsQuery | null) {
 export function useScreeningSchool(key: SchoolKey | null, pin: Pin = {}) {
   return useQuery({
     queryKey: screeningKeys.school(key, pin),
-    queryFn: ({ signal }) => fetchScreeningSchool(key!, pin, signal),
-    enabled: key !== null,
+    queryFn: key ? ({ signal }) => fetchScreeningSchool(key, pin, signal) : skipToken,
+    ...transient,
   });
 }
 
 export function useScreeningCompare(pair: RulePair | null, pin: Pin = {}) {
   return useQuery({
     queryKey: screeningKeys.compare(pair, pin),
-    queryFn: ({ signal }) => fetchScreeningCompare(pair!.a, pair!.b, pin, signal),
-    enabled: pair !== null,
+    queryFn: pair ? ({ signal }) => fetchScreeningCompare(pair.a, pair.b, pin, signal) : skipToken,
+    ...transient,
   });
 }

@@ -1,0 +1,63 @@
+/**
+ * What went wrong with a read, in the few kinds the page tells apart. The page words each kind in plain language;
+ * this only decides which kind it is.
+ */
+import { ApiRequestError } from "@/lib/api";
+
+import { ParseError } from "./schema";
+
+export type Failure =
+  /** 401: the session ended, so signing in again is the way out. */
+  | "session"
+  /** 404: the API has no such rule, version or school. */
+  | "not_found"
+  /** 5xx: the API failed. */
+  | "server"
+  /** The API answered, but not with what the page expects. */
+  | "malformed"
+  /** No answer at all. */
+  | "network"
+  | "other";
+
+export function classifyFailure(error: unknown): Failure {
+  if (error instanceof ParseError || error instanceof SyntaxError) return "malformed";
+  if (error instanceof ApiRequestError) {
+    if (error.status === 401) return "session";
+    if (error.status === 404) return "not_found";
+    if (error.status >= 500) return "server";
+    return "other";
+  }
+  // `fetch` rejects with a TypeError when the request never got an answer.
+  if (error instanceof TypeError) return "network";
+  return "other";
+}
+
+/** What the list area shows, decided from what the two reads hold. Cached data is never replaced by an error. */
+export type ListView =
+  | { kind: "loading" }
+  | { kind: "failed"; failure: Failure }
+  | {
+      kind: "ready";
+      /** The rows on screen belong to the previous rule while the new one loads. */
+      stale: boolean;
+      /** A refresh failed, but the rows on screen are still good. */
+      refreshFailed: Failure | null;
+    };
+
+export interface ReadState {
+  hasData: boolean;
+  isPlaceholderData: boolean;
+  error: unknown;
+}
+
+export function listView(rules: ReadState, results: ReadState): ListView {
+  if (results.hasData && rules.hasData) {
+    return {
+      kind: "ready",
+      stale: results.isPlaceholderData,
+      refreshFailed: results.error || rules.error ? classifyFailure(results.error ?? rules.error) : null,
+    };
+  }
+  const error = results.error ?? rules.error;
+  return error ? { kind: "failed", failure: classifyFailure(error) } : { kind: "loading" };
+}
