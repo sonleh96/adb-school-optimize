@@ -29,6 +29,7 @@ from ..http_cache import (
 )
 from ..models.screening import (
     AreaPartsOut,
+    CirculatedResultsResponse,
     CommonRankOut,
     CompareResponse,
     ComponentsOut,
@@ -36,16 +37,21 @@ from ..models.screening import (
     ContributionOut,
     ExcludedSchoolOut,
     FiltersOut,
+    InputSchoolOut,
+    InputsResponse,
     InputVersionOut,
     InputVersionsResponse,
     IntervalBoundsOut,
     IntervalSchoolOut,
     LinkedSchoolsResponse,
     ListedRowOut,
+    ListedRowWithPersistenceOut,
     ManifestOut,
     MaximumTermOut,
     NeedPartsOut,
     PairwiseMetricsOut,
+    PersistenceOut,
+    PersistenceSettingOut,
     Placement,
     PointRankOut,
     RankBoundsOut,
@@ -59,6 +65,8 @@ from ..models.screening import (
     SchoolIdentityOut,
     SchoolResultOut,
     SchoolRuleResultOut,
+    SchoolRuleResultWithPersistenceOut,
+    ScopeCode,
     ScoresOut,
     TopChangeOut,
     TopKOut,
@@ -80,6 +88,7 @@ from ..screening_queries import (
     list_versions,
     read_identities,
     read_school_rows,
+    school_key,
 )
 from .exports import RESEARCH_EXPORT_HEADERS
 
@@ -194,14 +203,39 @@ def _result_out(r: store.ResultRow, uses_urgency: bool) -> SchoolResultOut:
         scores=ScoresOut(
             lower=r.score_lower, upper=r.score_upper, point=r.score_point, sort_key_primary=r.sort_key_primary
         ),
-        point_rank=PointRankOut(rank=r.rank_point, scope=r.rank_point_scope, count=r.rank_point_count),
+        point_rank=PointRankOut(
+            rank=r.rank_point,
+            scope=r.rank_point_scope,
+            scope_code=ScopeCode.COMPLETE_UNDER_RULE,
+            count=r.rank_point_count,
+        ),
         rank_bounds=RankBoundsOut(
-            best=r.rank_best, worst=r.rank_worst, scope=r.rank_bounds_scope, count=r.rank_bounds_count
+            best=r.rank_best,
+            worst=r.rank_worst,
+            scope=r.rank_bounds_scope,
+            scope_code=ScopeCode.ELIGIBLE,
+            count=r.rank_bounds_count,
         ),
     )
 
 
-def _version_out(entry: VersionEntry, is_default: bool) -> InputVersionOut:
+def _persistence_out(found: store.PersistenceSet | None) -> PersistenceOut | None:
+    if found is None:
+        return None
+    return PersistenceOut(
+        rule_id=found.rule_id,
+        experiment_id=found.experiment_id,
+        source_path=found.source_path,
+        source_sha256=found.source_sha256,
+        draws=found.draws,
+        threshold=found.threshold,
+        settings=[PersistenceSettingOut(**asdict(s)) for s in found.settings],
+    )
+
+
+def _version_out(
+    entry: VersionEntry, is_default: bool, persistence: dict[str, store.PersistenceSet]
+) -> InputVersionOut:
     v = entry.version
     return InputVersionOut(
         input_version=v.input_version,
@@ -211,6 +245,7 @@ def _version_out(entry: VersionEntry, is_default: bool) -> InputVersionOut:
         created_at=v.created_at,
         is_default=is_default,
         rules_available=list(entry.rules_available),
+        persistence=_persistence_out(persistence.get(v.input_version)),
     )
 
 
@@ -245,6 +280,7 @@ def _json(
     input_version: Text | None = None,
     package_version: Text | None = None,
     version: store.InputVersion | None = None,
+    immutable_when_pinned: bool = False,
 ) -> Response:
     headers = (
         {}
@@ -254,7 +290,7 @@ def _json(
             "X-Screening-Input-Sha256": version.input_sha256,
         }
     )
-    if input_version is not None and package_version is not None:
+    if input_version is not None and (package_version is not None or immutable_when_pinned):
         cache_control = SCREENING_IMMUTABLE_CACHE_CONTROL
     elif input_version is not None:
         cache_control = SCREENING_PINNED_CACHE_CONTROL
@@ -272,10 +308,11 @@ def _json(
 def get_rules(request: Request):
     with get_db() as connection:
         versions = list(list_versions(connection))
+        persistence = store.read_persistence_sets(connection)
     body = RulesResponse(
         default_rule_id=DEFAULT_RULE_ID,
         rules=[_rule_out(rule, versions) for rule in RULES.values()],
-        input_versions=[_version_out(e, i == 0) for i, e in enumerate(versions)],
+        input_versions=[_version_out(e, i == 0, persistence) for i, e in enumerate(versions)],
     )
     return _json(request, body)
 
@@ -284,9 +321,10 @@ def get_rules(request: Request):
 def get_input_versions(request: Request):
     with get_db() as connection:
         versions = list_versions(connection)
+        persistence = store.read_persistence_sets(connection)
     body = InputVersionsResponse(
         default_input_version=versions[0].version.input_version if versions else None,
-        input_versions=[_version_out(e, i == 0) for i, e in enumerate(versions)],
+        input_versions=[_version_out(e, i == 0, persistence) for i, e in enumerate(versions)],
     )
     return _json(request, body)
 
@@ -312,9 +350,24 @@ def get_results(
         version = _version(connection, input_version)
         run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
+        circulated = rule == store.PERSISTENCE_RULE_ID
+        persistence = store.read_persistence(connection, run.input_version) if circulated else None
     listed = ordered_list(rule_, rows, placement)
     shown = [item for item in listed if filters.admits(item.row)]
-    body = ResultsResponse(
+
+    def listed_row(item) -> ListedRowOut:
+        fields_ = dict(
+            display_order=item.display_order,
+            placement=item.placement,
+            school=_identity_out(item.row.identity),
+            **dict(_result_out(item.row.result, rule_.uses_urgency)),
+        )
+        if not circulated:
+            return ListedRowOut(**fields_)
+        flag = None if persistence is None else persistence.is_persistent(item.row.name)
+        return ListedRowWithPersistenceOut(**fields_, persistent_candidate=flag)
+
+    parts = dict(
         run=_run_out(run),
         manifest=ManifestOut.from_stored(run.manifest),
         placement=placement,
@@ -322,15 +375,14 @@ def get_results(
         filters_note=FILTERS_NOTE,
         total_schools=len(listed),
         returned_schools=len(shown),
-        rows=[
-            ListedRowOut(
-                display_order=item.display_order,
-                placement=item.placement,
-                school=_identity_out(item.row.identity),
-                **dict(_result_out(item.row.result, rule_.uses_urgency)),
-            )
-            for item in shown
-        ],
+        rows=[listed_row(item) for item in shown],
+    )
+    body = (
+        CirculatedResultsResponse(
+            **parts, persistence=_persistence_out(None if persistence is None else persistence.set)
+        )
+        if circulated
+        else ResultsResponse(**parts)
     )
     return _json(
         request, body, input_version=input_version, package_version=package_version, version=version.version
@@ -338,8 +390,51 @@ def get_results(
 
 
 # ---------------------------------------------------------------------------------------------
+# The stored inputs of every school, for a client that shows them beside a list.
+# ---------------------------------------------------------------------------------------------
+
+
+@router.get("/inputs", response_model=InputsResponse)
+def get_inputs(request: Request, input_version: Text | None = None):
+    """What ``/schools/by-key`` gives as ``inputs``, for every school at once.
+
+    The body holds nothing that depends on the ``schools`` table, and a stored version is never changed,
+    so a request that names the version is cached as immutable.
+    """
+    with get_db() as connection:
+        version = _version(connection, input_version)
+        name = version.version.input_version
+        records = store.read_inputs(connection, name)
+    body = InputsResponse(
+        input_version=name,
+        input_sha256=version.version.input_sha256,
+        schools=[
+            InputSchoolOut(
+                school_key=school_key(name, r.school_name),
+                source_school_name=r.school_name,
+                inputs={f.name: getattr(r, f.name) for f in fields(r)},
+            )
+            for r in records
+        ],
+    )
+    return _json(
+        request, body, input_version=input_version, version=version.version, immutable_when_pinned=True
+    )
+
+
+# ---------------------------------------------------------------------------------------------
 # One school under every rule.
 # ---------------------------------------------------------------------------------------------
+
+
+def _rule_result_out(
+    persistence: store.Persistence | None, name: str, **fields
+) -> SchoolRuleResultOut | SchoolRuleResultWithPersistenceOut:
+    """One rule's entry for one school. Only the circulated rule's entry carries the persistence flag."""
+    if fields["rule"].rule_id != store.PERSISTENCE_RULE_ID:
+        return SchoolRuleResultOut(**fields)
+    flag = None if persistence is None else persistence.is_persistent(name)
+    return SchoolRuleResultWithPersistenceOut(**fields, persistent_candidate=flag)
 
 
 def _school_details(
@@ -351,6 +446,7 @@ def _school_details(
         r.school_name: r for r in store.read_inputs(connection, input_version) if r.school_name in wanted
     }
     runs = current_runs(connection, input_version, package_version)
+    persistence = store.read_persistence(connection, input_version)
     results = {
         rule_id: {
             r.source_school_name: r
@@ -363,7 +459,9 @@ def _school_details(
     for identity in identities:
         name = identity.source_school_name
         per_rule = [
-            SchoolRuleResultOut(
+            _rule_result_out(
+                persistence,
+                name,
                 rule=RuleSummaryOut(
                     rule_id=rule.rule_id,
                     label=rule.label,
@@ -374,7 +472,9 @@ def _school_details(
                 ),
                 run=_run_out(runs[rule.rule_id]),
                 point_rank_scope=results[rule.rule_id][name].rank_point_scope,
+                point_rank_scope_code=ScopeCode.COMPLETE_UNDER_RULE,
                 rank_bounds_scope=results[rule.rule_id][name].rank_bounds_scope,
+                rank_bounds_scope_code=ScopeCode.ELIGIBLE,
                 result=_result_out(results[rule.rule_id][name], rule.uses_urgency),
             )
             for rule in RULES.values()

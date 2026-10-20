@@ -8,6 +8,7 @@ import uuid
 from dataclasses import dataclass, replace
 
 import psycopg
+from app.ingestion.load_screening_inputs import PersistenceSource
 from school_scoring.screening import SchoolRecord, ScreeningRun, prepare, screen_all
 from screening_db_factories import AWKWARD_NAMES, mixed_records, record
 from screening_db_helpers import VERSION, load
@@ -79,12 +80,15 @@ class Loaded:
 
 
 def load_synthetic(
-    connection: psycopg.Connection, records: tuple[SchoolRecord, ...] | None = None, version: str = VERSION
+    connection: psycopg.Connection,
+    records: tuple[SchoolRecord, ...] | None = None,
+    version: str = VERSION,
+    persistence: PersistenceSource | None = None,
 ) -> Loaded:
     """Store schools, then load the records through the ingestion function. ``runs`` is the engine's own output."""
     records = records or api_records()
     ids = add_schools(connection, records)
-    load(connection, records, version)
+    load(connection, records, version, persistence)
     return Loaded(records, screen_all(prepare(records)), ids, version)
 
 
