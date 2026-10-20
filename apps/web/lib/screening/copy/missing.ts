@@ -2,7 +2,7 @@
 import { isRemotenessOnly } from "./counts";
 import { gateSentence, otherCause } from "./causes";
 import { REMOTENESS_CATEGORIES } from "./definitions";
-import { SMALL, capitalise, joinList } from "./format";
+import { SMALL, capitalise, isBlank, joinList } from "./format";
 import { OTHER_GATES, isNeedGate, isOtherGate } from "./gates";
 import { FACILITIES } from "./inputs";
 import type { CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } from "./model";
@@ -25,7 +25,7 @@ interface PartCause {
   readonly effect?: string;
 }
 
-const isBlankLocality = (v: string | null | undefined): boolean => v == null || String(v).trim() === "";
+const isBlankLocality = isBlank;
 
 // Why one need part cannot be used, read from the raw fields.
 // kind is 'blank' (the source cell is empty) or 'unusable' (recorded, but the calculation cannot use it).

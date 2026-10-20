@@ -11,16 +11,7 @@ import {
   orderedPhrase,
   rangePhrase,
 } from "./counts";
-import {
-  capitalise,
-  cleanName,
-  cleanedOrNull,
-  displayName,
-  formatCount,
-  joinList,
-  ordinal,
-  plural,
-} from "./format";
+import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
 import type { CopyResult, CopyRuleId, CountBag, CountsByRule, NamedSchool, PlacedSchool } from "./model";
 import { rule } from "./rules";
 import { STRINGS } from "./strings";
@@ -350,9 +341,8 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
   const name = displayName(school);
   const twins = schools.filter((x) => x.id !== school.id && displayName(x) === name);
   if (!twins.length) return name;
-  const district = school.district == null ? null : cleanName(school.district);
-  if (district && twins.every((x) => (x.district == null ? null : cleanName(x.district)) !== district))
-    return `${name}, ${district}`;
+  const district = cleanedOrNull(school.district);
+  if (district && twins.every((x) => cleanedOrNull(x.district) !== district)) return `${name}, ${district}`;
   return `${name} (record ${school.id})`;
 }
 
