@@ -5,6 +5,8 @@
  *  2. Back and Forward change the URL but not the screen                      -> "Back and Forward..."
  *  3. A comparison that failed to load is worded as a fact about the study ("no recorded comparison")
  *     -> "a comparison that fails to load..."
+ *  4. The statement loses the two main rules' figures while What changed reads another pair
+ *     -> "the statement keeps the main rules' figures..."
  */
 import type { Page } from "@playwright/test";
 
@@ -14,6 +16,7 @@ import {
   ORDERED,
   ORDERED_COUNT,
   RULE,
+  allowUncapturedComparisons,
   expect,
   mainRule,
   openWorkspace,
@@ -24,9 +27,12 @@ import {
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
+const STATEMENT =
+  "Which list should I use? This one, the paper's main rule, until the research team decides. Leaving urgency out keeps the same schools at the top among the 16 with every input recorded.";
 const REASSURANCE =
   "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Leaving it out changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, leaving it out can still move their possible places.";
 
+const statement = (page: Page) => page.locator("[data-region=list-statement]");
 const changed = (page: Page) => page.locator("[data-region=what-changed]");
 const lead = (page: Page) => changed(page).locator("[data-region=changed-lead]");
 const search = (page: Page) => new URL(page.url()).search;
@@ -83,4 +89,13 @@ test("a comparison that fails to load says so and offers Retry, never that the s
   await failed.getByRole("button", { name: LAYOUT.retry }).press("Enter");
   await expect(lead(page)).toHaveText(REASSURANCE);
   await expect(changed(page).getByRole("button", { name: LAYOUT.hideComparison })).toBeFocused();
+});
+
+test("the statement keeps the main rules' figures while What changed reads another pair", async ({
+  page,
+  problems,
+}) => {
+  await openWorkspace(page, "?compare=need_first_u&view=queue");
+  await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithout}`);
+  allowUncapturedComparisons(problems);
 });

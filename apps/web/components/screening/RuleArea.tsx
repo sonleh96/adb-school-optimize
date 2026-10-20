@@ -27,8 +27,8 @@ interface RuleAreaProps {
   requested: CopyRuleId;
   /** The rule of the rows on screen. The statement and the rule line speak for it. */
   shown: CopyRuleId | null;
-  /** The statement under the main rule may show: What changed is hidden and the comparison it reads has settled. */
-  statement: boolean;
+  /** The statement under the main rule, or null while What changed shows or the statement's data is not in. */
+  statement: string | null;
   /** What changed is showing, and carries its own way back. */
   comparing: boolean;
   disabled: boolean;
@@ -91,7 +91,7 @@ export function RuleArea(props: RuleAreaProps) {
       </div>
       {shown === DEFAULT_RULE && statement ? (
         <p className={styles.statement} data-region="list-statement">
-          {copy.defaultListStatement()}{" "}
+          {statement}{" "}
           <button type="button" className={styles.arrowLink} onClick={onSeeWithout}>
             {LAYOUT.seeWithout}
             <ChevronRight size={11} aria-hidden />
