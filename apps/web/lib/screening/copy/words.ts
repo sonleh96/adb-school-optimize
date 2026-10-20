@@ -49,6 +49,8 @@ export const LAYOUT = Object.freeze({
   adds: "What each input adds",
   needParts: "Parts of school need",
   byProvince: "Province",
+  /** The heading of the group of incomplete records whose province is blank. */
+  provinceNotRecorded: "Province not recorded",
   savedViews: "Saved views for meetings",
   notComputedGroup: (name: string, n: number) => `Not computed under ${name} (${n})`,
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
@@ -91,6 +93,9 @@ export const LAYOUT = Object.freeze({
   emptyFiltered: "No school that can be put in order matches these filters.",
   emptyIncompleteFiltered: "No school with an incomplete record matches these filters.",
   groupMany: (n: number) => `${n} kinds of detail missing`,
+  // Loading the schools, and loading the map under them.
+  loading: "Loading the schools",
+  mapLoading: "Loading the map",
   tooltipMissing: (labels: string) => `Missing: ${labels}`,
   tipNotComputed: (shortName: string) => `Not computed for this school under ${shortName}`,
   downloadKindAria: "What to download",

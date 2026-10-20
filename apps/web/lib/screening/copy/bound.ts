@@ -28,6 +28,7 @@ import {
 import { buildIdeas } from "./ideas";
 import type { LaterCopy } from "./later";
 import {
+  missingGroupLabel,
   missingLabels,
   missingSentence,
   missingSentences,
@@ -54,6 +55,9 @@ import {
   persistenceNote,
   placeContext,
   placeHeadline,
+  provinceHeading,
+  rowPlace,
+  scopesMix,
   rangeComparisonSegments,
   rangeComparisonSentence,
   rankSegments,
@@ -156,6 +160,14 @@ export function copyFor(data: CopyData = {}) {
       rankSentence(school, ruleId, withCounts(opts)),
     placeHeadline: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
       placeHeadline(school, ruleId, withCounts(opts)),
+    scopesMix: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = DEFAULT_RULE) =>
+      scopesMix(list, ruleId),
+    rowPlace: (
+      school: PlacedSchool,
+      ruleId: CopyRuleId,
+      list: readonly PlacedSchool[] = schools,
+      opts?: WithoutCounts
+    ) => rowPlace(school, ruleId, list, withCounts(opts)),
     placeContext: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
       placeContext(school, ruleId, withCounts(opts)),
     fullRankingSentence: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
@@ -219,6 +231,8 @@ export function copyFor(data: CopyData = {}) {
     missingSentence,
     missingSentences,
     missingLabels,
+    missingGroupLabel,
+    provinceHeading,
     missingValueKind,
     missingValueNote,
     displayName,

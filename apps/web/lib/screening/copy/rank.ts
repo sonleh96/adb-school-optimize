@@ -26,6 +26,7 @@ import type {
 import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
 import { rule } from "./rules";
 import { STRINGS, persistentNearLine } from "./strings";
+import { LAYOUT } from "./words";
 
 /* ------------------------------------------------------ fixture helpers */
 
@@ -183,6 +184,32 @@ export function placeHeadline(
       : `${ordinal(res.rank_best)} of all in order`;
   }
   return hasPlace(res) ? ordinal(res.rank_complete120) : STRINGS.noResult;
+}
+
+// True when a list shows single places and ranges together. A bare place counts the schools with every input
+// recorded and a range counts all the schools that can be put in order, so the two numbers mean different things.
+export function scopesMix(list: readonly PlacedSchool[], ruleId: CopyRuleId): boolean {
+  rule(ruleId);
+  return (
+    list.some((s) => s.cohort === "complete" && hasPlace(resultFor(s, ruleId))) &&
+    list.some((s) => s.cohort === "interval" && hasBounds(resultFor(s, ruleId)))
+  );
+}
+
+// A list row's figure: the card's figure, with the group a range counts added when the list also shows single
+// places ("5th to 6th of 87"). A range never sits beside a bare place that counts a different group.
+export function rowPlace(
+  school: PlacedSchool,
+  ruleId: CopyRuleId,
+  list: readonly PlacedSchool[],
+  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
+): string {
+  const head = placeHeadline(school, ruleId, opts);
+  const res = resultFor(school, ruleId);
+  if (school.cohort !== "interval" || !hasBounds(res) || res.rank_best === res.rank_worst) return head;
+  if (!scopesMix(list, ruleId)) return head;
+  const c = countsOf(opts, ruleId);
+  return `${head} of ${known(c, "ranked") && c.ranked > 0 ? formatCount(c.ranked) : "all in order"}`;
 }
 
 // What the large figure counts among. Plain views give one place only; opts.method adds
@@ -357,6 +384,10 @@ export function locationLine(school: NamedSchool): string {
   if (d) return `${d}, province not recorded`;
   return "Location not recorded";
 }
+
+// The heading of a province group in the list of incomplete records. A blank province is its own group.
+export const provinceHeading = (province: string | null | undefined): string =>
+  cleanedOrNull(province ?? null) ?? LAYOUT.provinceNotRecorded;
 
 // A display name that tells apart two schools whose names differ only in spacing.
 // schools: the full schools array. Joins and exports keep the original string and the id.
