@@ -342,13 +342,15 @@ def datasets() -> tuple[Dataset, ...]:
             name="main",
             directory="",
             records=main_records(),
-            # Sample School 01 and 02 are persistent (02 exactly at the threshold), 03 is one setting short,
-            # 04 is far below, and 17 shows that a range school can be in the experiment too.
+            # Sample School 01, 02 and 06 are persistent: 01 well above the line, 02 exactly on it and 06 0.0014 above
+            # it, both within one standard error. 03 is one setting short, 04 is far below, and 17 shows that a
+            # range school can be in the experiment too.
             persistence={
                 "Sample School 01": (0.99, 0.97, 1.0),
                 "Sample School 02": (0.8, 0.8, 0.8),
                 "Sample School 03": (0.9, 0.7999, 0.95),
                 "Sample School 04": (0.2, 0.3, 0.4),
+                "Sample School 06": (0.8014, 0.9, 0.95),
                 "Sample School 17": (0.1, 0.1, 0.2),
             },
             without_coordinates=WITHOUT_COORDINATES,
