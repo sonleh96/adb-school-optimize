@@ -825,6 +825,18 @@ def test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leave
     assert body["common_cohort_count"] == len(ranked)
 
 
+TOP_CSV = "/api/v1/screening/exports/top.csv"
+
+
+def without_generation_time(path: str, body: bytes) -> bytes:
+    """The top list's method record states the time of each request, so that one line may differ between two reads."""
+    if path != TOP_CSV:
+        return body
+    generated_at = re.compile(rb'^"# generated_at: [^"\r\n]*"\r?\n', re.MULTILINE)
+    assert len(generated_at.findall(body)) == 1, "the top list must state its generation time exactly once"
+    return generated_at.sub(b"", body)
+
+
 def test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_unchanged(
     api, connection, loaded
 ):  # API30
@@ -834,9 +846,9 @@ def test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_
         ("/api/v1/screening/results", {"rule": "need_first_no_u"}),
         (f"/api/v1/screening/schools/{school}", {}),
         ("/api/v1/screening/compare", {"a": "additive_u", "b": "bottleneck_u"}),
-        ("/api/v1/screening/exports/top.csv", {"rule": "bottleneck_u"}),
+        (TOP_CSV, {"rule": "bottleneck_u"}),
     ]
-    before = [api.get(path, params=params).content for path, params in urls]
+    before = [without_generation_time(path, api.get(path, params=params).content) for path, params in urls]
 
     connection.execute(
         "update screening_runs set manifest = jsonb_set(jsonb_set(jsonb_set(manifest || '{\"future_field\": 1}', "
@@ -854,4 +866,7 @@ def test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_
     after = [api.get(path, params=params) for path, params in urls]
     assert [r.status_code for r in after] == [200] * len(urls)
     # The new fields are ignored, not passed on and not fatal: the served bytes are the same.
-    assert [r.content for r in after] == before
+    # The one exception is the top list's generation time, which the helper asserts is present in both copies.
+    assert [
+        without_generation_time(path, r.content) for (path, _), r in zip(urls, after, strict=True)
+    ] == before
