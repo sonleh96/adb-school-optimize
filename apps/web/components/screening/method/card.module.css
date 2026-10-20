@@ -1,0 +1,306 @@
+/* The school card's method layer: facts, the reason, what each input adds, every rule's place and the record. */
+
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 0 20px 14px;
+}
+.facts dt {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.facts dd {
+  margin: 2px 0 0;
+  font: 500 16px/20px var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.facts .small {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.callout {
+  margin: 0 16px 16px;
+  padding: 12px 14px 14px;
+  border-radius: 8px;
+  background: var(--navy-wash);
+  box-shadow: inset 3px 0 0 var(--navy);
+}
+.callout[data-tone="grey"] {
+  background: rgba(21, 24, 29, 0.04);
+  box-shadow: inset 3px 0 0 var(--ink-2);
+}
+.callout > span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--navy);
+}
+.callout p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 20px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+.sec {
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--hair-2);
+}
+.secHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.secHead > span:last-child {
+  text-align: right;
+}
+
+.table {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 64px 50px 58px;
+  column-gap: 8px;
+  row-gap: 6px;
+  align-items: center;
+}
+.group,
+.tr {
+  display: contents;
+}
+.th {
+  font-size: 11.5px;
+  line-height: 14px;
+  color: var(--ink-3);
+}
+.num {
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.strong {
+  font-weight: 500;
+}
+.label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 17px;
+  overflow-wrap: anywhere;
+}
+.part .label {
+  padding-left: 12px;
+  color: var(--ink-2);
+}
+.times {
+  font-size: 11.5px;
+  line-height: 14px;
+  color: var(--ink-3);
+}
+.expander {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+}
+.expander svg {
+  transition: transform 160ms var(--ease-out);
+}
+.expander[aria-expanded="true"] svg {
+  transform: rotate(90deg);
+}
+.dotCell {
+  display: flex;
+  justify-content: center;
+}
+.dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--navy);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.bar {
+  display: block;
+}
+.barMissing {
+  fill: rgba(74, 79, 87, 0.12);
+  stroke: #4a4f57;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.missing {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-3);
+  white-space: normal;
+}
+.full {
+  grid-column: 2 / -1;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.total > * {
+  padding-top: 8px;
+  border-top: 1px solid var(--hair);
+}
+.total > :first-child {
+  border-top: 0;
+}
+.note {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+.across {
+  margin: 0;
+}
+.acrossRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--ink-2);
+}
+.acrossRow + .acrossRow {
+  border-top: 1px solid var(--hair-2);
+}
+.acrossRow dt {
+  min-width: 0;
+}
+.acrossRow dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.acrossRow[data-on] {
+  color: var(--navy);
+  font-weight: 500;
+}
+.exact {
+  margin-right: 6px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.na {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.mono {
+  font-family: var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.flag {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(21, 24, 29, 0.04);
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+}
+.cond {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 17px;
+}
+.cond > div {
+  display: contents;
+}
+.cond dt {
+  color: var(--ink-2);
+}
+.cond dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* compare mode: the two places side by side, and the move */
+.blocks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid var(--hair-2);
+}
+.block {
+  padding: 14px 20px 14px;
+  min-width: 0;
+}
+.block + .block {
+  border-left: 1px solid var(--hair-2);
+}
+.blockFigure {
+  margin-top: 6px;
+  font: 400 34px/36px var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--navy-2);
+}
+.blockFigure[data-kind="point"] {
+  color: var(--ink);
+}
+.blockFigure[data-kind="none"] {
+  font-size: 22px;
+}
+.blockSub {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.moveLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 0 20px 14px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.swatch {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expander svg {
+    transition: none;
+  }
+}

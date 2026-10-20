@@ -9,7 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { compareFor, moveStep, topStatus } from "@/lib/screening/method/compare";
+import { MOVE_EDGES as COPY_EDGES } from "@/lib/screening/copy/method";
+import { MOVE_EDGES, compareFor, moveStep, topStatus } from "@/lib/screening/method/compare";
 import { parseWith } from "@/lib/screening/schema";
 import { type CompareResponse, type RuleId, compareResponse } from "@/lib/screening/types";
 
@@ -78,6 +79,10 @@ describe("moveStep and topStatus", () => {
     [-30, -3],
   ])("puts a move of %i places in bin %i (4)", (d, bin) => {
     expect(moveStep(d, [4, 14])).toBe(bin);
+  });
+
+  it("sorts moves by the same edges the copy words the key's bins with (4)", () => {
+    expect(MOVE_EDGES).toEqual(COPY_EDGES);
   });
 
   it("says whether a school joins, leaves or stays in the top k", () => {
