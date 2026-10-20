@@ -12,13 +12,13 @@ export const ROOT = process.env.RISE_PNG_DESIGN_ROOT;
 export const ready = !!ROOT && existsSync(path.join(ROOT, "prototype/shared/copy.js"));
 
 export type Api = Record<string, any>;
-export type Outcome = { ok: true; value: unknown } | { ok: false };
+export type Outcome = { ok: true; value: unknown } | { ok: false; message: string };
 
 export const run = (fn: () => unknown): Outcome => {
   try {
     return { ok: true, value: fn() };
-  } catch {
-    return { ok: false };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
 };
 
@@ -148,7 +148,14 @@ export function sameOutcome(label: string, a: Outcome, b: Outcome): void {
       `${label}: the prototype ${a.ok ? "returned" : "threw"}, the port ${b.ok ? "returned" : "threw"}`
     );
   if (a.ok && b.ok) same(label, a.value, b.value);
-  else tally.bothThrew += 1;
+  else if (!a.ok && !b.ok) {
+    tally.bothThrew += 1;
+    // Two different throws are two different behaviours, so the messages must agree too.
+    if (a.message !== b.message)
+      note(
+        `${label}: both threw, with different messages\n   prototype: ${show(a.message)}\n   port:      ${show(b.message)}`
+      );
+  }
 }
 
 /**

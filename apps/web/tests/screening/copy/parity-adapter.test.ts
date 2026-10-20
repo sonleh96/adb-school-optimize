@@ -73,6 +73,13 @@ const COHORT: Record<string, string> = {
 let proto: Api;
 let datasets: Dataset[] = [];
 const skipped = { noResult: 0, inconsistentGate: 0, noAreaParts: 0, noPairRow: 0 };
+/** What each left-out case was, so a test can say why it is left out rather than only how many. */
+const leftOut = {
+  noResult: [] as { cohort: string; rule: string }[],
+  inconsistentGate: [] as { cohort: string; blank: string[]; gate: string[] }[],
+  noAreaParts: [] as { cohort: string }[],
+  noPairRow: [] as { n: unknown; median: unknown; maximum: unknown }[],
+};
 
 beforeAll(() => {
   if (!ready) return;
@@ -224,10 +231,15 @@ const INPUT_NAMES: Record<string, string> = {
 
 /** One /schools/by-key response, or null when the API could not send this record. */
 function wireDetail(s: any, rules: readonly string[]) {
-  if (!s.area_parts) return skip("noAreaParts");
+  if (!s.area_parts) {
+    leftOut.noAreaParts.push({ cohort: s.cohort });
+    return skip("noAreaParts");
+  }
   const nulls = NEED_FIELDS.filter((f) => s.need_parts[f] == null);
-  if (JSON.stringify(nulls) !== JSON.stringify(s.cohort === "queue" ? s.gate_failures : []))
+  if (JSON.stringify(nulls) !== JSON.stringify(s.cohort === "queue" ? s.gate_failures : [])) {
+    leftOut.inconsistentGate.push({ cohort: s.cohort, blank: nulls, gate: s.gate_failures });
     return skip("inconsistentGate");
+  }
   const inputs: Record<string, unknown> = {
     aqi_p95_selected: s.raw.Q_raw ?? null,
     emissions_co2e_100yr_10km_tonnes: s.raw.E_raw ?? null,
@@ -238,6 +250,7 @@ function wireDetail(s: any, rules: readonly string[]) {
     const res = s.results ? s.results[rule] : null;
     if (s.cohort !== "queue" && !res) {
       skipped.noResult += 1;
+      leftOut.noResult.push({ cohort: s.cohort, rule });
       return [];
     }
     return [
@@ -273,6 +286,11 @@ function wireCompares(data: Dataset["data"]) {
       row.maximum_absolute_rank_shift == null
     ) {
       skipped.noPairRow += 1;
+      leftOut.noPairRow.push({
+        n: row.n,
+        median: row.median_absolute_rank_shift,
+        maximum: row.maximum_absolute_rank_shift,
+      });
       return [];
     }
     const move = (c: any) => ({
@@ -473,5 +491,25 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
 
   it("sends something through every route", () => {
     expect(tally.calls).toBeGreaterThan(0);
+  });
+
+  it("leaves out only what the API cannot say, and says why for each", () => {
+    // The API sends no entry for a rule that does not run on a school, and the design records that as a null result.
+    // Only a school with a range (it lacks a reading the rule reads) can be in that position.
+    expect(skipped.noResult).toBe(leftOut.noResult.length);
+    expect(leftOut.noResult.filter((x) => x.cohort !== "interval")).toEqual([]);
+    // A record whose gate list names more need parts than it has blank ones contradicts itself.
+    expect(skipped.inconsistentGate).toBe(leftOut.inconsistentGate.length);
+    for (const x of leftOut.inconsistentGate) {
+      expect(x.cohort).toBe("queue");
+      expect(x.blank.length).toBeLessThan(x.gate.length);
+      expect(x.blank.every((f) => x.gate.includes(f))).toBe(true);
+    }
+    // A record with no district parts cannot be sent, and the design always has them.
+    expect(leftOut.noAreaParts).toEqual([]);
+    // A recorded pair without a school count or a shift has nothing to compare.
+    expect(skipped.noPairRow).toBe(leftOut.noPairRow.length);
+    for (const x of leftOut.noPairRow)
+      expect(!Number.isInteger(x.n) || x.median == null || x.maximum == null).toBe(true);
   });
 });
