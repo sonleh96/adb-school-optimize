@@ -228,7 +228,9 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
     district: detail.school.district,
     locality: detail.school.locality,
     cohort,
-    missing_env: { aqi: raw.Q_raw === null, emissions: raw.E_raw === null, land: raw.L_raw === null },
+    // The engine also nulls a reading that is recorded but out of range, so a missing reading is read off the
+    // components, as the list route reads it, and not off the raw value.
+    missing_env: { aqi: Q === null, emissions: E === null, land: L === null },
     condition: conditionFrom(detail.inputs),
     need_parts: needParts,
     area_parts: areaPartsFrom(shown.area_parts),
