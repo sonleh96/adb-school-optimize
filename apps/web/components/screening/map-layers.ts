@@ -44,6 +44,13 @@ export function radiusOf(school: MapSchool): number {
 
 const position = (school: MapSchool): [number, number] => [school.lon, school.lat];
 
+/**
+ * The map draws its own layers into a depth buffer, and deck.gl's layers sit among them. Without these settings a
+ * dot on the coast loses the half that hangs over the sea, because the water polygons were drawn nearer. Every layer
+ * has the same settings, so they still share one GPU pipeline.
+ */
+const ON_TOP = { parameters: { depthWriteEnabled: false, depthCompare: "always" as const } };
+
 /*
  * Every layer here gives its radius and its fill colour as a function, even where all marks share one value.
  * deck.gl feeds a constant to the GPU differently from a per-mark value, and each way is a separate GPU pipeline,
@@ -72,6 +79,7 @@ export function buildMarkLayers(
 
   return [
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "incomplete",
       data: incomplete,
       pickable,
@@ -87,6 +95,7 @@ export function buildMarkLayers(
       getLineColor: INCOMPLETE_INK,
     }),
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "range",
       data: ranges,
       pickable,
@@ -102,6 +111,7 @@ export function buildMarkLayers(
       getLineColor: RING_INK,
     }),
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "range-centre",
       data: ranges,
       opacity: placedOpacity,
@@ -111,6 +121,7 @@ export function buildMarkLayers(
       getFillColor: () => RING_INK,
     }),
     new ScatterplotLayer<Dot>({
+      ...ON_TOP,
       id: "dots",
       data: dots,
       pickable,
@@ -133,6 +144,7 @@ export function buildRingLayers(selected: MapSchool | null, hovered: MapSchool |
   const layers: Layer[] = [];
   const ring = (id: string, school: MapSchool | null, width: number, alpha: number, gap: number) =>
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id,
       data: school ? [school] : [],
       getPosition: position,
