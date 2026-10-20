@@ -7,6 +7,7 @@ and the coordinates of the matching row of ``schools`` when the ingestion linked
 
 from __future__ import annotations
 
+import hashlib
 import re
 import uuid
 from dataclasses import dataclass
@@ -24,8 +25,18 @@ class VersionEntry:
     rules_available: tuple[str, ...]
 
 
+def school_key(input_version: str, source_school_name: str) -> str:
+    """A key every school has, linked to ``schools`` or not: it is derived from the input version and the exact name.
+
+    It is stable across runs and record order, differs between input versions, and is safe in a URL.
+    """
+    digest = hashlib.sha256(f"{input_version}\x00{source_school_name}".encode()).hexdigest()
+    return digest[:32]
+
+
 @dataclass(frozen=True)
 class SchoolIdentity:
+    school_key: str
     school_id: uuid.UUID | None
     source_school_name: str
     province: str | None
@@ -98,10 +109,15 @@ def read_identities(connection: psycopg.Connection, input_version: str) -> dict[
         cursor.execute(
             "select i.source_school_name, i.school_id, i.province, i.district, i.locality, s.latitude, s.longitude "
             "from screening_inputs i left join schools s on s.school_id = i.school_id "
-            "where i.input_version = %s",
+            "where i.input_version = %s order by i.record_position",
             (input_version,),
         )
-        return {row["source_school_name"]: SchoolIdentity(**row) for row in cursor.fetchall()}
+        return {
+            row["source_school_name"]: SchoolIdentity(
+                school_key(input_version, row["source_school_name"]), **row
+            )
+            for row in cursor.fetchall()
+        }
 
 
 def read_school_rows(connection: psycopg.Connection, run: store.StoredRun) -> tuple[SchoolRow, ...]:

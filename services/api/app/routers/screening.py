@@ -35,6 +35,7 @@ from ..models.screening import (
     InputVersionsResponse,
     IntervalBoundsOut,
     IntervalSchoolOut,
+    LinkedSchoolsResponse,
     ListedRowOut,
     ManifestOut,
     MaximumTermOut,
@@ -48,6 +49,7 @@ from ..models.screening import (
     RulesResponse,
     RuleSummaryOut,
     RunOut,
+    SchoolDetailOut,
     SchoolDetailResponse,
     SchoolIdentityOut,
     SchoolResultOut,
@@ -322,62 +324,101 @@ def get_results(
 # ---------------------------------------------------------------------------------------------
 
 
-@router.get("/schools/{school_id}", response_model=SchoolDetailResponse)
-def get_school(
+def _school_details(
+    connection, input_version: str, identities: list[SchoolIdentity], package_version: str | None
+) -> list[SchoolDetailOut]:
+    """Each school under every rule that has a run, with its stored raw inputs."""
+    wanted = {i.source_school_name for i in identities}
+    records = {
+        r.school_name: r for r in store.read_inputs(connection, input_version) if r.school_name in wanted
+    }
+    runs = current_runs(connection, input_version, package_version)
+    results = {
+        rule_id: {
+            r.source_school_name: r
+            for r in store.read_results(connection, run.run_id)
+            if r.source_school_name in wanted
+        }
+        for rule_id, run in runs.items()
+    }
+    details = []
+    for identity in identities:
+        name = identity.source_school_name
+        per_rule = [
+            SchoolRuleResultOut(
+                rule=RuleSummaryOut(
+                    rule_id=rule.rule_id,
+                    label=rule.label,
+                    provenance=rule.provenance,
+                    policy_role=rule.policy_role,
+                    score_kind=rule.score_kind.value,
+                    uses_urgency=rule.uses_urgency,
+                ),
+                run=_run_out(runs[rule.rule_id]),
+                point_rank_scope=results[rule.rule_id][name].rank_point_scope,
+                rank_bounds_scope=results[rule.rule_id][name].rank_bounds_scope,
+                result=_result_out(results[rule.rule_id][name]),
+            )
+            for rule in RULES.values()
+            if rule.rule_id in runs
+        ]
+        details.append(
+            SchoolDetailOut(
+                school=_identity_out(identity),
+                inputs={f.name: getattr(records[name], f.name) for f in fields(records[name])},
+                rules=per_rule,
+            )
+        )
+    return details
+
+
+def _school_not_found(input_version: str, **details: str) -> ApiError:
+    return ApiError(
+        "This school is not in the input version.",
+        status_code=404,
+        code="school_not_found",
+        details={**details, "input_version": input_version},
+    )
+
+
+@router.get("/schools/by-key/{school_key}", response_model=SchoolDetailResponse)
+def get_school_by_key(
+    request: Request,
+    school_key: str,
+    input_version: str | None = None,
+    package_version: str | None = None,
+):
+    """A school by the key that every row carries. It works for schools that are not linked to ``schools``."""
+    with get_db() as connection:
+        version = _version(connection, input_version)
+        name = version.version.input_version
+        found = [i for i in read_identities(connection, name).values() if i.school_key == school_key]
+        if not found:
+            raise _school_not_found(name, school_key=school_key)
+        (detail,) = _school_details(connection, name, found, package_version)
+    body = SchoolDetailResponse(input_version=name, input_sha256=version.version.input_sha256, **dict(detail))
+    return _json(
+        request, body, input_version=input_version, package_version=package_version, version=version.version
+    )
+
+
+@router.get("/schools/{school_id}", response_model=LinkedSchoolsResponse)
+def get_schools_by_link(
     request: Request,
     school_id: uuid.UUID,
     input_version: str | None = None,
     package_version: str | None = None,
 ):
+    """Every school of the input version linked to this ``schools`` row, because a link is not guaranteed unique."""
     with get_db() as connection:
         version = _version(connection, input_version)
         name = version.version.input_version
-        identity = next(
-            (i for i in read_identities(connection, name).values() if i.school_id == school_id), None
-        )
-        if identity is None:
-            raise ApiError(
-                "This school is not in the input version.",
-                status_code=404,
-                code="school_not_found",
-                details={"school_id": str(school_id), "input_version": name},
-            )
-        (record,) = [
-            r for r in store.read_inputs(connection, name) if r.school_name == identity.source_school_name
-        ]
-        runs = current_runs(connection, name, package_version)
-        per_rule = []
-        for rule in RULES.values():
-            run = runs.get(rule.rule_id)
-            if run is None:
-                continue
-            (result,) = [
-                r
-                for r in store.read_results(connection, run.run_id)
-                if r.source_school_name == identity.source_school_name
-            ]
-            per_rule.append(
-                SchoolRuleResultOut(
-                    rule=RuleSummaryOut(
-                        rule_id=rule.rule_id,
-                        label=rule.label,
-                        provenance=rule.provenance,
-                        policy_role=rule.policy_role,
-                        score_kind=rule.score_kind.value,
-                        uses_urgency=rule.uses_urgency,
-                    ),
-                    run=_run_out(run),
-                    point_rank_scope=result.rank_point_scope,
-                    rank_bounds_scope=result.rank_bounds_scope,
-                    result=_result_out(result),
-                )
-            )
-    body = SchoolDetailResponse(
-        input_version=name,
-        input_sha256=version.version.input_sha256,
-        school=_identity_out(identity),
-        inputs={f.name: getattr(record, f.name) for f in fields(record)},
-        rules=per_rule,
+        found = [i for i in read_identities(connection, name).values() if i.school_id == school_id]
+        if not found:
+            raise _school_not_found(name, school_id=str(school_id))
+        details = _school_details(connection, name, found, package_version)
+    body = LinkedSchoolsResponse(
+        school_id=school_id, input_version=name, input_sha256=version.version.input_sha256, schools=details
     )
     return _json(
         request, body, input_version=input_version, package_version=package_version, version=version.version

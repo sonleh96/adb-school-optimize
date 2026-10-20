@@ -9,6 +9,7 @@ from dataclasses import replace
 import jwt
 import pytest
 from app.main import app
+from app.screening_queries import school_key
 from app.settings import get_settings
 from screening_api_helpers import load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
@@ -19,6 +20,7 @@ SCREENING_PATHS = {
     "/api/v1/screening/input-versions",
     "/api/v1/screening/results",
     "/api/v1/screening/schools/{school_id}",
+    "/api/v1/screening/schools/by-key/{school_key}",
     "/api/v1/screening/compare",
     "/api/v1/screening/exports/top.csv",
     "/api/v1/screening/exports/top.xlsx",
@@ -48,7 +50,7 @@ def test_every_screening_route_rejects_an_unauthenticated_request(api, monkeypat
     assert paths == SCREENING_PATHS
 
     for path in sorted(paths):
-        url = path.replace("{school_id}", str(uuid.uuid4()))
+        url = path.replace("{school_id}", str(uuid.uuid4())).replace("{school_key}", "0" * 32)
         missing = api.get(url, params={"a": "additive_u", "b": "benchmark"})
         invalid = api.get(
             url, headers={"Authorization": "Bearer invalid"}, params={"a": "additive_u", "b": "benchmark"}
@@ -82,11 +84,13 @@ def test_every_screening_route_rejects_an_unauthenticated_request(api, monkeypat
 
 def json_urls(loaded) -> list[str]:
     school = loaded.school_ids[AWK[7]]
+    key = school_key(loaded.input_version, AWK[7])
     return [
         "/api/v1/screening/rules",
         "/api/v1/screening/input-versions",
         "/api/v1/screening/results?rule=additive_u",
         f"/api/v1/screening/schools/{school}",
+        f"/api/v1/screening/schools/by-key/{key}",
         "/api/v1/screening/compare?a=additive_u&b=additive_no_u",
     ]
 

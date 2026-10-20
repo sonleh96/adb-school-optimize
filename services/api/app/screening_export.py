@@ -186,7 +186,7 @@ def _identity_columns() -> tuple[str, ...]:
     return (
         "row_kind", "rule_id", "rule_label", "provenance", "policy_role", "score_kind",
         "input_version", "input_sha256", "anchors_sha256", "package_version",
-        "school_id", "source_school_name", "province", "district", "locality", "latitude", "longitude",
+        "school_key", "school_id", "source_school_name", "province", "district", "locality", "latitude", "longitude",
         "cohort", "gate_failures", "missing_environmental",
     )  # fmt: skip
 
@@ -197,7 +197,7 @@ def _identity_values(kind: str, row: SchoolRow, manifest: ManifestOut, input_ver
     return [
         kind, manifest.rule_id, manifest.rule_label, manifest.provenance.value, manifest.policy_role.value,
         manifest.score_kind, input_version, manifest.input_sha256, manifest.anchors_sha256, manifest.package_version,
-        None if i.school_id is None else str(i.school_id), i.source_school_name, i.province, i.district, i.locality,
+        i.school_key, None if i.school_id is None else str(i.school_id), i.source_school_name, i.province, i.district, i.locality,
         i.latitude, i.longitude, r.cohort.value, ";".join(f.value for f in r.gate_failures),
         ";".join(c for c in ("Q", "E", "L") if components[c] is None),
     ]  # fmt: skip

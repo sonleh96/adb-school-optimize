@@ -70,13 +70,15 @@ Unknown rule, input version or school gives 404 in the API's `{"error": {code, m
 | `GET /rules` | The seven rules: id, label, provenance, policy role, score kind, formula, weights as fractions and floats, whether urgency enters, and the input versions that have a run. |
 | `GET /input-versions` | Stored versions, newest first, with the default marked. |
 | `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
-| `GET /schools/{school_id}?input_version=` | One school under all seven rules, with its stored raw inputs. |
+| `GET /schools/by-key/{school_key}?input_version=` | One school under all seven rules, with its stored raw inputs. Every school has a `school_key`, linked to `schools` or not. |
+| `GET /schools/{school_id}?input_version=` | Every school of the version linked to that `schools` row (normally one), each as above. |
 | `GET /compare?a=&b=&input_version=` | Common-cohort ranks under both rules, the pairwise metrics, top-20 entrants and exits, and the bounds of interval schools. |
 | `GET /exports/top.csv`, `top.xlsx` | The shortlist: `rule`, `k`, `include_ranges`, `province`, `district`, `input_version`. |
 | `GET /exports/incomplete.csv` | The verification queue of a rule, with gate failures and missing inputs per school. |
 
 Reading the list:
 
+- `school_key` is derived from the input version and the exact source name. It is the same on every request for a version and differs between versions.
 - Complete schools come by point rank. Interval schools (a missing environmental input) sit at their lower-score position, or at their upper-score position with `placement=upper`, and each row says which. Queued schools come last, by province, district and name.
 - A rank is always paired with the scope label and count of its cohort. A point rank counts complete schools; a rank bound counts eligible schools. They are different scopes.
 - Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, and the response says so.
