@@ -122,6 +122,14 @@ async function readJson(request) {
 async function route(request, response) {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${port}`);
   if (url.pathname === "/healthz") return json(response, { status: "ok" });
+  if (url.pathname === "/api/v1/test/basemap-style.json") {
+    // A tile-less basemap, so the browser tests never depend on CARTO.
+    return json(response, {
+      version: 8,
+      sources: {},
+      layers: [{ id: "background", type: "background", paint: { "background-color": "#ece9e2" } }],
+    });
+  }
   if (url.pathname.startsWith("/api/v1/screening/")) {
     const entry = screeningFixture(url);
     if (!entry) {
