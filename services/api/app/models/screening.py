@@ -159,13 +159,18 @@ class SchoolIdentityOut(Out):
 
 
 class ComponentsOut(Out):
+    """The components of a rule that does not read urgency. There is no ``U`` key at all."""
+
     N: float | None
     A: float | None
-    U: float | None
     R: float | None
     Q: float | None
     E: float | None
     L: float | None
+
+
+class ComponentsWithUrgencyOut(ComponentsOut):
+    U: float | None
 
 
 class NeedPartsOut(Out):
@@ -224,7 +229,7 @@ class SchoolResultOut(Out):
 
     cohort: Cohort
     gate_failures: list[GateFailure]
-    components: ComponentsOut
+    components: ComponentsWithUrgencyOut | ComponentsOut
     need_parts: NeedPartsOut
     area_parts: AreaPartsOut
     contributions: list[ContributionOut]
