@@ -37,7 +37,8 @@ export function ScreeningWorkspace() {
   const data = results.data;
   const view = listView(
     { hasData: Boolean(rules.data), isPlaceholderData: false, error: rules.error },
-    { hasData: Boolean(data), isPlaceholderData: results.isPlaceholderData, error: results.error }
+    { hasData: Boolean(data), isPlaceholderData: results.isPlaceholderData, error: results.error },
+    chosenRule === null
   );
   // While a new rule loads, the previous rule's rows stay on screen. Everything that shows them says so together.
   const stale = view.kind === "ready" && view.stale;
