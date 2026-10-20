@@ -51,10 +51,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     store.attachUrl(window.location, window.history);
     setUrlRead(true);
-    if (!TEST_HOOKS) return;
-    window.__screeningWorkspace = store;
+    // Back and Forward bring back an earlier URL; the screen follows it.
+    window.addEventListener("popstate", store.readUrl);
+    if (TEST_HOOKS) window.__screeningWorkspace = store;
     return () => {
-      delete window.__screeningWorkspace;
+      window.removeEventListener("popstate", store.readUrl);
+      if (TEST_HOOKS) delete window.__screeningWorkspace;
     };
   }, [store]);
 
