@@ -13,7 +13,8 @@ import {
   schoolFromDetail,
 } from "@/lib/screening/copy";
 import { useScreeningSchool } from "@/lib/screening/hooks";
-import type { SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
+import type { SchoolKey } from "@/lib/screening/types";
+import { scoreRangeOf } from "@/lib/screening/workspace/score";
 import { whyBlocks } from "@/lib/screening/workspace/why";
 
 import { PlaceText } from "./PlaceText";
@@ -219,7 +220,7 @@ export function SchoolCard(props: CardProps) {
         ) : (
           <>
             <WhyItSitsHere copy={copy} rule={rule} school={record} />
-            <InNumbers copy={copy} rule={rule} school={record} detail={detail.data} />
+            <InNumbers copy={copy} rule={rule} school={record} />
           </>
         )}
       </div>
@@ -312,17 +313,7 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
   );
 }
 
-function InNumbers({
-  copy,
-  rule,
-  school,
-  detail,
-}: {
-  copy: BoundCopy;
-  rule: CopyRuleId;
-  school: CopySchool;
-  detail: SchoolDetailResponse | undefined;
-}) {
+function InNumbers({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; school: CopySchool }) {
   const { LAYOUT, STRINGS, TERMS } = copy;
   const contrib = copy.contributions(school, rule);
   if (!contrib) return null;
@@ -330,8 +321,8 @@ function InNumbers({
   const known = Object.values(contrib).filter((v): v is number => typeof v === "number");
   const needSum = NEED_KEYS.reduce((total, key) => total + (contrib[key] ?? 0), 0);
   const scale = Math.max(...known, needFirst ? 1 : 0.06);
-  const result = detail?.rules.find((entry) => entry.rule.rule_id === rule)?.result;
-  const range = scoreRange(result);
+  const own = school.results?.[rule];
+  const range = scoreRangeOf(own);
 
   const row = (key: InputKey, part: boolean) => {
     const label = TERMS[TERM_OF[key]].label;
@@ -366,8 +357,15 @@ function InNumbers({
     );
   };
 
-  const total = needFirst ? school.components.N : (result?.scores.point ?? null);
-  const totalText = total !== null ? f3(total) : range ? LAYOUT.valueRange(f3(range[0]), f3(range[1])) : null;
+  const total = needFirst ? school.components.N : (own?.score_point ?? null);
+  const totalText =
+    total !== null
+      ? f3(total)
+      : range
+        ? range[0] === range[1]
+          ? f3(range[0])
+          : LAYOUT.valueRange(f3(range[0]), f3(range[1]))
+        : null;
 
   return (
     <section className={styles.numbers} data-region="inspector-breakdown" aria-label={LAYOUT.numbers}>
@@ -395,23 +393,6 @@ function InNumbers({
       {needFirst ? null : <p className={styles.numNoteText}>{STRINGS.separateMeasures}</p>}
     </section>
   );
-}
-
-/**
- * A range school's lowest and highest screening score. The API states the lowest; the highest is the sum of the
- * highest each input can add, which holds only where the score is that sum. So the range is used only when the
- * lowest ends of the contributions add up to the stated lowest score (the largest-factor rules add a share that is
- * not among the contributions, and get no range).
- */
-function scoreRange(
-  result:
-    | { scores: { lower: number | null }; contributions: readonly { lower: number; upper: number }[] }
-    | undefined
-): [number, number] | null {
-  if (!result || result.scores.lower === null || result.contributions.length === 0) return null;
-  const lower = result.contributions.reduce((sum, c) => sum + c.lower, 0);
-  if (Math.abs(lower - result.scores.lower) > 1e-9) return null;
-  return [result.scores.lower, result.contributions.reduce((sum, c) => sum + c.upper, 0)];
 }
 
 /** The card of a school with an incomplete record: what is missing first, then what the record says, part by part. */
