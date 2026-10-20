@@ -13,6 +13,8 @@ import {
   groupsSentence,
   known,
   rangeSubject,
+  theirScore,
+  theyWould,
   urgencyDefinition,
 } from "./counts";
 import type { CountBag } from "./model";
@@ -41,8 +43,8 @@ export function buildStrings(c: CountBag = {}) {
     scopeShort,
     scopeDetail: `${GROUPS_MEANING} Single places count among ${completePhrase(c)}, and ranges among ${amongAllOrdered(c)}.`,
     filterNote: `Filtered view. Places in the list still count among ${amongAllOrdered(c)}, because filtering never changes the scale.`,
-    listOrder: `${rangeSubject(c)} listed where they would sit if their missing readings added nothing to their screening score. The study uses this as its main order.`,
-    listOrderUpper: `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where they would sit if their missing readings added as much as they can to their screening score.`,
+    listOrder: `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,
+    listOrderUpper: `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} screening score.`,
     queueIntro:
       "These schools have no place in the list yet because their records are incomplete. Having no place in the list yet does not mean their need is low.",
     queueOrder: "Listed by province, district and school name. This is not an order of priority.",

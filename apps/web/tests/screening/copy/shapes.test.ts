@@ -295,10 +295,10 @@ describe("a school that is level with another, or cannot be told from it", () =>
   it("reads no two schools of the data set the same way", () => {
     const names = schools.map((s) => P.distinctName(s));
     expect(new Set(names).size).toBe(names.length);
-    expect(P.distinctName(schools[3])).toBe("Lumi, North");
-    expect(P.distinctName(schools[4])).toBe("Lumi, South");
+    expect(P.distinctName(schools[3])).toBe("Lumi (North)");
+    expect(P.distinctName(schools[4])).toBe("Lumi (South)");
     // Two unnamed schools: the one with a district gets it, the one with a blank district gets its record.
-    expect(P.distinctName(schools[8])).toBe("Unnamed school, Middle");
+    expect(P.distinctName(schools[8])).toBe("Unnamed school (Middle)");
     expect(P.distinctName(schools[6])).toBe("Unnamed school (record i2)");
   });
 });

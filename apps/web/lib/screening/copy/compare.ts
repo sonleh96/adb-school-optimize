@@ -2,7 +2,7 @@
  * Comparing two rules, from the study's recorded comparison. These functions take the comparison as an argument
  * because this module never fetches. `urgencyReassurance` and the list statements answer "which list should I use".
  */
-import { countsFrom, rangePhrase, theSchools } from "./counts";
+import { countsFrom, rangePhrase, theSchools, theirScore } from "./counts";
 import { cleanName, displayName, formatCount, joinList, lowerFirst, ordinal, plural } from "./format";
 import type { ComparisonData, CopyRuleId, PairwiseRow, Top20Change } from "./model";
 import { hasPlace, resultFor } from "./rank";
@@ -161,10 +161,11 @@ export function urgencyReassurance(data: ComparisonData): string {
   const row = findPair(data.pairwise, "additive_u", "additive_no_u");
   if (!row) return "No recorded comparison exists for the combined-factors rules with and without urgency.";
   const most = row.maximum_absolute_rank_shift;
+  const rc = data.schools ? countsFrom(data.schools) : null;
   return [
     `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency value"))}`,
     `Leaving it out changes the order in the list, and the largest move for any school is ${most} places.`,
-    `For ${rangePhrase(data.schools ? countsFrom(data.schools) : null)}, leaving it out can still move their possible places.`,
+    `For ${rangePhrase(rc)}, leaving it out can still move ${theirScore(rc)} possible places.`,
   ].join(" ");
 }
 

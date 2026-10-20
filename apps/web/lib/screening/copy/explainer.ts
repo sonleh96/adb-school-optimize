@@ -14,6 +14,8 @@ import {
   groupsSentence,
   known,
   rangeSubject,
+  theirScore,
+  theyWould,
   urgencyDefinition,
 } from "./counts";
 import { agreementSentence, findPair, pairPhrase } from "./compare";
@@ -103,7 +105,7 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
         key: "limits",
         title: "What the results cannot tell you",
         sentences: [
-          `${rangeSubject(c)} listed where they would sit if their missing readings added nothing to their screening score, the study's main order.`,
+          `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score, the study's main order.`,
           "Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
           known(c, "complete") && known(c, "ranked")
             ? `Places among the ${formatCount(c.complete)} and possible places among all ${formatCount(c.ranked)} answer different questions.`

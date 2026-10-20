@@ -39,10 +39,6 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [2, 3],
     [3, 3],
   ],
-  "GUIDE.needDots": [
-    [2, 3],
-    [3, 3],
-  ],
   "GUIDE.tasks[1].steps[0].title": [
     ["Alder Junior High School", "1st"],
     ["Alder Junior High School", null],

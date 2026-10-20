@@ -41,10 +41,8 @@ export const GUIDE = Object.freeze({
       : "The card on the right shows what adds to its screening score.",
   pointToMissing:
     "The card on the right names each missing detail, and whether it is blank or recorded as 0 and needing a check.",
-  // The card numbers the reasons inside school need. needDots keeps its name for older callers.
+  // The card numbers the reasons inside school need.
   needNumbered: (n: number, all: number) =>
-    `${n === all ? `All ${SMALL[n]}` : `${capitalise(SMALL[n])} of the ${SMALL[all]}`} reasons are parts of school need, so the card numbers them inside it, above the parts that add less.`,
-  needDots: (n: number, all: number) =>
     `${n === all ? `All ${SMALL[n]}` : `${capitalise(SMALL[n])} of the ${SMALL[all]}`} reasons are parts of school need, so the card numbers them inside it, above the parts that add less.`,
   tasks: Object.freeze(
     [
