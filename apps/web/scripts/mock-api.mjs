@@ -98,7 +98,7 @@ const districtFeatures = [
 // parallel never share a choice:
 //   cookie  mock-screening-dataset=worst-names           or header  x-mock-screening-dataset: worst-names
 //   cookie  mock-screening-fail=results:503|inputs:500   or header  x-mock-screening-fail: results:503
-// A failure names the first path segment after /api/v1/screening/ (rules, results, inputs, schools, compare) and
+// A failure names the first path segment after /api/v1/screening/ (rules, results, inputs, schools, compare, exports) and
 // the status to answer with; the body has the API's error envelope shape. A fixture saved with a status of its
 // own (the 404 of the empty dataset) is answered with that status.
 const screeningDir = fileURLToPath(new URL("../e2e/fixtures/screening/", import.meta.url));
@@ -164,10 +164,11 @@ function answerScreening(request, response, url) {
     const message = `No saved response for ${request.url}`;
     return json(response, { error: { code: "fixture_not_captured", message } }, 501);
   }
-  response.writeHead(entry.status ?? 200, {
-    "Content-Type": "application/json",
-    "Cache-Control": "no-store",
-  });
+  // A download (the top list's CSV) carries the headers the API sent with it; everything else is the API's JSON.
+  response.writeHead(
+    entry.status ?? 200,
+    entry.headers ?? { "Content-Type": "application/json", "Cache-Control": "no-store" }
+  );
   return response.end(readFileSync(`${dataset.dir}${entry.file}`));
 }
 

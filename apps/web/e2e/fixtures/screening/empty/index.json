@@ -75,6 +75,15 @@
     "b": "benchmark"
    },
    "status": 404
+  },
+  {
+   "file": "exports/top_additive_u_20.json",
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "additive_u"
+   },
+   "status": 404
   }
  ]
 }
