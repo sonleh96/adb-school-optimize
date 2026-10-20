@@ -20,8 +20,8 @@ import {
 } from "./counts";
 import { agreementSentence, findPair, pairPhrase } from "./compare";
 import { IDEAS } from "./ideas";
-import type { ComparisonData, CountBag, CountsByRule } from "./model";
-import { hasBounds, resultFor, sharedSize } from "./rank";
+import type { ComparisonData, CountBag, CountsByRule, CountsByRuleArg } from "./model";
+import { hasBounds, perRule, resultFor, sharedSize } from "./rank";
 import { nameSegment, seg, textOf, type Segments } from "./segments";
 
 /* ------------------------------------------- explainer and first questions */
@@ -126,7 +126,7 @@ export const HOW_IT_WORKS = buildHow();
 export function howExampleSegments(
   data: ComparisonData,
   c: CountBag,
-  byRule?: CountsByRule
+  byRule?: CountsByRuleArg
 ): Segments | null {
   const row = findPair(data.pairwise || [], "additive_u", "additive_no_u");
   if (!row) return null;
@@ -147,14 +147,15 @@ export function howExampleSegments(
       ? ordinal(r.rank_best)
       : `${ordinal(r.rank_best)} to ${ordinal(r.rank_worst)}`;
   const agree = lowerFirst(agreementSentence(row, 20, "with or without urgency")).replace(/\.$/, "");
-  const cA = byRule?.additive_u ?? c,
-    cB = byRule?.additive_no_u ?? c;
-  const among = sharedSize(cA, cB, "ranked")
+  const strict = perRule({ countsByRule: byRule });
+  const cA = strict ? (byRule as CountsByRule).additive_u : c,
+    cB = strict ? (byRule as CountsByRule).additive_no_u : c;
+  const among = sharedSize(cA, cB, "ranked", strict)
     ? amongAllOrdered(cA)
     : "all the schools that can be put in order under each rule";
   return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(displayName(x))}'s possible places among ${among} move from ${span(a)} with urgency to ${span(b)} without it.`;
 }
-export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRule): string | null {
+export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRuleArg): string | null {
   const s = howExampleSegments(data, c, byRule);
   return s === null ? null : textOf(s);
 }

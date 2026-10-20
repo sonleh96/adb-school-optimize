@@ -177,7 +177,7 @@ describe("the top 10 changes between two rules", () => {
   const placed = placedFromResults(lists.additive_no_u, lists.additive_u);
   const compare = pairwiseFromCompare(fixtureCompare());
   const data = { schools: placed, ...compare };
-  const P = copy.copyFor({ ...data, counts: countsFromResults(lists.additive_no_u) });
+  const P = copy.copyFor({ ...data, counts: countsFromResults(lists.additive_no_u), countsByRule: byRule });
 
   it("skips a school with no place under one of the rules instead of throwing", () => {
     const s23 = placed.find((s) => s.name === "Sample School 23");
@@ -234,7 +234,12 @@ describe("the top 10 changes between two rules", () => {
       results: { additive_no_u: { rank_complete120: null } },
     };
     const text = copy
-      .copyFor({ ...data, schools: [...placed, orphan], counts: countsFromResults(lists.additive_no_u) })
+      .copyFor({
+        ...data,
+        schools: [...placed, orphan],
+        counts: countsFromResults(lists.additive_no_u),
+        countsByRule: byRule,
+      })
       .comparisonSentence("additive_no_u", "additive_u", undefined, { top: 10 });
     expect(text).not.toContain("Orphan");
   });

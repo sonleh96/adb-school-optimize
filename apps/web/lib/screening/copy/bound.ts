@@ -40,7 +40,7 @@ import type {
   CopyRuleId,
   CopySchool,
   CountBag,
-  CountsByRule,
+  CountsByRuleArg,
   PairwiseRow,
   PlacedSchool,
   Top20Change,
@@ -94,7 +94,7 @@ export type CopyData = {
   readonly pairwise?: readonly PairwiseRow[];
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
-  readonly countsByRule?: CountsByRule;
+  readonly countsByRule?: CountsByRuleArg;
   /** The persistence test's standard error as a fraction (the circulated list's provenance block). */
   readonly standardError?: number;
 } & (
@@ -106,6 +106,16 @@ type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule">;
 
 export function copyFor(data: CopyData = {}) {
   const schools: readonly PlacedSchool[] = data.schools || [];
+  // Counts given with schools that hold results under several rules is the API's shape. The groups differ between
+  // rules there, so a sentence about one school under two rules needs each rule's own counts.
+  if (
+    data.counts &&
+    data.countsByRule === undefined &&
+    schools.some((s) => s.results && Object.keys(s.results).length > 1)
+  )
+    throw new Error(
+      'copyFor: the schools hold results under more than one rule, and the groups differ between rules. Give countsByRule (countsByRuleFromResults), or build the copy with bindCopy. Pass "shared" only for data of one run.'
+    );
   const c: CountBag = data.counts || countsFrom(data.schools || []);
   const bound = {
     pairwise: data.pairwise || [],

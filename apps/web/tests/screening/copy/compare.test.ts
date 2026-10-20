@@ -206,7 +206,12 @@ describe("the schools that join or leave the top 20", () => {
     ];
     const c = compare({ overlaps: [9, 20, 30, 40] });
     const data = pairwiseFromCompare(c);
-    const text = copyFor({ counts: { complete: 12 }, schools, ...data }).comparisonSentence(A, B, undefined, {
+    const text = copyFor({
+      counts: { complete: 12 },
+      countsByRule: "shared",
+      schools,
+      ...data,
+    }).comparisonSentence(A, B, undefined, {
       top: 10,
     });
     expect(text).toContain("9 of the top 10 schools are the same under both.");
@@ -315,12 +320,18 @@ describe("which list to use", () => {
     const text = copyFor({
       schools: full,
       counts: { complete: 84, range: 3 },
+      countsByRule: "shared",
       pairwise,
     }).urgencyReassurance();
     expect(text).toBe(
       "Among the 84 schools with every input recorded, the same 20 schools make the top 20 with or without the urgency value, and the same 40 make the top 40. Leaving it out changes the order in the list, and the largest move for any school is 9 places. For the three schools that show a range, leaving it out can still move their possible places."
     );
-    const P = copyFor({ schools: full, counts: { complete: 84, range: 3 }, pairwise });
+    const P = copyFor({
+      schools: full,
+      counts: { complete: 84, range: 3 },
+      countsByRule: "shared",
+      pairwise,
+    });
     expect(P.FIRST_QUESTIONS.find((q) => q.key === "trust")?.answer).toBe(
       `${text} The research team is reviewing the revision that leaves it out, so the screen opens on the paper's main rule.`
     );
@@ -348,6 +359,7 @@ describe("which list to use", () => {
     const P = copyFor({
       schools,
       counts: { all: 3, complete: 84, range: 3, ranked: 87, queue: 0 },
+      countsByRule: "shared",
       pairwise,
     });
     const limits = P.HOW_IT_WORKS.find((s) => s.key === "limits")?.sentences ?? [];
