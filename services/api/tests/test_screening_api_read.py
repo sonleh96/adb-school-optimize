@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import asdict, replace
 
 import pytest
 from app import screening_store as store
 from school_scoring.screening import RULES, pairwise_metrics
-from screening_api_helpers import load_synthetic
+from screening_api_helpers import api_records, load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
 from screening_db_factories import record
 from screening_db_helpers import load
@@ -466,11 +467,14 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
     api, loaded
 ):  # API1, API18
     school = AWK[7]
-    detail = fetch(api, f"/api/v1/screening/schools/{loaded.school_ids[school]}")
+    detail = fetch(api, f"/api/v1/screening/schools/{loaded.school_ids[school]}")["schools"][0]
 
     assert detail["school"]["source_school_name"] == school
     assert detail["school"]["school_id"] == str(loaded.school_ids[school])
-    assert detail["input_version"] == loaded.input_version
+    assert (
+        api.get(f"/api/v1/screening/schools/{loaded.school_ids[school]}").json()["input_version"]
+        == loaded.input_version
+    )
     source = next(r for r in loaded.records if r.school_name == school)
     assert detail["inputs"] == asdict(source)
     assert [e["rule"]["rule_id"] for e in detail["rules"]] == RULE_IDS
@@ -491,7 +495,7 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
 
 
 def test_school_detail_for_an_interval_school_has_bounds_and_no_point_rank(api, loaded):  # API2, API18
-    detail = fetch(api, f"/api/v1/screening/schools/{loaded.school_ids['Interval No Air']}")
+    detail = fetch(api, f"/api/v1/screening/schools/{loaded.school_ids['Interval No Air']}")["schools"][0]
 
     by_rule = {e["rule"]["rule_id"]: e["result"] for e in detail["rules"]}
     assert by_rule["additive_u"]["cohort"] == "interval"
@@ -671,7 +675,7 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
     # Every read accepts the pin.
     detail = api.get(
         f"/api/v1/screening/schools/{loaded.school_ids[AWK[7]]}", params={"package_version": "0.9.0"}
-    ).json()
+    ).json()["schools"][0]
     assert [e["rule"]["rule_id"] for e in detail["rules"]] == ["additive_u"]
     assert detail["rules"][0]["run"]["run_id"] == older
     compare = api.get(
@@ -708,3 +712,74 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
         .headers["cache-control"]
         .startswith("private, max-age=60")
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# Schools that are not linked to `schools`, and links that more than one school share.
+# ---------------------------------------------------------------------------------------------
+
+
+def test_every_school_has_a_key_and_a_detail_route_even_when_it_is_not_linked(api, connection):  # API21
+    records = api_records()
+    load(connection, records)  # no rows in `schools`: nothing is linked
+
+    rows = fetch(api, "/api/v1/screening/results")["rows"]
+    keys = [r["school"]["school_key"] for r in rows]
+    assert len(set(keys)) == len(rows) == 15 and all(re.fullmatch(r"[0-9a-f]{32}", k) for k in keys)
+    assert {r["school"]["school_id"] for r in rows} == {None}
+
+    by_name = {r["school"]["source_school_name"]: r["school"]["school_key"] for r in rows}
+    detail = fetch(api, f"/api/v1/screening/schools/by-key/{by_name[AWK[7]]}")
+    assert detail["school"]["source_school_name"] == AWK[7] and detail["school"]["school_id"] is None
+    assert detail["school"]["latitude"] is None
+    assert detail["inputs"] == asdict(next(r for r in records if r.school_name == AWK[7]))
+    assert [e["rule"]["rule_id"] for e in detail["rules"]] == RULE_IDS
+    # The same row, listed under the same rule, is the one the detail shows.
+    row = next(r for r in rows if r["school"]["school_key"] == by_name[AWK[7]])
+    assert detail["rules"][0]["result"]["point_rank"] == row["point_rank"]
+    # A name with surrounding spaces and a queued school are reachable too.
+    leading = fetch(api, f"/api/v1/screening/schools/by-key/{by_name[AWK[0]]}")
+    assert leading["school"]["source_school_name"] == AWK[0]
+    queued = fetch(api, f"/api/v1/screening/schools/by-key/{by_name['Zed queue']}")
+    assert queued["rules"][0]["result"]["cohort"] == "verification_queue"
+
+
+def test_the_school_key_is_stable_per_version_and_differs_between_versions(api, connection):  # API21
+    first = load_synthetic(connection, version="paper-v1")
+    load(
+        connection, tuple(reversed(first.records)), "paper-v2"
+    )  # same schools in another order: another input hash
+
+    def keys(version):
+        rows = fetch(api, "/api/v1/screening/results", input_version=version)["rows"]
+        return {r["school"]["source_school_name"]: r["school"]["school_key"] for r in rows}
+
+    v1, v2 = keys("paper-v1"), keys("paper-v2")
+    assert keys("paper-v1") == v1  # stable across requests
+    assert v1.keys() == v2.keys() and all(v1[n] != v2[n] for n in v1)
+    # A key belongs to its version.
+    ok = api.get(f"/api/v1/screening/schools/by-key/{v1[AWK[7]]}", params={"input_version": "paper-v1"})
+    wrong = api.get(f"/api/v1/screening/schools/by-key/{v1[AWK[7]]}", params={"input_version": "paper-v2"})
+    assert ok.status_code == 200 and wrong.status_code == 404
+    assert wrong.json()["error"]["code"] == "school_not_found"
+    assert api.get("/api/v1/screening/schools/by-key/0123").status_code == 404
+
+
+def test_the_route_on_a_school_id_returns_every_school_that_shares_the_link(api, connection):  # API21
+    loaded = load_synthetic(connection)
+    shared = loaded.school_ids[AWK[7]]
+    for table in ("screening_inputs", "screening_results"):
+        connection.execute(
+            f"update {table} set school_id = %s where source_school_name = %s", (shared, AWK[8])
+        )
+
+    body = fetch(api, f"/api/v1/screening/schools/{shared}")
+
+    assert body["school_id"] == str(shared)
+    assert [d["school"]["source_school_name"] for d in body["schools"]] == [AWK[7], AWK[8]]
+    assert {d["school"]["school_id"] for d in body["schools"]} == {str(shared)}
+    assert len({d["school"]["school_key"] for d in body["schools"]}) == 2
+    # Each of them is still reachable on its own key.
+    for d in body["schools"]:
+        single = fetch(api, f"/api/v1/screening/schools/by-key/{d['school']['school_key']}")
+        assert single["school"] == d["school"] and single["inputs"] == d["inputs"]

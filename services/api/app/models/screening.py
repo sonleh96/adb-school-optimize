@@ -148,6 +148,7 @@ class ManifestOut(Out):
 
 
 class SchoolIdentityOut(Out):
+    school_key: str
     school_id: uuid.UUID | None
     source_school_name: str
     province: str | None
@@ -278,12 +279,26 @@ class SchoolRuleResultOut(Out):
     result: SchoolResultOut
 
 
-class SchoolDetailResponse(Out):
-    input_version: str
-    input_sha256: str
+class SchoolDetailOut(Out):
     school: SchoolIdentityOut
     inputs: dict[str, float | str | None]
     rules: list[SchoolRuleResultOut]
+
+
+class SchoolDetailResponse(SchoolDetailOut):
+    """One school, found by its ``school_key``."""
+
+    input_version: str
+    input_sha256: str
+
+
+class LinkedSchoolsResponse(Out):
+    """Every school of the input version that is linked to one ``schools`` row. Normally one."""
+
+    school_id: uuid.UUID
+    input_version: str
+    input_sha256: str
+    schools: list[SchoolDetailOut]
 
 
 class TopKOut(Out):

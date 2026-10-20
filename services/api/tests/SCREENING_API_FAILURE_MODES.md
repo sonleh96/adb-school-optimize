@@ -29,6 +29,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API19 | A spreadsheet reads a name as a formula. | An XLSX cell holding a school name that starts with `=` is stored as a formula. |
 | API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
 | API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
+| API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
 
 ## Test map
 
@@ -80,3 +81,6 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_compare_of_a_rule_with_itself_agrees_completely` | API13 |
 | `test_compare_lists_top_twenty_entrants_and_exits_with_both_ranks_and_scores` | API13 |
 | `test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinned` | API22 |
+| `test_every_school_has_a_key_and_a_detail_route_even_when_it_is_not_linked` | API21 |
+| `test_the_school_key_is_stable_per_version_and_differs_between_versions` | API21 |
+| `test_the_route_on_a_school_id_returns_every_school_that_shares_the_link` | API21 |
