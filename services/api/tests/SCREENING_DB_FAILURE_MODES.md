@@ -4,7 +4,8 @@ Written before the tests.
 Each test in `test_screening_db_*.py` carries the id of the failure mode it guards.
 All of them run against a real PostGIS database (`DATABASE_URL`) and use invented records only.
 Without `DATABASE_URL` they skip with the message "set DATABASE_URL to a PostGIS server to run the screening database tests".
-They also skip when `DATABASE_URL` names a non-local server, because each test creates and drops its own database.
+They also skip when `DATABASE_URL` does not name `localhost`, `127.0.0.1` or `::1` explicitly, or when it sets `hostaddr` or `service`, or when `PGHOST`, `PGHOSTADDR` or `PGSERVICE` is set, because each test creates and drops its own database.
+With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of skipping.
 
 | Id | Failure mode | How it would show |
 | --- | --- | --- |
@@ -63,6 +64,13 @@ They also skip when `DATABASE_URL` names a non-local server, because each test c
 | `test_concurrent_loads_of_one_version_converge` | DB14 |
 | `test_results_are_read_in_rank_order` | DB15 |
 | `test_schools_loaded_later_are_linked_by_a_rerun` | DB16 |
+| `test_explicit_local_hosts_are_accepted` (5 urls) | DB20 |
+| `test_anything_that_could_reach_another_server_is_refused` (9 urls) | DB20 |
+| `test_a_redirecting_environment_variable_is_refused_even_with_a_local_url` (3 variables) | DB20 |
+| `test_a_missing_url_is_reported_with_the_documented_message` | DB20 |
+| `test_require_flag_reads_the_environment` | DB21 |
+| `test_database_tests_skip_without_a_database_unless_required` | DB21 |
+| `test_a_refused_server_also_fails_when_the_database_tests_are_required` | DB20, DB21 |
 | `test_command_end_to_end` | DB17, DB8 |
 | `test_command_rejects_a_source_table_that_breaks_the_contract` | DB17 |
 | `test_command_names_a_missing_source_table` | DB17 |
