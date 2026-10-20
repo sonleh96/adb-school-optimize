@@ -91,7 +91,7 @@ The files and schools are invented.
 | PE3 | A rerun changes something. | The same file loaded twice, or a load without the file after one with it, alters any stored row. |
 | PE4 | A rerun with a different file overwrites. | A changed frequency, a missing school or another file is accepted over stored numbers. |
 | PE5 | A name matches no school and is skipped. | The load succeeds with fewer schools, or stores the numbers on another school. |
-| PE6 | A name matches two schools and one is chosen. | The load succeeds and one of two schools that differ only by spacing or case gets the numbers. |
+| PE6 | A name matches two schools and one is chosen, or an exact name is refused. | The load succeeds and one of two schools that differ only by spacing or case gets the numbers; or a name equal to a stored name is refused because a twin normalises alike. |
 | PE7 | Two rows land on one school. | The second row replaces the first or the load fails with a database error instead of a message. |
 | PE8 | A file with a different hash is trusted. | A wrong expected hash loads, or an uppercase hash is refused. |
 | PE9 | The file's flag column is trusted over its frequencies. | A row whose flag disagrees with its frequencies loads. |
@@ -104,6 +104,8 @@ The files and schools are invented.
 | PE16 | The Data API roles can reach the tables. | `anon` or `authenticated` holds a privilege, or row security is off. |
 | PE17 | The migration is not atomic or not re-runnable. | A failure before its commit leaves a table behind, or a second apply changes the schema or the rows. |
 | PE18 | The command crashes or half loads. | A wrong hash or a lone `--persistence-sha256` gives a traceback, or leaves inputs and runs stored. |
+| PE19 | Numbers are attached to a version that clients already hold. | A version loaded without persistence accepts a file later, so a response cached as immutable changes while its header says it cannot. |
+| PE20 | The receipt is not the check it stands in for. | A file whose flagged schools differ from the receipt's list loads, the difference is reported by name, a receipt without the list is accepted, or a receipt spelling that normalises alike is refused. |
 
 | Test | Failure mode |
 | --- | --- |
@@ -114,11 +116,18 @@ The files and schools are invented.
 | `test_a_version_loaded_without_the_file_has_no_numbers_and_no_other_version_lends_its_own` | PE12 |
 | `test_a_name_that_matches_no_school_refuses_the_whole_load` | PE5 |
 | `test_a_blank_name_matches_no_school` | PE5 |
-| `test_a_name_that_matches_two_schools_refuses_the_whole_load` | PE6 |
+| `test_a_name_that_matches_two_schools_only_through_normalisation_refuses_the_whole_load` | PE6 |
+| `test_a_name_equal_to_a_stored_name_is_that_school_even_when_a_twin_normalises_alike` | PE6 |
+| `test_two_exact_twins_can_both_be_named` | PE6 |
 | `test_two_names_for_one_school_refuse_the_whole_load` | PE7 |
 | `test_a_file_that_does_not_hash_to_the_expected_value_is_refused` | PE8 |
 | `test_a_flag_column_that_disagrees_with_the_frequencies_is_refused` | PE9 |
 | `test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused` | PE10 |
+| `test_a_receipt_that_names_other_schools_than_the_file_flags_is_refused_by_count` | PE20 |
+| `test_a_receipt_may_spell_a_name_differently_when_it_normalises_alike` | PE20 |
+| `test_a_receipt_that_lists_a_school_the_version_does_not_have_is_refused` | PE20 |
+| `test_a_receipt_without_the_list_of_names_is_refused` | PE20 |
+| `test_numbers_cannot_be_attached_to_a_version_that_was_loaded_without_them` | PE19 |
 | `test_a_frequency_that_is_not_a_number_from_zero_to_one_is_refused` | PE11 |
 | `test_a_frequency_outside_zero_to_one_is_rejected_by_the_database` | PE11 |
 | `test_a_path_without_an_experiment_folder_is_refused` | PE13 |
