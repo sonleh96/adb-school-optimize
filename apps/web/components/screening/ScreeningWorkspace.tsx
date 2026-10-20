@@ -223,12 +223,15 @@ function Workspace() {
                 ) : null}
                 {state.view === "ranked" ? (
                   <>
-                    {comparing && data.comparison?.settled ? (
+                    {comparing && data.comparison && data.comparison.status !== "loading" ? (
                       <WhatChanged
                         copy={shown.copy}
                         from={data.comparison.from}
                         to={data.comparison.to}
                         schools={shown.schools}
+                        failed={data.comparison.status === "failed" || data.comparison.status === "retrying"}
+                        retrying={data.comparison.status === "retrying"}
+                        onRetry={data.comparison.retry}
                         onHide={() => store.setState({ compare: null })}
                         onBack={backToMain}
                       />

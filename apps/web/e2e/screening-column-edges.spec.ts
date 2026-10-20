@@ -3,10 +3,23 @@
  * rule changes faster than its list loads. Failure modes and the test for each:
  *  1. A URL that holds only defaults or junk is left as it was                -> "a URL that says nothing..."
  *  2. Back and Forward change the URL but not the screen                      -> "Back and Forward..."
+ *  3. A comparison that failed to load is worded as a fact about the study ("no recorded comparison")
+ *     -> "a comparison that fails to load..."
  */
 import type { Page } from "@playwright/test";
 
-import { ORDERED, ORDERED_COUNT, RULE, expect, mainRule, openWorkspace, test } from "./screening-helpers";
+import { LAYOUT } from "../lib/screening/copy";
+import {
+  APP_ORIGIN,
+  ORDERED,
+  ORDERED_COUNT,
+  RULE,
+  expect,
+  mainRule,
+  openWorkspace,
+  test,
+  useMockDataset,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
@@ -46,4 +59,28 @@ test("Back and Forward bring back the screen each URL describes", async ({ page 
   await page.goForward();
   expect(search(page)).toBe("?compare=additive_no_u");
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a comparison that fails to load says so and offers Retry, never that the study recorded none", async ({
+  page,
+  context,
+  problems,
+}) => {
+  await useMockDataset(context, "default", { compare: 503 });
+  await openWorkspace(page);
+  await mainRule(page, RULE.proposed).click();
+
+  const failed = changed(page).locator("[data-region=changed-failed]");
+  await expect(failed).toHaveText(`${LAYOUT.loadFailed} ${LAYOUT.retry}`);
+  await expect(changed(page)).not.toContainText("recorded comparison");
+  await expect(lead(page)).toHaveCount(0);
+  expect(problems.length).toBeGreaterThan(0);
+  expect(problems.every((p) => p.includes("/screening/compare?") || p.includes("status of 503"))).toBe(true);
+  problems.length = 0;
+
+  // The service answers again: Retry brings the comparison, and focus stays in What changed.
+  await context.addCookies([{ name: "mock-screening-fail", value: "", url: APP_ORIGIN }]);
+  await failed.getByRole("button", { name: LAYOUT.retry }).press("Enter");
+  await expect(lead(page)).toHaveText(REASSURANCE);
+  await expect(changed(page).getByRole("button", { name: LAYOUT.hideComparison })).toBeFocused();
 });

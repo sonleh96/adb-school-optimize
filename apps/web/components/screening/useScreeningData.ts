@@ -61,13 +61,17 @@ export interface ShownList {
   copy: BoundCopy;
 }
 
-/** What What changed says, once the comparison it reads has loaded. */
+/**
+ * The recorded comparison What changed reads. A request that failed is not a pair the study never recorded: the copy
+ * says no comparison is recorded only for an answer that holds none, so a failure is told apart and can be retried.
+ */
 export interface Comparison {
   /** The rule the list was switched from, and the rule on screen. */
   from: CopyRuleId;
   to: CopyRuleId;
-  /** False until the comparison (and, for the main pair, the other rule's list) has loaded or failed. */
-  settled: boolean;
+  /** `retrying` is a failed read being asked for again: it is still shown as failed, with its Retry. */
+  status: "loading" | "ready" | "failed" | "retrying";
+  retry: () => void;
 }
 
 export interface ScreeningData {
@@ -163,12 +167,25 @@ export function useScreeningData(): ScreeningData {
     state.rule === null
   );
 
+  const pairQuery = isMainPair ? mainCompare : otherCompare;
+  // A read with no data goes back to pending while it is asked for again, so its earlier failure is read from the
+  // count of errors it has had.
+  const comparisonStatus: Comparison["status"] = pairQuery.data
+    ? "ready"
+    : pairQuery.isError
+      ? "failed"
+      : pairQuery.errorUpdateCount > 0
+        ? "retrying"
+        : "loading";
   const comparison: Comparison | null =
     from && shownId
       ? {
           from,
           to: shownId,
-          settled: isMainPair ? !mainCompare.isPending : !otherCompare.isPending,
+          status: comparisonStatus,
+          retry: () => {
+            void pairQuery.refetch();
+          },
         }
       : null;
 
