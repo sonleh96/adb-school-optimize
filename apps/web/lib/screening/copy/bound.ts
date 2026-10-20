@@ -110,7 +110,8 @@ export type CopyData = {
 type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule" | "schools">;
 
 export function copyFor(data: CopyData = {}) {
-  const schools: readonly PlacedSchool[] = data.schools || [];
+  // A frozen snapshot: the copy says what the data said when it was bound, and a list kept frozen can be indexed.
+  const schools: readonly PlacedSchool[] = Object.freeze([...(data.schools || [])]);
   // Counts given with schools that hold results under several rules is the API's shape. The groups differ between
   // rules there, so a sentence about one school under two rules needs each rule's own counts.
   if (
