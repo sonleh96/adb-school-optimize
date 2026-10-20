@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
+import * as methodModule from "@/lib/screening/copy/method";
 
 import { school, withLater } from "./helpers";
 import {
@@ -44,7 +45,7 @@ import {
 const suite = describe.skipIf(!ready);
 
 /** Everything the port exports, the part that loads on demand included, as the prototype exports it. */
-const everything = { ...port, ...later };
+const everything = { ...port, ...later, ...methodModule };
 
 let proto: Api;
 let datasets: Dataset[] = [];
@@ -266,6 +267,22 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     flush();
   });
 
+  it("holds the same method details words, with no data bound and for every shape of counts and rule", async () => {
+    const method = await import("@/lib/screening/copy/method");
+    same("METHOD", proto.METHOD, method.METHOD);
+    for (const bag of [
+      {},
+      { complete: 16, ranked: 21, range: 5, all: 25 },
+      { complete: 1, ranked: 1, range: 0, all: 1 },
+      { complete: 21, ranked: 21, range: 0 },
+    ])
+      for (const r of proto.RULE_IDS as string[]) {
+        const reads = proto.ruleReads(r);
+        same("METHOD", proto.buildMethod({ counts: bag, reads }), method.buildMethod({ counts: bag, reads }));
+      }
+    flush();
+  });
+
   it("formats numbers the same way", () => {
     const nums = [
       0,
@@ -393,6 +410,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       for (const r of proto.RULE_IDS as string[])
         same(`groupsSentence(${r})`, P.groupsSentence(r), Q.groupsSentence(r));
       for (const r of proto.RULE_IDS as string[]) same(`scope(${r})`, P.scope(r), Q.scope(r));
+      for (const r of proto.RULE_IDS as string[]) same("METHOD", P.methodFor(r), await Q.methodFor(r));
       same("urgencyDefinition()", P.urgencyDefinition(), Q.urgencyDefinition());
       same(
         "defaultListStatement()",
