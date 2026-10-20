@@ -4,8 +4,8 @@
  * Failure modes, each with the test that catches it:
  *  1. One rule's broken contributions fail the whole card, though the card shows another rule.
  *  2. The reasons for a rule whose contributions are missing say "none of its inputs adds", which is false.
- *  3. An urgency value that no rule read reads as unknown, so a school shows "urgency not recorded" under a screen
- *     that never asks for it.
+ *  3. An urgency value that no loaded rule read reads as recorded when it is unknown, or as unknown when it is
+ *     recorded. It comes from the stored input.
  *  4. Two scores a rounding error apart are called a tie, though the engine orders them.
  */
 import { describe, expect, it } from "vitest";
@@ -19,6 +19,7 @@ import { KEYS } from "./helpers";
 import { schoolDetailResponse } from "@/lib/screening/types";
 
 type Body = {
+  inputs: Record<string, number | string | null>;
   rules: {
     rule: { rule_id: string };
     result: {
@@ -78,7 +79,7 @@ describe("one rule's contributions are broken", () => {
   });
 });
 
-describe("an urgency value that was not read", () => {
+describe("an urgency value that no loaded rule reads", () => {
   const withoutUrgencyRules = () => {
     const b = body();
     b.rules = b.rules.filter(
@@ -87,10 +88,16 @@ describe("an urgency value that was not read", () => {
     return b;
   };
 
-  it("is absent, not unknown, when no rule that reads urgency has a run", () => {
-    const s = load(withoutUrgencyRules(), "additive_no_u");
-    expect("U" in s.components).toBe(false);
-    expect(copy.missingValueKind(s, "urgency")).toBe("recorded");
+  it("is read from the stored input when no rule that reads urgency has a run, known or unknown", () => {
+    const known = load(withoutUrgencyRules(), "additive_no_u");
+    expect(known.components.U).toBe(body().inputs.urgency_source_scalar);
+    expect(copy.missingValueKind(known, "urgency")).toBe("recorded");
+
+    const b = withoutUrgencyRules();
+    b.inputs.urgency_source_scalar = null;
+    const unknown = load(b, "additive_no_u");
+    expect(unknown.components.U).toBeNull();
+    expect(copy.missingValueKind(unknown, "urgency")).toBe("blank");
   });
 
   it("is unknown only when a rule that reads it found it unknown", () => {

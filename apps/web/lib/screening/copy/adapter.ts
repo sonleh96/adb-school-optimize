@@ -234,9 +234,12 @@ function buildSchool(
     }
   }
 
-  // The components do not depend on the rule; urgency is absent from the rules that leave it out. It is null when a
-  // rule that reads it found it unknown, and absent when no rule that reads it has a run (it was not read).
-  const urgency = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
+  // The components do not depend on the rule. Whether urgency is known comes from the stored input, so it does not
+  // depend on which lists are loaded: an unknown value is null, and a known one is the rules' own figure when a rule
+  // that reads it is loaded (the stored value otherwise). A record without the entry leaves urgency unread.
+  const stored = "urgency_source_scalar" in inputs ? numberInput(inputs, "urgency_source_scalar") : undefined;
+  const fromRules = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
+  const urgency = stored === null ? null : fromRules !== undefined ? fromRules : stored;
   const { N, A, R, Q, E, L } = shown.components;
   const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
 
