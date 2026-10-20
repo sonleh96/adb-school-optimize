@@ -30,6 +30,9 @@ const orderedNames = (rule: string) =>
 const keyOf = (rule: string, name: string) =>
   rowsOf(rule).find((r) => r.school.source_school_name === name)!.school.school_key;
 
+// The design's reference size. A smaller window pans the map under the panels, which hides marks from a click.
+base.use({ viewport: { width: 1600, height: 1000 } });
+
 const test = base.extend<{ problems: string[] }>({
   problems: [
     async ({ page }, use) => {
@@ -66,6 +69,18 @@ const listNames = (page: Page) =>
 
 const markAt = (page: Page, key: string) =>
   page.evaluate((k) => window.__screeningMapTest?.project(k as never) ?? null, key);
+
+/** A mark's position once the map has stopped moving (a selection can pan it). */
+async function settledMark(page: Page, key: string) {
+  let previous = await markAt(page, key);
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    await page.waitForTimeout(100);
+    const current = await markAt(page, key);
+    if (current && previous && current.x === previous.x && current.y === previous.y) return current;
+    previous = current;
+  }
+  throw new Error(`The mark of ${key} never settled`);
+}
 
 /** Whether the dark selection ring is drawn round the mark: samples the rendered pixels at the ring's radius. */
 async function ringDrawnAround(page: Page, key: string, markRadius: number): Promise<boolean> {
@@ -164,14 +179,14 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
   await openWorkspace(page);
 
   const first = keyOf("additive_u", "Sample School 12");
-  const point = await markAt(page, first);
+  const point = await settledMark(page, first);
   expect(point).not.toBeNull();
   await page.mouse.click(point!.x, point!.y);
   await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-testid=screening-map]")).toHaveAttribute("data-selected-key", first);
 
   const queued = keyOf("additive_u", "Sample School 21");
-  const queuedPoint = await markAt(page, queued);
+  const queuedPoint = await settledMark(page, queued);
   await page.mouse.click(queuedPoint!.x, queuedPoint!.y);
   await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveAttribute(
     "aria-selected",
