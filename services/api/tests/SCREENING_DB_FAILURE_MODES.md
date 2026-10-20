@@ -75,3 +75,6 @@ With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of 
 | `test_command_end_to_end` | DB17, DB8 |
 | `test_command_rejects_a_source_table_that_breaks_the_contract` | DB17 |
 | `test_command_names_a_missing_source_table` | DB17 |
+| `test_command_names_a_table_without_the_key_column` | DB23 |
+| `test_command_names_a_source_table_it_cannot_read` | DB23 |
+| `test_command_says_so_when_the_source_tables_list_no_schools` | DB23 |

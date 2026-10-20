@@ -59,6 +59,10 @@ SOURCE_FILES: tuple[tuple[Table, str, str], ...] = (
 )
 
 
+# Every source table lists the schools under this column; the engine joins the tables on it.
+KEY_COLUMN = INPUT_CONTRACT[0].source_column
+
+
 class ScreeningLoadError(Exception):
     """The load was refused. Nothing was written."""
 
@@ -113,7 +117,14 @@ def read_source_tables(
         path = roots[root] / relative
         if not path.is_file():
             raise ScreeningLoadError(f"source table not found: {root} root / {relative}")
-        tables[table] = pd.read_csv(path, float_precision="round_trip")
+        try:
+            tables[table] = pd.read_csv(path, float_precision="round_trip")
+        except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as error:
+            raise ScreeningLoadError(
+                f"source table {root} root / {relative} cannot be read: {error}"
+            ) from error
+        if KEY_COLUMN not in tables[table].columns:
+            raise ScreeningLoadError(f"{table.value} has no column {KEY_COLUMN!r}")
         manifest.append(
             {
                 "table": table.value,
@@ -320,6 +331,8 @@ def load_screening(
     description: str | None = None,
 ) -> LoadReport:
     """Store the records as ``input_version`` and every rule's run on them, atomically and idempotently."""
+    if not records:
+        raise ScreeningLoadError("no records to load: the source tables list no schools")
     input_sha256 = records_sha256(records)
     runs = screen_all(prepare(records))  # pure: nothing has touched the database yet
     with connection.transaction():
@@ -395,7 +408,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source_manifest=source_manifest,
                 description=args.description,
             )
-    except (ScreeningLoadError, InputContractError, KeyError) as error:
+    except (ScreeningLoadError, InputContractError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     except psycopg.Error as error:

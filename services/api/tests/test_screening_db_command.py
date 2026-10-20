@@ -106,6 +106,49 @@ def test_command_rejects_a_source_table_that_breaks_the_contract(connection, dat
     assert {t: scalar(connection, f"select count(*) from {t}") for t in TABLES} == dict.fromkeys(TABLES, 0)
 
 
+def write_sources(tmp_path: Path):
+    reference, datasets = tmp_path / "reference", tmp_path / "datasets"
+    return reference, datasets, write_source_files(mixed_records(), reference, datasets)
+
+
+def assert_plain_refusal(result, message: str) -> None:
+    assert result.returncode == 1
+    assert message in result.stderr
+    assert "Traceback" not in result.stderr
+
+
+def test_command_names_a_table_without_the_key_column(connection, database_url, tmp_path):  # DB23
+    reference, datasets, paths = write_sources(tmp_path)
+    environment = paths[Table.ENVIRONMENT_FEATURES.value]
+    pd.read_csv(environment).drop(columns=["School Name"]).to_csv(environment, index=False)
+
+    result = run_command(database_url, reference, datasets)
+
+    assert_plain_refusal(result, "has no column 'School Name'")
+    assert scalar(connection, "select count(*) from screening_input_versions") == 0
+
+
+def test_command_names_a_source_table_it_cannot_read(connection, database_url, tmp_path):  # DB23
+    reference, datasets, paths = write_sources(tmp_path)
+    paths[Table.PREPARED_SCHOOLS.value].write_bytes(b"")  # an empty file has no header at all
+
+    result = run_command(database_url, reference, datasets)
+
+    assert_plain_refusal(result, "cannot be read")
+    assert scalar(connection, "select count(*) from screening_input_versions") == 0
+
+
+def test_command_says_so_when_the_source_tables_list_no_schools(connection, database_url, tmp_path):  # DB23
+    reference, datasets, paths = write_sources(tmp_path)
+    for path in paths.values():
+        pd.read_csv(path).head(0).to_csv(path, index=False)  # headers only
+
+    result = run_command(database_url, reference, datasets)
+
+    assert_plain_refusal(result, "no records")
+    assert scalar(connection, "select count(*) from screening_input_versions") == 0
+
+
 def test_command_names_a_missing_source_table(connection, database_url, tmp_path):  # DB17
     result = run_command(database_url, tmp_path / "nothing", tmp_path / "nowhere")
 
