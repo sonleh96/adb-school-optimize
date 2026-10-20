@@ -224,6 +224,62 @@ def test_the_school_detail_carries_the_codes_for_every_rule(api, loaded):  # API
         assert entry["rank_bounds_scope_code"] == result["rank_bounds"]["scope_code"] == "eligible"
 
 
+def scope_pairs(node, where="response"):
+    """Every scope label in a JSON body with the code beside it (None when there is none), at its path."""
+    found = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "scope" or key.endswith("_scope"):
+                code_key = "scope_code" if key == "scope" else f"{key}_code"
+                found.append((f"{where}.{key}", value, node.get(code_key)))
+            else:
+                found += scope_pairs(value, f"{where}.{key}")
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            found += scope_pairs(item, f"{where}[{i}]")
+    return found
+
+
+def label_of(code: str, label: str) -> bool:
+    """Whether the engine writes ``label`` for a scope of kind ``code``. Counts come from the engine's own builders."""
+    count = int(label.rsplit("(", 1)[1].rstrip(")"))
+    if code == "complete_under_rule":
+        return label == point_rank_scope(count)
+    if code == "eligible":
+        return label == rank_bounds_scope(count)
+    if code == "common_complete_cohort":
+        return label.startswith("common complete cohort of ") and label.endswith(f" ({count})")
+    return False
+
+
+def test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree(api, loaded):  # API32
+    key = quote(school_key(loaded.input_version, AWK[7]), safe="")
+    bodies = {
+        **{f"results/{r}": fetch(api, f"{API}/results", rule=r) for r in RULES},
+        "results/upper": fetch(api, f"{API}/results", rule=CIRCULATED, placement="upper"),
+        "detail": fetch(api, f"{API}/schools/by-key/{key}"),
+        "linked": fetch(api, f"{API}/schools/{loaded.school_ids[AWK[7]]}"),
+        "compare": fetch(api, f"{API}/compare", a=CIRCULATED, b="additive_no_u"),
+        "compare/needs-first": fetch(api, f"{API}/compare", a="need_first_u", b="bottleneck_u"),
+    }
+    for name, body in bodies.items():
+        pairs = scope_pairs(body, name)
+        assert pairs, name
+        for path, label, code in pairs:
+            assert code is not None, f"{path} has a label and no code"
+            assert label_of(code, label), f"{path}: the label {label!r} is not the engine's for code {code!r}"
+    # The comparison serves all three kinds: ranks, entrants and exits, the common cohort and interval bounds.
+    compare_codes = {code for _, _, code in scope_pairs(bodies["compare"])}
+    assert compare_codes == {"common_complete_cohort", "eligible"}
+
+
+def test_a_label_and_a_code_that_disagree_are_caught_by_the_check():  # API32
+    assert label_of("eligible", "eligible (5)") and not label_of("complete_under_rule", "eligible (5)")
+    assert not label_of("eligible", "complete under this rule (5)")
+    assert not label_of("common_complete_cohort", "eligible (5)")
+    assert not label_of("made_up", "eligible (5)")
+
+
 def test_the_codes_follow_the_engine_for_the_stored_runs(api, loaded):  # API32
     engine = screen_all(prepare(loaded.records))
     for rule_id, run in engine.items():
@@ -296,6 +352,76 @@ def test_the_provenance_travels_with_the_flag_and_names_the_rule_and_the_limit(a
     )
 
 
+# With 5,000 draws the standard error at 0.80 is sqrt(0.8 * 0.2 / 5000) = 0.005657.
+MARGIN_ROWS = {
+    AWK[0]: (0.8014, 0.9, 0.95),  # persistent, 0.0014 above the line: adjacent
+    AWK[1]: (0.9, 0.8056, 0.95),  # persistent, 0.0056 above: just inside the margin
+    AWK[2]: (0.95, 0.8057, 0.9),  # persistent, 0.0057 above: just outside the margin
+    AWK[3]: (0.99, 0.98, 0.97),  # persistent, far above
+    AWK[4]: (0.9, 0.7999, 0.95),  # just below the line in one setting: not persistent, so not adjacent
+    "Interval No Air": (0.8, 0.8, 0.8),  # exactly on the line: persistent and adjacent
+}
+
+
+@pytest.fixture
+def loaded_with_margins(api, connection, tmp_path):
+    reference = tmp_path / "reference"
+    relative = write_persistence_files(reference, MARGIN_ROWS)
+    return load_synthetic(connection, persistence=read_persistence_source(reference, relative))
+
+
+def test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_standard_error_above(
+    api, loaded_with_margins
+):  # API36
+    rows = fetch(api, f"{API}/results", rule=CIRCULATED)["rows"]
+    seen = {
+        r["school"]["source_school_name"]: (
+            r["persistent_candidate"],
+            r["lowest_top20_frequency"],
+            r["threshold_adjacent"],
+        )
+        for r in rows
+        if r["school"]["source_school_name"] in MARGIN_ROWS
+    }
+
+    assert seen == {
+        AWK[0]: (True, 0.8014, True),
+        AWK[1]: (True, 0.8056, True),
+        AWK[2]: (True, 0.8057, False),
+        AWK[3]: (True, 0.97, False),
+        AWK[4]: (False, 0.7999, False),
+        "Interval No Air": (True, 0.8, True),
+    }
+    outside = [r for r in rows if r["school"]["source_school_name"] not in MARGIN_ROWS]
+    assert {
+        (r["persistent_candidate"], r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in outside
+    } == {(None, None, None)}
+
+
+def test_the_detail_carries_the_same_margin_fields_on_the_circulated_rules_entry_only(
+    api, loaded_with_margins
+):  # API36, API34
+    key = quote(school_key(loaded_with_margins.input_version, AWK[1]), safe="")
+    detail = fetch(api, f"{API}/schools/by-key/{key}")
+
+    entries = {e["rule"]["rule_id"]: e for e in detail["rules"]}
+    assert (entries[CIRCULATED]["lowest_top20_frequency"], entries[CIRCULATED]["threshold_adjacent"]) == (
+        0.8056,
+        True,
+    )
+    for rule_id in OTHER_RULES:
+        assert not {"lowest_top20_frequency", "threshold_adjacent"} & entries[rule_id].keys(), rule_id
+
+
+def test_the_provenance_states_the_margin_it_is_judged_by(api, loaded_with_margins):  # API36, API35
+    provenance = fetch(api, f"{API}/results", rule=CIRCULATED)["persistence"]
+
+    assert provenance["standard_error"] == pytest.approx((0.8 * 0.2 / 5000) ** 0.5, abs=1e-15)
+    assert "sqrt(threshold * (1 - threshold) / draws)" in provenance["threshold_adjacent_rule"]
+    assert "less than one standard error above the threshold" in provenance["threshold_adjacent_rule"]
+    assert fetch(api, f"{API}/rules")["input_versions"][0]["persistence"] == provenance
+
+
 def test_a_version_without_the_numbers_has_null_flags_and_no_provenance(
     api, loaded_without_persistence
 ):  # API33, API35
@@ -303,6 +429,7 @@ def test_a_version_without_the_numbers_has_null_flags_and_no_provenance(
 
     assert body["persistence"] is None
     assert {r["persistent_candidate"] for r in body["rows"]} == {None}
+    assert {(r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in body["rows"]} == {(None, None)}
     assert fetch(api, f"{API}/rules")["input_versions"][0]["persistence"] is None
 
 

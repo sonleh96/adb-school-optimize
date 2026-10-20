@@ -496,7 +496,15 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
         assert entry["result"] == {
             k: v
             for k, v in row.items()
-            if k not in ("display_order", "placement", "school", "persistent_candidate")
+            if k
+            not in (
+                "display_order",
+                "placement",
+                "school",
+                "persistent_candidate",
+                "lowest_top20_frequency",
+                "threshold_adjacent",
+            )
         }
         assert entry["run"] == listing["run"]
         assert entry["point_rank_scope"] == entry["result"]["point_rank"]["scope"]
