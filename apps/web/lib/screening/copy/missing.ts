@@ -1,9 +1,13 @@
 /** What is missing from a record, and whether each missing value is blank or recorded but unusable. */
 import { isRemotenessOnly } from "./counts";
+import { gateSentence, otherCause } from "./causes";
+import { REMOTENESS_CATEGORIES } from "./definitions";
 import { SMALL, capitalise, joinList } from "./format";
-import type { CopySchool, InputKey, NeedField, NeedKey } from "./model";
+import { OTHER_GATES, isNeedGate, isOtherGate } from "./gates";
+import { FACILITIES } from "./inputs";
+import type { CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } from "./model";
 import { missingReadingsClause } from "./rank";
-import { FACILITIES, NEED_FIELDS, ORDER, isNeedKey, norm } from "./reasons";
+import { NEED_FIELDS, ORDER, isNeedKey, norm } from "./reasons";
 import { TERMS } from "./terms";
 
 const PART_OF_GATE: Record<NeedField, NeedKey> = {
@@ -20,6 +24,8 @@ interface PartCause {
   readonly label: string;
   readonly effect?: string;
 }
+
+const isBlankLocality = (v: string | null | undefined): boolean => v == null || String(v).trim() === "";
 
 // Why one need part cannot be used, read from the raw fields.
 // kind is 'blank' (the source cell is empty) or 'unusable' (recorded, but the calculation cannot use it).
@@ -111,6 +117,13 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
       };
     }
     case "locality":
+      if (!isBlankLocality(school.locality) && !REMOTENESS_CATEGORIES.includes(norm(school.locality)))
+        return {
+          kind: "unusable",
+          text: "the recorded remoteness category is not on the study's scale",
+          label: "Remoteness off the scale, needs checking",
+          effect: "which needs checking, and until then remoteness cannot be worked out",
+        };
       return {
         kind: "blank",
         text: "the remoteness category is blank in the record",
@@ -121,7 +134,26 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
   }
 }
 
-const gateParts = (school: CopySchool): NeedKey[] => school.gate_failures.map((g) => PART_OF_GATE[g]);
+const GATE_OF_KEY: Partial<Record<InputKey, OtherGate>> = {
+  area: "unresolved_area_context",
+  reach: "unresolved_reach",
+  urgency: "urgency_unknown",
+};
+
+// The reasons a queue school is held back for: need parts first, then the other reasons in the engine's order.
+function checkedGates(school: CopySchool): readonly GateKey[] {
+  for (const g of school.gate_failures)
+    if (!isNeedGate(g) && !isOtherGate(g)) throw new Error(`No gate called ${String(g)}`);
+  return school.gate_failures;
+}
+const gateParts = (school: CopySchool): NeedKey[] =>
+  checkedGates(school)
+    .filter(isNeedGate)
+    .map((g) => PART_OF_GATE[g]);
+const otherGates = (school: CopySchool): OtherGate[] => {
+  checkedGates(school);
+  return OTHER_GATES.filter((g) => school.gate_failures.includes(g));
+};
 
 export type MissingValueKind = "recorded" | "blank" | "unusable" | "not_calculable" | "unresolved";
 
@@ -133,9 +165,13 @@ export function missingValueKind(school: CopySchool, key: "need" | InputKey): Mi
     return v == null ? partCause(school, key).kind : "recorded";
   }
   if (!ORDER.includes(key)) throw new Error(`No input called ${String(key)}`);
-  if (key === "air" && school.raw.Q_raw == null) return "unresolved";
-  if (key === "emissions" && school.raw.E_raw == null) return "unresolved";
-  if (key === "land" && school.raw.L_raw == null) return "unresolved";
+  const gate = GATE_OF_KEY[key];
+  if (gate && (school.gate_failures.includes(gate) || (key === "urgency" && school.components.U === null)))
+    return otherCause(school, gate).kind;
+  const m = school.missing_env;
+  if (key === "air" && (school.raw.Q_raw == null || m?.aqi)) return "unresolved";
+  if (key === "emissions" && (school.raw.E_raw == null || m?.emissions)) return "unresolved";
+  if (key === "land" && (school.raw.L_raw == null || m?.land)) return "unresolved";
   return "recorded";
 }
 
@@ -150,15 +186,27 @@ export function missingValueNote(school: CopySchool, key: "need" | InputKey): st
   const kind = missingValueKind(school, key);
   if (kind === "recorded") return "Recorded in the source.";
   if (kind === "unresolved") {
-    const what = UNRESOLVED_WHAT[key as InputKey] as string;
-    return `No ${what.replace(/^an? /, "")} is recorded for this school, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of places instead of one place." : ""}`;
+    const what = (UNRESOLVED_WHAT[key as InputKey] as string).replace(/^an? /, "");
+    const raw = { air: school.raw.Q_raw, emissions: school.raw.E_raw, land: school.raw.L_raw }[
+      key as "air" | "emissions" | "land"
+    ];
+    const lead =
+      raw == null
+        ? `No ${what} is recorded for this school`
+        : `The ${what} recorded for this school cannot be used`;
+    return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of places instead of one place." : ""}`;
   }
+  const other = GATE_OF_KEY[key as InputKey];
   if (kind === "not_calculable") {
+    if (key !== "need")
+      return `${gateSentence(otherCause(school, other as OtherGate))} The tool does not fill it in or count it as 0.`;
     if (isRemotenessOnly(school))
       return "School need cannot be worked out, because only the remoteness category is recorded.";
     const reasons = gateParts(school).map((p) => partCause(school, p).text);
     return `School need cannot be worked out, because ${joinList(reasons)}.`;
   }
+  if (other)
+    return `${gateSentence(otherCause(school, other))} The tool does not fill it in or count it as 0.`;
   const c = partCause(school, key as NeedKey);
   if (kind === "blank") return `${capitalise(c.text)}. The tool does not fill it in or count it as 0.`;
   return `${capitalise(c.text)}. The calculation cannot use this value, so the record needs checking before this part can be worked out.`;
@@ -167,8 +215,10 @@ export function missingValueNote(school: CopySchool, key: "need" | InputKey): st
 // Short chip labels for a school with an incomplete record, naming the actual cause.
 export function missingLabels(school: CopySchool): string[] {
   if (school.cohort !== "queue") return [];
-  if (isRemotenessOnly(school)) return [TERMS.missing_all_but_remoteness.label];
-  return gateParts(school).map((p) => partCause(school, p).label);
+  const others = otherGates(school).map((g) => otherCause(school, g).label);
+  if (isRemotenessOnly(school)) return [TERMS.missing_all_but_remoteness.label, ...others];
+  const labels = [...gateParts(school).map((p) => partCause(school, p).label), ...others];
+  return labels.length ? labels : ["Record needs checking"];
 }
 
 // The same content as missingSentence, one standalone sentence per item, for record lists.
@@ -177,25 +227,38 @@ export function missingSentences(school: CopySchool): string[] {
   if (school.cohort === "interval")
     return [`${missingReadingsClause(school)}.`, "Every other input is recorded."];
   const parts: string[] = [];
+  const needs = gateParts(school),
+    others = otherGates(school);
   if (isRemotenessOnly(school)) {
     parts.push(
       `Only its remoteness category is recorded, as ${norm(school.locality)}.`,
       "Its classroom, teacher, housing, facility, power and water details are all blank."
     );
   } else {
-    for (const p of gateParts(school)) {
+    for (const p of needs) {
       const c = partCause(school, p);
       parts.push(`${capitalise(c.text)}${c.effect ? `, ${c.effect}` : ""}.`);
     }
-    if (
-      (school.locality == null || String(school.locality).trim() === "") &&
-      !gateParts(school).includes("locality")
-    )
+    if (isBlankLocality(school.locality) && !needs.includes("locality"))
       parts.push("The remoteness category is blank in the record.");
   }
-  parts.push(
-    "Until these are checked, its school need cannot be worked out, so it has no place in the list yet."
-  );
+  for (const g of others) parts.push(gateSentence(otherCause(school, g)));
+  if (needs.length)
+    parts.push(
+      "Until these are checked, its school need cannot be worked out, so it has no place in the list yet."
+    );
+  else if (others.length === 0) parts.push("Its record needs checking before it can be put in order.");
+  else if (others.length === 1 && others[0] === "urgency_unknown")
+    parts.push(
+      "The rules that leave urgency out do not need it, so they can put this school in order.",
+      "Until the urgency value is recorded, it has no place in the list under a rule that uses urgency."
+    );
+  else
+    parts.push(
+      others.length === 1
+        ? "Until this is checked, it has no place in the list yet."
+        : "Until these are checked, it has no place in the list yet."
+    );
   parts.push("Having no place in the list yet does not mean its need is low.");
   return parts;
 }

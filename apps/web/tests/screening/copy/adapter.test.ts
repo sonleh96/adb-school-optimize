@@ -222,8 +222,9 @@ describe("one school from /schools/by-key", () => {
     expect(copy.missingValueKind(q, "need")).toBe("not_calculable");
   });
 
-  it("names no need part for a school held for a reason that is not a need part", () => {
-    // The API gives one reason code. A school held only because its urgency is unknown has every need part.
+  it("names no need part for a school held for a reason about its stored counts when every need part is present", () => {
+    // The API names the reason (here a missing stock field) but not the part, so the parts come from the blanks.
+    // With every part present there is none to name, and the record says only that it needs checking.
     const body = clone(readFixture(`schools/${KEYS.queueTeacherHouses}.json`)) as {
       rules: { result: { need_parts: Record<string, number | null> } }[];
     };
@@ -231,6 +232,7 @@ describe("one school from /schools/by-key", () => {
     const q = schoolFromDetail(parseWith(wireSchoolDetail, body, "school"), "additive_u");
     expect(q.cohort).toBe("queue");
     expect(q.gate_failures).toEqual([]);
+    expect(copy.missingLabels(q)).toEqual(["Record needs checking"]);
   });
 
   it("carries a place and the range it could take once the range schools are counted", () => {

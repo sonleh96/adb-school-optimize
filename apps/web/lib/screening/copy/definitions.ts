@@ -14,3 +14,12 @@ export const SIX_FACILITIES =
 export const REMOTENESS_SCALE = "a six-step remoteness scale from highly accessible to extremely remote";
 export const SOURCE_LINE =
   'Source: the research paper "Comparing approaches to screening existing school locations in Papua New Guinea", circulated on 12 October 2026.';
+/** The six categories the study's remoteness scale holds, as the engine reads them (lower case). */
+export const REMOTENESS_CATEGORIES: readonly string[] = [
+  "highly accessible",
+  "accessible",
+  "moderately accessible",
+  "remote",
+  "very remote",
+  "extremely remote",
+];
