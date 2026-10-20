@@ -1,6 +1,14 @@
 /**
- * The plain-language copy system: a typed port of the design prototype's `copy.js`. Bind the data once with `copyFor`, then pass the bound object down.
+ * The plain-language copy system: a typed port of the design prototype's `copy.js`, with an adapter from the
+ * screening API's responses. Bind the data once with `copyFor`, then pass the bound object down.
  */
+export {
+  countsFromResults,
+  pairwiseFromCompare,
+  placedFromResults,
+  schoolFromDetail,
+  type ListedSchool,
+} from "./adapter";
 export { BANNED } from "./banned";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
 export { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
@@ -67,3 +75,11 @@ export {
 export { buildStrings, STRINGS } from "./strings";
 export { buildTerms, GLOSSARY_GROUPS, term, TERMS, type TermKey } from "./terms";
 export { HELP, KEYS, LAYOUT } from "./words";
+export {
+  wireCompare,
+  wireResults,
+  wireSchoolDetail,
+  type WireCompare,
+  type WireResults,
+  type WireSchoolDetail,
+} from "./wire";
