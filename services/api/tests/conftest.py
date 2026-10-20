@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import os
+import uuid
 from contextlib import contextmanager
 from types import SimpleNamespace
 
+import psycopg
 import pytest
+from app import main as app_main
 from app.main import app
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
 from app.security import require_write_operations, write_rate_limiter
 from fastapi.testclient import TestClient
+from psycopg import sql
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from screening_db_helpers import apply_migrations
 
 
 @pytest.fixture
@@ -32,6 +39,9 @@ def client(fake_connection, monkeypatch):
 
     for module in (meta, schools, districts, scenarios, scoring, exports, rasters):
         monkeypatch.setattr(module, "get_db", fake_get_db)
+    # These tests never reach a database. Without this the app's startup opens a pool whenever DATABASE_URL is set,
+    # which the screening database tests need, and then demands SUPABASE_URL as well.
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
 
     with TestClient(app) as test_client:
         yield test_client
@@ -67,3 +77,73 @@ def fake_settings():
             "missing_settings": [],
         },
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# Real PostGIS for the screening database tests. Each test gets its own database, cloned from a
+# template that has every migration applied, so tests never see each other's rows.
+# ---------------------------------------------------------------------------------------------
+
+NO_DATABASE = "set DATABASE_URL to a PostGIS server to run the screening database tests"
+LOCAL_HOSTS = {"", "localhost", "127.0.0.1", "::1"}
+
+# Supabase provides these roles; a plain PostGIS server does not, and 002_security_lockdown.sql refers to them.
+BOOTSTRAP_ROLES = """
+do $$
+begin
+    if not exists (select from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+    if not exists (select from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+end
+$$
+"""
+
+
+def _server_url() -> str:
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip(NO_DATABASE)
+    host = conninfo_to_dict(url).get("host", "")
+    if host not in LOCAL_HOSTS and not host.startswith("/"):
+        pytest.skip("refusing to create test databases on a non-local server")
+    return url
+
+
+def _drop(admin: psycopg.Connection, name: str) -> None:
+    admin.execute(sql.SQL("drop database if exists {} with (force)").format(sql.Identifier(name)))
+
+
+@pytest.fixture(scope="session")
+def migrated_template():
+    url = _server_url()
+    name = f"rise_screening_tmpl_{uuid.uuid4().hex[:8]}"
+    with psycopg.connect(url, autocommit=True) as admin:
+        admin.execute(BOOTSTRAP_ROLES)
+        admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+        try:
+            with psycopg.connect(make_conninfo(url, dbname=name), autocommit=True) as connection:
+                apply_migrations(connection)
+            yield name
+        finally:
+            _drop(admin, name)
+
+
+@pytest.fixture
+def database_url(migrated_template):
+    url = _server_url()
+    name = f"rise_screening_test_{uuid.uuid4().hex[:8]}"
+    with psycopg.connect(url, autocommit=True) as admin:
+        admin.execute(
+            sql.SQL("create database {} template {}").format(
+                sql.Identifier(name), sql.Identifier(migrated_template)
+            )
+        )
+        try:
+            yield make_conninfo(url, dbname=name)
+        finally:
+            _drop(admin, name)
+
+
+@pytest.fixture
+def connection(database_url):
+    with psycopg.connect(database_url, autocommit=True) as conn:
+        yield conn
