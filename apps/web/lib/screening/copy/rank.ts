@@ -14,6 +14,7 @@ import {
 } from "./counts";
 import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
 import type { CopyResult, CopyRuleId, CountBag, CountsByRule, NamedSchool, PlacedSchool } from "./model";
+import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
 import { rule } from "./rules";
 import { STRINGS } from "./strings";
 
@@ -110,35 +111,38 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
 
 // opts.name: start with the school's name. opts.shortlist: a top-list length such as 20,
 // which adds whether a range school is inside it either way. opts.counts: from countsFrom.
-export function rankSentence(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
+export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): Segments {
   const r = rule(ruleId);
   const c = countsOf(opts, ruleId);
-  const lead = opts.name ? `${displayName(school)} is` : "It is";
+  const nm = opts.name ? nameSegment(displayName(school)) : null;
   if (school.cohort === "queue") {
-    return `${opts.name ? `${displayName(school)} cannot` : "Cannot"} be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.`;
+    const rest =
+      "be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
+    return nm ? seg`${nm} cannot ${rest}` : seg`Cannot ${rest}`;
   }
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
     if (!res || !hasBounds(res)) {
-      return `${opts.name ? `${displayName(school)} is not` : "Not"} computed under ${r.name}. That rule was only run on ${completePhrase(c)}, and this school has a missing reading.`;
+      const tail = seg`computed under ${r.name}. That rule was only run on ${completePhrase(c)}, and this school has a missing reading.`;
+      return nm ? seg`${nm} is not ${tail}` : seg`Not ${tail}`;
     }
     if (res.rank_best === res.rank_worst) {
-      const first = opts.name
-        ? `${displayName(school)} is ${ordinal(res.rank_best)}`
-        : capitalise(ordinal(res.rank_best));
-      return `${first} of ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
+      const first = nm ? seg`${nm} is ${ordinal(res.rank_best)}` : seg`${capitalise(ordinal(res.rank_best))}`;
+      return seg`${first} of ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
     }
-    const first = opts.name ? `${displayName(school)} could be anywhere` : "Anywhere";
-    return `${first} from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} of ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
+    const first = nm ? seg`${nm} could be anywhere` : seg`Anywhere`;
+    return seg`${first} from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} of ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
   }
   if (!hasPlace(res)) {
-    return `${opts.name ? `${displayName(school)} is not` : "Not"} computed under ${r.name}.`;
+    return nm ? seg`${nm} is not computed under ${r.name}.` : seg`Not computed under ${r.name}.`;
   }
-  const head = opts.name
-    ? `${lead} ${ordinal(res.rank_complete120)}`
-    : capitalise(ordinal(res.rank_complete120));
-  return `${head} of ${completePhrase(c)}${rangeCountClause(res, c)}.`;
+  const head = nm
+    ? seg`${nm} is ${ordinal(res.rank_complete120)}`
+    : seg`${capitalise(ordinal(res.rank_complete120))}`;
+  return seg`${head} of ${completePhrase(c)}${rangeCountClause(res, c)}.`;
 }
+export const rankSentence = (school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string =>
+  textOf(rankSegments(school, ruleId, opts));
 
 // The card's large figure: "3rd", "12th to 18th", "5th of 40", or a status. placeContext never restates it.
 // A range school's figure always carries its range or its scope, so it never reads like a single place among the others.
@@ -224,29 +228,29 @@ function standing(school: PlacedSchool, res: CopyResult | null): Standing {
 
 // One school under two rules: a range school's possible places, or a single place for the others.
 // Each place is said against the group of the rule that gave it, because the groups differ between rules.
-export function rangeComparisonSentence(
+export function rangeComparisonSegments(
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
   opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
-): string {
+): Segments {
   const a = rule(ruleA),
     b = rule(ruleB);
   const cA = countsOf(opts, ruleA),
     cB = countsOf(opts, ruleB);
-  const name = displayName(school);
+  const nm = nameSegment(displayName(school));
   const sa = standing(school, resultFor(school, ruleA)),
     sb = standing(school, resultFor(school, ruleB));
   const held = school.cohort === "queue";
   if (sa.kind === "none" && sb.kind === "none") {
     return held
-      ? `${name} cannot be put in order under ${a.name} or ${b.name} yet, because its record is incomplete.`
-      : `${name} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(cA)}.`;
+      ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because its record is incomplete.`
+      : seg`${nm} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(cA)}.`;
   }
   if (sa.kind === "point" && sb.kind === "point") {
     if (sharedSize(cA, cB, "complete"))
-      return `Among ${completePhrase(cA)}, ${name} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
-    return `Under ${a.name}, ${name} is ${ordinal(sa.place)} among ${completePhrase(cA)}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB)}.`;
+      return seg`Among ${completePhrase(cA)}, ${nm} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
+    return seg`Under ${a.name}, ${nm} is ${ordinal(sa.place)} among ${completePhrase(cA)}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB)}.`;
   }
   const where = (st: Standing & { kind: "range" }, rr: { name: string }): string =>
     st.best === st.worst
@@ -260,44 +264,41 @@ export function rangeComparisonSentence(
   ) {
     const among = `Among ${orderedPhrase(cA)}`;
     if (sa.kind === "none" && sb.kind === "range")
-      return `${among}, ${name} sits ${where(sb, b)}. It is not computed under ${a.name}.`;
+      return seg`${among}, ${nm} sits ${where(sb, b)}. It is not computed under ${a.name}.`;
     if (sb.kind === "none" && sa.kind === "range")
-      return `${among}, ${name} sits ${where(sa, a)}. It is not computed under ${b.name}.`;
+      return seg`${among}, ${nm} sits ${where(sa, a)}. It is not computed under ${b.name}.`;
     if (sa.kind === "range" && sb.kind === "range")
-      return `${among}, ${name} sits ${where(sa, a)}, and ${where(sb, b)}.`;
+      return seg`${among}, ${nm} sits ${where(sa, a)}, and ${where(sb, b)}.`;
   }
-  // Each side on its own, with its own group.
-  const clause = (
-    st: Standing,
-    rr: { name: string },
-    c: CountBag | undefined,
-    lead: string,
-    it: string
-  ): string => {
+  // Each side on its own, with its own group. The first side names the school; the second says "it".
+  const clause = (st: Standing, rr: { name: string }, c: CountBag | undefined, first: boolean): Segments => {
+    const subject: Segments = first ? [nm] : ["it"];
     if (st.kind === "point")
-      return `Under ${rr.name}, ${lead} ${ordinal(st.place)} among ${completePhrase(c)}.`;
+      return seg`Under ${rr.name}, ${subject} is ${ordinal(st.place)} among ${completePhrase(c)}.`;
     if (st.kind === "range")
       return st.best === st.worst
-        ? `Under ${rr.name}, ${lead} ${ordinal(st.best)} among ${orderedPhrase(c)}.`
-        : `Under ${rr.name}, ${it} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
+        ? seg`Under ${rr.name}, ${subject} is ${ordinal(st.best)} among ${orderedPhrase(c)}.`
+        : seg`Under ${rr.name}, ${subject} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
     return held
-      ? `${capitalise(it)} cannot be put in order under ${rr.name} yet, because its record is incomplete.`
-      : `${capitalise(it)} is not computed under ${rr.name}.`;
+      ? seg`It cannot be put in order under ${rr.name} yet, because its record is incomplete.`
+      : seg`It is not computed under ${rr.name}.`;
   };
   const sides: [Standing, { name: string }, CountBag | undefined][] = [
     [sa, a, cA],
     [sb, b, cB],
   ];
   if (sa.kind === "none") sides.reverse();
-  return sides
-    .map(([st, rr, c], i) =>
-      i === 0 ? clause(st, rr, c, `${name} is`, name) : clause(st, rr, c, "it is", "it")
-    )
-    .join(" ");
+  return joinSegments(sides.map(([st, rr, c], i) => clause(st, rr, c, i === 0)));
 }
+export const rangeComparisonSentence = (
+  school: PlacedSchool,
+  ruleA: CopyRuleId,
+  ruleB: CopyRuleId,
+  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
+): string => textOf(rangeComparisonSegments(school, ruleA, ruleB, opts));
 
 // Question 1: which schools a rule puts first. schools: the full schools array; counts come from it.
-export function listStartsSentence(schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): string {
+export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): Segments {
   const r = rule(ruleId);
   const c = countsFrom(schools);
   const firsts = schools
@@ -309,20 +310,22 @@ export function listStartsSentence(schools: readonly PlacedSchool[], ruleId: Cop
     .slice(0, n)
     .map((x) => x.s);
   if (firsts.length === 0)
-    return `Under ${r.name}, no school has every input recorded, so the list has no single places yet.`;
+    return seg`Under ${r.name}, no school has every input recorded, so the list has no single places yet.`;
   const k = firsts.length;
   const ranges = schools.filter((s) => {
     const res = resultFor(s, ruleId);
     return s.cohort === "interval" && hasBounds(res) && res.rank_best <= k;
   });
-  const names = joinList(firsts.map((s) => displayName(s)));
+  const names = nameList(firsts.map((s) => displayName(s)));
   const sentence =
     k === 1
-      ? `Under ${r.name}, the first of ${completePhrase(c)} is ${names}.`
-      : `Under ${r.name}, the first ${countWord(k)} of ${completePhrase(c)} are ${names}.`;
+      ? seg`Under ${r.name}, the first of ${completePhrase(c)} is ${names}.`
+      : seg`Under ${r.name}, the first ${countWord(k)} of ${completePhrase(c)} are ${names}.`;
   if (!ranges.length) return sentence;
-  return `${sentence} ${joinList(ranges.map((s) => displayName(s)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
+  return seg`${sentence} ${nameList(ranges.map((s) => displayName(s)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
 }
+export const listStartsSentence = (schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): string =>
+  textOf(listStartsSegments(schools, ruleId, n));
 
 /* ------------------------------------------------- names, places and ties */
 
@@ -349,12 +352,12 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
 
 // A tie note for the card or the row, or null when the school is level with no other.
 // Ties are exact, as the engine compares them: the same screening score, or under need-first the same school need.
-export function tieNote(
+export function tieNoteSegments(
   school: PlacedSchool,
   ruleId: CopyRuleId,
   schools: readonly PlacedSchool[] = [],
   form: "card" | "row" = "card"
-): string | null {
+): Segments | null {
   rule(ruleId);
   if (school.cohort !== "complete") return null;
   const nf = isNeedFirst(ruleId);
@@ -373,7 +376,7 @@ export function tieNote(
     return x.id !== school.id && x.cohort === "complete" && v != null && v === mine;
   });
   if (!level.length) return null;
-  const names = joinList(level.map((x) => distinctName(x, schools)));
+  const names = nameList(level.map((x) => distinctName(x, schools)));
   const sameName = level.some((x) => displayName(x) === displayName(school));
   const nameRule = sameName ? "by the name as recorded, which differs only in spacing" : "by school name";
   if (nf) {
@@ -382,11 +385,20 @@ export function tieNote(
       const s2 = second(x);
       return s2 != null && mineSecond != null && s2 === mineSecond;
     });
-    if (form === "row") return `Same school need as ${names}`;
+    if (form === "row") return seg`Same school need as ${names}`;
     return exact.length === level.length
-      ? `It has exactly the same school need and other inputs as ${names}, so the order goes ${nameRule}.`
-      : `It has exactly the same school need as ${names}, so the other inputs decide which comes first.`;
+      ? seg`It has exactly the same school need and other inputs as ${names}, so the order goes ${nameRule}.`
+      : seg`It has exactly the same school need as ${names}, so the other inputs decide which comes first.`;
   }
-  if (form === "row") return `Level with ${names}`;
-  return `It has exactly the same screening score as ${names}, so the order goes ${nameRule}.`;
+  if (form === "row") return seg`Level with ${names}`;
+  return seg`It has exactly the same screening score as ${names}, so the order goes ${nameRule}.`;
+}
+export function tieNote(
+  school: PlacedSchool,
+  ruleId: CopyRuleId,
+  schools: readonly PlacedSchool[] = [],
+  form: "card" | "row" = "card"
+): string | null {
+  const s = tieNoteSegments(school, ruleId, schools, form);
+  return s === null ? null : textOf(s);
 }

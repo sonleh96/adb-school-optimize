@@ -294,13 +294,16 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         run(() => P.urgencyReassurance()),
         run(() => Q.urgencyReassurance())
       );
-      // The prototype also returns its own COUNTS alias of counts, which the port does not.
+      // The prototype also returns its own COUNTS alias of counts, which the port does not. The port adds
+      // `segments`, the sentences that name a school with each name marked; the prototype has no such form.
       same(
         "the keys of the bound object",
         Object.keys(P)
           .filter((k) => k !== "COUNTS")
           .sort(),
-        Object.keys(Q).sort()
+        Object.keys(Q)
+          .filter((k) => k !== "segments")
+          .sort()
       );
       flush();
     });

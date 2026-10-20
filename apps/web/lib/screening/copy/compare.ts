@@ -3,10 +3,11 @@
  * because this module never fetches. `urgencyReassurance` and the list statements answer "which list should I use".
  */
 import { countsFrom, rangePhrase, theSchools, theirScore } from "./counts";
-import { cleanName, displayName, formatCount, joinList, lowerFirst, ordinal, plural } from "./format";
+import { cleanName, displayName, formatCount, lowerFirst, ordinal, plural } from "./format";
 import type { ComparisonData, CopyRuleId, PairwiseRow, Top20Change } from "./model";
 import { hasPlace, resultFor } from "./rank";
 import { rule } from "./rules";
+import { joinSegments, nameList, nameSegment, seg, textOf, type Segments } from "./segments";
 
 export const findPair = (
   pairwise: readonly PairwiseRow[],
@@ -98,22 +99,22 @@ function topChanges(
 
 // data: { pairwise, top20Changes, schools? }, the study's recorded comparison, its top-20 changes,
 // and the schools (needed only for the top-10 names). opts.top: 20 (default) or 10.
-export function comparisonSentence(
+export function comparisonSegments(
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
   data: ComparisonData & { top20Changes: readonly Top20Change[] },
   opts: { top?: number } = {}
-): string {
+): Segments {
   const a = rule(ruleA),
     b = rule(ruleB);
   const k = opts.top === 10 ? 10 : 20;
-  if (ruleA === ruleB) return "Both sides use the same rule, so nothing moves.";
+  if (ruleA === ruleB) return seg`Both sides use the same rule, so nothing moves.`;
   const row = findPair(data.pairwise, ruleA, ruleB);
-  if (!row) return `No recorded comparison exists for ${a.name} and ${b.name}.`;
+  if (!row) return seg`No recorded comparison exists for ${a.name} and ${b.name}.`;
 
-  const sentences = [
-    `This compares ${a.name} with ${b.name} among ${pairPhrase(row)}.`,
-    agreementSentence(row, k, "under both"),
+  const sentences: Segments[] = [
+    seg`This compares ${a.name} with ${b.name} among ${pairPhrase(row)}.`,
+    seg`${agreementSentence(row, k, "under both")}`,
   ];
   const changes = topChanges(ruleA, ruleB, data, row, k);
   if (changes) {
@@ -121,27 +122,27 @@ export function comparisonSentence(
     const outs = changes.filter((c) => !c.enters).sort((x, y) => (x.from as number) - (y.from as number));
     const lead = `When you switch to ${b.name}, `;
     if (ins.length + outs.length > 0 && ins.length + outs.length <= 4) {
-      const moves = [
+      const moves: Segments[] = [
         ...ins.map(
           (c) =>
-            `${c.name} moves from ${ordinal(c.from as number)} to ${ordinal(c.to as number)} and joins the top ${k}.`
+            seg`${nameSegment(c.name)} moves from ${ordinal(c.from as number)} to ${ordinal(c.to as number)} and joins the top ${k}.`
         ),
         ...outs.map(
           (c) =>
-            `${c.name} moves from ${ordinal(c.from as number)} to ${ordinal(c.to as number)} and drops out of the top ${k}.`
+            seg`${nameSegment(c.name)} moves from ${ordinal(c.from as number)} to ${ordinal(c.to as number)} and drops out of the top ${k}.`
         ),
       ];
-      moves[0] = lead + moves[0];
+      moves[0] = seg`${lead}${moves[0]}`;
       sentences.push(...moves);
     } else if (ins.length + outs.length > 4) {
-      const lines: string[] = [];
+      const lines: Segments[] = [];
       if (ins.length)
         lines.push(
-          `${joinList(ins.map((c) => c.name))} ${plural(ins.length, "joins", "join")} the top ${k}.`
+          seg`${nameList(ins.map((c) => c.name))} ${plural(ins.length, "joins", "join")} the top ${k}.`
         );
       if (outs.length)
-        lines.push(`${joinList(outs.map((c) => c.name))} ${plural(outs.length, "drops", "drop")} out.`);
-      lines[0] = lead + lines[0];
+        lines.push(seg`${nameList(outs.map((c) => c.name))} ${plural(outs.length, "drops", "drop")} out.`);
+      lines[0] = seg`${lead}${lines[0]}`;
       sentences.push(...lines);
     }
   }
@@ -149,11 +150,17 @@ export function comparisonSentence(
   const most = row.maximum_absolute_rank_shift;
   sentences.push(
     half === 0
-      ? `At least half of the schools keep the same place in the list, and the largest move is ${most} ${plural(most, "place", "places")}.`
-      : `Half of the schools move ${half} ${plural(half, "place", "places")} or fewer, and the largest move is ${most} places.`
+      ? seg`At least half of the schools keep the same place in the list, and the largest move is ${most} ${plural(most, "place", "places")}.`
+      : seg`Half of the schools move ${half} ${plural(half, "place", "places")} or fewer, and the largest move is ${most} places.`
   );
-  return sentences.join(" ");
+  return joinSegments(sentences);
 }
+export const comparisonSentence = (
+  ruleA: CopyRuleId,
+  ruleB: CopyRuleId,
+  data: ComparisonData & { top20Changes: readonly Top20Change[] },
+  opts: { top?: number } = {}
+): string => textOf(comparisonSegments(ruleA, ruleB, data, opts));
 
 // Answers "what changes without urgency?" from the recorded comparison of the two combined-factors rules.
 // data: { pairwise }.
