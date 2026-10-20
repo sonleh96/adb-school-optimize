@@ -22,13 +22,11 @@ import {
   pairwiseFromCompare,
   placedFromResults,
   schoolFromDetail,
-  wireCompare,
-  wireResults,
-  wireSchoolDetail,
 } from "@/lib/screening/copy";
 
 import { copy as clone, fixtureIndex, readFixture } from "../fixtures";
 import { KEYS, RULES, fixtureCompare, fixtureDetail, fixtureResults } from "./helpers";
+import { compareResponse, resultsResponse, schoolDetailResponse } from "@/lib/screening/types";
 
 interface RawRow {
   cohort: string;
@@ -40,11 +38,11 @@ describe("the responses the API sent", () => {
   const { requests } = fixtureIndex();
   const schemaFor = (p: string) =>
     p.startsWith("/api/v1/screening/schools/by-key/")
-      ? wireSchoolDetail
+      ? schoolDetailResponse
       : p.endsWith("/results")
-        ? wireResults
+        ? resultsResponse
         : p.endsWith("/compare")
-          ? wireCompare
+          ? compareResponse
           : null;
 
   it.each(requests.filter((r) => schemaFor(r.path)).map((r) => [r.file, r] as const))(
@@ -61,14 +59,14 @@ describe("the responses the API sent", () => {
       rules: { result: Record<string, unknown> }[];
     };
     delete body.rules[2].result.need_parts;
-    expect(() => parseWith(wireSchoolDetail, body, "Screening school")).toThrow(
+    expect(() => parseWith(schoolDetailResponse, body, "Screening school")).toThrow(
       "Screening school: rules[2].result.need_parts: expected an object, got undefined"
     );
     const results = clone(readFixture("results/additive_u.json")) as {
       rows: { components: Record<string, unknown> }[];
     };
     delete results.rows[4].components.Q;
-    expect(() => parseWith(wireResults, results, "Screening results")).toThrow(
+    expect(() => parseWith(resultsResponse, results, "Screening results")).toThrow(
       "rows[4].components.Q: expected a finite number"
     );
   });
@@ -229,7 +227,7 @@ describe("one school from /schools/by-key", () => {
       rules: { result: { need_parts: Record<string, number | null> } }[];
     };
     for (const r of body.rules) r.result.need_parts.teacher_housing_deficit = 0.4;
-    const q = schoolFromDetail(parseWith(wireSchoolDetail, body, "school"), "additive_u");
+    const q = schoolFromDetail(parseWith(schoolDetailResponse, body, "school"), "additive_u");
     expect(q.cohort).toBe("queue");
     expect(q.gate_failures).toEqual([]);
     expect(copy.missingLabels(q)).toEqual(["Record needs checking"]);
@@ -271,22 +269,25 @@ describe("one school from /schools/by-key", () => {
     const held = body.rules.find((r) => r.rule.rule_id === "benchmark");
     if (!held) throw new Error("no benchmark");
     held.result.cohort = "verification_queue";
-    const shown = schoolFromDetail(parseWith(wireSchoolDetail, body, "school"), "additive_u");
+    const shown = schoolFromDetail(parseWith(schoolDetailResponse, body, "school"), "additive_u");
     expect(shown.results).not.toHaveProperty("benchmark");
     expect(copy.rankSentence(shown, "benchmark")).toBe("Not computed under the conventional benchmark (B).");
   });
 
   it("ignores a rule the copy has no words for, and refuses a view of one the school has no result under", () => {
     const body = clone(readFixture(`schools/${KEYS.complete}.json`)) as {
-      rules: { rule: { rule_id: string }; result: unknown }[];
+      rules: { rule: { rule_id: string; label?: string }; result: unknown }[];
     };
-    body.rules.push({ rule: { rule_id: "a_rule_added_later" }, result: body.rules[0].result });
-    const detail = parseWith(wireSchoolDetail, body, "school");
+    body.rules.push({
+      ...body.rules[0],
+      rule: { rule_id: "a_rule_added_later", label: "A rule added later" },
+    });
+    const detail = parseWith(schoolDetailResponse, body, "school");
     expect(Object.keys(schoolFromDetail(detail, "additive_u").results ?? {}).sort()).toEqual(
       [...RULES].sort()
     );
     const without = parseWith(
-      wireSchoolDetail,
+      schoolDetailResponse,
       { ...body, rules: body.rules.filter((r) => r.rule.rule_id !== "benchmark") },
       "school"
     );
@@ -309,7 +310,7 @@ describe("a stored input or a contribution that is missing", () => {
         };
       }[];
     };
-  const load = (b: unknown) => parseWith(wireSchoolDetail, b, "school");
+  const load = (b: unknown) => parseWith(schoolDetailResponse, b, "school");
 
   it("fails with the input's name when the API stops sending it", () => {
     const b = body();
@@ -403,12 +404,21 @@ describe("a list from /results", () => {
 
   it("gives each school a result under every list passed, except where that list holds it for verification", () => {
     const other = clone(readFixture("results/additive_no_u.json")) as {
-      rows: { cohort: string; school: { source_school_name: string } }[];
+      rows: {
+        cohort: string;
+        school: { source_school_name: string };
+        point_rank: { rank: number | null };
+        rank_bounds: { best: number | null; worst: number | null };
+      }[];
     };
-    other.rows.find((r) => r.school.source_school_name === "Sample School 08")!.cohort = "verification_queue";
+    const held = other.rows.find((r) => r.school.source_school_name === "Sample School 08")!;
+    held.cohort = "verification_queue";
+    held.point_rank.rank = null;
+    held.rank_bounds.best = null;
+    held.rank_bounds.worst = null;
     const joined = placedFromResults(
       response,
-      parseWith(wireResults, other, "other"),
+      parseWith(resultsResponse, other, "other"),
       fixtureResults("benchmark")
     );
     const s08 = joined.find((s) => s.name === "Sample School 08");
@@ -420,7 +430,7 @@ describe("a list from /results", () => {
   it("refuses a list for a rule the copy has no words for", () => {
     const b = clone(readFixture("results/additive_u.json")) as { run: { rule_id: string } };
     b.run.rule_id = "a_rule_added_later";
-    expect(() => placedFromResults(parseWith(wireResults, b, "list"))).toThrow(ParseError);
+    expect(() => placedFromResults(parseWith(resultsResponse, b, "list"))).toThrow(ParseError);
   });
 
   it("counts the groups from the run's manifest, the missing air quality and zero urgency from the rows", () => {
@@ -444,7 +454,7 @@ describe("a list from /results", () => {
     };
     filtered.returned_schools = 10;
     filtered.rows = filtered.rows.slice(0, 10);
-    const counts = countsFromResults(parseWith(wireResults, filtered, "filtered"));
+    const counts = countsFromResults(parseWith(resultsResponse, filtered, "filtered"));
     expect(counts).toEqual({ all: 25, complete: 16, range: 5, queue: 4, ranked: 21 });
 
     const noUrgency = countsFromResults(fixtureResults("additive_no_u"));
@@ -455,7 +465,7 @@ describe("a list from /results", () => {
       manifest: { cohort_counts: Record<string, number> };
     };
     delete cut.manifest.cohort_counts.interval;
-    const partial = countsFromResults(parseWith(wireResults, cut, "partial"));
+    const partial = countsFromResults(parseWith(resultsResponse, cut, "partial"));
     expect(partial).not.toHaveProperty("range");
     expect(partial).not.toHaveProperty("ranked");
     expect(partial.complete).toBe(16);
@@ -476,24 +486,47 @@ describe("a list from /results", () => {
 });
 
 describe("the bounds scope", () => {
-  const rowWith = (scope: string) => {
-    const b = clone(readFixture("results/additive_u.json")) as { rows: { rank_bounds: { scope: string } }[] };
-    b.rows[0].rank_bounds.scope = scope;
-    return placedFromResults(parseWith(wireResults, b, "list"))[0];
+  const rowWith = (code: string, label = "a label that says nothing") => {
+    const b = clone(readFixture("results/additive_u.json")) as {
+      rows: { rank_bounds: { scope: string; scope_code: string } }[];
+    };
+    b.rows[0].rank_bounds.scope = label;
+    b.rows[0].rank_bounds.scope_code = code;
+    return placedFromResults(parseWith(resultsResponse, b, "list"))[0];
   };
 
   it.each([
-    ["eligible (21)", "eligible124"],
-    ["eligible (1284)", "eligible124"],
-    ["eligible under this rule (21)", null],
-    ["complete under this rule (16)", null],
-    ["", null],
-  ])("reads %j as %j", (scope, want) => {
-    expect(rowWith(scope).results?.additive_u?.rank_bounds_scope).toBe(want);
+    ["eligible", "eligible124"],
+    ["complete_under_rule", null],
+    ["common_complete_cohort", null],
+    ["a_scope_added_later", null],
+  ])("reads the scope code %j as %j", (code, want) => {
+    expect(rowWith(code).results?.additive_u?.rank_bounds_scope).toBe(want);
+  });
+
+  it("reads the code and never the label", () => {
+    expect(rowWith("eligible", "complete under this rule (16)").results?.additive_u?.rank_bounds_scope).toBe(
+      "eligible124"
+    );
+    expect(rowWith("complete_under_rule", "eligible (21)").results?.additive_u?.rank_bounds_scope).toBe(null);
+  });
+
+  it("uses no bounds that do not count the schools that can be put in order", () => {
+    const r = rowWith("common_complete_cohort").results?.additive_u;
+    expect(r).toMatchObject({ rank_best: null, rank_worst: null });
+  });
+
+  it("uses no place that does not count the schools complete under the rule", () => {
+    const b = clone(readFixture("results/additive_u.json")) as {
+      rows: { point_rank: { scope_code: string } }[];
+    };
+    b.rows[0].point_rank.scope_code = "eligible";
+    const s = placedFromResults(parseWith(resultsResponse, b, "list"))[0];
+    expect(s.results?.additive_u?.rank_complete120).toBeNull();
   });
 
   it("says the rule was not run on all schools when the scope is one it does not know", () => {
-    const s = rowWith("something new (21)");
+    const s = rowWith("a_scope_added_later");
     expect(copy.fullRankingSentence(s, "additive_u")).toMatch(
       /^This rule was not run on all schools that can be put in order/
     );
@@ -541,16 +574,23 @@ describe("a comparison from /compare", () => {
     };
     const move = (name: string, rank_a: number, rank_b: number, status: string) => ({
       status,
-      school: { source_school_name: name },
+      school: {
+        school_key: `key-${name.trim()}`,
+        source_school_name: name,
+        province: null,
+        district: null,
+        locality: null,
+        latitude: null,
+        longitude: null,
+      },
       rank_a,
       rank_b,
       rank_scope: "x",
-      score_a: 0,
-      score_b: 0,
+      rank_scope_code: "common_complete_cohort",
     });
     body.entrants = [move("In One", 24, 18, "entrant")];
     body.exits = [move("Out One ", 17, 22, "exit")];
-    const { top20Changes } = pairwiseFromCompare(parseWith(wireCompare, body, "compare"));
+    const { top20Changes } = pairwiseFromCompare(parseWith(compareResponse, body, "compare"));
     expect(top20Changes).toEqual([
       {
         left_rule: "additive_u",

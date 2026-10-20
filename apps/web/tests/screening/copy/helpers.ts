@@ -13,17 +13,18 @@ import type {
   RecordedContribution,
   ResultsByRule,
 } from "@/lib/screening/copy";
-import {
-  type WireCompare,
-  type WireResults,
-  type WireSchoolDetail,
-  wireCompare,
-  wireResults,
-  wireSchoolDetail,
-} from "@/lib/screening/copy";
+
 import { parseWith } from "@/lib/screening/schema";
 
 import { readFixture } from "../fixtures";
+import {
+  type CompareResponse,
+  type ResultsResponse,
+  type SchoolDetailResponse,
+  compareResponse,
+  resultsResponse,
+  schoolDetailResponse,
+} from "@/lib/screening/types";
 
 /* ------------------------------------------------------------ text guards */
 
@@ -141,14 +142,14 @@ export function addFixedCopy(corpus: Corpus, P: FixedCopy, tag: string): void {
 
 export const RULES: readonly CopyRuleId[] = RULE_IDS;
 
-export const fixtureResults = (rule: string, upper = false): WireResults =>
-  parseWith(wireResults, readFixture(`results/${rule}${upper ? ".upper" : ""}.json`), `results/${rule}`);
+export const fixtureResults = (rule: string, upper = false): ResultsResponse =>
+  parseWith(resultsResponse, readFixture(`results/${rule}${upper ? ".upper" : ""}.json`), `results/${rule}`);
 
-export const fixtureDetail = (key: string): WireSchoolDetail =>
-  parseWith(wireSchoolDetail, readFixture(`schools/${key}.json`), `schools/${key}`);
+export const fixtureDetail = (key: string): SchoolDetailResponse =>
+  parseWith(schoolDetailResponse, readFixture(`schools/${key}.json`), `schools/${key}`);
 
-export const fixtureCompare = (): WireCompare =>
-  parseWith(wireCompare, readFixture("compare/additive_u__additive_no_u.json"), "compare");
+export const fixtureCompare = (): CompareResponse =>
+  parseWith(compareResponse, readFixture("compare/additive_u__additive_no_u.json"), "compare");
 
 /** The four saved school details, by what they show. */
 export const KEYS = {

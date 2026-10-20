@@ -224,15 +224,25 @@ describe("an additive API change", () => {
   it("does not need fields the page does not read", () => {
     const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
     for (const row of body.rows) {
-      delete row.components;
-      delete row.need_parts;
-      delete row.area_parts;
-      delete row.contributions;
-      delete row.scores;
+      delete row.maximum_term;
       delete row.placement;
       delete row.display_order;
     }
     expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
+  });
+
+  it("reads what the copy needs of a listed row, and names the path of what is missing", () => {
+    for (const field of [
+      "gate_failures",
+      "need_parts",
+      "area_parts",
+      "contributions",
+      "need_part_contributions",
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+      delete body.rows[3][field];
+      expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(`rows[3].${field}`);
+    }
   });
 
   it("accepts a rule role the page does not know", () => {

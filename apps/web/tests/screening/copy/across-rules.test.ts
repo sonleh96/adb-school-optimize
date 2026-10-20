@@ -17,12 +17,12 @@ import {
   pairwiseFromCompare,
   placedFromResults,
   schoolFromDetail,
-  wireSchoolDetail,
 } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 
 import { copy as clone, readFixture } from "../fixtures";
 import { KEYS, fixtureCompare, fixtureDetail, fixtureResults, textProblems } from "./helpers";
+import { schoolDetailResponse } from "@/lib/screening/types";
 
 const S = "the combined-factors rule with urgency (S)";
 const S0 = "the combined-factors rule without urgency (S0)";
@@ -85,7 +85,7 @@ describe("a school held back under the rule shown, from the detail route", () =>
       e.result.cohort = "verification_queue";
       e.result.gate_failures = ["urgency_unknown"];
     }
-  const s = schoolFromDetail(parseWith(wireSchoolDetail, body, "school"), "additive_u");
+  const s = schoolFromDetail(parseWith(schoolDetailResponse, body, "school"), "additive_u");
 
   it("keeps the results and recorded contributions of the rules that put it in order", () => {
     expect(s.cohort).toBe("queue");

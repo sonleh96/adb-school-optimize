@@ -15,9 +15,10 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { copyFor, pairwiseFromCompare, placedFromResults } from "@/lib/screening/copy";
-import type { WireCompare } from "@/lib/screening/copy";
 
 import { Corpus, RULES, fixtureCompare, fixtureResults, school } from "./helpers";
+import { parseWith } from "@/lib/screening/schema";
+import { type CompareResponse, compareResponse } from "@/lib/screening/types";
 
 const A = "additive_u";
 const B = "additive_no_u";
@@ -38,29 +39,51 @@ function compare(options: {
   exits?: Change[];
   a?: string;
   b?: string;
-}): WireCompare {
+}): CompareResponse {
   const { n = 84, overlaps = [10, 20, 30, 40], median = 1, maximum = 7, entrants = [], exits = [] } = options;
+  const identity = (name: string) => ({
+    school_key: `key-${name}`,
+    source_school_name: name,
+    province: null,
+    district: null,
+    locality: null,
+    latitude: null,
+    longitude: null,
+  });
   const change = (status: string) => (c: Change) => ({
     status,
-    school: { source_school_name: c.name },
+    school: identity(c.name),
     rank_a: c.rankA,
     rank_b: c.rankB,
+    rank_scope: `common complete cohort (${n})`,
+    rank_scope_code: "common_complete_cohort",
   });
-  return {
-    run_a: { rule_id: options.a ?? A },
-    run_b: { rule_id: options.b ?? B },
-    metrics: {
-      n,
-      median_absolute_rank_shift: median,
-      maximum_absolute_rank_shift: maximum,
-      top_k: [10, 20, 30, 40].map((k, i) => ({ k, overlap: overlaps[i] })),
+  const run = (rule_id: string) => ({ rule_id, input_version: "test", package_version: "test" });
+  return parseWith(
+    compareResponse,
+    {
+      input_version: "test",
+      run_a: run(options.a ?? A),
+      run_b: run(options.b ?? B),
+      common_cohort_scope: `common complete cohort (${n})`,
+      common_cohort_scope_code: "common_complete_cohort",
+      common_cohort_count: n,
+      metrics: {
+        n,
+        median_absolute_rank_shift: median,
+        maximum_absolute_rank_shift: maximum,
+        top_k: [10, 20, 30, 40].map((k, i) => ({ k, overlap: overlaps[i] })),
+      },
+      ranks: [],
+      entrants: entrants.map(change("entrant")),
+      exits: exits.map(change("exit")),
+      excluded_schools: [],
     },
-    entrants: entrants.map(change("entrant")),
-    exits: exits.map(change("exit")),
-  };
+    "compare"
+  );
 }
 
-const sentenceFor = (c: WireCompare, a = A as copy.CopyRuleId, b = B as copy.CopyRuleId, opts = {}) => {
+const sentenceFor = (c: CompareResponse, a = A as copy.CopyRuleId, b = B as copy.CopyRuleId, opts = {}) => {
   const data = pairwiseFromCompare(c);
   return copyFor({
     counts: { all: 96, complete: 84, range: 3, ranked: 87, queue: 9 },

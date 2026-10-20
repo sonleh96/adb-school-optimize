@@ -15,10 +15,11 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { ParseError, parseWith } from "@/lib/screening/schema";
-import { schoolFromDetail, wireSchoolDetail } from "@/lib/screening/copy";
+import { schoolFromDetail } from "@/lib/screening/copy";
 
 import { copy as clone, readFixture } from "../fixtures";
 import { KEYS, textProblems } from "./helpers";
+import { schoolDetailResponse } from "@/lib/screening/types";
 
 type Entry = {
   rule: { rule_id: string };
@@ -43,7 +44,7 @@ function held(change: (b: Body) => void, only?: readonly string[], view: copy.Co
   const b = clone(readFixture(`schools/${KEYS.complete}.json`)) as Body;
   change(b);
   for (const e of b.rules) if (!only || only.includes(e.rule.rule_id)) e.result.cohort = "verification_queue";
-  return schoolFromDetail(parseWith(wireSchoolDetail, b, "school"), view);
+  return schoolFromDetail(parseWith(schoolDetailResponse, b, "school"), view);
 }
 const everyRule = (b: Body, f: (e: Entry) => void) => b.rules.forEach(f);
 
@@ -294,8 +295,8 @@ describe("the response", () => {
       rules: { result: Record<string, unknown> }[];
     };
     delete b.rules[0].result.gate_failures;
-    expect(() => parseWith(wireSchoolDetail, b, "Screening school")).toThrow(ParseError);
-    expect(() => parseWith(wireSchoolDetail, b, "Screening school")).toThrow(
+    expect(() => parseWith(schoolDetailResponse, b, "Screening school")).toThrow(ParseError);
+    expect(() => parseWith(schoolDetailResponse, b, "Screening school")).toThrow(
       "rules[0].result.gate_failures: expected an array, got undefined"
     );
   });
