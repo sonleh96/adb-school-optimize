@@ -21,6 +21,26 @@ const STOCK_NAMES: readonly (readonly [keyof CopySchool["condition"], string])[]
   ...FACILITIES.map(([f, n]) => [f, `the ${n} count`] as const),
 ];
 
+/**
+ * The negative counts a sentence names for `negative_stock_value`. A negative total of classrooms or number of
+ * teachers is named with the share it spoils (see `partCause`) when that share is among the reasons, so it is left
+ * out here and a count is never stated twice.
+ */
+export function negativeCounts(
+  school: CopySchool
+): readonly (readonly [keyof CopySchool["condition"], string])[] {
+  const covered: Partial<Record<keyof CopySchool["condition"], string>> = {
+    classrooms_total: "permanent_classroom_deficit",
+    teachers: "teacher_housing_deficit",
+  };
+  return STOCK_NAMES.filter(([f]) => {
+    const v = school.condition[f];
+    if (typeof v !== "number" || v >= 0) return false;
+    const part = covered[f];
+    return !(part && (school.gate_failures as readonly string[]).includes(part));
+  });
+}
+
 interface OtherCause {
   readonly kind: "blank" | "unusable" | "not_calculable";
   readonly text: string;
@@ -34,10 +54,7 @@ interface OtherCause {
 export function otherCause(school: CopySchool, gate: OtherGate): OtherCause {
   switch (gate) {
     case "negative_stock_value": {
-      const names = STOCK_NAMES.filter(([f]) => {
-        const v = school.condition[f];
-        return typeof v === "number" && v < 0;
-      }).map(([, n]) => n);
+      const names = negativeCounts(school).map(([, n]) => n);
       return {
         kind: "unusable",
         text: names.length
