@@ -73,15 +73,11 @@ const cleaned = (copy: BoundCopy, value: string | null) => (value?.trim() ? copy
 
 /**
  * Why a school sits where it does, in one line: the input that adds most for a school with one place; for a range
- * school, why it shows a range, naming the first reading it lacks (the card names every one).
+ * school, why it shows a range, naming every reading it lacks when it lacks more than one.
  */
-const READINGS = ["air", "emissions", "land"] as const;
 function whyLine(copy: BoundCopy, school: CopySchool, rule: CopyRuleId): string {
-  const unread =
-    school.cohort === "interval"
-      ? READINGS.find((key) => copy.missingValueKind(school, key) === "unresolved")
-      : undefined;
-  if (unread) return copy.missingValueNote(school, unread);
+  const unread = school.cohort === "interval" ? copy.rangeRowWhy(school) : null;
+  if (unread) return unread;
   return copy.topDrivers(school, rule)[0]?.sentence ?? copy.reasonSentence(school, rule);
 }
 
