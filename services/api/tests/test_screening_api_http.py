@@ -168,3 +168,40 @@ def test_errors_and_exports_are_not_cacheable(api, loaded):  # API10
         assert "etag" not in response.headers
         assert response.headers["x-rise-png-decision-use"] == "research-prototype-only"
         assert response.headers["content-disposition"].startswith("attachment; filename=")
+
+
+# ---------------------------------------------------------------------------------------------
+# Control characters.
+# ---------------------------------------------------------------------------------------------
+
+BAD_TEXT = ["North\x07", "a\nb", "\x00", "tab\there", "del\x7f", "\x1b[31m"]
+
+
+@pytest.mark.parametrize("bad", BAD_TEXT)
+def test_control_characters_in_any_text_parameter_are_a_422_not_a_500(api, loaded, bad):  # API23
+    base = "/api/v1/screening"
+    key = "0" * 32
+    for path, params in (
+        ("/results", {"province": bad}),
+        ("/results", {"district": bad}),
+        ("/results", {"rule": bad}),
+        ("/results", {"input_version": bad}),
+        ("/results", {"package_version": bad}),
+        ("/compare", {"a": bad, "b": "additive_u"}),
+        ("/compare", {"a": "additive_u", "b": bad}),
+        (f"/schools/by-key/{key}", {"input_version": bad}),
+        ("/exports/top.csv", {"province": bad}),
+        ("/exports/top.xlsx", {"province": bad}),
+        ("/exports/top.xlsx", {"district": bad}),
+        ("/exports/incomplete.csv", {"district": bad}),
+    ):
+        response = api.get(base + path, params=params)
+        assert response.status_code == 422, (path, params, response.text[:200])
+        error = response.json()["error"]
+        assert error["code"] == "validation_error"
+        assert error["details"]["issues"][0]["type"] == "control_characters"
+    # Ordinary text, including accents and spaces, is not touched.
+    assert (
+        api.get(base + "/results", params={"province": "North", "district": "North One"}).status_code == 200
+    )
+    assert api.get(base + "/results", params={"province": "Île de France"}).status_code == 200

@@ -30,6 +30,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
 | API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
 | API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
+| API23 | Control characters cause a server error. | A control character in a query or path parameter reaches the database or an export and gives a 500, or text stored with such a character makes the XLSX writer raise. |
 
 ## Test map
 
@@ -53,11 +54,13 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_incomplete_export_lists_exactly_the_queue_with_missing_details` | API16 |
 | `test_the_queue_depends_on_the_rule_and_on_the_filters` | API16, API4 |
 | `test_every_gate_failure_has_a_plain_description` | API16 |
+| `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |
 | `test_json_responses_carry_a_cache_policy_and_a_validator` | API10 |
 | `test_a_matching_validator_gets_304_and_any_other_gets_the_body` | API10 |
 | `test_the_validator_follows_the_rule_the_placement_the_filter_and_the_input_version` | API10 |
 | `test_errors_and_exports_are_not_cacheable` | API10 |
+| `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` | API23 |
 | `test_rules_list_the_registry_with_weights_as_fractions_and_floats` | API3, API8, API14 |
 | `test_the_default_input_version_is_the_latest_and_is_marked` | API14 |
 | `test_results_list_complete_schools_by_point_rank_then_interval_at_lower_bound_then_the_queue` | API1, API2, API5 |

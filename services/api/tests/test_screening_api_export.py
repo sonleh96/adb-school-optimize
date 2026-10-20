@@ -471,3 +471,22 @@ def test_the_queue_depends_on_the_rule_and_on_the_filters(api, loaded):  # API16
 
 def test_every_gate_failure_has_a_plain_description():  # API16
     assert set(GATE_FAILURE_DETAILS) == set(GateFailure)
+
+
+def test_control_characters_in_stored_text_do_not_break_the_xlsx(api, connection):  # API23
+    names = ("Bell\x07 School", "Esc\x1b School", "Vertical\x0bTab School")
+    records = tuple(record(name, province="Prov\x01ince") for name in names)
+    load_synthetic(connection, records)
+
+    workbook = export(api, XLSX, rule="additive_u", k=10)
+    _, csv_rows = top(api, rule="additive_u", k=10)
+
+    sheet = openpyxl.load_workbook(io.BytesIO(workbook))["Top schools"]
+    header = [c.value for c in sheet[1]]
+    stored = {row[header.index("source_school_name")] for row in sheet.iter_rows(min_row=2, values_only=True)}
+    # XML cannot hold these characters, so the workbook carries Excel's escape for each.
+    assert stored == {"Bell_x0007_ School", "Esc_x001B_ School", "Vertical_x000B_Tab School"}
+    provinces = {row[header.index("province")] for row in sheet.iter_rows(min_row=2, values_only=True)}
+    assert provinces == {"Prov_x0001_ince"}
+    # The CSV keeps the characters as they are stored.
+    assert {r["source_school_name"] for r in csv_rows} == set(names)
