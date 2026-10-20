@@ -205,3 +205,25 @@ def test_control_characters_in_any_text_parameter_are_a_422_not_a_500(api, loade
         api.get(base + "/results", params={"province": "North", "district": "North One"}).status_code == 200
     )
     assert api.get(base + "/results", params={"province": "Île de France"}).status_code == 200
+
+
+def test_a_browser_script_may_read_the_screening_headers_and_the_filename(api, loaded):  # API25
+    origin = {"Origin": "http://localhost:3000"}
+    results = api.get("/api/v1/screening/results", headers=origin)
+    download = api.get("/api/v1/screening/exports/top.csv", headers=origin)
+
+    for response in (results, download):
+        exposed = {h.strip().lower() for h in response.headers["access-control-expose-headers"].split(",")}
+        assert {
+            "content-disposition",
+            "etag",
+            "x-screening-input-version",
+            "x-screening-input-sha256",
+            "x-rise-png-decision-use",
+        } <= exposed
+        assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    # Every header the screening routes set for the client is among the exposed ones.
+    exposed = {h.strip().lower() for h in results.headers["access-control-expose-headers"].split(",")}
+    assert {"etag", "x-screening-input-version", "x-screening-input-sha256"} <= exposed
+    assert {"etag", "x-screening-input-version", "x-screening-input-sha256"} <= set(results.headers)
+    assert {"content-disposition", "x-rise-png-decision-use"} <= set(download.headers)

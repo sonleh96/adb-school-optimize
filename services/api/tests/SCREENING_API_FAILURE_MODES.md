@@ -33,6 +33,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API23 | Control characters cause a server error. | A control character in a query or path parameter reaches the database or an export and gives a 500, or text stored with such a character makes the XLSX writer raise. |
 | API24 | A CSV name is read as a formula, or the exact name is lost. | A name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return has no guarded `display_name` column, or `source_school_name` is changed to guard it, or the XLSX turns a carriage return into a line feed. |
 | API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
+| API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
 
 ## Test map
 
@@ -65,6 +66,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_validator_follows_the_rule_the_placement_the_filter_and_the_input_version` | API10 |
 | `test_errors_and_exports_are_not_cacheable` | API10 |
 | `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` | API23 |
+| `test_a_browser_script_may_read_the_screening_headers_and_the_filename` | API25 |
 | `test_rules_list_the_registry_with_weights_as_fractions_and_floats` | API3, API8, API14 |
 | `test_the_default_input_version_is_the_latest_and_is_marked` | API14 |
 | `test_results_list_complete_schools_by_point_rank_then_interval_at_lower_bound_then_the_queue` | API1, API2, API5 |

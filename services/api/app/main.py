@@ -51,6 +51,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    # A browser script can read only the response headers named here. The screening client needs them all.
+    expose_headers=[
+        "Content-Disposition",
+        "ETag",
+        "X-Request-ID",
+        "X-RISE-PNG-Decision-Use",
+        "X-Screening-Input-Version",
+        "X-Screening-Input-Sha256",
+    ],
 )
 
 
