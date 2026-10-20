@@ -12,13 +12,16 @@ export const ROOT = process.env.RISE_PNG_DESIGN_ROOT;
 export const ready = !!ROOT && existsSync(path.join(ROOT, "prototype/shared/copy.js"));
 
 export type Api = Record<string, any>;
-export type Outcome = { ok: true; value: unknown } | { ok: false; message: string };
+export type Outcome = { ok: true; value: unknown } | { ok: false; name: string; message: string };
 
 export const run = (fn: () => unknown): Outcome => {
   try {
     return { ok: true, value: fn() };
   } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+    // The class matters as well as the message: a ParseError and an Error are two behaviours for a caller.
+    return e instanceof Error
+      ? { ok: false, name: e.name, message: e.message }
+      : { ok: false, name: typeof e, message: String(e) };
   }
 };
 
@@ -163,7 +166,9 @@ export function sameOutcome(label: string, a: Outcome, b: Outcome): void {
   if (a.ok && b.ok) same(label, a.value, b.value);
   else if (!a.ok && !b.ok) {
     tally.bothThrew += 1;
-    // Two different throws are two different behaviours, so the messages must agree too.
+    // Two different throws are two different behaviours, so the class and the message must agree.
+    if (a.name !== b.name)
+      note(`${label}: both threw, with different classes\n   prototype: ${a.name}\n   port:      ${b.name}`);
     if (a.message !== b.message)
       note(
         `${label}: both threw, with different messages\n   prototype: ${show(a.message)}\n   port:      ${show(b.message)}`
