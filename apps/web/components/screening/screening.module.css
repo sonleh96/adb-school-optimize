@@ -164,6 +164,8 @@
   gap: 2px;
 }
 .ramp > span {
+  width: 64px;
+  text-wrap: balance;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -173,7 +175,7 @@
 }
 .ramp i {
   display: block;
-  width: 52px;
+  width: 100%;
   height: 8px;
 }
 .ramp > span:first-child i {
