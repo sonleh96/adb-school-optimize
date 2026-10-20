@@ -353,7 +353,7 @@ describe("a stored input or a contribution that is missing", () => {
     const noParts = c.rules.find((r) => r.rule.rule_id === "additive_no_u");
     if (!noParts) throw new Error("no additive_no_u");
     noParts.result.need_part_contributions = null;
-    expect(() => schoolFromDetail(load(c), "additive_u")).toThrow(
+    expect(() => schoolFromDetail(load(c), "additive_no_u")).toThrow(
       "rules.additive_no_u.result.need_part_contributions: expected a value, got null"
     );
   });

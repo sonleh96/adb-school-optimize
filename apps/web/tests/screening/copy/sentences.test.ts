@@ -380,9 +380,21 @@ describe("ties", () => {
 
   it("notes a school level with another on screening score, on the card and the row", () => {
     expect(copy.tieNote(a, "additive_u", all, "card")).toBe(
-      "It has exactly the same screening score as Beta and Gamma, so the order goes by school name."
+      "It has exactly the same screening score as Beta, so the order goes by school name."
     );
-    expect(copy.tieNote(a, "additive_u", all, "row")).toBe("Level with Beta and Gamma");
+    expect(copy.tieNote(a, "additive_u", all, "row")).toBe("Level with Beta");
+  });
+
+  it("treats scores as equal only when they are exactly equal, as the engine does", () => {
+    // Gamma is 1e-13 above Alpha. The engine orders them by score, so they are not tied.
+    expect(copy.tieNote(c, "additive_u", all)).toBeNull();
+    expect(copy.tieNote(a, "additive_u", [a, c])).toBeNull();
+    const x = school({ id: "e1", name: "Echo", score: 0.1 + 0.2 });
+    const y = school({ id: "e2", name: "Foxtrot", score: 0.3 });
+    expect(0.1 + 0.2 === 0.3).toBe(false);
+    expect(copy.tieNote(x, "additive_u", [x, y])).toBeNull();
+    const z = school({ id: "e3", name: "Golf", score: 0.1 + 0.2 });
+    expect(copy.tieNote(x, "additive_u", [x, z], "row")).toBe("Level with Golf");
   });
 
   it("notes nothing for a school that is level with no one, or is not complete", () => {
