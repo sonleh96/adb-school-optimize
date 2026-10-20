@@ -81,6 +81,13 @@ export const oneRange = (c: CountBag | null | undefined): boolean => known(c, "r
 // "The four schools that show a range are" / "The one school that shows a range is".
 export const rangeSubject = (c: CountBag | undefined): string =>
   `${capitalise(rangePhrase(c))} ${oneRange(c) ? "is" : "are"}`;
+// R12: the numerals mark the first 10 under the rule, or every school that has a place if fewer.
+export const numbersHelp = (c: CountBag | undefined): string => {
+  const n = known(c, "complete") ? Math.min(10, c.complete) : 10;
+  if (n === 0) return "No dot is numbered, because no school has every input recorded.";
+  if (n === 1) return "The numbered dot is the first school under the chosen rule.";
+  return `Numbered dots are the first ${n} under the chosen rule.`;
+};
 export const theyWould = (c: CountBag | undefined): string =>
   oneRange(c) ? "it would sit" : "they would sit";
 export const theirScore = (c: CountBag | null | undefined): string => (oneRange(c) ? "its" : "their");
