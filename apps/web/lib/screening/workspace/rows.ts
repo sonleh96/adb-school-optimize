@@ -1,36 +1,16 @@
 /**
- * How the ordered list reads: each row's place, and where the list's two notes go.
- *
- * A place is one of three forms, decided here once so the row, the card and the tooltip agree:
- *  - `point`: one place among the schools with every input recorded ("3rd");
- *  - `range`: the highest and lowest place a school could take ("12th to 27th"), set stacked in the row;
- *  - `scoped`: a range school whose two ends are the same place. A bare "10th" would read like the complete school's
- *    "10th" beside it, though the two count among different groups, so the copy's headline carries its scope
- *    ("10th of 21") instead (robustness R19).
+ * How the lists read: each ordered row's kind of place, where the ordered list's two notes go, and how the
+ * incomplete records are grouped. The words of a place come from the copy (`rowPlace`), which adds the group a range
+ * counts whenever the list also shows single places, so no bare number means two things (robustness R19).
  */
 import type { OrderedRow } from "../list";
 
+/** A single place, a range of places, or a range whose two ends meet (still a range school, shown with its group). */
 export type PlaceForm = { kind: "point"; rank: number } | { kind: "range" } | { kind: "scoped" };
 
 export function placeForm(row: OrderedRow): PlaceForm {
   if (row.cohort === "complete") return { kind: "point", rank: row.point_rank.rank };
   return row.rank_bounds.best === row.rank_bounds.worst ? { kind: "scoped" } : { kind: "range" };
-}
-
-/**
- * True when the list shows the same single number twice with two meanings: a range school whose ends meet at a
- * place counted among every school that can be put in order, and a complete school with that number counted among
- * the complete ones (the need-first rules do this). The scope detail then shows without a click (R19).
- */
-export function scopesMix(rows: readonly OrderedRow[]): boolean {
-  const points = new Set<number>();
-  for (const row of rows) if (row.cohort === "complete") points.add(row.point_rank.rank);
-  return rows.some(
-    (row) =>
-      row.cohort === "interval" &&
-      row.rank_bounds.best === row.rank_bounds.worst &&
-      points.has(row.rank_bounds.best)
-  );
 }
 
 /** The index of the first range row, before which the note on how range schools are placed goes; -1 for none. */
@@ -48,4 +28,34 @@ export function tieNoteAfter(tied: readonly boolean[]): number {
   let end = start;
   while (end + 1 < tied.length && tied[end + 1]) end += 1;
   return end;
+}
+
+export interface RowGroup<R> {
+  readonly heading: string;
+  readonly rows: readonly R[];
+}
+
+/**
+ * The incomplete records in groups. By province, the groups keep the order the API lists them in (province,
+ * district, name). By what is missing, the largest group comes first, then by heading, so the commonest gap leads;
+ * within a group the API's order holds. The arrow keys follow the rows in exactly this order.
+ */
+export function groupRows<R>(
+  rows: readonly R[],
+  headingOf: (row: R) => string,
+  largestFirst: boolean
+): RowGroup<R>[] {
+  const groups = new Map<string, R[]>();
+  for (const row of rows) {
+    const heading = headingOf(row);
+    const group = groups.get(heading);
+    if (group) group.push(row);
+    else groups.set(heading, [row]);
+  }
+  const out = [...groups].map(([heading, members]) => ({ heading, rows: members }));
+  if (largestFirst)
+    out.sort(
+      (a, b) => b.rows.length - a.rows.length || (a.heading < b.heading ? -1 : a.heading > b.heading ? 1 : 0)
+    );
+  return out;
 }

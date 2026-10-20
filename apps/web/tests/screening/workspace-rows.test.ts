@@ -1,8 +1,8 @@
 /**
  * Failure modes of how the list reads, run on the API's own responses where they cover the case:
- *  1. Two rows show the same bare place with two meanings (R19): under a need-first rule a range school whose ends
- *     meet sits beside a complete school with the same number, and the scope detail stays hidden.
- *  2. The scope detail opens by itself on a list that has no such collision, hiding Read more for no reason.
+ *  1. The incomplete records are grouped in an order other than the one the arrow keys follow, a heading that
+ *     comes back later in the API's order makes a second group, or a row moves out of its arrival order.
+ *  2. Grouped by what is missing, the commonest gap does not lead, or groups of one size swap from run to run.
  *  3. The range note sits somewhere other than just before the first range school.
  *  4. The tie sentence is missing when rows are tied, repeated, or shown with no tie.
  *  5. What changed names a school by id or name instead of by role, or names one that lacks a place under one of the
@@ -13,31 +13,41 @@ import { describe, expect, it } from "vitest";
 
 import { placedFromResults } from "@/lib/screening/copy";
 import { splitRows } from "@/lib/screening/list";
-import { firstRangeIndex, placeForm, scopesMix, tieNoteAfter } from "@/lib/screening/workspace/rows";
+import { type RowGroup, firstRangeIndex, groupRows, tieNoteAfter } from "@/lib/screening/workspace/rows";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { results } from "./fixtures";
 
 const ordered = (rule: string) => splitRows(results(rule).rows).ordered;
 
-describe("scopesMix", () => {
-  it("is true when a range school's single place repeats a complete school's place", () => {
-    const rows = ordered("need_first_u");
-    // The fixture's need-first list has a range school at exactly 10th and a complete school at 10th.
-    const tenth = rows.filter(
-      (r) => placeForm(r).kind === "scoped" || (r.cohort === "complete" && r.point_rank.rank === 10)
-    );
-    expect(tenth.map((r) => r.school.source_school_name)).toEqual(
-      expect.arrayContaining(["Sample School 17", "Sample School 07"])
-    );
-    expect(scopesMix(rows)).toBe(true);
+describe("groupRows", () => {
+  const rows = [
+    { key: "a", group: "Province B" },
+    { key: "b", group: "Province A" },
+    { key: "c", group: "Province B" },
+    { key: "d", group: "Province C" },
+    { key: "e", group: "Province A" },
+    { key: "f", group: "Province B" },
+  ];
+  type Row = (typeof rows)[number];
+  const shape = (groups: readonly RowGroup<Row>[]) =>
+    groups.map((g) => `${g.heading}: ${g.rows.map((r) => r.key).join("")}`);
+
+  it("keeps the order rows arrive in, merging a heading that comes back later", () => {
+    expect(shape(groupRows(rows, (r) => r.group, false))).toEqual([
+      "Province B: acf",
+      "Province A: be",
+      "Province C: d",
+    ]);
   });
 
-  it("is false when a range school's single place is a number no complete school shows", () => {
-    // Under the main rule one range school sits at exactly 21st, past the 16 complete schools.
-    const rows = ordered("additive_u");
-    expect(rows.filter((r) => placeForm(r).kind === "scoped")).toHaveLength(1);
-    expect(scopesMix(rows)).toBe(false);
+  it("puts the largest group first, ties by heading, and keeps the arrival order inside each group", () => {
+    const tied = [...rows, { key: "g", group: "Province C" }];
+    expect(shape(groupRows(tied, (r) => r.group, true))).toEqual([
+      "Province B: acf",
+      "Province A: be",
+      "Province C: dg",
+    ]);
   });
 });
 

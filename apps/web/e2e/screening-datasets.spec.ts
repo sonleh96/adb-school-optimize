@@ -165,9 +165,12 @@ test("a list of one school states only its own counts", async ({ page, context }
   await expect(tab(page, /The list/)).toHaveText("The list(1)");
   await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(0)");
   // Every count the column states is the one school's: its place, its count, and no school in the other groups.
-  // The rule area's "Other rules (5)" counts rules, not schools, so it is left out.
+  // The rule area's "Other rules (5)" counts rules, not schools, and each row's Why line states the school's own
+  // readings, so only the text that states counts is read: the statement, the tabs, the scope line and the list notes.
   const said = await page
-    .locator("[data-region=list-statement], [role=tablist], #screening-list")
+    .locator(
+      "[data-region=list-statement], [role=tablist], [data-region=scope], #screening-list li[data-region]"
+    )
     .allInnerTexts();
   const numbers = said.join(" ").match(/\d+/g) ?? [];
   expect(numbers.length).toBeGreaterThan(0);
