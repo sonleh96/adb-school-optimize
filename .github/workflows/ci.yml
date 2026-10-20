@@ -102,6 +102,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:ci-throwaway@localhost:5432/postgres
+      # A missing DATABASE_URL or a service that did not start fails the database tests instead of skipping them.
+      REQUIRE_DATABASE_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
 

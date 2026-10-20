@@ -62,7 +62,8 @@ It needs only `DATABASE_URL`.
 ### Database tests
 
 The screening database tests use a real PostGIS server and skip when `DATABASE_URL` is unset.
-Each test creates its own database from a migrated template and drops it afterwards, so the server must be local.
+Each test creates its own database from a migrated template and drops it afterwards, so `DATABASE_URL` must name `localhost`, `127.0.0.1` or `::1` explicitly, and `PGHOST`, `PGHOSTADDR` and `PGSERVICE` must be unset.
+Set `REQUIRE_DATABASE_TESTS=1` to make a missing or refused database fail the run instead of skipping the tests; CI does.
 
 ```bash
 docker run -d --name rise-screening-pg --platform linux/amd64 -e POSTGRES_PASSWORD=local -p 55432:5432 postgis/postgis:15-3.3

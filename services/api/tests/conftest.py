@@ -15,8 +15,15 @@ from app.routers import districts, exports, meta, rasters, scenarios, schools, s
 from app.security import require_write_operations, write_rate_limiter
 from fastapi.testclient import TestClient
 from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
-from screening_db_helpers import SCREENING_MIGRATION, apply_migrations, migration_files
+from psycopg.conninfo import make_conninfo
+from screening_db_helpers import (
+    SCREENING_MIGRATION,
+    DatabaseTestsUnavailable,
+    apply_migrations,
+    migration_files,
+    require_database_tests,
+    server_url,
+)
 
 
 @pytest.fixture
@@ -84,9 +91,6 @@ def fake_settings():
 # template that has every migration applied, so tests never see each other's rows.
 # ---------------------------------------------------------------------------------------------
 
-NO_DATABASE = "set DATABASE_URL to a PostGIS server to run the screening database tests"
-LOCAL_HOSTS = {"", "localhost", "127.0.0.1", "::1"}
-
 # Supabase provides these roles; a plain PostGIS server does not, and 002_security_lockdown.sql refers to them.
 BOOTSTRAP_ROLES = """
 do $$
@@ -99,13 +103,14 @@ $$
 
 
 def _server_url() -> str:
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip(NO_DATABASE)
-    host = conninfo_to_dict(url).get("host", "")
-    if host not in LOCAL_HOSTS and not host.startswith("/"):
-        pytest.skip("refusing to create test databases on a non-local server")
-    return url
+    try:
+        return server_url(os.environ)
+    except DatabaseTestsUnavailable as error:
+        if require_database_tests(os.environ):
+            pytest.fail(
+                f"REQUIRE_DATABASE_TESTS is set but the database tests cannot run: {error}", pytrace=False
+            )
+        pytest.skip(str(error))
 
 
 def _drop(admin: psycopg.Connection, name: str) -> None:
