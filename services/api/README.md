@@ -96,6 +96,8 @@ Exports:
 - A rule that does not read urgency has no `U` key in the JSON and no `U` column in an export. Floats are written in full precision and unknown values are empty cells. Exports are sent with `Cache-Control: private, no-store` and `X-RISE-PNG-Decision-Use: research-prototype-only`.
 - `source_school_name` is always the exact name, for joins and for rebuilding the list. `display_name` follows it and is the same name with an apostrophe in front when it starts with `=`, `+`, `-`, `@`, a tab or a carriage return, so that a spreadsheet application does not read it as a formula. Show `display_name` to people.
 
+Stored manifests and results are read with models that ignore fields they do not know, so an engine that stores more does not break reading. Response models are strict.
+
 The failure modes behind the tests are in `tests/SCREENING_API_FAILURE_MODES.md`.
 They run against a real PostGIS server, like the screening database tests below.
 

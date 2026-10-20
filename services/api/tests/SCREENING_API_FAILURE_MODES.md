@@ -37,6 +37,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
 | API27 | Urgency is present as a key or column, even empty, under a rule that does not read it. | `components` has a `U` key, an export has a `U` column, or the queue export lists the urgency source value as missing, for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`. |
 | API28 | The display order is read as a rank. | The field that numbers the rows of the list is called a position or rank, or is not documented as display order, so a client quotes it as a rank that differs from the point rank. |
+| API30 | A newer engine's stored fields break reading. | A run or result stored with a field the API does not know gives a 500 instead of being read, or the unknown field is passed on to clients. |
 
 ## Test map
 
@@ -98,3 +99,4 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_school_key_is_stable_per_version_and_differs_between_versions` | API21 |
 | `test_the_route_on_a_school_id_returns_every_school_that_shares_the_link` | API21 |
 | `test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leaves_out` | API26 |
+| `test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_unchanged` | API30 |

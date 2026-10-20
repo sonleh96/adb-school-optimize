@@ -823,3 +823,35 @@ def test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leave
     left_out = {e["school"]["source_school_name"] for e in excluded}
     assert ranked.isdisjoint(left_out) and len(ranked) + len(left_out) == 15
     assert body["common_cohort_count"] == len(ranked)
+
+
+def test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_unchanged(
+    api, connection, loaded
+):  # API30
+    school = loaded.school_ids[AWK[7]]
+    urls = [
+        ("/api/v1/screening/results", {"rule": "bottleneck_u"}),
+        ("/api/v1/screening/results", {"rule": "need_first_no_u"}),
+        (f"/api/v1/screening/schools/{school}", {}),
+        ("/api/v1/screening/compare", {"a": "additive_u", "b": "bottleneck_u"}),
+        ("/api/v1/screening/exports/top.csv", {"rule": "bottleneck_u"}),
+    ]
+    before = [api.get(path, params=params).content for path, params in urls]
+
+    connection.execute(
+        "update screening_runs set manifest = jsonb_set(jsonb_set(jsonb_set(manifest || '{\"future_field\": 1}', "
+        "'{weights,0,future}', 'true'), '{anchors,0,future}', 'true'), '{anchors,0,future2}', '[1]')"
+    )
+    connection.execute(
+        "update screening_results set components = components || '{\"X\": 0.5}', "
+        "need_parts = need_parts || '{\"future_part\": 1}', area_parts = area_parts || '{\"future_part\": 1}', "
+        "need_part_contributions = need_part_contributions || '{\"future_part\": 1}', "
+        "maximum_term = maximum_term || '{\"future\": 1}', "
+        "contributions = coalesce((select jsonb_agg(c || '{\"future\": 1}') "
+        "from jsonb_array_elements(contributions) c), contributions)"
+    )
+
+    after = [api.get(path, params=params) for path, params in urls]
+    assert [r.status_code for r in after] == [200] * len(urls)
+    # The new fields are ignored, not passed on and not fatal: the served bytes are the same.
+    assert [r.content for r in after] == before
