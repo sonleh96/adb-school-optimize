@@ -294,6 +294,14 @@
 .ruleButton:disabled:not([aria-pressed="true"]) {
   opacity: 0.55;
 }
+/* With nothing loaded the rule cannot change: the chosen side fades too, and Other rules stops reading as a link. */
+.ruleButton[aria-pressed="true"]:disabled {
+  opacity: 0.7;
+}
+.otherRules:disabled {
+  color: var(--ink-3);
+  text-decoration: none;
+}
 
 .statement {
   margin: 8px 0 0;
@@ -1681,6 +1689,14 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     --col-w: 360px;
     --card-w: 360px;
   }
+  /* A narrower switch keeps each rule's label on two lines. */
+  .ruleButton {
+    column-gap: 6px;
+    padding: 6px 8px 7px;
+  }
+  .ruleButton .sym {
+    font-size: 19px;
+  }
   .foot {
     right: 220px;
   }
@@ -1725,6 +1741,14 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   }
   .column > .masthead {
     display: none;
+  }
+  /* Full width again: the switch has room for its usual measure. */
+  .ruleButton {
+    column-gap: 8px;
+    padding: 6px 10px 7px;
+  }
+  .ruleButton .sym {
+    font-size: 22px;
   }
   .map {
     top: 56px;
@@ -1805,8 +1829,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     line-height: 17px;
     color: var(--ink-2);
   }
+  /* The key spans the band's foot, so the basemap's credit sits at its top right instead. */
   .attribution {
-    bottom: 4px;
+    top: 6px;
+    bottom: auto;
     right: 8px;
   }
 }

@@ -120,7 +120,10 @@ export function OrderedList({
     copy.segments.tieNote(schools.get(row.school.school_key)!, rule, all, "row")
   );
   const rangeAt = firstRangeIndex(rows);
-  const tieAt = tieNoteAfter(ties.map(Boolean));
+  // The tie rule ("the name decides") holds for exact ties of the screening score. Under a need-first rule a row's
+  // marker means the same school need, which the other inputs settle, so the sentence would mislead there.
+  const needFirst = rule === "need_first_u" || rule === "need_first_no_u";
+  const tieAt = needFirst ? -1 : tieNoteAfter(ties.map(Boolean));
 
   return (
     <ol
