@@ -170,7 +170,7 @@ function Workspace() {
               rules={data.rules}
               requested={data.requested}
               shown={shown?.rule ?? null}
-              statement={data.statementReady && !comparing}
+              statement={comparing ? null : data.statement}
               comparing={comparing}
               disabled={!ready}
               layer={layer}

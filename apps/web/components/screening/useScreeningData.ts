@@ -22,6 +22,7 @@ import {
   bindCopy,
   copyFor,
   isCopyRuleId,
+  pairwiseFromCompare,
 } from "@/lib/screening/copy";
 import { type ListView, listView } from "@/lib/screening/errors";
 import {
@@ -86,6 +87,11 @@ export interface ScreeningData {
   idleCopy: BoundCopy;
   /** The statement under the switch is ready to show: the main comparison has loaded or failed. */
   statementReady: boolean;
+  /**
+   * The statement under the switch, worded from the two main rules' comparison whatever pair What changed reads,
+   * or null until the shown list and that comparison are in.
+   */
+  statement: string | null;
   comparison: Comparison | null;
   retry: () => void;
 }
@@ -189,6 +195,17 @@ export function useScreeningData(): ScreeningData {
         }
       : null;
 
+  // The statement is about the two main rules, so it reads their comparison even while What changed reads another.
+  const statement = useMemo(
+    () =>
+      shown && !mainCompare.isPending
+        ? shown.copy.defaultListStatement(
+            mainCompare.data ? pairwiseFromCompare(mainCompare.data) : { pairwise: [] }
+          )
+        : null,
+    [shown, mainCompare.isPending, mainCompare.data]
+  );
+
   const rulesList = useMemo((): RuleChoice[] | null => {
     if (!rules.data) return null;
     const offered = new Map(rules.data.rules.map((r) => [r.rule_id as string, r]));
@@ -206,6 +223,7 @@ export function useScreeningData(): ScreeningData {
     shown,
     idleCopy,
     statementReady: !mainCompare.isPending,
+    statement,
     comparison,
     retry: () => {
       void rules.refetch();
