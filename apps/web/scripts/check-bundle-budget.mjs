@@ -8,6 +8,7 @@ const routes = [
   "/district-explorer/page",
   "/scenario-lab/page",
   "/methodology-lab/page",
+  "/screening/page",
 ];
 const report = {};
 

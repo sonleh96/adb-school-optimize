@@ -14,7 +14,7 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:ci-browser": "API_PROXY_TARGET=http://127.0.0.1:4100 NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED=true next build",
+    "build:ci-browser": "API_PROXY_TARGET=http://127.0.0.1:4100 NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED=true NEXT_PUBLIC_SCREENING_TEST_HOOKS=true NEXT_PUBLIC_SCREENING_BASEMAP_STYLE='data:application/json,%7B%22version%22%3A8%2C%22sources%22%3A%7B%7D%2C%22layers%22%3A%5B%7B%22id%22%3A%22background%22%2C%22type%22%3A%22background%22%2C%22paint%22%3A%7B%22background-color%22%3A%22%23ece9e2%22%7D%7D%5D%7D' next build",
     "test:e2e": "npm run build:ci-browser && playwright test",
     "bundle:check": "node scripts/check-bundle-budget.mjs",
     "analyze": "ANALYZE=true next build --webpack",
