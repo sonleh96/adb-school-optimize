@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-import { COPY } from "./copy";
+import { LAYOUT } from "@/lib/screening/copy";
 import type { MapCanvasProps } from "./MapCanvas";
 import styles from "./screening.module.css";
 
@@ -11,7 +11,7 @@ export type { MapCanvasProps as ScreeningMapProps } from "./MapCanvas";
 function MapLoading() {
   return (
     <div className={`${styles.map} ${styles.mapLoading}`} role="status">
-      {COPY.mapLoading}
+      {LAYOUT.mapLoading}
     </div>
   );
 }

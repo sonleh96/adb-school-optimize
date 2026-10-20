@@ -6,10 +6,6 @@
 export const COPY = {
   /** Told to the map's keyboard users after its name. */
   mapKeyboard: "To choose a school with the keyboard, use the list or the incomplete records.",
-  /** The group heading for incomplete records whose province is blank. */
-  provinceUnknown: "Province not recorded",
-  loading: "Loading the list",
-  mapLoading: "Loading the map",
   basemapUnavailable: "The basemap could not be loaded. The marks and the list still work.",
   refreshFailed: "The list could not be refreshed. This is the last one that loaded.",
   /** An ended session has its own way out: signing in again, to a page that returns here. */

@@ -15,6 +15,7 @@
 import type { Page } from "@playwright/test";
 
 import { COPY } from "../components/screening/copy";
+import { LAYOUT } from "../lib/screening/copy";
 import {
   ORDERED,
   ORDERED_COUNT,
@@ -108,7 +109,7 @@ test("a slow first load shows that it is loading, with no counts, then the count
   });
   await page.goto("/screening");
   // One loading line and nothing else, so nothing moves when the rule area, the tabs and the rows arrive together.
-  await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: LAYOUT.loading })).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
   await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
@@ -129,7 +130,7 @@ test("the map's scripts are not fetched until the list has loaded, so they never
     if (request.resourceType() === "script") scripts.add(request.url());
   });
   await page.goto("/screening");
-  await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: LAYOUT.loading })).toBeVisible();
 
   // Let the page's own scripts finish arriving. With the list still held back, no map may have started.
   let seen = -1;
@@ -325,7 +326,7 @@ async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: str
   await page.waitForTimeout(300);
   // The page's failure is the alert with a failure kind; other alerts on the page (the route announcer) are empty.
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
-  await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: LAYOUT.loading })).toBeVisible();
   return release;
 }
 

@@ -7,11 +7,13 @@
  *  3. Other rules hides a rule, stays open after a choice, traps Escape, animates a keyboard open, or the rule line
  *     does not name the rule chosen                                                  -> "Other rules..."
  *  4. Counts in the tabs or the scope line are not the run's own                       -> "a pasted link...", "the scope line..."
- *  5. The scope detail cannot be opened or closed in place, or stays hidden when two rows show the same bare number
- *     with two meanings (R19)                                                          -> "the scope line..."
+ *  5. The scope detail cannot be opened or closed in place, or a range row's place is a bare number that a single
+ *     place could also mean (R19)                                                      -> "the scope line..."
  *  6. The range note is missing or in the wrong place                                  -> "the range note..."
- *  7. The incomplete records lose their grouping or their counts                       -> "the incomplete records..."
- *  8. The controller accepts an invalid value, cannot clear a key, does not report a change, or says ready before the
+ *  7. A row does not say why it sits there, or a range row names a reading the school has -> "each row says why..."
+ *  8. The incomplete records lose their grouping, their counts or their missing details, the grouping by what is
+ *     missing is lost from the URL, or the arrow keys leave the order on screen       -> "the incomplete records..."
+ *  9. The controller accepts an invalid value, cannot clear a key, does not report a change, or says ready before the
  *     map has drawn                                                                    -> "the controller..."
  */
 import {
@@ -139,7 +141,7 @@ test("Other rules lists all seven, closes on a choice or on Escape, and the rule
   expect(search(page)).toBe("?rule=need_first_u&compare=additive_u");
 });
 
-test("the scope line opens its detail in place, and opens it by itself when two rows would show the same number", async ({
+test("the scope line opens its detail in place, and a range row's place names the group it counts in", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -154,13 +156,32 @@ test("the scope line opens its detail in place, and opens it by itself when two 
   await less.click();
   await expect(page.locator("#screening-scope-detail")).toHaveCount(0);
 
-  // Under the need-first rule a range school sits at exactly 10th beside a complete school's 10th.
+  // A range row says which group it counts in, so its number never reads as a single place (R19).
+  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("11thto18thof 21");
+  await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("21stof 21");
+  await expect(orderedRow(page, "Sample School 08").locator("[data-place]")).toHaveText("1st");
+
+  // Under the need-first rule a range school sits at exactly 10th beside a complete school's 10th; the detail stays
+  // the reader's to open.
   await page.goto("/screening?rule=need_first_u");
   await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thof 21");
   await expect(orderedRow(page, "Sample School 07").locator("[data-place]")).toHaveText("10th");
-  await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
-  await expect(page.getByRole("button", { name: /Read more|Show less/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Read more" })).toHaveAttribute("aria-expanded", "false");
   await waitForMap(page);
+});
+
+test("each row says why it sits there, and a range row names the reading it lacks", async ({ page }) => {
+  await openWorkspace(page);
+  const why = (name: string) => orderedRow(page, name).locator("[data-region=row-why]");
+  await expect(why("Sample School 08")).toHaveText(
+    "Why None of its 8 classrooms is built of permanent materials."
+  );
+  await expect(why("Sample School 12")).toHaveText("Why It has 1 teacher house for its 10 teachers.");
+  const range = (what: string) =>
+    `Why No ${what} is recorded for this school, so it is not counted as 0. The school shows a range of places instead of one place.`;
+  await expect(why("Sample School 17")).toHaveText(range("air-quality reading"));
+  await expect(why("Sample School 18")).toHaveText(range("land-cover figure"));
+  await expect(why("Sample School 19")).toHaveText(range("nearby emissions figure"));
 });
 
 test("the range note sits just before the first range school", async ({ page }) => {
@@ -175,10 +196,46 @@ test("the range note sits just before the first range school", async ({ page }) 
   await expect(before).toContainText("Sample School 01");
 });
 
-test("the incomplete records are grouped by province, each group with its count", async ({ page }) => {
+test("the incomplete records are grouped by province or by what is missing, with each row's missing details", async ({
+  page,
+}) => {
   await openWorkspace(page, "?view=queue");
-  await expect(page.locator(`${INCOMPLETE} > li > div`)).toHaveText(["North Province2", "South Province2"]);
-  await expect(page.locator(`${INCOMPLETE} button`).first()).toHaveText("Sample School 21 · North One");
+  const headings = page.locator(`${INCOMPLETE} > li > div`);
+  const rows = page.locator(`${INCOMPLETE} button`);
+  const byProvince = page.getByRole("button", { name: "Province", exact: true });
+  const byMissing = page.getByRole("button", { name: "Missing details" });
+  await expect(byProvince).toHaveAttribute("aria-pressed", "true");
+  await expect(headings).toHaveText(["North Province2", "South Province2"]);
+  await expect(rows.first()).toHaveText("Sample School 21 · North OneTeacher count blank");
+  await expect(rows.nth(3).locator("[data-region=queue-chips] > span")).toHaveText([
+    "Teacher count blank",
+    "District figure missing or unusable",
+    "Walking reach missing or unusable",
+    "Urgency value not recorded",
+  ]);
+
+  // By what is missing: one heading per school's gap, the largest group first and then by heading; each row names
+  // its district and province, since the heading names the gap.
+  await byMissing.click();
+  await expect(byMissing).toHaveAttribute("aria-pressed", "true");
+  expect(new URL(page.url()).searchParams.get("qgroup")).toBe("evidence");
+  await expect(headings).toHaveText([
+    "4 kinds of detail missing1",
+    "Remoteness off the scale, needs checking1",
+    "Teacher count blank1",
+    "Urgency value not recorded1",
+  ]);
+  await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
+
+  // The arrow keys follow the groups on screen, not the order the rows arrived in.
+  await rows.first().click();
+  await page.keyboard.press("ArrowDown");
+  await expect(rows.nth(1)).toHaveAttribute("aria-pressed", "true");
+  await expect(rows.nth(1)).toContainText("Sample School 22");
+
+  // A pasted link keeps the grouping.
+  await page.reload();
+  await expect(headings.first()).toHaveText("4 kinds of detail missing1");
 });
 
 test("the controller ignores invalid values, clears with null, reports each change and waits for the map", async ({

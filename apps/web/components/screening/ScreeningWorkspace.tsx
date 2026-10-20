@@ -16,25 +16,18 @@ import {
 
 import { type BoundCopy, type CopyRuleId, DEFAULT_RULE, PROPOSED_RULE, copyFor } from "@/lib/screening/copy";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
-import {
-  incompleteInDisplayOrder,
-  neighbour,
-  reconcileSelection,
-  splitRows,
-  tabOf,
-} from "@/lib/screening/list";
+import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
-import { scopesMix } from "@/lib/screening/workspace/rows";
-import type { ListView } from "@/lib/screening/workspace/state";
+import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
 import { COPY } from "./copy";
 import { Legend } from "./Legend";
 import type { TipContent } from "./MapTooltip";
 import { RuleArea, focusRuleControl } from "./RuleArea";
 import { SchoolCard } from "./SchoolCard";
-import { IncompleteList, OrderedList } from "./SchoolList";
+import { IncompleteList, OrderedList, incompleteGroups } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
 import { useScreeningData } from "./useScreeningData";
 import { WhatChanged } from "./WhatChanged";
@@ -309,7 +302,12 @@ function Workspace() {
   }, [store, selectedKey]);
 
   // The card steps through the list on screen, in its order.
-  const onScreen = state.view === "queue" ? incompleteInDisplayOrder(incomplete) : ordered;
+  const onScreen =
+    state.view !== "queue"
+      ? ordered
+      : shown
+        ? incompleteGroups(incomplete, schools, shown.copy, state.qgroup).flatMap((group) => group.rows)
+        : incomplete;
   const position = {
     index: selectedKey ? onScreen.findIndex((row) => row.school.school_key === selectedKey) : -1,
     total: onScreen.length,
@@ -372,8 +370,12 @@ function Workspace() {
   );
 
   const comparing = data.comparison !== null && state.view === "ranked";
-  const mixed = scopesMix(ordered);
-  const scopeOpen = state.scope || mixed;
+  const scopeOpen = state.scope;
+  const groupBy = (qgroup: QueueGrouping) => {
+    if (qgroup === state.qgroup) return;
+    store.setState({ qgroup });
+    list.current?.scrollTo({ top: 0 });
+  };
   const counts = shown?.copy.counts;
   const hovered = pointerHover ?? state.hover;
   const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
@@ -478,7 +480,7 @@ function Workspace() {
 
           {firstLoad ? (
             <p className={styles.state} role="status">
-              {COPY.loading}
+              {copy.LAYOUT.loading}
             </p>
           ) : (
             <>
@@ -526,7 +528,7 @@ function Workspace() {
                   />
                 ) : !ready || !shown ? (
                   <p className={styles.state} role="status">
-                    {COPY.loading}
+                    {copy.LAYOUT.loading}
                   </p>
                 ) : (
                   <>
@@ -557,21 +559,16 @@ function Workspace() {
                         ) : null}
                         <header className={styles.listHead} data-region="scope">
                           <p className={styles.scopeLine}>
-                            {shown.copy.scope(shown.rule).scopeShort}
-                            {mixed ? null : (
-                              <>
-                                {" "}
-                                <button
-                                  type="button"
-                                  className={styles.moreLink}
-                                  aria-expanded={scopeOpen}
-                                  aria-controls="screening-scope-detail"
-                                  onClick={() => store.setState({ scope: !state.scope })}
-                                >
-                                  {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
-                                </button>
-                              </>
-                            )}
+                            {shown.copy.scope(shown.rule).scopeShort}{" "}
+                            <button
+                              type="button"
+                              className={styles.moreLink}
+                              aria-expanded={scopeOpen}
+                              aria-controls="screening-scope-detail"
+                              onClick={() => store.setState({ scope: !state.scope })}
+                            >
+                              {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
+                            </button>
                           </p>
                           {scopeOpen ? (
                             <p className={styles.scopeDetail} id="screening-scope-detail">
@@ -596,19 +593,46 @@ function Workspace() {
                       <>
                         <header className={styles.listHead}>
                           <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
-                          {/* With no incomplete record, the lead would say some schools are here, and the order
-                              sentence would describe nothing. */}
+                          {/* With no incomplete record, the lead would say some schools are here, and there is
+                              nothing to group or put in order. */}
                           {incomplete.length > 0 ? (
                             <>
                               <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
-                              <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
+                              <div className={styles.groupBy} data-region="queue-missing">
+                                <span id="screening-group-by">{shown.copy.LAYOUT.groupBy}</span>
+                                <div
+                                  className={styles.segmented}
+                                  role="group"
+                                  aria-labelledby="screening-group-by"
+                                >
+                                  <button
+                                    type="button"
+                                    aria-pressed={state.qgroup === "province"}
+                                    onClick={() => groupBy("province")}
+                                  >
+                                    {shown.copy.LAYOUT.byProvince}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    aria-pressed={state.qgroup === "evidence"}
+                                    onClick={() => groupBy("evidence")}
+                                  >
+                                    {shown.copy.LAYOUT.missingFilters}
+                                  </button>
+                                </div>
+                              </div>
                             </>
+                          ) : null}
+                          {/* The order sentence describes the province grouping; grouped by gap it would be untrue. */}
+                          {incomplete.length > 0 && state.qgroup === "province" ? (
+                            <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
                           ) : null}
                         </header>
                         <IncompleteList
                           rows={incomplete}
                           schools={schools}
                           copy={shown.copy}
+                          grouping={state.qgroup}
                           selected={selectedKey}
                           hovered={hovered}
                           onSelect={select}
