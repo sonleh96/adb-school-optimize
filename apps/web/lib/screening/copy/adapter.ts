@@ -493,6 +493,7 @@ export function pairwiseFromCompare(compare: CompareResponse): {
     left_rank: c.rank_a,
     right_rank: c.rank_b,
     "School Name": c.school.source_school_name,
+    school_key: c.school.school_key,
   });
   return {
     pairwise: [

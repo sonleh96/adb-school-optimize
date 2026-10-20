@@ -3,9 +3,9 @@
  * because this module never fetches. `urgencyReassurance` and the list statements answer "which list should I use".
  */
 import { countsFrom, rangePhrase, theSchools, theirScore } from "./counts";
-import { cleanName, displayName, formatCount, lowerFirst, ordinal, plural } from "./format";
-import type { ComparisonData, CopyRuleId, PairwiseRow, Top20Change } from "./model";
-import { hasPlace, resultFor } from "./rank";
+import { displayName, formatCount, lowerFirst, ordinal, plural } from "./format";
+import type { ComparisonData, CopyRuleId, PairwiseRow, PlacedSchool, Top20Change } from "./model";
+import { distinctName, hasPlace, resultFor } from "./rank";
 import { rule } from "./rules";
 import { joinSegments, nameList, nameSegment, seg, textOf, type Segments } from "./segments";
 
@@ -56,6 +56,13 @@ interface TopChange {
   readonly to: number | null | undefined;
 }
 
+// A school as the comparison names it: told apart from a twin whose name differs only in spacing, and "Unnamed
+// school" for a blank name. A change that carries no id can only be named as the source wrote it.
+function changeName(c: Top20Change, schools: readonly PlacedSchool[] | undefined): string {
+  const known = c.school_key === undefined ? undefined : schools?.find((s) => s.id === c.school_key);
+  return known ? distinctName(known, schools) : displayName({ name: c["School Name"] });
+}
+
 // Schools that join and leave the top k when switching from ruleA to ruleB.
 function topChanges(
   ruleA: CopyRuleId,
@@ -69,7 +76,7 @@ function topChanges(
     return data.top20Changes
       .filter((c) => c.left_rule === row.left_rule && c.right_rule === row.right_rule)
       .map((c) => ({
-        name: cleanName(c["School Name"]),
+        name: changeName(c, data.schools),
         enters: flip ? c.status === "exit" : c.status === "entrant",
         from: flip ? c.right_rank : c.left_rank,
         to: flip ? c.left_rank : c.right_rank,
@@ -90,7 +97,7 @@ function topChanges(
   return both
     .filter(({ s }) => (ra.get(s.id) as number) <= k !== (rb.get(s.id) as number) <= k)
     .map(({ s }) => ({
-      name: displayName(s),
+      name: distinctName(s, data.schools),
       enters: (rb.get(s.id) as number) <= k,
       from: ra.get(s.id),
       to: rb.get(s.id),
