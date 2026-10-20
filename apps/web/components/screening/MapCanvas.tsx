@@ -110,6 +110,7 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [hover, setHover] = useState<Hover | null>(null);
 
   const byKey = useMemo(() => new Map(schools.map((s) => [s.key, s])), [schools]);
@@ -191,6 +192,7 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
       className={styles.map}
       data-testid="screening-map"
       data-map-ready={ready}
+      data-map-moving={moving}
       data-selected-key={selectedKey ?? ""}
     >
       <MapView
@@ -205,6 +207,8 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
         touchPitch={false}
         attributionControl={false}
         style={{ width: "100%", height: "100%" }}
+        onMoveStart={() => setMoving(true)}
+        onMoveEnd={() => setMoving(false)}
         onLoad={(event) => {
           calmBasemap(event.target);
           setReady(true);
