@@ -32,6 +32,8 @@ const keyOf = (rule: string, name: string) =>
 
 // The design's reference size. A smaller window pans the map under the panels, which hides marks from a click.
 base.use({ viewport: { width: 1600, height: 1000 } });
+// The map's two chunks (about 0.5 MB gzip) and its WebGL setup take a while when several browsers start together.
+base.describe.configure({ timeout: 60_000 });
 
 const test = base.extend<{ problems: string[] }>({
   problems: [
@@ -56,7 +58,9 @@ const test = base.extend<{ problems: string[] }>({
 async function openWorkspace(page: Page) {
   await page.goto("/screening");
   await expect(page.getByRole("heading", { name: "School screening", level: 1 })).toBeVisible();
-  await expect(page.locator("[data-testid=screening-map][data-map-ready=true]")).toHaveCount(1);
+  await expect(page.locator("[data-testid=screening-map][data-map-ready=true]")).toHaveCount(1, {
+    timeout: 25_000,
+  });
   await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(20);
 }
 
@@ -72,11 +76,16 @@ const markAt = (page: Page, key: string) =>
 
 /** A mark's position once the map has stopped moving (a selection can pan it). */
 async function settledMark(page: Page, key: string) {
+  const map = page.locator("[data-testid=screening-map]");
   let previous = await markAt(page, key);
-  for (let attempt = 0; attempt < 40; attempt += 1) {
+  let steady = 0;
+  for (let attempt = 0; attempt < 60; attempt += 1) {
     await page.waitForTimeout(100);
     const current = await markAt(page, key);
-    if (current && previous && current.x === previous.x && current.y === previous.y) return current;
+    const still = current && previous && current.x === previous.x && current.y === previous.y;
+    const idle = (await map.getAttribute("data-map-moving")) === "false";
+    steady = still && idle ? steady + 1 : 0;
+    if (steady >= 4 && current) return current;
     previous = current;
   }
   throw new Error(`The mark of ${key} never settled`);

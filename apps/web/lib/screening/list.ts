@@ -105,11 +105,7 @@ export function reconcileSelection(selected: SchoolKey | null, rows: readonly Li
 }
 
 /** The key `delta` places from `from` in `rows`, stopping at either end. The first row when nothing is selected. */
-export function neighbour(
-  rows: readonly ListedRow[],
-  from: SchoolKey | null,
-  delta: 1 | -1
-): SchoolKey | null {
+export function neighbour(rows: readonly ListedRow[], from: string | null, delta: 1 | -1): SchoolKey | null {
   if (rows.length === 0) return null;
   const index = rows.findIndex((row) => row.school.school_key === from);
   if (index < 0) return rows[delta === 1 ? 0 : rows.length - 1].school.school_key;

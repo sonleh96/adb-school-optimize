@@ -68,7 +68,11 @@ function arrowKeyHandler(
 ) {
   return (event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-    const next = neighbour(rows, selected, event.key === "ArrowDown" ? 1 : -1);
+    // Move from the row that has focus, not from the selection: a key pressed straight after a click can
+    // arrive before the selection has re-rendered.
+    const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-school-key]")?.dataset
+      .schoolKey;
+    const next = neighbour(rows, focused ?? selected, event.key === "ArrowDown" ? 1 : -1);
     if (next === null) return;
     event.preventDefault();
     onSelect(next);
