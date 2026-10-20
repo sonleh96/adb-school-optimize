@@ -72,8 +72,9 @@ function arrowKeyHandler(
     if (next === null) return;
     event.preventDefault();
     onSelect(next);
+    const list = event.currentTarget;
     requestAnimationFrame(() => {
-      event.currentTarget
+      list
         .querySelector<HTMLElement>(`[data-school-key="${CSS.escape(next)}"]`)
         ?.focus({ preventScroll: true });
     });

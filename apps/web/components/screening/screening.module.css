@@ -83,6 +83,11 @@
 .map :global(.maplibregl-canvas:focus) {
   outline: none;
 }
+/* Zoom buttons sit in the map bar's place, 16 px right of the column. */
+.map :global(.maplibregl-ctrl-top-left) {
+  left: calc(var(--col-w) + var(--gap) * 2);
+  top: var(--gap);
+}
 .mapLoading {
   display: grid;
   place-items: center;
