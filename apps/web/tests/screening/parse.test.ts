@@ -83,6 +83,38 @@ describe("the scope codes and the persistence flag", () => {
     }
   });
 
+  it("keeps the margin fields where the flag is, and they agree with it", () => {
+    const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    for (const row of circulated.rows) {
+      if (row.persistent_candidate === null) {
+        expect([row.lowest_top20_frequency, row.threshold_adjacent]).toEqual([null, null]);
+      } else {
+        expect(typeof row.lowest_top20_frequency).toBe("number");
+        // Adjacent only when persistent, and only when just above the 0.80 line.
+        if (row.threshold_adjacent) expect(row.persistent_candidate).toBe(true);
+        if (row.persistent_candidate === false) expect(row.threshold_adjacent).toBe(false);
+      }
+    }
+    expect(circulated.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
+    expect(circulated.rows.some((row) => row.threshold_adjacent === false)).toBe(true);
+    const other = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
+    expect(
+      other.rows.every((row) => !("lowest_top20_frequency" in row) && !("threshold_adjacent" in row))
+    ).toBe(true);
+  });
+
+  it("carries the scope code of a comparison's ranks and cohort", () => {
+    const compared = parseWith(
+      compareResponse,
+      readFixture("compare/additive_u__additive_no_u.json"),
+      "compare"
+    );
+    expect(compared.common_cohort_scope_code).toBe("common_complete_cohort");
+    for (const rank of [...compared.ranks, ...compared.entrants, ...compared.exits]) {
+      expect(rank.rank_scope_code).toBe("common_complete_cohort");
+    }
+  });
+
   it("keeps the flag only on the circulated rule's entry of a school's detail", () => {
     const detail = parseWith(
       schoolDetailResponse,

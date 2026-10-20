@@ -78,7 +78,7 @@ export type SchoolIdentity = Infer<typeof schoolIdentity>;
  * Which cohort a rank counts, as a code to branch on. The label beside it is for reading, never for parsing.
  * A point rank counts the schools complete under its rule; rank bounds count the eligible schools.
  */
-const scopeCode = looseEnum<"complete_under_rule" | "eligible">();
+const scopeCode = looseEnum<"complete_under_rule" | "eligible" | "common_complete_cohort">();
 
 const pointRank = obj({ rank: nullable(int), scope: str, scope_code: scopeCode, count: int });
 const rankBounds = obj({
@@ -102,6 +102,13 @@ const rawListedRow = obj({
    * because the experiment included urgency. It must never be shown for another rule.
    */
   persistent_candidate: optional(nullable(bool)),
+  /** The school's lowest top-20 frequency over the experiment's settings; null when it was not in the experiment. */
+  lowest_top20_frequency: optional(nullable(num)),
+  /**
+   * True for a persistent school whose lowest frequency is less than one standard error above the threshold, so
+   * "only just above the line" can be said from data. Same presence rule as `persistent_candidate`.
+   */
+  threshold_adjacent: optional(nullable(bool)),
 });
 type RawRow = Infer<typeof rawListedRow>;
 
@@ -186,8 +193,10 @@ export const schoolDetailResponse = obj({
       rank_bounds_scope: str,
       rank_bounds_scope_code: scopeCode,
       result: detailResult,
-      /** As on a listed row: only the circulated rule's entry has it. */
+      /** As on a listed row: only the circulated rule's entry has these three. */
       persistent_candidate: optional(nullable(bool)),
+      lowest_top20_frequency: optional(nullable(num)),
+      threshold_adjacent: optional(nullable(bool)),
     })
   ),
 });
@@ -208,13 +217,20 @@ export const inputsResponse = obj({
 });
 export type InputsResponse = Infer<typeof inputsResponse>;
 
-const compared = obj({ school: schoolIdentity, rank_a: int, rank_b: int, rank_scope: str });
+const compared = obj({
+  school: schoolIdentity,
+  rank_a: int,
+  rank_b: int,
+  rank_scope: str,
+  rank_scope_code: scopeCode,
+});
 
 export const compareResponse = obj({
   input_version: str,
   run_a: run,
   run_b: run,
   common_cohort_scope: str,
+  common_cohort_scope_code: scopeCode,
   common_cohort_count: int,
   ranks: list(compared),
   entrants: list(compared),
