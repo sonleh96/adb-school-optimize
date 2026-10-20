@@ -10,7 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapLibreOverlay, type MapLibreOverlayProps } from "@deck.gl/maplibre";
 import type { PickingInfo } from "@deck.gl/core";
 import { Map as MapView, NavigationControl, useControl, type MapRef } from "@vis.gl/react-maplibre";
-import type { Map as MapLibreMap } from "maplibre-gl";
+import { setWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type MapSchool, boundsOf } from "@/lib/screening/marks";
@@ -24,6 +24,10 @@ const BASEMAP_STYLE =
   process.env.NEXT_PUBLIC_SCREENING_BASEMAP_STYLE ??
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const TEST_HOOKS = process.env.NEXT_PUBLIC_SCREENING_TEST_HOOKS === "true";
+
+// MapLibre 6 looks for its worker next to its own file, which a bundler moves. The bundler emits the worker as a
+// static asset and this tells MapLibre where it went. Must run before the first map is created.
+setWorkerUrl(new URL("../../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
 
 /** Papua New Guinea, before any school is known. */
 const DEFAULT_VIEW = { longitude: 147, latitude: -6.5, zoom: 4.8 };
@@ -207,7 +211,7 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding }: M
         }}
       >
         <Overlay layers={layers} pickingRadius={4} onHover={onHover} onClick={onClick} />
-        <NavigationControl position="bottom-right" showCompass={false} />
+        <NavigationControl position="top-left" showCompass={false} />
       </MapView>
       {hover ? (
         <div className={styles.tooltip} style={{ left: hover.x + 14, top: hover.y + 14 }} role="status">
