@@ -19,7 +19,7 @@ from screening_reproduction import run_reproduction
 pytestmark = pytest.mark.reproduction
 
 
-def test_engine_reproduces_frozen_outputs_school_by_school():  # FM1, FM2, FM4, FM6, FM7, FM8, FM9
+def test_engine_reproduces_frozen_outputs_school_by_school():  # FM1, FM2, FM4, FM6, FM7, FM8, FM9, FM13
     reference, datasets = os.environ.get("RISE_PNG_REFERENCE_ROOT"), os.environ.get("RISE_PNG_DATASETS_ROOT")
     if not (reference and datasets and Path(reference).is_dir() and Path(datasets).is_dir()):
         pytest.skip("set RISE_PNG_REFERENCE_ROOT and RISE_PNG_DATASETS_ROOT to run the reproduction check")
