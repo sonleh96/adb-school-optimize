@@ -27,6 +27,7 @@ import {
 } from "./compare";
 import { buildIdeas } from "./ideas";
 import type { LaterCopy } from "./later";
+import { retryable } from "./once";
 import {
   missingGroupLabel,
   missingLabels,
@@ -133,7 +134,10 @@ export function copyFor(data: CopyData = {}) {
     schools,
   });
   const terms = buildTerms(c);
-  let later: Promise<LaterCopy> | undefined;
+  // Resolves to the same object every time, and tries again after a download that failed.
+  const loadLater = retryable(() =>
+    import("./later").then((m) => m.laterFor({ counts: c, data: bound, countsByRule: data.countsByRule }))
+  );
   return Object.freeze({
     counts: c,
     TERMS: terms,
@@ -147,10 +151,7 @@ export function copyFor(data: CopyData = {}) {
      * The guide, How this works, its worked example, the first questions and the glossary, loaded on first use so
      * the list and the card ship without them. Resolves to the same object every time.
      */
-    later: (): Promise<LaterCopy> =>
-      (later ??= import("./later").then((m) =>
-        m.laterFor({ counts: c, data: bound, countsByRule: data.countsByRule })
-      )),
+    later: (): Promise<LaterCopy> => loadLater(),
     term: (key: TermKey) => {
       const t = terms[key];
       if (!t) throw new Error(`Unknown term: ${key}`);
