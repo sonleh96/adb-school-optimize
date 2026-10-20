@@ -276,7 +276,7 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
             return (
               <div key={index} className={styles.needBox} data-region="need-box">
                 <div className={styles.needHead}>
-                  <span>{TERMS.school_need.label}</span>
+                  <span data-term="school_need">{TERMS.school_need.label}</span>
                   <b>{needValue === null ? STRINGS.cannotWorkOut : f3(needValue)}</b>
                 </div>
                 <ul className={styles.needParts}>
@@ -285,7 +285,9 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
                     return (
                       <li key={part.key} data-on={part.n !== null || undefined}>
                         <span className={styles.reasonN}>{part.n ?? ""}</span>
-                        <span className={styles.needLabel}>{TERMS[TERM_OF[part.key]].label}</span>
+                        <span className={styles.needLabel} data-term={TERM_OF[part.key]}>
+                          {TERMS[TERM_OF[part.key]].label}
+                        </span>
                         <Bar value={value} />
                         <span className={styles.needValue}>
                           {value === null ? STRINGS.notRecorded : f3(value)}
@@ -302,7 +304,9 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
               <div key={index} className={styles.reason}>
                 <span className={styles.reasonN}>{block.n}</span>
                 <div>
-                  <span className={styles.reasonLabel}>{TERMS[TERM_OF[block.key]].label}</span>
+                  <span className={styles.reasonLabel} data-term={TERM_OF[block.key]}>
+                    {TERMS[TERM_OF[block.key]].label}
+                  </span>
                   {block.sentence}
                 </div>
               </div>
@@ -386,7 +390,9 @@ function InNumbers({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; 
     <section className={styles.numbers} data-region="inspector-breakdown" aria-label={LAYOUT.numbers}>
       <span className={styles.eyebrow}>{LAYOUT.numbers}</span>
       <div className={styles.numTotal}>
-        <span>{needFirst ? TERMS.school_need.label : TERMS.score.label}</span>
+        <span data-term={needFirst ? "school_need" : "score"}>
+          {needFirst ? TERMS.school_need.label : TERMS.score.label}
+        </span>
         {totalText ? <b>{totalText}</b> : null}
       </div>
       <p className={styles.numNoteText}>{needFirst ? STRINGS.schoolNeedDefinition : TERMS.score.line}</p>

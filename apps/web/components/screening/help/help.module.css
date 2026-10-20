@@ -1,0 +1,538 @@
+/*
+ * Help mode and the glossary (notes/final.md, "Components": help bar, help card, glossary drawer). Marks are drawn
+ * on the workspace's own elements through attributes, scoped by a class help mode puts on the workspace root.
+ */
+
+/* ---------- marks: quiet dotted underlines; blocks get a short rule in the margin ---------- */
+.helpOn :global([data-xp]) {
+  cursor: help;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: rgba(10, 46, 115, 0.55);
+  text-underline-offset: 3px;
+  border-radius: 3px;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.helpOn :global([data-xp]):hover,
+.helpOn :global([data-xp]):focus-visible {
+  background-color: var(--navy-wash);
+  box-shadow: 0 0 0 3px var(--navy-wash);
+  outline: none;
+  text-decoration-color: var(--navy);
+}
+.helpOn :global([data-xp][data-xp-block]) {
+  text-decoration: none;
+  box-shadow: -8px 0 0 -6px rgba(10, 46, 115, 0.55);
+}
+.helpOn :global([data-region="rule-switch"] [data-xp]) {
+  text-decoration: none;
+  outline: 1px dashed rgba(10, 46, 115, 0.5);
+  outline-offset: -2px;
+}
+.helpOn :global([data-region="rule-switch"] [data-xp][aria-pressed="true"]) {
+  outline-color: rgba(255, 255, 255, 0.6);
+}
+.marksOn :global([data-xp-active]) {
+  background-color: var(--navy-wash) !important;
+  box-shadow:
+    0 0 0 3px var(--navy-wash),
+    -6px 0 0 -1px var(--navy) !important;
+}
+.helpOn :global(.maplibregl-canvas) {
+  cursor: help;
+}
+
+.live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.eyebrow,
+.rule,
+.groupHead {
+  margin: 0;
+  font: 500 10.5px/14px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.eyebrow {
+  color: var(--navy);
+}
+:is(.card, .drawer) .link {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font: 500 12.5px/16px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+}
+:is(.card, .drawer) .quietLink {
+  font-weight: 400;
+  color: var(--ink-2);
+  text-decoration-color: rgba(21, 24, 29, 0.25);
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.card, .drawer) .link:hover {
+    text-decoration-color: currentColor;
+  }
+}
+:is(.card, .drawer) .link:focus-visible,
+:is(.card, .drawer) .close:focus-visible,
+.drawer .entryHead:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:is(.card, .drawer) .close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.card, .drawer) .close:hover {
+    background: rgba(21, 24, 29, 0.06);
+  }
+}
+
+/* ---------- the help bar, above the key ---------- */
+.bar {
+  position: absolute;
+  left: calc(var(--rail-w) + var(--gap) + var(--col-w) + var(--gap));
+  right: calc(var(--gap) + 220px);
+  bottom: 220px;
+  z-index: 4;
+  display: flex;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+@starting-style {
+  .bar {
+    opacity: 0;
+  }
+}
+:global([data-card-docked]) .bar {
+  left: calc(var(--rail-w) + var(--gap));
+}
+:global([data-has-insp]) .bar {
+  right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
+.barIn {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 5px 5px 5px 12px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  line-height: 17px;
+  box-shadow: 0 10px 28px -14px rgba(21, 24, 29, 0.5);
+}
+.keyCap {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  font: 500 10.5px/1 var(--mono);
+}
+.bar .barButton {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  white-space: nowrap;
+  font: 500 12.5px/1 var(--sans);
+  color: #fff;
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.bar .barButton:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .bar .barButton:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+}
+.bar .barButton:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+.bar .barButton kbd {
+  margin-left: 7px;
+  font: 400 10.5px/1 var(--mono);
+  opacity: 0.65;
+}
+
+/* ---------- the help card: a margin note ---------- */
+.card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9;
+  width: 360px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 12px 18px;
+  border: 1px solid var(--hair);
+  border-top: 3px solid var(--navy);
+  border-radius: 4px;
+  background: var(--panel);
+  box-shadow:
+    0 1px 2px rgba(21, 24, 29, 0.06),
+    0 22px 44px -20px rgba(21, 24, 29, 0.32);
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+@starting-style {
+  .card {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.card[data-instant] {
+  transition: none;
+}
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-right: -6px;
+}
+.title {
+  margin: 4px 0 0;
+  font: 500 22px/26px var(--serif);
+  letter-spacing: -0.008em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.chips li {
+  padding: 2px 6px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 15px;
+  color: var(--ink-2);
+}
+.line {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.body {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.examples,
+.receipt {
+  margin-top: 14px;
+}
+.rule {
+  display: block;
+  margin-bottom: 7px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+}
+.example {
+  margin: 0;
+  font: italic 400 15px/21px var(--serif);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.example + .example {
+  margin-top: 4px;
+}
+.who {
+  display: block;
+  margin-bottom: 1px;
+  font: normal 500 12.5px/18px var(--sans);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.exampleLabel {
+  display: inline-block;
+  margin-right: 8px;
+  font: normal 500 11.5px/1 var(--sans);
+  color: var(--navy);
+}
+.receipt {
+  font-size: 12.5px;
+  line-height: 17px;
+}
+.receipt div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+.receipt b {
+  font-weight: 500;
+}
+.rest {
+  color: var(--ink-3);
+}
+.total {
+  margin-top: 3px;
+  padding-top: 6px !important;
+  border-top: 1px solid var(--hair);
+}
+.note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.more {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 9px;
+  border-top: 1px solid var(--hair);
+}
+.spacer {
+  flex: 1;
+}
+
+/* ---------- the glossary drawer ---------- */
+.drawer {
+  position: absolute;
+  top: 64px;
+  right: var(--gap);
+  bottom: 40px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: 400px;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+@starting-style {
+  .drawer {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+:global([data-has-insp]) .drawer {
+  right: calc(var(--gap) + var(--card-w) + 12px);
+}
+.drawerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 12px 0 20px;
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 12px 20px 2px;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  color: var(--ink-3);
+}
+.search:focus-within {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 2px var(--navy-wash-2);
+}
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font: 400 13px/1 var(--sans);
+  color: var(--ink);
+  outline: none;
+}
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 4px 20px 24px;
+}
+.group {
+  margin-top: 18px;
+}
+.groupHead {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ink);
+  color: var(--ink);
+}
+.entry {
+  padding: 9px 0 10px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.drawer .entryHead {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font: 500 13.5px/18px var(--sans);
+  color: var(--ink);
+}
+.drawer .entryHead span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.drawer .entryHead svg {
+  flex: none;
+  align-self: center;
+  margin-left: auto;
+  color: var(--ink-3);
+  transition: transform 160ms var(--ease-out);
+}
+.entry[data-open] .entryHead svg {
+  transform: rotate(90deg);
+}
+.entryLine {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.entryHelp {
+  margin: 8px 0 4px;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.empty {
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.drawerFoot {
+  padding: 10px 20px 12px;
+  border-top: 1px solid var(--hair);
+}
+.flash {
+  position: fixed;
+  z-index: 9;
+  pointer-events: none;
+  border: 2px solid var(--navy, #0a2e73);
+  border-radius: 6px;
+}
+
+/* ---------- narrow: the help card is a sheet from the bottom edge, the glossary a full-height sheet ---------- */
+@media (max-width: 1023px) {
+  .bar {
+    left: 8px;
+    right: 8px;
+    bottom: auto;
+    top: calc(56px + var(--band) - 52px);
+  }
+  :global([data-card-docked]) .bar {
+    left: 8px;
+  }
+  .card[data-sheet] {
+    left: 8px !important;
+    right: 8px;
+    top: auto !important;
+    bottom: 8px;
+    width: auto;
+    max-height: 60vh;
+    transform-origin: center bottom;
+  }
+  @starting-style {
+    .card[data-sheet] {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+  .drawer,
+  :global([data-has-insp]) .drawer {
+    top: 56px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 8;
+    width: auto;
+    border-radius: 0;
+    border-width: 1px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .drawer,
+  .bar {
+    transition-property: opacity;
+  }
+  @starting-style {
+    .card,
+    .drawer,
+    .card[data-sheet] {
+      transform: none;
+    }
+  }
+  .drawer .entryHead svg {
+    transition: none;
+  }
+}
