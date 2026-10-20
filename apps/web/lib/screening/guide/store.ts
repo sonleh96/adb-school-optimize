@@ -57,8 +57,8 @@ export function createLayerStore(): LayerStore {
     snap = next;
     if (env) {
       const { location, history, storage } = env;
-      if (next.state !== previous.state) {
-        const search = searchWithLayers(location.search, next.state);
+      if (next.state !== previous.state || next.memory.seen !== previous.memory.seen) {
+        const search = searchWithLayers(location.search, next.state, next.memory);
         if (search !== location.search)
           history.replaceState(null, "", `${location.pathname}${search}${location.hash}`);
       }
