@@ -184,8 +184,11 @@ function recordedContribution(id: "additive_u" | "additive_no_u", r: DetailResul
 }
 
 /**
- * Why a school is held back: the need parts that are blank (the API's reasons about counts and sources name none),
- * then the other reasons it sent, in the engine's order. A reason this copy has no words for is left out.
+ * Why a school is held back, in the copy's terms: the need parts the engine could not work out, then the reasons it
+ * sent that are not a need part, in the engine's order. The codes about counts and sources (`missing_stock_field`,
+ * `nonpositive_denominator`, `unrecognized_service_coding`, `unrecognized_locality`) each leave a need part null, and
+ * the stored inputs say which count, source or category it was, so each part is worded from them (see `partCause`).
+ * A reason this copy has no words for is left out.
  */
 function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[] {
   return [

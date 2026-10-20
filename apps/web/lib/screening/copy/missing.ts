@@ -1,6 +1,6 @@
 /** What is missing from a record, and whether each missing value is blank or recorded but unusable. */
 import { isRemotenessOnly } from "./counts";
-import { gateSentence, otherCause } from "./causes";
+import { gateSentence, negativeCounts, otherCause } from "./causes";
 import { REMOTENESS_CATEGORIES } from "./definitions";
 import { SMALL, capitalise, isBlank, joinList } from "./format";
 import { OTHER_GATES, isNeedGate, isOtherGate } from "./gates";
@@ -40,6 +40,15 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
           text: "the total number of classrooms is blank in the record",
           label: "Classroom count blank",
         };
+      // The share built of permanent materials divides by this total, so a total of 0 or below cannot be used.
+      if (k.classrooms_total < 0)
+        return {
+          kind: "unusable",
+          text: "the total number of classrooms is recorded as a negative number",
+          label: "Negative classroom count, needs checking",
+          effect:
+            "which needs checking, and until then the share built of permanent materials cannot be worked out",
+        };
       if (k.classrooms_total === 0)
         return {
           kind: "unusable",
@@ -48,10 +57,16 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
           effect:
             "which needs checking, and until then the share built of permanent materials cannot be worked out",
         };
+      if (k.classrooms_permanent == null)
+        return {
+          kind: "blank",
+          text: "the number of classrooms built of permanent materials is blank in the record",
+          label: "Permanent classroom count blank",
+        };
       return {
-        kind: "blank",
-        text: "the number of classrooms built of permanent materials is blank in the record",
-        label: "Permanent classroom count blank",
+        kind: "unusable",
+        text: "the classroom counts in the record cannot be used to work out the share built of permanent materials",
+        label: "Classroom counts need checking",
       };
     case "housing":
       if (k.teachers == null && k.teacher_houses == null)
@@ -66,6 +81,13 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
           text: "the number of teachers is blank in the record",
           label: "Teacher count blank",
         };
+      if (k.teachers < 0)
+        return {
+          kind: "unusable",
+          text: "the number of teachers is recorded as a negative number",
+          label: "Negative teacher count, needs checking",
+          effect: "which needs checking, and until then teacher housing cannot be worked out",
+        };
       if (k.teachers === 0)
         return {
           kind: "unusable",
@@ -73,10 +95,16 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
           label: "Record gives 0 teachers, needs checking",
           effect: "which needs checking, and until then teacher housing cannot be worked out",
         };
+      if (k.teacher_houses == null)
+        return {
+          kind: "blank",
+          text: "the number of teacher houses is blank in the record",
+          label: "Teacher-house count blank",
+        };
       return {
-        kind: "blank",
-        text: "the number of teacher houses is blank in the record",
-        label: "Teacher-house count blank",
+        kind: "unusable",
+        text: "the teacher counts in the record cannot be used to work out teacher housing",
+        label: "Teacher counts need checking",
       };
     case "facilities": {
       const blank = FACILITIES.filter(([f]) => k[f] == null).length;
@@ -153,7 +181,10 @@ const gateParts = (school: CopySchool): NeedKey[] =>
     .map((g) => PART_OF_GATE[g]);
 const otherGates = (school: CopySchool): OtherGate[] => {
   checkedGates(school);
-  return OTHER_GATES.filter((g) => school.gate_failures.includes(g));
+  return OTHER_GATES.filter(
+    (g) =>
+      school.gate_failures.includes(g) && (g !== "negative_stock_value" || negativeCounts(school).length > 0)
+  );
 };
 
 export type MissingValueKind = "recorded" | "blank" | "unusable" | "not_calculable" | "unresolved";

@@ -21,7 +21,7 @@ import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
 
-import { withLater } from "./helpers";
+import { school, withLater } from "./helpers";
 import {
   type Api,
   DATASET_DIRS,
@@ -168,6 +168,39 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       proto.buildQuestions(proto.buildIdeas({}), "Trust."),
       later.buildQuestions(port.buildIdeas({}), "Trust.")
     );
+    flush();
+  });
+
+  it("words a held-back school's counts the same way, whether blank, zero or negative", () => {
+    const cases = [
+      { gate: ["permanent_classroom_deficit"], condition: { classrooms_total: -2 } },
+      { gate: ["permanent_classroom_deficit"], condition: { classrooms_total: 0 } },
+      { gate: ["permanent_classroom_deficit"], condition: { classrooms_permanent: null } },
+      { gate: ["permanent_classroom_deficit"], condition: {} },
+      {
+        gate: ["teacher_housing_deficit", "negative_stock_value"],
+        condition: { teachers: -3, libraries: -1 },
+      },
+      { gate: ["teacher_housing_deficit"], condition: { teacher_houses: null } },
+      { gate: ["teacher_housing_deficit"], condition: {} },
+      { gate: ["negative_stock_value"], condition: { teachers: -3 } },
+      { gate: ["negative_stock_value"], condition: { libraries: -1 } },
+    ];
+    for (const [i, c] of cases.entries()) {
+      const x = school({ id: `n${i}`, cohort: "queue", gate: c.gate as never, condition: c.condition });
+      for (const fn of ["missingLabels", "missingSentences", "missingSentence"])
+        sameOutcome(
+          `${fn} ${JSON.stringify(c)}`,
+          run(() => proto[fn](x)),
+          run(() => (port as Api)[fn](x))
+        );
+      for (const key of ["classrooms", "housing"])
+        sameOutcome(
+          `missingValueNote ${key} ${JSON.stringify(c)}`,
+          run(() => proto.missingValueNote(x, key)),
+          run(() => (port as Api).missingValueNote(x, key))
+        );
+    }
     flush();
   });
 

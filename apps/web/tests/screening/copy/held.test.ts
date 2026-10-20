@@ -191,33 +191,81 @@ describe("a school held back because a district figure or its reach cannot be wo
   });
 });
 
+/**
+ * What the engine sends for a count that cannot be a denominator: a total of classrooms or a number of teachers
+ * that is 0 or below holds back the share built on it (`nonpositive_denominator`), and a negative one also trips
+ * `negative_stock_value`. The share is null, and so is school need.
+ */
+const stockProblem = (
+  b: Body,
+  part: "permanent_classroom_deficit" | "teacher_housing_deficit",
+  codes: string[]
+) =>
+  everyRule(b, (e) => {
+    e.result.gate_failures = codes;
+    e.result.need_parts[part] = null;
+    e.result.components.N = null;
+  });
+
 describe("a school held back for a negative count", () => {
   const s = held((b) => {
     b.inputs.teachers = -3;
     b.inputs.libraries = -1;
-    everyRule(b, (e) => (e.result.gate_failures = ["negative_stock_value"]));
+    stockProblem(b, "teacher_housing_deficit", ["negative_stock_value", "nonpositive_denominator"]);
   });
 
-  it("names the counts that are negative and says they need checking", () => {
-    expect(s.gate_failures).toEqual(["negative_stock_value"]);
-    expect(copy.missingLabels(s)).toEqual(["Negative count, needs checking"]);
-    expect(copy.missingSentences(s)[0]).toBe(
-      "The number of teachers and the library count are recorded as a negative number, which needs checking."
-    );
+  it("names the counts that are negative and says they need checking, without calling any of them blank", () => {
+    expect(copy.missingLabels(s)).toEqual([
+      "Negative teacher count, needs checking",
+      "Negative count, needs checking",
+    ]);
+    expect(copy.missingSentences(s).slice(0, 2)).toEqual([
+      "The number of teachers is recorded as a negative number, which needs checking, and until then teacher housing cannot be worked out.",
+      "The library count is recorded as a negative number, which needs checking.",
+    ]);
+    expect(copy.missingSentence(s)).not.toMatch(/blank/);
+    expect(copy.missingValueKind(s, "housing")).toBe("unusable");
   });
 
-  it("keeps school need, which the engine can still work out", () => {
-    expect(copy.missingValueKind(s, "need")).toBe("recorded");
-    expect(copy.missingSentence(s)).not.toMatch(/school need cannot be worked out/i);
-  });
-
-  it("reads one negative count in the singular", () => {
+  it("says a negative total of classrooms is negative, not that the permanent count is blank", () => {
     const one = held((b) => {
       b.inputs.total_classrooms = -2;
+      stockProblem(b, "permanent_classroom_deficit", ["negative_stock_value", "nonpositive_denominator"]);
+    });
+    expect(copy.missingLabels(one)).toEqual(["Negative classroom count, needs checking"]);
+    expect(copy.missingSentences(one)[0]).toBe(
+      "The total number of classrooms is recorded as a negative number, which needs checking, and until then the share built of permanent materials cannot be worked out."
+    );
+    expect(copy.missingSentence(one)).not.toMatch(/blank/);
+    expect(copy.missingValueNote(one, "classrooms")).not.toMatch(/blank/);
+  });
+
+  it("says a school that records no teachers has no teachers, and that a zero cannot be divided by", () => {
+    const none = held((b) => {
+      b.inputs.teachers = 0;
+      stockProblem(b, "teacher_housing_deficit", ["nonpositive_denominator"]);
+    });
+    expect(copy.missingLabels(none)).toEqual(["Record gives 0 teachers, needs checking"]);
+    expect(copy.missingSentence(none)).not.toMatch(/blank/);
+  });
+
+  it("still says a blank permanent count is blank when the total is recorded", () => {
+    const blank = held((b) => {
+      b.inputs.permanent_classrooms = null;
+      stockProblem(b, "permanent_classroom_deficit", ["missing_stock_field"]);
+    });
+    expect(copy.missingLabels(blank)).toEqual(["Permanent classroom count blank"]);
+  });
+
+  it("keeps school need out of it when only a count that is not a denominator is negative", () => {
+    const only = held((b) => {
+      b.inputs.libraries = -1;
       everyRule(b, (e) => (e.result.gate_failures = ["negative_stock_value"]));
     });
-    expect(copy.missingSentences(one)[0]).toBe(
-      "The total number of classrooms is recorded as a negative number, which needs checking."
+    expect(copy.missingValueKind(only, "need")).toBe("recorded");
+    expect(copy.missingSentence(only)).not.toMatch(/school need cannot be worked out/i);
+    expect(copy.missingSentences(only)[0]).toBe(
+      "The library count is recorded as a negative number, which needs checking."
     );
   });
 });
