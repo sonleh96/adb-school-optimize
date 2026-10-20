@@ -79,15 +79,15 @@ const COHORT: Record<string, string> = {
 
 let proto: Api;
 let datasets: Dataset[] = [];
-const skipped = { noResult: 0, inconsistentGate: 0, noAreaParts: 0, noPairRow: 0, badRanks: 0 };
 /** What each left-out case was, so a test can say why it is left out rather than only how many. */
 const leftOut = {
-  noResult: [] as { id: string; cohort: string; rule: string }[],
-  inconsistentGate: [] as { cohort: string; blank: string[]; gate: string[] }[],
-  noAreaParts: [] as { cohort: string }[],
-  noPairRow: [] as { n: unknown; median: unknown; maximum: unknown }[],
-  badRanks: [] as { id: string; cohort: string; rule: string }[],
+  noResult: [] as { id: string; cohort: string; rule: string; school: any }[],
+  inconsistentGate: [] as { cohort: string; blank: string[]; gate: string[]; school: any }[],
+  noAreaParts: [] as { cohort: string; school: any }[],
+  noPairRow: [] as { n: unknown; median: unknown; maximum: unknown; row: any }[],
+  badRanks: [] as { id: string; cohort: string; rule: string; school: any }[],
 };
+const leftOutCounts = () => Object.fromEntries(Object.entries(leftOut).map(([k, v]) => [k, v.length]));
 
 /**
  * The page parser refuses a row whose places contradict its group (a complete school with no single place, say),
@@ -104,8 +104,7 @@ function withConsistentRanks(d: Dataset): Dataset {
       const bounds = Number.isInteger(res.rank_best) && Number.isInteger(res.rank_worst);
       const agrees = s.cohort === "complete" ? point && bounds : !point && bounds;
       if (!agrees) {
-        skipped.badRanks += 1;
-        leftOut.badRanks.push({ id: s.id, cohort: s.cohort, rule });
+        leftOut.badRanks.push({ id: s.id, cohort: s.cohort, rule, school: s });
         results[rule] = null;
       }
     }
@@ -123,7 +122,7 @@ beforeAll(() => {
 afterAll(() => {
   if (ready)
     console.log(
-      `copy parity through the adapter: ${tally.strings} strings compared over ${tally.calls} calls; left out and counted: ${JSON.stringify(skipped)}`
+      `copy parity through the adapter: ${tally.strings} strings compared over ${tally.calls} calls; left out and counted: ${JSON.stringify(leftOutCounts())}`
     );
 });
 
@@ -283,13 +282,13 @@ const INPUT_NAMES: Record<string, string> = {
 /** One /schools/by-key response, or null when the API could not send this record. */
 function wireDetail(s: any, rules: readonly string[]) {
   if (!s.area_parts) {
-    leftOut.noAreaParts.push({ cohort: s.cohort });
-    return skip("noAreaParts");
+    leftOut.noAreaParts.push({ cohort: s.cohort, school: s });
+    return null;
   }
   const nulls = NEED_FIELDS.filter((f) => s.need_parts[f] == null);
   if (JSON.stringify(nulls) !== JSON.stringify(s.cohort === "queue" ? s.gate_failures : [])) {
-    leftOut.inconsistentGate.push({ cohort: s.cohort, blank: nulls, gate: s.gate_failures });
-    return skip("inconsistentGate");
+    leftOut.inconsistentGate.push({ cohort: s.cohort, blank: nulls, gate: s.gate_failures, school: s });
+    return null;
   }
   const inputs: Record<string, unknown> = {
     aqi_p95_selected: s.raw.Q_raw ?? null,
@@ -300,8 +299,7 @@ function wireDetail(s: any, rules: readonly string[]) {
   const entries = rules.flatMap((rule) => {
     const res = s.results ? s.results[rule] : null;
     if (s.cohort !== "queue" && !res) {
-      skipped.noResult += 1;
-      leftOut.noResult.push({ id: s.id, cohort: s.cohort, rule });
+      leftOut.noResult.push({ id: s.id, cohort: s.cohort, rule, school: s });
       return [];
     }
     return [
@@ -332,11 +330,6 @@ function wireDetail(s: any, rules: readonly string[]) {
   );
 }
 
-function skip(why: keyof typeof skipped): null {
-  skipped[why] += 1;
-  return null;
-}
-
 /** One /compare response per recorded pair, with the top-20 moves recorded for it. */
 function wireCompares(data: Dataset["data"]) {
   return data.pairwise.flatMap((row: any) => {
@@ -345,11 +338,11 @@ function wireCompares(data: Dataset["data"]) {
       row.median_absolute_rank_shift == null ||
       row.maximum_absolute_rank_shift == null
     ) {
-      skipped.noPairRow += 1;
       leftOut.noPairRow.push({
         n: row.n,
         median: row.median_absolute_rank_shift,
         maximum: row.maximum_absolute_rank_shift,
+        row,
       });
       return [];
     }
@@ -588,30 +581,48 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
     expect(tally.calls).toBeGreaterThan(0);
   });
 
-  it("leaves out only what the API cannot say, and says why for each", () => {
+  it("leaves out only what the API cannot say, and each one is justified by the design record itself", () => {
+    // Every case is re-derived from the design record that was left out, not from the code that left it out.
     // The API sends no entry for a rule that does not run on a school, and the design records that as a null result.
     // Only a school with a range (it lacks a reading the rule reads) can be in that position.
-    expect(skipped.noResult).toBe(leftOut.noResult.length);
-    // The rest are results the design left for a school whose places contradict its group (counted below).
     const dropped = new Set(leftOut.badRanks.map((x) => `${x.id}|${x.rule}`));
-    expect(
-      leftOut.noResult.filter((x) => x.cohort !== "interval" && !dropped.has(`${x.id}|${x.rule}`))
-    ).toEqual([]);
+    for (const x of leftOut.noResult) {
+      expect(x.school.cohort, x.id).not.toBe("queue");
+      expect(x.school.results?.[x.rule] ?? null, `${x.id} ${x.rule}`).toBeNull();
+      // The rest are results the design left for a school whose places contradict its group (counted below).
+      expect(x.cohort === "interval" || dropped.has(`${x.id}|${x.rule}`), `${x.id} ${x.rule}`).toBe(true);
+    }
     // A record whose gate list names more need parts than it has blank ones contradicts itself.
-    expect(skipped.inconsistentGate).toBe(leftOut.inconsistentGate.length);
     for (const x of leftOut.inconsistentGate) {
+      const blank = NEED_FIELDS.filter((f) => x.school.need_parts[f] == null);
+      expect(JSON.stringify(blank)).not.toBe(
+        JSON.stringify(x.school.cohort === "queue" ? x.school.gate_failures : [])
+      );
       expect(x.cohort).toBe("queue");
       expect(x.blank.length).toBeLessThan(x.gate.length);
       expect(x.blank.every((f) => x.gate.includes(f))).toBe(true);
     }
     // A school whose places contradict its group under a rule (a complete school with no single place, say) is a row
     // the API cannot send, and the page parser refuses.
-    expect(skipped.badRanks).toBe(leftOut.badRanks.length);
+    for (const x of leftOut.badRanks) {
+      const res = x.school.results[x.rule];
+      const point = Number.isInteger(res.rank_complete120);
+      const bounds = Number.isInteger(res.rank_best) && Number.isInteger(res.rank_worst);
+      expect(x.school.cohort === "complete" ? point && bounds : !point && bounds, `${x.id} ${x.rule}`).toBe(
+        false
+      );
+    }
     // A record with no district parts cannot be sent, and the design always has them.
     expect(leftOut.noAreaParts).toEqual([]);
     // A recorded pair without a school count or a shift has nothing to compare.
-    expect(skipped.noPairRow).toBe(leftOut.noPairRow.length);
-    for (const x of leftOut.noPairRow)
-      expect(!Number.isInteger(x.n) || x.median == null || x.maximum == null).toBe(true);
+    for (const x of leftOut.noPairRow) {
+      expect(
+        !Number.isInteger(x.row.n) ||
+          x.row.median_absolute_rank_shift == null ||
+          x.row.maximum_absolute_rank_shift == null
+      ).toBe(true);
+    }
+    // The cases are not empty, so the checks above ran.
+    expect(leftOut.noResult.length + leftOut.badRanks.length).toBeGreaterThan(0);
   });
 });
