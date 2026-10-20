@@ -118,8 +118,14 @@ export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
       : `Schools with ${every} have one place each, and can be put in order.`;
   }
   const { ranked } = c;
+  const showsRanges = readsReadings && c.range > 0;
+  // A group of none is said as none, and a clause about a group that is empty is left out.
+  if (c.complete === 0) {
+    if (!showsRanges) return `No school has ${every}, so no school can be put in order.`;
+    return `No school has ${every}, but ${countWord(c.range)} ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of places, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
+  }
   const done = `${formatCount(c.complete)} ${plural(c.complete, "school has", "schools have")} ${every}`;
-  if (c.range === 0 || !readsReadings)
+  if (!showsRanges)
     return `${done}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
   const more = `${countWord(c.range)} more ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of places`;
   return `${done}, and ${more}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
