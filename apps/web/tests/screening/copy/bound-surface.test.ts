@@ -1,5 +1,6 @@
 /**
  * The whole bound surface, bound under each of the seven rules, says nothing false about which schools a group holds.
+ * The method details' words are part of it: they are bound under the rule shown as well.
  *
  * Failure modes, each with the test that catches it (the last three findings shared them):
  *  1. A string says "every input recorded" of a group that holds a school with a reading the rule does not read.
@@ -21,7 +22,7 @@ import {
   schoolsFromLists,
 } from "@/lib/screening/copy";
 
-import { RULES, fixtureCompare, fixtureInputs, fixtureResults } from "./helpers";
+import { RULES, fixtureCompare, fixtureInputs, fixtureResults, methodStrings } from "./helpers";
 
 const lists = RULES.map((r) => fixtureResults(r));
 const byRule = countsByRuleFromResults(...lists);
@@ -47,6 +48,8 @@ async function bind(rule: copy.CopyRuleId) {
     ...pairwiseFromCompare(fixtureCompare()),
   });
   const later = await P.later();
+  // The method details' words for this rule, which only the method details read.
+  const method = methodStrings(await P.methodFor(rule));
   const scoped = [
     P.termsFor(rule),
     P.scope(rule),
@@ -60,7 +63,7 @@ async function bind(rule: copy.CopyRuleId) {
     P.listStartsSentence(undefined, rule),
   ];
   const neutral = [P.TERMS, P.STRINGS, P.IDEAS, P.LAYOUT, later.HOW_IT_WORKS, later.FIRST_QUESTIONS];
-  return { scoped: strings(scoped), neutral: strings(neutral), P, schools };
+  return { scoped: [...strings(scoped), ...method], neutral: strings(neutral), method, P, schools };
 }
 
 describe.each(RULES)("bound under %s", (rule) => {

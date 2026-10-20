@@ -48,10 +48,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.list.rankUnder": [["the benchmark", 9]],
   "METHOD.samePlaceUnder": [["the benchmark"]],
   "METHOD.moved.eyebrow": [["the benchmark"]],
-  "METHOD.queue.order": [
-    [true, 3, 9],
-    [false, 9, 9],
-  ],
+  "METHOD.queue.showing": [[3, 9]],
   "METHOD.compare.pickAria": [["on the left"]],
   "METHOD.compare.enteringK": [[10], [20]],
   "METHOD.compare.leavingK": [[10], [20]],
@@ -77,11 +74,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.compare.topEnters": [[20]],
   "METHOD.compare.topLeaves": [[20]],
   "METHOD.compare.legendTitle": [["S", "B"]],
-  "METHOD.compare.legendSub": [
-    [16, 10],
-    [undefined, 10],
-    [4, 4],
-  ],
+  "METHOD.compare.legendSub": [[16, 10], [undefined, 10], [4, 4], [16], [undefined]],
   "METHOD.compare.legendSize": [[10, "S", "B"]],
   "METHOD.compare.tipMove": [["S", "3rd", "B", "5th", "Up 2 places under B"]],
   "METHOD.compare.tipRange": [

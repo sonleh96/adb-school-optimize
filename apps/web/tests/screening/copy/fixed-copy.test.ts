@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import * as copy from "@/lib/screening/copy";
 import { copyFor } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
+import { METHOD } from "@/lib/screening/copy/method";
 
 import { Corpus, RULES, addFixedCopy, withLater, type FixedCopy } from "./helpers";
 
@@ -419,7 +420,7 @@ describe("the fixed strings that carry a rule of the project", () => {
 
   it("keeps method detail out of the plain flag text", () => {
     expect(copy.STRINGS.persistentFlag).not.toMatch(/5,000|Dirichlet/);
-    expect(copy.STRINGS.persistentFlagMethod).toMatch(/5,000/);
+    expect(METHOD.insp.persistent).toMatch(/5,000/);
   });
 
   it("opens every scope sentence with the groups sentence", () => {
@@ -473,7 +474,7 @@ describe("counts belong to the data they came from", () => {
     addFixedCopy(corpus, P, "set");
     for (const [k, t] of Object.entries(P.TERMS))
       corpus.add(`TERMS.${k}.technical`, t.technical, { sentence: false, plain: false });
-    return corpus.texts.filter(([label]) => !label.endsWith("persistentFlagMethod"));
+    return corpus.texts;
   };
 
   it("keeps the counts of one data set out of the copy bound to the other", async () => {
