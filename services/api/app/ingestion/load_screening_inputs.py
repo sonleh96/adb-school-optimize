@@ -1,7 +1,8 @@
 """Load the screening inputs of the study and materialize every screening rule from them.
 
     python -m app.ingestion.load_screening_inputs --input-version <id> \
-        --reference-root <methodology dir> --datasets-root <datasets dir> [--description <text>]
+        --reference-root <methodology dir> --datasets-root <datasets dir> [--description <text>] \
+        [--persistence-csv <path under the reference root> [--persistence-sha256 <hash>]]
 
 The three source tables go through the engine's input contract (``assemble_frame``, ``parse_records``),
 the records are stored as one input version, and all registered rules are run and stored.
@@ -10,16 +11,25 @@ Everything is written in one transaction.
 Rerunning with identical inputs changes nothing.
 An existing version with a different input hash is refused, and so is a stored run that no longer equals the engine's output.
 Schools that match no row of ``schools`` are stored with a null ``school_id`` and listed in the output.
+
+``--persistence-csv`` also stores the top-20 persistence numbers of the recorded experiment (see ``read_persistence_source``).
+Its school names are joined to the version's schools through ``normalize_join_key``.
+A name that matches no school or several refuses the whole load, and a stored set that differs from the file is never overwritten.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
+import io
+import json
+import math
+import re
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import pandas as pd
@@ -79,6 +89,10 @@ class RunConflict(ScreeningLoadError):
     """A stored run differs from what the engine produces for the same version, rule and package version."""
 
 
+class PersistenceConflict(ScreeningLoadError):
+    """The stored persistence numbers of a version differ from the file."""
+
+
 @dataclass(frozen=True)
 class LoadReport:
     input_version: str
@@ -91,6 +105,7 @@ class LoadReport:
     unmatched: tuple[str, ...]
     ambiguous: tuple[str, ...]
     links_changed: int
+    persistence: str | None = None
 
     def lines(self) -> list[str]:
         state = "created" if self.version_created else "already present with identical inputs"
@@ -103,6 +118,8 @@ class LoadReport:
         ]
         lines += [f"  unmatched: {name!r}" for name in self.unmatched]
         lines += [f"  ambiguous: {name!r}" for name in self.ambiguous]
+        if self.persistence is not None:
+            lines.append(f"persistence: {self.persistence}")
         return lines
 
 
@@ -134,6 +151,137 @@ def read_source_tables(
             }
         )
     return tables, manifest
+
+
+# ---------------------------------------------------------------------------------------------
+# Persistence of top-20 membership: the recorded experiment's table, read and checked before the database is touched.
+# ---------------------------------------------------------------------------------------------
+
+# The experiment drew random shares for the rule that includes urgency, so its numbers describe that rule only.
+PERSISTENCE_RULE_ID = store.PERSISTENCE_RULE_ID
+# The file's own convention: a school is persistent at lower top-20 frequency 0.80 in every setting.
+PERSISTENCE_THRESHOLD = 0.80
+PERSISTENCE_FLAG_COLUMN = "persistent_at_0_80_all_settings"
+PERSISTENCE_COUNT_KEY = "persistent_investigation_count_at_0_80_all_settings"
+EXPERIMENT_FOLDER = re.compile(r"EXP-[A-Za-z0-9._-]+")
+
+
+@dataclass(frozen=True)
+class PersistenceSource:
+    """The persistence table as the file states it, keyed by school name as the file spells it."""
+
+    experiment_id: str
+    source_path: str
+    source_sha256: str
+    draws: int
+    threshold: float
+    settings: tuple[store.PersistenceSetting, ...]
+    rows: tuple[tuple[str, tuple[float, ...]], ...]
+
+
+def _persistence_receipt(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise ScreeningLoadError(f"persistence receipt not found next to the file: {path.name}")
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeDecodeError) as error:
+        raise ScreeningLoadError(f"persistence receipt {path.name} cannot be read: {error}") from error
+
+
+def _frequency(text: str, name: str, column: str) -> float:
+    try:
+        value = float(text)
+    except ValueError:
+        raise ScreeningLoadError(
+            f"persistence file: {name!r} has {text!r} in {column}, not a number"
+        ) from None
+    if not (math.isfinite(value) and 0 <= value <= 1):
+        raise ScreeningLoadError(f"persistence file: {name!r} has {text!r} in {column}, outside 0 to 1")
+    return value
+
+
+def read_persistence_source(
+    reference_root: Path, relative_path: str, expected_sha256: str | None = None
+) -> PersistenceSource:
+    """Read the experiment's persistence table and check it against itself and its receipt.
+
+    The settings and the number of draws come from ``run_receipt.json`` in the same folder.
+    The file's flag column must equal the flag derived from its frequencies for every row,
+    and the number of flagged rows must equal the receipt's count.
+    If ``expected_sha256`` is given, the file must hash to it.
+    """
+    relative = PurePosixPath(relative_path)
+    folder = next((part for part in relative.parts if EXPERIMENT_FOLDER.fullmatch(part)), None)
+    if folder is None:
+        raise ScreeningLoadError(
+            f"persistence path {relative_path!r} has no EXP-... folder naming the experiment"
+        )
+    path = Path(reference_root) / relative
+    if not path.is_file():
+        raise ScreeningLoadError(f"persistence file not found: reference root / {relative_path}")
+    content = path.read_bytes()
+    sha256 = hashlib.sha256(content).hexdigest()
+    if expected_sha256 is not None and sha256 != expected_sha256.lower():
+        raise ScreeningLoadError(
+            f"persistence file hashes to {sha256}, not the expected {expected_sha256}. Nothing was loaded."
+        )
+
+    receipt = _persistence_receipt(path.parent / "run_receipt.json")
+    try:
+        settings = tuple(
+            store.PersistenceSetting(
+                s["setting_id"], float(s["top_level_concentration"]), float(s["school_need_concentration"])
+            )
+            for s in receipt["concentration_settings"]
+        )
+        draws = {int(s["draws"]) for s in receipt["concentration_settings"]}
+        receipt_count = int(receipt[PERSISTENCE_COUNT_KEY])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ScreeningLoadError(f"persistence receipt lacks {error} or states it wrongly") from error
+    if not settings or len(draws) != 1 or len({s.setting_id for s in settings}) != len(settings):
+        raise ScreeningLoadError("persistence receipt must state one set of draws and distinct settings")
+
+    try:
+        table = list(csv.DictReader(io.StringIO(content.decode("utf-8-sig"), newline="")))
+        header = set(table[0]) if table else set()
+    except (csv.Error, UnicodeDecodeError) as error:
+        raise ScreeningLoadError(f"persistence file cannot be read: {error}") from error
+    needed = {KEY_COLUMN, PERSISTENCE_FLAG_COLUMN, *(s.setting_id for s in settings)}
+    if not table or not needed <= header:
+        raise ScreeningLoadError(
+            f"persistence file must list schools and have the columns {sorted(needed)}; "
+            f"missing: {sorted(needed - header)}"
+        )
+
+    rows = []
+    for row in table:
+        name = row[KEY_COLUMN]
+        frequencies = tuple(_frequency(row[s.setting_id], name, s.setting_id) for s in settings)
+        stated = {"True": True, "False": False}.get(row[PERSISTENCE_FLAG_COLUMN])
+        if stated is None:
+            raise ScreeningLoadError(
+                f"persistence file: {name!r} has {row[PERSISTENCE_FLAG_COLUMN]!r} in {PERSISTENCE_FLAG_COLUMN}"
+            )
+        if stated != store.is_persistent(frequencies, PERSISTENCE_THRESHOLD):
+            raise ScreeningLoadError(
+                f"persistence file: {name!r} is {stated} in {PERSISTENCE_FLAG_COLUMN} "
+                f"but its frequencies {frequencies} say otherwise at {PERSISTENCE_THRESHOLD}"
+            )
+        rows.append((name, frequencies))
+    derived = sum(store.is_persistent(f, PERSISTENCE_THRESHOLD) for _, f in rows)
+    if derived != receipt_count:
+        raise ScreeningLoadError(
+            f"persistence file flags {derived} schools but its receipt states {receipt_count}"
+        )
+    return PersistenceSource(
+        experiment_id=folder,
+        source_path=str(relative),
+        source_sha256=sha256,
+        draws=draws.pop(),
+        threshold=PERSISTENCE_THRESHOLD,
+        settings=settings,
+        rows=tuple(rows),
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -322,6 +470,120 @@ def _check_stored_inputs(
     )
 
 
+_MATCH_PERSISTENCE_NAMES = """
+select n.name, coalesce(array_agg(i.source_school_name order by i.record_position) filter (where i.source_school_name is not null), '{}')
+from unnest(%(names)s::text[]) as n(name)
+left join screening_inputs i
+  on i.input_version = %(version)s and i.source_school_name_norm = normalize_join_key(n.name)
+group by n.name
+"""
+
+
+def _join_persistence_names(
+    connection: psycopg.Connection, input_version: str, source: PersistenceSource
+) -> dict[str, str]:
+    """The school of the version that each name of the file stands for, through ``normalize_join_key``.
+
+    A name that matches no school or several, or two names that match one school, refuse the load: a guess would
+    put a school's persistence on another school.
+    """
+    names = [name for name, _ in source.rows]
+    found = {
+        name: tuple(matches)
+        for name, matches in _fetch(
+            connection, _MATCH_PERSISTENCE_NAMES, {"names": names, "version": input_version}
+        )
+    }
+    none = [n for n in names if not found[n]]
+    several = [n for n in names if len(found[n]) > 1]
+    if none or several:
+        problems = [f"{n!r} matches no school of the version" for n in none[:5]]
+        problems += [f"{n!r} matches {len(found[n])} schools: {list(found[n])!r}" for n in several[:5]]
+        raise ScreeningLoadError(
+            f"persistence file: {len(none)} name(s) match no school and {len(several)} match several. "
+            + "; ".join(problems)
+            + ". Nothing was loaded."
+        )
+    joined = {name: found[name][0] for name in names}
+    owners: dict[str, list[str]] = {}
+    for name, school in joined.items():
+        owners.setdefault(school, []).append(name)
+    shared = {school: n for school, n in owners.items() if len(n) > 1}
+    if shared:
+        school, listed = next(iter(shared.items()))
+        raise ScreeningLoadError(
+            f"persistence file: {len(shared)} school(s) are named by two rows, for example {school!r} by {listed!r}. "
+            "Nothing was loaded."
+        )
+    return joined
+
+
+def _store_persistence(connection: psycopg.Connection, input_version: str, source: PersistenceSource) -> str:
+    """Store the persistence numbers of a version, or confirm that the stored ones equal the file."""
+    school_of = _join_persistence_names(connection, input_version, source)
+    expected_set = store.PersistenceSet(
+        input_version=input_version,
+        rule_id=PERSISTENCE_RULE_ID,
+        experiment_id=source.experiment_id,
+        source_path=source.source_path,
+        source_sha256=source.source_sha256,
+        draws=source.draws,
+        threshold=source.threshold,
+        settings=source.settings,
+    )
+    expected = store.Persistence(expected_set, {school_of[name]: freqs for name, freqs in source.rows})
+    stored = store.read_persistence(connection, input_version)
+    if stored is not None:
+        if stored != expected:
+            raise PersistenceConflict(
+                f"stored persistence numbers of input version {input_version!r} differ from the file "
+                f"(stored from {stored.set.source_path}, sha256 {stored.set.source_sha256}). "
+                "A stored set is never overwritten; use a new input version."
+            )
+        return f"unchanged ({len(expected.frequencies)} schools, sha256 {source.source_sha256})"
+
+    connection.execute(
+        "insert into screening_persistence_sets "
+        "(input_version, rule_id, experiment_id, source_path, source_sha256, draws, threshold) "
+        "values (%s, %s, %s, %s, %s, %s, %s)",
+        (
+            input_version,
+            PERSISTENCE_RULE_ID,
+            source.experiment_id,
+            source.source_path,
+            source.source_sha256,
+            source.draws,
+            source.threshold,
+        ),
+    )
+    with connection.cursor() as cursor:
+        cursor.executemany(
+            "insert into screening_persistence_settings (input_version, rule_id, setting_id, setting_position, "
+            "top_level_concentration, school_need_concentration) values (%s, %s, %s, %s, %s, %s)",
+            [
+                (
+                    input_version,
+                    PERSISTENCE_RULE_ID,
+                    s.setting_id,
+                    position,
+                    s.top_level_concentration,
+                    s.school_need_concentration,
+                )
+                for position, s in enumerate(source.settings)
+            ],
+        )
+        cursor.executemany(
+            "insert into screening_persistence_frequencies (input_version, rule_id, source_school_name, setting_id, "
+            "lower_top20_frequency) values (%s, %s, %s, %s, %s)",
+            [
+                (input_version, PERSISTENCE_RULE_ID, school, setting.setting_id, frequency)
+                for school, frequencies in expected.frequencies.items()
+                for setting, frequency in zip(source.settings, frequencies, strict=True)
+            ],
+        )
+    return f"created ({len(expected.frequencies)} schools, sha256 {source.source_sha256})"
+
+
 def load_screening(
     connection: psycopg.Connection,
     *,
@@ -329,8 +591,12 @@ def load_screening(
     records: tuple[SchoolRecord, ...],
     source_manifest: Sequence[Mapping[str, str]],
     description: str | None = None,
+    persistence: PersistenceSource | None = None,
 ) -> LoadReport:
-    """Store the records as ``input_version`` and every rule's run on them, atomically and idempotently."""
+    """Store the records as ``input_version`` and every rule's run on them, atomically and idempotently.
+
+    With ``persistence`` the experiment's top-20 persistence numbers are stored with the version in the same transaction.
+    """
     if not records:
         raise ScreeningLoadError("no records to load: the source tables list no schools")
     input_sha256 = records_sha256(records)
@@ -363,6 +629,9 @@ def load_screening(
                 unchanged.append(rule_id)
 
         matched, unmatched, ambiguous, changed = _link_schools(connection, input_version)
+        persistence_state = (
+            None if persistence is None else _store_persistence(connection, input_version, persistence)
+        )
     return LoadReport(
         input_version=input_version,
         version_created=existing is None,
@@ -374,6 +643,7 @@ def load_screening(
         unmatched=unmatched,
         ambiguous=ambiguous,
         links_changed=changed,
+        persistence=persistence_state,
     )
 
 
@@ -387,11 +657,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--datasets-root", type=Path, required=True, help="Folder with the raw school table.")
     parser.add_argument("--description", default=None)
+    parser.add_argument(
+        "--persistence-csv",
+        default=None,
+        help="Path under the reference root of the experiment's persistent_investigation_candidates.csv.",
+    )
+    parser.add_argument(
+        "--persistence-sha256",
+        default=None,
+        help="SHA-256 the persistence file must have; the load is refused otherwise.",
+    )
     args = parser.parse_args(argv)
 
     input_version = args.input_version
     if not input_version or input_version != input_version.strip():
         print("error: --input-version must be non-empty and have no surrounding whitespace", file=sys.stderr)
+        return 2
+    if args.persistence_sha256 and not args.persistence_csv:
+        print("error: --persistence-sha256 needs --persistence-csv", file=sys.stderr)
         return 2
     database_url = get_settings().database_url
     if not database_url:
@@ -400,6 +683,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         tables, source_manifest = read_source_tables(args.reference_root, args.datasets_root)
         records = parse_records(assemble_frame(tables))
+        persistence = (
+            None
+            if args.persistence_csv is None
+            else read_persistence_source(args.reference_root, args.persistence_csv, args.persistence_sha256)
+        )
         with psycopg.connect(database_url) as connection:
             report = load_screening(
                 connection,
@@ -407,6 +695,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 records=records,
                 source_manifest=source_manifest,
                 description=args.description,
+                persistence=persistence,
             )
     except (ScreeningLoadError, InputContractError) as error:
         print(f"error: {error}", file=sys.stderr)

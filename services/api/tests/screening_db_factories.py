@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -134,3 +136,59 @@ def read_back(paths: dict[str, Path]) -> tuple[SchoolRecord, ...]:
         table: pd.read_csv(paths[table.value], float_precision="round_trip") for table, _, _ in SOURCE_FILES
     }
     return parse_records(assemble_frame(frames))
+
+
+# ---------------------------------------------------------------------------------------------
+# Invented persistence files, in the layout of the recorded experiment.
+# ---------------------------------------------------------------------------------------------
+
+EXPERIMENT = "EXP-99-v0.0.0-20000101"
+PERSISTENCE_PATH = f"experiments/decision_rules/{EXPERIMENT}/results/persistent_investigation_candidates.csv"
+SETTINGS = (
+    ("concentration_20_15", 20, 15),
+    ("concentration_40_35", 40, 35),
+    ("concentration_100_80", 100, 80),
+)
+DRAWS = 5000
+
+
+def write_persistence_files(
+    reference_root: Path,
+    frequencies: dict[str, tuple[float, float, float]],
+    *,
+    flags: dict[str, bool] | None = None,
+    receipt_count: int | None = None,
+    threshold: float = 0.8,
+) -> str:
+    """Write a persistence table and its receipt under ``reference_root``. Returns the path relative to the root.
+
+    The flag column is derived from the frequencies unless ``flags`` overrides a school's value.
+    ``receipt_count`` defaults to the number of flagged schools.
+    """
+    path = reference_root / PERSISTENCE_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flagged = {name: all(f >= threshold for f in freqs) for name, freqs in frequencies.items()}
+    flagged.update(flags or {})
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["School Name", *(s[0] for s in SETTINGS), "persistent_at_0_80_all_settings"])
+        for name, freqs in frequencies.items():
+            writer.writerow([name, *freqs, flagged[name]])
+    receipt = {
+        "concentration_settings": [
+            {
+                "setting_id": sid,
+                "top_level_concentration": top,
+                "school_need_concentration": need,
+                "draws": DRAWS,
+            }
+            for sid, top, need in SETTINGS
+        ],
+        "persistent_investigation_count_at_0_80_all_settings": sum(
+            all(f >= threshold for f in freqs) for freqs in frequencies.values()
+        )
+        if receipt_count is None
+        else receipt_count,
+    }
+    (path.parent / "run_receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
+    return PERSISTENCE_PATH

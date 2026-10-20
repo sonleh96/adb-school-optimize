@@ -171,6 +171,22 @@ def connection_before_screening(migrated_template):
             _drop(admin, name)
 
 
+@pytest.fixture
+def connection_before_persistence(migrated_template):
+    """A fresh database with the migrations before 006 applied; the test applies 006 itself."""
+    url = _server_url()
+    name = f"rise_screening_pre6_{uuid.uuid4().hex[:8]}"
+    earlier = [path for path in migration_files() if path.name < "006_screening_persistence.sql"]
+    with psycopg.connect(url, autocommit=True) as admin:
+        admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+        try:
+            with psycopg.connect(make_conninfo(url, dbname=name), autocommit=True) as conn:
+                apply_migrations(conn, earlier)
+                yield conn
+        finally:
+            _drop(admin, name)
+
+
 # ---------------------------------------------------------------------------------------------
 # The real application on a real, migrated database, for the screening API tests.
 # The app opens its own connection pool from DATABASE_URL, exactly as it does when deployed.

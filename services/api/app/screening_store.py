@@ -212,3 +212,110 @@ def read_results(connection: psycopg.Connection, run_id: uuid.UUID) -> tuple[Res
         )
         for row in _select(connection, query, (run_id,))
     )
+
+
+# ---------------------------------------------------------------------------------------------
+# Persistence of top-20 membership (``infra/sql/006_screening_persistence.sql``).
+# The numbers belong to the circulated rule only; see ``PERSISTENCE_RULE_ID``.
+# ---------------------------------------------------------------------------------------------
+
+# The one rule the stored persistence numbers describe. The experiment drew random shares for the factors of the
+# rule that includes urgency, and the migration refuses any other rule.
+PERSISTENCE_RULE_ID = "additive_u"
+
+
+@dataclass(frozen=True)
+class PersistenceSetting:
+    setting_id: str
+    top_level_concentration: float
+    school_need_concentration: float
+
+
+@dataclass(frozen=True)
+class PersistenceSet:
+    """Where the persistence numbers of an input version came from and how the draws were made."""
+
+    input_version: str
+    rule_id: str
+    experiment_id: str
+    source_path: str
+    source_sha256: str
+    draws: int
+    threshold: float
+    settings: tuple[PersistenceSetting, ...]
+
+
+def is_persistent(frequencies: tuple[float, ...], threshold: float) -> bool:
+    """At or above the threshold in every setting. The one definition, used when loading and when serving."""
+    return all(f >= threshold for f in frequencies)
+
+
+@dataclass(frozen=True)
+class Persistence:
+    """The set and every school's lower top-20 frequency, in the order of ``set.settings``."""
+
+    set: PersistenceSet
+    frequencies: dict[str, tuple[float, ...]]
+
+    def is_persistent(self, source_school_name: str) -> bool | None:
+        """None when the school was not in the experiment."""
+        found = self.frequencies.get(source_school_name)
+        return None if found is None else is_persistent(found, self.set.threshold)
+
+
+def read_persistence_sets(
+    connection: psycopg.Connection, input_version: str | None = None
+) -> dict[str, PersistenceSet]:
+    """The stored sets by input version: one version, or all of them when none is named."""
+    where = sql.SQL("where input_version = %s") if input_version is not None else sql.SQL("")
+    params = (input_version,) if input_version is not None else ()
+    sets = _select(
+        connection,
+        sql.SQL(
+            "select input_version, rule_id, experiment_id, source_path, source_sha256, draws, threshold "
+            "from screening_persistence_sets {where} order by input_version"
+        ).format(where=where),
+        params,
+    )
+    settings = _select(
+        connection,
+        sql.SQL(
+            "select input_version, setting_id, top_level_concentration, school_need_concentration "
+            "from screening_persistence_settings {where} order by input_version, setting_position"
+        ).format(where=where),
+        params,
+    )
+    return {
+        row["input_version"]: PersistenceSet(
+            **row,
+            settings=tuple(
+                PersistenceSetting(
+                    s["setting_id"], s["top_level_concentration"], s["school_need_concentration"]
+                )
+                for s in settings
+                if s["input_version"] == row["input_version"]
+            ),
+        )
+        for row in sets
+    }
+
+
+def read_persistence(connection: psycopg.Connection, input_version: str) -> Persistence | None:
+    found = read_persistence_sets(connection, input_version).get(input_version)
+    if found is None:
+        return None
+    slot = {s.setting_id: i for i, s in enumerate(found.settings)}
+    rows = _select(
+        connection,
+        sql.SQL(
+            "select source_school_name, setting_id, lower_top20_frequency from screening_persistence_frequencies "
+            "where input_version = %s and rule_id = %s"
+        ),
+        (input_version, found.rule_id),
+    )
+    by_school: dict[str, list[float | None]] = {}
+    for row in rows:
+        by_school.setdefault(row["source_school_name"], [None] * len(slot))[slot[row["setting_id"]]] = row[
+            "lower_top20_frequency"
+        ]
+    return Persistence(found, {name: tuple(values) for name, values in by_school.items()})
