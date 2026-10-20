@@ -170,3 +170,72 @@ describe("the saved detail of a school", () => {
     );
   });
 });
+
+describe("the top 10 changes between two rules", () => {
+  // Viewed under the rule that leaves urgency out, Sample School 23 can be put in order. The rule that reads
+  // urgency holds it back, so it has no place there and is not in the recorded comparison.
+  const placed = placedFromResults(lists.additive_no_u, lists.additive_u);
+  const compare = pairwiseFromCompare(fixtureCompare());
+  const data = { schools: placed, ...compare };
+  const P = copy.copyFor({ ...data, counts: countsFromResults(lists.additive_no_u) });
+
+  it("skips a school with no place under one of the rules instead of throwing", () => {
+    const s23 = placed.find((s) => s.name === "Sample School 23");
+    expect(s23?.cohort).toBe("complete");
+    expect(s23?.results?.additive_u).toBeUndefined();
+    let text = "";
+    expect(() => {
+      text = P.comparisonSentence("additive_no_u", "additive_u", undefined, { top: 10 });
+    }).not.toThrow();
+    expect(text).not.toContain("Sample School 23");
+    expect(textProblems(text)).toEqual([]);
+  });
+
+  it("agrees with the recorded overlap: as many join the top 10 as the overlap leaves out", () => {
+    const text = P.comparisonSentence("additive_u", "additive_no_u", undefined, { top: 10 });
+    const overlap = compare.pairwise[0].top10_overlap;
+    expect(overlap).toBe(9);
+    expect(text).toContain("9 of the top 10 schools are the same under both.");
+    expect(text.match(/joins the top 10/g) ?? []).toHaveLength(10 - overlap);
+    expect(text.match(/drops out of the top 10/g) ?? []).toHaveLength(10 - overlap);
+  });
+
+  it("ranks each school within the schools both rules put in order, as the comparison does", () => {
+    // Without Sample School 23, the 16 schools both rules order keep their order under each rule.
+    const both = placed.filter(
+      (s) => s.results?.additive_u?.rank_complete120 && s.results?.additive_no_u?.rank_complete120
+    );
+    expect(both).toHaveLength(compare.pairwise[0].n as number);
+    const text = P.comparisonSentence("additive_u", "additive_no_u", undefined, { top: 10 });
+    for (const s of both) {
+      const a = both.filter(
+        (x) =>
+          (x.results?.additive_u?.rank_complete120 as number) <
+          (s.results?.additive_u?.rank_complete120 as number)
+      ).length;
+      const b = both.filter(
+        (x) =>
+          (x.results?.additive_no_u?.rank_complete120 as number) <
+          (s.results?.additive_no_u?.rank_complete120 as number)
+      ).length;
+      const moved = a < 10 !== b < 10;
+      expect(
+        text.includes(`${s.name} moves from ${copy.ordinal(a + 1)} to ${copy.ordinal(b + 1)}`),
+        s.name ?? ""
+      ).toBe(moved);
+    }
+  });
+
+  it("never reads a missing place as place 0", () => {
+    const orphan = {
+      ...placed[0],
+      id: "orphan",
+      name: "Orphan",
+      results: { additive_no_u: { rank_complete120: null } },
+    };
+    const text = copy
+      .copyFor({ ...data, schools: [...placed, orphan], counts: countsFromResults(lists.additive_no_u) })
+      .comparisonSentence("additive_no_u", "additive_u", undefined, { top: 10 });
+    expect(text).not.toContain("Orphan");
+  });
+});

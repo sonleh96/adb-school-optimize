@@ -4,8 +4,8 @@
  */
 import { countsFrom, rangePhrase, theSchools } from "./counts";
 import { cleanName, displayName, formatCount, joinList, lowerFirst, ordinal, plural } from "./format";
-import type { ComparisonData, CopyRuleId, PairwiseRow, PlacedSchool, Top20Change } from "./model";
-import { resultFor } from "./rank";
+import type { ComparisonData, CopyRuleId, PairwiseRow, Top20Change } from "./model";
+import { hasPlace, resultFor } from "./rank";
 import { rule } from "./rules";
 
 export const findPair = (
@@ -55,10 +55,6 @@ interface TopChange {
   readonly to: number | null | undefined;
 }
 
-// JavaScript's own comparison, as the prototype used it: a place of null reads as 0 and a missing one never matches.
-const atMost = (place: number | null | undefined, k: number): boolean =>
-  place === undefined ? false : (place ?? 0) <= k;
-
 // Schools that join and leave the top k when switching from ruleA to ruleB.
 function topChanges(
   ruleA: CopyRuleId,
@@ -79,18 +75,24 @@ function topChanges(
       }));
   }
   if (!data.schools) return null;
-  const place = (s: PlacedSchool, id: CopyRuleId): number | null | undefined => {
-    const res = resultFor(s, id);
-    return res ? res.rank_complete120 : null;
-  };
-  return data.schools
-    .filter((s) => s.cohort === "complete")
-    .filter((s) => atMost(place(s, ruleA), k) !== atMost(place(s, ruleB), k))
-    .map((s) => ({
+  // The recorded comparison ranks the schools that have a place under both rules, each by its own order. A school
+  // with no place under either rule is not in it, so it can neither join nor leave.
+  const both = data.schools.flatMap((s) => {
+    const a = resultFor(s, ruleA),
+      b = resultFor(s, ruleB);
+    return hasPlace(a) && hasPlace(b) ? [{ s, a: a.rank_complete120, b: b.rank_complete120 }] : [];
+  });
+  const rankIn = (own: (x: (typeof both)[number]) => number): Map<string, number> =>
+    new Map([...both].sort((x, y) => own(x) - own(y)).map((x, i) => [x.s.id, i + 1]));
+  const ra = rankIn((x) => x.a),
+    rb = rankIn((x) => x.b);
+  return both
+    .filter(({ s }) => (ra.get(s.id) as number) <= k !== (rb.get(s.id) as number) <= k)
+    .map(({ s }) => ({
       name: displayName(s),
-      enters: atMost(place(s, ruleB), k),
-      from: place(s, ruleA),
-      to: place(s, ruleB),
+      enters: (rb.get(s.id) as number) <= k,
+      from: ra.get(s.id),
+      to: rb.get(s.id),
     }));
 }
 
