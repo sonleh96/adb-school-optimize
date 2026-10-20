@@ -4,127 +4,40 @@
  *  1. Map canvases pile up across rule switches and selections         -> "keeps one map"
  *  2. List and map selection drift apart (either direction, either tab)  -> "selecting a row...", "clicking a mark..."
  *  3. The wrong order for range or queue schools                         -> "shows the rows in the API's order"
- *  4. An interval school shown with a single place                       -> "shows the rows in the API's order"
+ *  4. An interval school shown with a single place, even with equal ends -> "shows the rows...", "an exact range..."
  *  5. A rule switch shows another rule's rows, or loses the selection    -> "switching the rule..."
  *  6. A school with no coordinates breaks the map or the card            -> "a school without coordinates"
  *  7. Console errors (hydration, WebGL, style, failed requests)          -> every test, via `problems`
- *  The map staying out of the initial bundle is held by `npm run bundle:check`.
+ *  8. A place without the scope it is counted in                         -> "names the scope..."
+ *  9. Arrow keys leave the order on screen, or Escape does nothing       -> "arrow keys..."
+ * 10. The map or the card traps a keyboard user, or hides focus          -> "the map can be reached..."
+ * 11. Attribution text too faint to read                                 -> "credits the basemap..."
+ * The states (stale rows, failures, slow loads, basemap failure) are in screening-states.spec.ts, and the
+ * WebGL leak is in screening-leak.spec.ts. The map staying out of the initial bundle is held by `bundle:check`.
  */
-import { readFileSync } from "node:fs";
-import path from "node:path";
-
-import { expect, test as base, type Page } from "@playwright/test";
-
-const FIXTURES = path.resolve(__dirname, "fixtures/screening");
-const fixture = (file: string) => JSON.parse(readFileSync(path.join(FIXTURES, file), "utf8"));
-
-interface Row {
-  cohort: string;
-  school: { source_school_name: string; school_key: string };
-}
-const rowsOf = (rule: string): Row[] => fixture(`results/${rule}.json`).rows;
-const orderedNames = (rule: string) =>
-  rowsOf(rule)
-    .filter((r) => r.cohort !== "verification_queue")
-    .map((r) => r.school.source_school_name);
-const keyOf = (rule: string, name: string) =>
-  rowsOf(rule).find((r) => r.school.source_school_name === name)!.school.school_key;
+import { contrastRatio } from "../lib/screening/contrast";
+import { COPY } from "../components/screening/copy";
+import {
+  ORDERED_COUNT,
+  expect,
+  keyOf,
+  listNames,
+  mapLocator,
+  markAt,
+  openWorkspace,
+  orderedNames,
+  orderedRow,
+  queuedNames,
+  queuedRow,
+  ringDrawnAround,
+  settledMark,
+  test,
+} from "./screening-helpers";
 
 // The design's reference size. A smaller window pans the map under the panels, which hides marks from a click.
-base.use({ viewport: { width: 1600, height: 1000 } });
+test.use({ viewport: { width: 1600, height: 1000 } });
 // The map's two chunks (about 0.5 MB gzip) and its WebGL setup take a while when several browsers start together.
-base.describe.configure({ timeout: 60_000 });
-
-const test = base.extend<{ problems: string[] }>({
-  problems: [
-    async ({ page }, use) => {
-      const problems: string[] = [];
-      page.on("console", (message) => {
-        if (["error", "warning"].includes(message.type()))
-          problems.push(`${message.type()}: ${message.text()}`);
-      });
-      page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
-      page.on("requestfailed", (request) => problems.push(`requestfailed: ${request.url()}`));
-      page.on("response", (response) => {
-        if (response.status() >= 400) problems.push(`${response.status()}: ${response.url()}`);
-      });
-      await use(problems);
-      expect(problems).toEqual([]);
-    },
-    { auto: true },
-  ],
-});
-
-async function openWorkspace(page: Page) {
-  await page.goto("/screening");
-  await expect(page.getByRole("heading", { name: "School screening", level: 1 })).toBeVisible();
-  await expect(page.locator("[data-testid=screening-map][data-map-ready=true]")).toHaveCount(1, {
-    timeout: 25_000,
-  });
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(20);
-}
-
-const orderedRow = (page: Page, name: string) =>
-  page.locator("ol[aria-label='Ordered list'] button", { hasText: name });
-const queuedRow = (page: Page, name: string) =>
-  page.locator("ol[aria-label='Incomplete records'] button", { hasText: name });
-const listNames = (page: Page) =>
-  page.locator("ol[aria-label='Ordered list'] button span[class*=name]").allTextContents();
-
-const markAt = (page: Page, key: string) =>
-  page.evaluate((k) => window.__screeningMapTest?.project(k as never) ?? null, key);
-
-/** A mark's position once the map has stopped moving (a selection can pan it). */
-async function settledMark(page: Page, key: string) {
-  const map = page.locator("[data-testid=screening-map]");
-  let previous = await markAt(page, key);
-  let steady = 0;
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    await page.waitForTimeout(100);
-    const current = await markAt(page, key);
-    const still = current && previous && current.x === previous.x && current.y === previous.y;
-    const idle = (await map.getAttribute("data-map-moving")) === "false";
-    steady = still && idle ? steady + 1 : 0;
-    if (steady >= 4 && current) return current;
-    previous = current;
-  }
-  throw new Error(`The mark of ${key} never settled`);
-}
-
-/** Whether the dark selection ring is drawn round the mark: samples the rendered pixels at the ring's radius. */
-async function ringDrawnAround(page: Page, key: string, markRadius: number): Promise<boolean> {
-  const point = await markAt(page, key);
-  if (!point) return false;
-  const size = 80;
-  const clip = {
-    x: Math.round(point.x - size / 2),
-    y: Math.round(point.y - size / 2),
-    width: size,
-    height: size,
-  };
-  const png = (await page.screenshot({ clip })).toString("base64");
-  return page.evaluate(
-    async ({ png, radius, size }) => {
-      const image = new Image();
-      image.src = `data:image/png;base64,${png}`;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = canvas.height = size;
-      const context = canvas.getContext("2d", { willReadFrequently: true })!;
-      context.drawImage(image, 0, 0);
-      let dark = 0;
-      for (let step = 0; step < 16; step += 1) {
-        const angle = (step / 16) * Math.PI * 2;
-        const x = Math.round(size / 2 + Math.cos(angle) * radius);
-        const y = Math.round(size / 2 + Math.sin(angle) * radius);
-        const [r, g, b] = context.getImageData(x, y, 1, 1).data;
-        if (r < 110 && g < 110 && b < 110) dark += 1;
-      }
-      return dark >= 10;
-    },
-    { png, radius: markRadius + 4.5, size }
-  );
-}
+test.describe.configure({ timeout: 60_000 });
 
 test("shows the rows in the API's order, with range schools between complete ones", async ({ page }) => {
   await openWorkspace(page);
@@ -144,8 +57,64 @@ test("shows the rows in the API's order, with range schools between complete one
   await expect(range.locator("[data-place=range]")).toContainText("11thto18th");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place=point]")).toHaveText("1st");
 
-  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText("Ordered list20");
+  // Counts appear with the data, never before it.
+  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText(`Ordered list${ORDERED_COUNT}`);
   await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveText("Incomplete records4");
+});
+
+test("an exact range keeps the range treatment and says it is exact", async ({ page }) => {
+  await openWorkspace(page);
+
+  // Both ends are the 21st place, yet the school is not a plain 21st.
+  const row = orderedRow(page, "Sample School 25");
+  const place = row.locator("[data-place]");
+  await expect(place).toHaveAttribute("data-place", "range");
+  await expect(place).toHaveAttribute("data-exact", "true");
+  await expect(place).toHaveText("21st");
+  await expect(row).toContainText(COPY.exactRange);
+  await expect(page.locator("[data-place=point][data-exact]")).toHaveCount(0);
+
+  await row.click();
+  await expect(page.getByTestId("card-place")).toHaveText("21st");
+  await expect(page.getByRole("complementary", { name: "Sample School 25" })).toContainText(COPY.exactRange);
+  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
+
+  // A range school that is not exact has no such note.
+  await orderedRow(page, "Sample School 17").click();
+  await expect(page.getByRole("complementary", { name: "Sample School 17" })).not.toContainText(
+    COPY.exactRange
+  );
+});
+
+test("names the scope each place is counted in, in the list header, the card and the tooltip", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await expect(page.getByTestId("list-scopes")).toHaveText(
+    COPY.listScopes("complete under this rule (16)", "eligible (21)")
+  );
+
+  await orderedRow(page, "Sample School 15").click();
+  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("complete under this rule (16)"));
+  await orderedRow(page, "Sample School 17").click();
+  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
+
+  // The tooltip names it too.
+  await page.keyboard.press("Escape");
+  const point = await settledMark(page, keyOf("additive_u", "Sample School 13"));
+  await page.mouse.move(point.x, point.y);
+  await expect(page.getByRole("status").filter({ hasText: "Sample School 13" })).toContainText(
+    COPY.placeAmong("3rd", "complete under this rule (16)")
+  );
+});
+
+test("an exact range's tooltip carries the exact note", async ({ page }) => {
+  await openWorkspace(page);
+  const point = await settledMark(page, keyOf("additive_u", "Sample School 25"));
+  await page.mouse.move(point.x, point.y);
+  const tooltip = page.getByRole("status").filter({ hasText: "Sample School 25" });
+  await expect(tooltip).toContainText(COPY.placeAmong("21st", "eligible (21)"));
+  await expect(tooltip).toContainText(COPY.exactRange);
 });
 
 test("keeps one map through rule switches and selections", async ({ page }) => {
@@ -173,13 +142,13 @@ test("selecting a row selects its mark, and closing the card clears both", async
   await orderedRow(page, "Sample School 15").click();
 
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("[data-testid=screening-map]")).toHaveAttribute("data-selected-key", key);
+  await expect(mapLocator(page)).toHaveAttribute("data-selected-key", key);
   await expect(page.getByRole("complementary", { name: "Sample School 15" })).toBeVisible();
   await expect(page.getByTestId("card-place")).toHaveText("2nd");
   await expect.poll(() => ringDrawnAround(page, key, 8)).toBe(true);
 
   await page.keyboard.press("Escape");
-  await expect(page.locator("[data-testid=screening-map]")).toHaveAttribute("data-selected-key", "");
+  await expect(mapLocator(page)).toHaveAttribute("data-selected-key", "");
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "false");
   await expect.poll(() => ringDrawnAround(page, key, 8)).toBe(false);
 });
@@ -189,14 +158,13 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
 
   const first = keyOf("additive_u", "Sample School 12");
   const point = await settledMark(page, first);
-  expect(point).not.toBeNull();
-  await page.mouse.click(point!.x, point!.y);
+  await page.mouse.click(point.x, point.y);
   await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("[data-testid=screening-map]")).toHaveAttribute("data-selected-key", first);
+  await expect(mapLocator(page)).toHaveAttribute("data-selected-key", first);
 
   const queued = keyOf("additive_u", "Sample School 21");
   const queuedPoint = await settledMark(page, queued);
-  await page.mouse.click(queuedPoint!.x, queuedPoint!.y);
+  await page.mouse.click(queuedPoint.x, queuedPoint.y);
   await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveAttribute(
     "aria-selected",
     "true"
@@ -236,7 +204,9 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   expect(await listNames(page)).toEqual(orderedNames("need_first_u"));
 });
 
-test("arrow keys move through the list and Escape closes the card", async ({ page }) => {
+test("arrow keys move through the list in the order on screen and Escape closes the card", async ({
+  page,
+}) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 08").click();
   await page.keyboard.press("ArrowDown");
@@ -244,6 +214,34 @@ test("arrow keys move through the list and Escape closes the card", async ({ pag
   await expect(orderedRow(page, "Sample School 08")).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("ArrowUp");
   await expect(orderedRow(page, "Sample School 08")).toHaveAttribute("aria-pressed", "true");
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("complementary", { name: "Sample School 08" })).toHaveCount(0);
+  await expect(orderedRow(page, "Sample School 08")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("arrow keys on the incomplete records follow the grouped order on screen", async ({ page }) => {
+  await openWorkspace(page);
+  await page.getByRole("tab", { name: /Incomplete records/ }).click();
+  const onScreen = await page
+    .locator("ol[aria-label='Incomplete records'] button span[class*=name]")
+    .allTextContents();
+  expect(onScreen).toEqual(queuedNames("additive_u"));
+
+  await queuedRow(page, onScreen[0]).click();
+  for (let step = 1; step < onScreen.length; step += 1) {
+    await page.keyboard.press("ArrowDown");
+    // Each press lands on the next row as the groups show them.
+    await expect(
+      page.locator("ol[aria-label='Incomplete records'] button[aria-pressed=true] span[class*=name]")
+    ).toHaveText(onScreen[step]);
+  }
+
+  // Keys that come faster than a render still move one row each, from the row that has focus.
+  for (let step = 1; step < onScreen.length; step += 1) await page.keyboard.press("ArrowUp");
+  await expect(
+    page.locator("ol[aria-label='Incomplete records'] button[aria-pressed=true] span[class*=name]")
+  ).toHaveText(onScreen[0]);
 });
 
 test("a school without coordinates is listed and selectable but has no mark", async ({ page }) => {
@@ -254,12 +252,61 @@ test("a school without coordinates is listed and selectable but has no mark", as
   await orderedRow(page, "Sample School 05").click();
   await expect(page.getByRole("complementary", { name: "Sample School 05" })).toBeVisible();
   await expect(page.getByTestId("card-place")).toHaveText("12th");
-  await expect(page.locator("[data-testid=screening-map]")).toHaveAttribute("data-selected-key", key);
+  await expect(mapLocator(page)).toHaveAttribute("data-selected-key", key);
   await expect(page.locator(".maplibregl-map")).toHaveCount(1);
 });
 
-test("credits the basemap", async ({ page }) => {
+test("the map can be reached and left with the keyboard, and closing the card returns focus", async ({
+  page,
+}) => {
   await openWorkspace(page);
-  await expect(page.getByText("© OpenStreetMap contributors")).toBeVisible();
-  await expect(page.getByText("© CARTO")).toBeVisible();
+  const canvas = page.locator("canvas.maplibregl-canvas");
+
+  // It has a name that points to the list as the keyboard route.
+  await expect(canvas).toHaveAttribute("aria-label", COPY.mapLabel);
+
+  // Focus shows: an outline the user can see.
+  await canvas.focus();
+  const outline = await canvas.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+  });
+  expect(outline.style).not.toBe("none");
+  expect(outline.width).toBeGreaterThanOrEqual(2);
+
+  // Closing the card hands focus back to the school's row.
+  const key = keyOf("additive_u", "Sample School 13");
+  await orderedRow(page, "Sample School 13").click();
+  await page.getByRole("button", { name: COPY.closeCard }).click();
+  await expect(orderedRow(page, "Sample School 13")).toBeFocused();
+  expect(await page.evaluate(() => document.activeElement?.getAttribute("data-school-key"))).toBe(key);
+});
+
+test("credits the basemap in text that can be read", async ({ page }) => {
+  await openWorkspace(page);
+  const credit = page.getByTestId("attribution");
+  await expect(credit).toHaveText("© OpenStreetMap contributors, © CARTO");
+  await expect(credit.getByRole("link", { name: "© OpenStreetMap contributors" })).toHaveAttribute(
+    "href",
+    "https://www.openstreetmap.org/copyright"
+  );
+  await expect(credit.getByRole("link", { name: "© CARTO" })).toHaveAttribute(
+    "href",
+    "https://carto.com/attributions"
+  );
+
+  // 4.5:1 against the land colour behind it, as rendered.
+  const { text, background } = await credit.evaluate((element) => {
+    const toHex = (rgb: string) =>
+      "#" +
+      (rgb.match(/\d+/g) ?? [])
+        .slice(0, 3)
+        .map((v) => Number(v).toString(16).padStart(2, "0"))
+        .join("");
+    return {
+      text: toHex(getComputedStyle(element).color),
+      background: toHex(getComputedStyle(element.parentElement!).backgroundColor),
+    };
+  });
+  expect(contrastRatio(text, background)).toBeGreaterThanOrEqual(4.5);
 });
