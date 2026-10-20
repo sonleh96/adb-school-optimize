@@ -486,12 +486,18 @@
     background: rgba(21, 24, 29, 0.04);
   }
 }
+/* The checkbox covers its whole row, under the drawn switch, so the row is one target. */
 .layerItem input {
   position: absolute;
-  opacity: 0;
-  width: 26px;
-  height: 16px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.layerItem > span {
+  pointer-events: none;
 }
 .layerSwitch {
   position: relative;
