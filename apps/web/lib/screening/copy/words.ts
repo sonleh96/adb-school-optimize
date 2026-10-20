@@ -122,6 +122,12 @@ export const LAYOUT = Object.freeze({
   retry: "Retry",
   retrying: "Trying again",
   availableAfterLoad: "Available once the schools are on screen.",
+  // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
+  mapKeyboard: "To choose a school with the keyboard, use the list or the incomplete records.",
+  basemapUnavailable: "The map's background did not load. The schools and the list still work.",
+  refreshFailed: "The list did not refresh, so this is the last one that loaded.",
+  sessionEnded: "Your session has ended.",
+  signIn: "Sign in again",
 });
 
 // Keyboard hints. Plain views show them only in presentation mode.

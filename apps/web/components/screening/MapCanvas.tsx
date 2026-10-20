@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 
-import { COPY } from "./copy";
+import { LAYOUT } from "@/lib/screening/copy";
 import { buildMarkLayers, buildRingLayers } from "./map-layers";
 import { MapTooltip, type TipContent } from "./MapTooltip";
 import { RankLabels } from "./RankLabels";
@@ -343,7 +343,7 @@ export default function MapCanvas({
           loaded.current = true;
           calmBasemap(event.target);
           // The canvas is the one stop on the map: name it, and point to the list as the keyboard route.
-          event.target.getCanvas().setAttribute("aria-label", `${label}. ${COPY.mapKeyboard}`);
+          event.target.getCanvas().setAttribute("aria-label", `${label}. ${LAYOUT.mapKeyboard}`);
           setReady(true);
         }}
       >
@@ -359,7 +359,7 @@ export default function MapCanvas({
       </MapView>
       {basemapFailed ? (
         <p className={styles.notice} role="status" data-testid="basemap-notice">
-          {COPY.basemapUnavailable}
+          {LAYOUT.basemapUnavailable}
         </p>
       ) : null}
       {hovered && tipAt && !moving ? (

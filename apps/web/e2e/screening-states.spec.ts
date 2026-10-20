@@ -14,7 +14,6 @@
  */
 import type { Page } from "@playwright/test";
 
-import { COPY } from "../components/screening/copy";
 import { LAYOUT } from "../lib/screening/copy";
 import {
   ORDERED,
@@ -166,12 +165,12 @@ test.describe("tells a session that ended, a missing list, a failing service and
       // A failed read is one sentence and Retry (R14); only an ended session has its own way out.
       await expect(alert).toContainText(
         failure === "session"
-          ? COPY.failure.session
+          ? LAYOUT.sessionEnded
           : "Some of the information did not load, so there is nothing to show until you try again."
       );
       if (failure === "session") {
         // The way out is signing in, to a page that returns here afterwards.
-        const link = alert.getByRole("link", { name: COPY.signIn });
+        const link = alert.getByRole("link", { name: LAYOUT.signIn });
         await expect(link).toHaveAttribute("href", "/sign-in?next=%2Fscreening");
         await expect(alert.getByRole("button")).toHaveCount(0);
       } else {
@@ -259,7 +258,7 @@ test("without the basemap the page says so, the marks still draw and a selection
   await page.goto("/screening");
   await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
   await waitForMap(page);
-  await expect(page.getByTestId("basemap-notice")).toHaveText(COPY.basemapUnavailable);
+  await expect(page.getByTestId("basemap-notice")).toHaveText(LAYOUT.basemapUnavailable);
   await expect(mapLocator(page)).toHaveAttribute("data-basemap", "failed");
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 

@@ -130,6 +130,10 @@ describe("every fixed string follows the writing rules", () => {
       "emptyData",
       "loadFailed",
       "availableAfterLoad",
+      "mapKeyboard",
+      "basemapUnavailable",
+      "refreshFailed",
+      "sessionEnded",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
