@@ -82,7 +82,7 @@ Reading the list:
 - Complete schools come by point rank. Interval schools (a missing environmental input) sit at their lower-score position, or at their upper-score position with `placement=upper`, and each row says which. Queued schools come last, by province, district and name.
 - A rank is always paired with the scope label and count of its cohort. A point rank counts complete schools; a rank bound counts eligible schools. They are different scopes.
 - Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, and the response says so.
-- `list_position` is the row's place in the full unfiltered list. It differs from the point rank wherever an interval school sits above a complete one.
+- `display_order` is the row's place in the full unfiltered display, counting interval and queued schools. It is not a rank: it differs from the point rank wherever an interval school sits above a complete one, and it must not be quoted as a rank.
 - The default input version is the newest one. For each rule the current run is the one with the highest engine package version, not the latest stored. Every read accepts `package_version` to pin a run.
 - Cache policy: no `input_version` gives `private, max-age=60`; an `input_version` alone gives `max-age=300`; an `input_version` with a `package_version` names one stored run and is sent as `immutable`. Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
 - The links to the `schools` table (`school_id`, coordinates) are the one part of a stored run that a later `load_screening_inputs` run may change. Do not keep an immutable response across such a run.

@@ -36,6 +36,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
 | API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
 | API27 | Urgency is present as a key or column, even empty, under a rule that does not read it. | `components` has a `U` key, an export has a `U` column, or the queue export lists the urgency source value as missing, for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`. |
+| API28 | The display order is read as a rank. | The field that numbers the rows of the list is called a position or rank, or is not documented as display order, so a client quotes it as a rank that differs from the point rank. |
 
 ## Test map
 
@@ -73,7 +74,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_rules_list_the_registry_with_weights_as_fractions_and_floats` | API3, API8, API14 |
 | `test_the_default_input_version_is_the_latest_and_is_marked` | API14 |
 | `test_results_list_complete_schools_by_point_rank_then_interval_at_lower_bound_then_the_queue` | API1, API2, API5 |
-| `test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so` | API5 |
+| `test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so` | API5, API28 |
 | `test_a_need_first_rule_places_interval_schools_by_need_first_then_by_score` | API5 |
 | `test_the_queue_is_ordered_by_province_then_district_then_name_in_code_point_order` | API5 |
 | `test_urgency_omitted_rules_hold_back_only_the_schools_that_fail_the_gate` | API3, API5 |
