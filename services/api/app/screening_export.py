@@ -98,7 +98,6 @@ def method_record(
     filters: Filters,
     generated_at: dt.datetime,
     top: TopSelection | None = None,
-    include_ranges: bool | None = None,
     queue_count: int | None = None,
 ) -> list[tuple[str, str]]:
     """The facts a reader needs to interpret an export and rebuild its list, as ordered key/value pairs."""
@@ -130,11 +129,12 @@ def method_record(
         ("filters_effect", "Filters only hide rows. Ranks, bounds and anchors are those of the full run."),
     ]
     if top is not None:
-        assert include_ranges is not None
         record += [
             ("k", str(top.k)),
             ("k_meaning", TOP_KEYS_NOTE),
-            ("include_ranges", "yes" if include_ranges else "no"),
+            ("include_ranges", "yes" if top.include_ranges else "no"),
+            ("range_schools_reaching_k", str(len(top.ranges_reaching_k))),
+            ("range_schools_included", "yes" if top.include_ranges else "no"),
             ("range_school_convention", PLACEMENT_CONVENTION),
             ("rows_listed", f"point={len(top.point_rows)}, range={len(top.range_rows)}"),
             (

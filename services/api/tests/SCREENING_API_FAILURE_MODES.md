@@ -27,6 +27,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API17 | The method record is incomplete or wrong. | It omits a required item (rule provenance, role, score kind, formula, weights, input version and hash, anchors hash, package version, tie rule, scopes and counts, placement convention, filters, `k`, generation time, caveat), or states a hash that differs from the stored run. |
 | API18 | The school detail is wrong. | It shows another school, omits a rule, shows the stored raw inputs altered, or answers for a school that is not in the input version. |
 | API19 | A spreadsheet reads a name as a formula. | An XLSX cell holding a school name that starts with `=` is stored as a formula. |
+| API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
 
 ## Test map
 
@@ -42,6 +43,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_export_names_the_rule_it_was_asked_for` | API8, API3 |
 | `test_range_schools_have_their_own_flagged_rows_with_bounds_and_no_point_rank` | API2, API15 |
 | `test_range_rows_are_left_out_unless_asked_for_and_unless_they_could_reach_the_cut` | API15 |
+| `test_range_schools_are_included_by_default_and_the_record_counts_those_reaching_k_after_filters` | API20 |
 | `test_a_complete_school_is_never_listed_as_a_range_row_and_a_rule_without_environment_has_none` | API2 |
 | `test_filters_in_an_export_hide_rows_without_renumbering_ranks` | API4 |
 | `test_the_xlsx_holds_a_method_record_sheet_and_the_same_table_as_the_csv` | API7, API12, API17 |

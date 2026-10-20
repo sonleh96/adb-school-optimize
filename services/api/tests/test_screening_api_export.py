@@ -49,6 +49,8 @@ TOP_RECORD_KEYS = [
     "k",
     "k_meaning",
     "include_ranges",
+    "range_schools_reaching_k",
+    "range_schools_included",
     "range_school_convention",
     "rows_listed",
     "how_to_rebuild",
@@ -121,7 +123,9 @@ def test_names_are_exported_byte_for_byte(api, loaded):  # API12
     _, rows = top(api, rule="additive_u", k=50)
 
     assert {r["source_school_name"] for r in rows if r["row_kind"] == "point"} == set(AWK)
-    assert len({r["source_school_name"] for r in rows}) == 9  # both Unicode forms of the accent survive
+    assert (
+        len({r["source_school_name"] for r in rows if r["row_kind"] == "point"}) == 9
+    )  # both accent forms survive
 
 
 def test_values_are_written_in_full_precision(api, loaded):  # API12
@@ -207,7 +211,8 @@ def test_the_method_record_names_everything_needed_to_read_the_file(api, connect
     assert method["point_rank_scope"] == "complete under this rule (10)"
     assert method["rank_bounds_scope"] == "eligible (12)"
     assert method["cohort_counts"] == "records=15, complete=10, interval=2, verification_queue=3"
-    assert (method["filters"], method["k"], method["include_ranges"]) == ("none", "20", "no")
+    assert (method["filters"], method["k"], method["include_ranges"]) == ("none", "20", "yes")
+    assert (method["range_schools_reaching_k"], method["range_schools_included"]) == ("2", "yes")
     assert "Range schools are interval schools" in method["range_school_convention"]
     assert "lower-score position by default" in method["range_school_convention"]
     generated = dt.datetime.strptime(method["generated_at"], "%Y-%m-%dT%H:%M:%SZ").replace(
@@ -284,8 +289,11 @@ def test_range_schools_have_their_own_flagged_rows_with_bounds_and_no_point_rank
 
 
 def test_range_rows_are_left_out_unless_asked_for_and_unless_they_could_reach_the_cut(api, loaded):  # API15
-    _, without = top(api, rule="additive_u", k=20)
+    method, without = top(api, rule="additive_u", k=20, include_ranges=False)
     assert [r["row_kind"] for r in without] == ["point"] * 9
+    # The record still says that two range schools reach the cut and that they are left out.
+    assert (method["range_schools_reaching_k"], method["range_schools_included"]) == ("2", "no")
+    assert method["rows_listed"] == "point=9, range=0"
 
     # Both interval schools have 5 as their best possible rank.
     _, below_cut = top(api, rule="additive_u", k=4, include_ranges=True)
@@ -293,6 +301,32 @@ def test_range_rows_are_left_out_unless_asked_for_and_unless_they_could_reach_th
     method, at_cut = top(api, rule="additive_u", k=5, include_ranges=True)
     assert [r["row_kind"] for r in at_cut] == ["point"] * 5 + ["range"] * 2
     assert method["rows_listed"] == "point=5, range=2"
+
+
+def test_range_schools_are_included_by_default_and_the_record_counts_those_reaching_k_after_filters(
+    api, loaded
+):  # API20
+    method, rows = top(api, rule="additive_u", k=20)
+    assert [r["row_kind"] for r in rows].count("range") == 2
+    assert (
+        method["include_ranges"],
+        method["range_schools_reaching_k"],
+        method["range_schools_included"],
+    ) == (
+        "yes",
+        "2",
+        "yes",
+    )
+
+    # A filter shrinks the count of range schools that reach k, whether or not they are listed.
+    for flag, listed in ((True, 1), (False, 0)):
+        method, rows = top(api, rule="additive_u", k=20, province="North", include_ranges=flag)
+        assert method["range_schools_reaching_k"] == "1"
+        assert method["rows_listed"] == f"point=5, range={listed}"
+        assert method["range_schools_included"] == ("yes" if flag else "no")
+
+    method, rows = top(api, rule="additive_u", k=4)
+    assert (method["range_schools_reaching_k"], method["rows_listed"]) == ("0", "point=4, range=0")
 
 
 def test_a_complete_school_is_never_listed_as_a_range_row_and_a_rule_without_environment_has_none(

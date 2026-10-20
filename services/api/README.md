@@ -86,7 +86,7 @@ Reading the list:
 Exports:
 
 - The CSV opens with the method record as `# key: value` lines. Skip the leading `#` lines, then parse the header row. The XLSX has the same record on its first sheet, "Method record".
-- `k` cuts the rule's full list: point rows have a point rank of at most `k`. Range rows (`include_ranges=true`) are interval schools whose best possible rank is at most `k`. They carry bounds only, in rows flagged `row_kind=range`, after the point rows.
+- `k` cuts the rule's full list: point rows have a point rank of at most `k`. Range rows (`include_ranges`, true by default) are interval schools whose best possible rank is at most `k`. They carry bounds only, in rows flagged `row_kind=range`, after the point rows. The method record always says how many range schools reach `k` after the filters and whether they are included.
 - To rebuild the list, keep `row_kind=point`, sort by the record's `sort_columns` descending, then `source_school_name` ascending in code point order. The result is the order of `rank_point`.
 - Floats are written in full precision and unknown values are empty cells. Exports are sent with `Cache-Control: private, no-store` and `X-RISE-PNG-Decision-Use: research-prototype-only`.
 - A CSV opened in a spreadsheet application may read a name that starts with `=`, `+`, `-` or `@` as a formula. The XLSX stores such names as text. The CSV keeps names exact so that it round-trips.

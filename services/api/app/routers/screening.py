@@ -483,7 +483,6 @@ def _top_export(
         filters=filters,
         generated_at=dt.datetime.now(dt.timezone.utc),
         top=selection,
-        include_ranges=include_ranges,
     )
     return record, top_table(selection, manifest, version.version.input_version)
 
@@ -492,7 +491,7 @@ def _top_export(
 def export_top_csv(
     rule: str = DEFAULT_RULE_ID,
     k: int = Query(20, ge=1, le=K_MAX),
-    include_ranges: bool = False,
+    include_ranges: bool = True,
     input_version: str | None = None,
     province: str | None = None,
     district: str | None = None,
@@ -505,7 +504,7 @@ def export_top_csv(
 def export_top_xlsx(
     rule: str = DEFAULT_RULE_ID,
     k: int = Query(20, ge=1, le=K_MAX),
-    include_ranges: bool = False,
+    include_ranges: bool = True,
     input_version: str | None = None,
     province: str | None = None,
     district: str | None = None,
