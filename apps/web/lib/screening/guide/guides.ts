@@ -16,7 +16,7 @@ import {
   type Segments,
 } from "../copy";
 import type { LaterCopy } from "../copy/later";
-import type { Patch, StateKey } from "../workspace/state";
+import { DEFAULT_STATE, type Patch, type StateKey } from "../workspace/state";
 
 import type { GuideId } from "./machine";
 import { type Plan, type Roles, needReasons } from "./roles";
@@ -86,6 +86,18 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  // The method details are off, so a step shows the plain screen with nothing open.
+  analyst: false,
+  mode: "screen",
+  k: 20,
+  panel: null,
+  n: 20,
+  prov: null,
+  loc: null,
+  formula: false,
+  parts: false,
+  hide: DEFAULT_STATE.hide,
+  pop: null,
 });
 
 /** The keys a step owns, in `BASE`'s order. */
