@@ -21,6 +21,60 @@
    "path": "/api/v1/screening/inputs",
    "query": {},
    "status": 404
+  },
+  {
+   "file": "compare/additive_u__additive_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "additive_no_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
+   },
+   "status": 404
   }
  ]
 }

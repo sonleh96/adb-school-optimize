@@ -775,149 +775,770 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   margin: 0 0 10px;
 }
 
-/* ---------- legend ---------- */
-.legend {
-  position: absolute;
-  left: calc(var(--gap) + var(--col-w) + var(--gap));
-  bottom: 40px;
-  padding: 10px 14px 11px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  z-index: 2;
-}
-.legendTitle {
-  font-size: 12px;
-  color: var(--ink-2);
-}
-.legendTitle b {
+/* ---------- names inside sentences are set apart (R18) ---------- */
+.nameIn {
   font-weight: 500;
   color: var(--ink);
 }
-.legendRow {
+
+/* ---------- top right: the actions ---------- */
+.actions {
+  position: absolute;
+  top: var(--gap);
+  right: var(--gap);
+  z-index: 4;
   display: flex;
-  align-items: center;
+  gap: 8px;
+}
+.actionButton,
+.retryButton {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 150ms ease;
+}
+.retryButton {
+  height: 32px;
+  box-shadow: none;
+}
+.actionButton:not(:disabled):active,
+.retryButton:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .actionButton:not(:disabled):hover,
+  .retryButton:not(:disabled):hover {
+    border-color: rgba(21, 24, 29, 0.28);
+  }
+}
+.actionButton:disabled,
+.retryButton:disabled {
+  color: var(--ink-3);
+  box-shadow: none;
+}
+
+/* ---------- the empty card slot says how to fill it ---------- */
+.slotHint {
+  position: absolute;
+  top: 64px;
+  right: var(--gap);
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: 300px;
+  margin: 0;
+  padding: 9px 12px 10px;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+}
+.slotHint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- empty and failed loads: one sentence, one way forward (R14) ---------- */
+.fullState {
+  padding: 28px 20px;
+}
+.fullState p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+
+/* ---------- the map's foot: the key, placed just above the plain caveat however the caveat wraps ---------- */
+.foot {
+  position: absolute;
+  left: calc(var(--gap) + var(--col-w) + var(--gap));
+  right: 260px;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 18px;
-  flex-wrap: wrap;
+  pointer-events: none;
+}
+.root[data-has-insp] .foot {
+  right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
+.root[data-card-docked] .foot {
+  left: var(--gap);
+}
+.foot > * {
+  pointer-events: auto;
+}
+.caveat {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.listCaveat {
+  display: none;
+}
+
+.legend {
+  max-width: min(760px, 100%);
+  padding: 10px 14px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.legend[data-stale] > * {
+  opacity: 0.5;
+}
+.legendTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.legendTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.keyToggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+}
+.keyToggle svg {
+  transition: transform 160ms var(--ease-out);
+}
+.keyToggle svg[data-open] {
+  transform: rotate(180deg);
+}
+.legendBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .ramp {
-  display: flex;
+  display: grid;
   gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.ramp > span {
-  width: 64px;
-  text-wrap: balance;
+.ramp li {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 11px;
-  line-height: 13px;
-  color: var(--ink-2);
+  min-width: 0;
 }
 .ramp i {
   display: block;
-  width: 100%;
   height: 8px;
 }
-.ramp > span:first-child i {
+.ramp li:first-child i {
   border-radius: 2px 0 0 2px;
 }
-.ramp > span:last-child i {
+.ramp li:last-child i {
   border-radius: 0 2px 2px 0;
 }
-.key {
+.ramp span {
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.legend[data-stacked] .ramp span {
+  white-space: normal;
+}
+.keys {
+  margin: 0;
+  padding: 6px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--hair-2);
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.keys li {
+  display: grid;
+  grid-template-columns: 16px 152px minmax(0, 1fr);
+  column-gap: 8px;
   align-items: center;
-  gap: 7px;
-  font-size: 11.5px;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--ink-2);
 }
-.markRange,
-.markIncomplete {
-  display: inline-block;
-  flex: none;
-  border-radius: 50%;
-  box-sizing: border-box;
+.keys b {
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
 }
-.markRange {
+.legend[data-stacked] .keys li {
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+}
+.legend[data-stacked] .keys li > span:last-child {
+  grid-column: 2;
+}
+.legend[data-stacked] .keyMark {
+  margin-top: 3px;
+}
+.keyMark {
+  display: inline-block;
+  justify-self: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  position: relative;
+}
+.keyMark[data-mark="dot"] {
+  width: 11px;
+  height: 11px;
+  background: #24519f;
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+}
+.keyMark[data-mark="range"] {
   width: 13px;
   height: 13px;
   border: 2px solid #4a4f57;
   background: #fbfaf7;
-  position: relative;
 }
-.markRange::after {
+.keyMark[data-mark="range"]::after {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 2.5px;
   border-radius: 50%;
   background: #4a4f57;
 }
-.markIncomplete {
+.keyMark[data-mark="ring"] {
   width: 9px;
   height: 9px;
   border: 1.25px solid var(--queue);
   background: #fbfaf7;
 }
 
-/* ---------- school card slot ---------- */
+/* ---------- the school card ---------- */
 .card {
   position: absolute;
-  right: var(--gap);
   top: 64px;
+  right: var(--gap);
   bottom: 40px;
+  z-index: 3;
   width: var(--card-w);
   display: flex;
   flex-direction: column;
-  overflow: auto;
-  z-index: 3;
+  overflow: hidden;
+  transform-origin: right center;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+@starting-style {
+  .card {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+.card[data-stale] .cardScroll {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .cardBar {
   display: flex;
   align-items: center;
-  padding: 10px 16px 10px 20px;
-  border-bottom: 1px solid var(--hair-2);
+  gap: 6px;
+  padding: 12px 12px 0 20px;
 }
-.cardBar .eyebrow {
+.cardBar > .eyebrow {
   flex: 1;
 }
-.closeButton {
+.dockBack {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: start;
+  padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 4px;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-align: left;
+}
+.dockBack:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.iconButton:not(:disabled):active {
+  transform: scale(0.94);
+}
+@media (hover: hover) and (pointer: fine) {
+  .iconButton:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.06);
+    color: var(--ink);
+  }
+}
+.iconButton:disabled {
+  opacity: 0.35;
+}
+.cardPos {
+  min-width: 64px;
+  font-size: 12px;
   color: var(--ink-3);
+  text-align: center;
+  white-space: nowrap;
 }
-.cardBody {
-  padding: 16px 20px 20px;
+.cardScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
+.cardHead {
+  padding: 6px 20px 16px;
+  min-width: 0;
+}
+/* A name wraps at any character, so even an unbroken 59-character token stays inside the card (R1). */
 .cardName {
-  margin: 0 0 4px;
+  margin: 0;
   font: 500 24px/28px var(--serif);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.008em;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 .cardMeta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: end;
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--hair-2);
+}
+.hero[data-form="range"],
+.hero[data-form="word"] {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 8px;
+}
+.heroFigure {
+  font: 400 58px/48px var(--serif);
+  letter-spacing: -0.03em;
+  font-variant-numeric: lining-nums proportional-nums;
+  white-space: nowrap;
+}
+.heroFigure .ord {
+  font-size: 0.36em;
+  top: -1em;
+  margin-left: 1px;
+}
+.heroFigure .placeTo {
+  position: relative;
+  top: -0.5em;
+  margin: 0 0.35em;
+  font: italic 400 0.42em/1 var(--serif);
+  letter-spacing: 0;
+}
+.hero[data-form="range"] .heroFigure {
+  font-size: 42px;
+  line-height: 40px;
+  color: var(--navy-2);
+}
+.hero[data-form="range"] .heroFigure .ord {
+  color: var(--navy-2);
+}
+.hero[data-form="word"] .heroFigure {
+  font-size: 28px;
+  line-height: 32px;
+  letter-spacing: -0.015em;
+  white-space: normal;
+  text-wrap: balance;
+}
+.heroLabel {
+  padding-bottom: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.heroLabel b {
+  display: block;
+  font-weight: 500;
+  color: var(--ink);
+}
+.heroLabel span {
+  display: block;
+}
+
+/* "Why it sits here": the strongest block on screen, the only navy wash with a navy edge. */
+.why {
+  margin: 0 16px 16px;
+  padding: 12px 14px 14px;
+  border-radius: 8px;
+  background: var(--navy-wash);
+  box-shadow: inset 3px 0 0 var(--navy);
+}
+.why > .eyebrow {
+  display: block;
+  margin-bottom: 4px;
+}
+.whyGrey {
+  background: rgba(21, 24, 29, 0.04);
+  box-shadow: inset 3px 0 0 var(--ink-2);
+}
+.whyGrey > .eyebrow {
+  color: var(--ink-2);
+}
+.whyLead {
   margin: 0;
-  color: var(--ink-3);
+  font: 400 16px/22px var(--serif);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
-.cardPlace {
-  margin: 18px 0 0;
-  font: 400 44px/48px var(--serif);
-  letter-spacing: -0.02em;
+.whyText {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 19px;
+  text-wrap: pretty;
 }
-.slot {
-  margin-top: 18px;
-  padding: 10px 12px;
-  border: 1px dashed var(--hair);
+.needBox {
+  margin-top: 10px;
+  padding: 9px 12px 4px;
+  border: 1px solid rgba(10, 46, 115, 0.14);
   border-radius: 6px;
+  background: var(--panel);
+}
+.needHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hair-2);
+  font: 600 13px/18px var(--sans);
+}
+.needHead b {
+  font-weight: 500;
+}
+.needParts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.needParts li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 48px 48px;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
   color: var(--ink-3);
-  font-size: 12px;
-  line-height: 16px;
+}
+.needParts li:first-child {
+  border-top: 0;
+}
+.needParts li[data-on] {
+  color: var(--ink);
+}
+.needParts li[data-on] .needLabel {
+  font-weight: 500;
+}
+.needValue {
+  text-align: right;
+  white-space: nowrap;
+}
+.needSentence {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.reasonN {
+  font: italic 400 15px/18px var(--serif);
+  color: var(--navy);
+}
+.reason {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(10, 46, 115, 0.14);
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.reasonLabel {
+  display: block;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.flag {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(10, 46, 115, 0.14);
+  font-size: 13px;
+  line-height: 18px;
+}
+.flag::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--navy);
+  transform: rotate(45deg) translateY(-1px);
+}
+.record {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.record::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--navy-2);
+  transform: translateY(-1px);
+}
+
+.bar,
+.barMissing {
+  display: inline-block;
+  height: 6px;
+  border-radius: 1px;
+}
+.bar {
+  position: relative;
+  overflow: hidden;
+  background: rgba(21, 24, 29, 0.07);
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--navy-2);
+}
+.barMissing {
+  border: 1px solid var(--ink-2);
+  background: repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(74, 79, 87, 0.55) 1.5px 2.5px);
+}
+
+.numbers {
+  padding: 16px 20px 18px;
+  border-top: 1px solid var(--hair-2);
+}
+.numbers > .eyebrow {
+  display: block;
+}
+.numTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.numTotal b {
+  font: 500 19px/24px var(--sans);
+}
+.numNoteText {
+  margin: 2px 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.numTable + .numNoteText {
+  margin-top: 10px;
+}
+.numNoteText + .numNoteText {
+  margin-top: -4px;
+}
+.numSub {
+  margin-bottom: 4px;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.numRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 56px;
+  column-gap: 10px;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 17px;
+}
+.numLabel {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.numValue {
+  text-align: right;
+  white-space: nowrap;
+}
+.numHead .numLabel,
+.numHead .numValue {
+  font-weight: 600;
+  color: var(--ink);
+}
+.numPart {
+  border-top-style: dashed;
+}
+.numPart .numLabel {
+  padding-left: 14px;
+}
+/* A missing reading: its label sits on one line under the hatched bar, spanning the value column (R10). */
+.numMissing {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 12.5px;
+  line-height: 17px;
+  font-style: italic;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.numFull {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.numRow[data-missing] .numFull {
+  grid-row: 3;
+  margin-top: 2px;
+}
+.numNote {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+}
+.kindTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  font: 500 11.5px/16px var(--sans);
+  color: var(--ink-2);
+}
+.chipsBig {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 2px 0 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
+.chip::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--queue);
+  border-radius: 50%;
+}
+.facts {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.facts li {
+  padding: 8px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.facts li:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+.factLabel {
+  display: block;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.cardLoading {
+  height: 220px;
+  margin: 0 16px 16px;
+  border-radius: 8px;
+  background: var(--navy-wash);
+}
+.cardFailed {
+  padding: 4px 20px 16px;
+}
+.cardFailed p {
+  margin: 0 0 8px;
 }
 
 /* ---------- map furniture ---------- */
+/* At most 280 px wide; a name wraps at any character, so it never spills out of the box (R5). */
 .tooltip {
   position: absolute;
   z-index: 6;
@@ -926,17 +1547,44 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   flex-direction: column;
   width: max-content;
   max-width: 280px;
-  padding: 8px 11px 9px;
+  padding: 9px 11px 10px;
   background: var(--panel);
   border: 1px solid var(--hair);
   border-radius: 6px;
   box-shadow: var(--shadow);
-  font: 400 12px/16px var(--sans);
-  color: var(--ink-2);
+  transition: opacity 120ms ease;
 }
-.tooltip strong {
+@starting-style {
+  .tooltip {
+    opacity: 0;
+  }
+}
+.tipName {
   font: 500 13px/17px var(--sans);
   color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tipWhere {
+  font-size: 11.5px;
+  line-height: 15px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.tipPlace {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+.tipNote {
+  font-size: 11.5px;
+  line-height: 15px;
+  color: var(--ink-3);
+}
+.tipHint {
+  margin-top: 4px;
+  font: 500 12px/16px var(--sans);
+  color: var(--navy);
 }
 /* The place number on each of the first ten dots; the dot itself is drawn on the map's canvas. */
 .rankLabel {
@@ -970,14 +1618,249 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: inherit;
 }
 
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 76px;
+  z-index: 30;
+  max-width: min(420px, calc(100% - 32px));
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 17px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 160ms ease,
+    transform 200ms var(--ease-out);
+}
+.toast[data-on] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- the list steps aside while a card is open and the map would fall under 480 px ---------- */
+.column {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+.root[data-card-docked] .column {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    visibility 0s linear 200ms;
+}
+.root[data-card-docked] .map :global(.maplibregl-ctrl-top-left) {
+  left: var(--gap);
+}
+/* Keyboard actions never animate: after a key, panels move at once. */
+.root[data-instant] .column,
+.root[data-instant] .card,
+.root[data-instant] .toast {
+  transition: none;
+}
+
+/* ---------- desktop and compact widths (notes/final.md, "Responsive layout"); layout.ts holds the same numbers ---------- */
+@media (max-width: 1439px) {
+  .root {
+    --col-w: 384px;
+    --card-w: 360px;
+  }
+}
+@media (max-width: 1279px) {
+  .root {
+    --col-w: 360px;
+    --card-w: 360px;
+  }
+  .foot {
+    right: 220px;
+  }
+}
+
+/* The narrow layout's top bar. Elsewhere the masthead sits at the top of the column. */
+.topBar {
+  display: none;
+}
+
+/* ---------- narrow: a top bar, a fixed map band, and the list region under it; the card takes the list's place ---------- */
+@media (max-width: 1023px) {
+  .root {
+    /* The same band as layout.ts, so the first paint, before any script, already has it right. */
+    --band: max(200px, 40vh);
+    --region-top: calc(56px + var(--band));
+    background: var(--panel);
+  }
+  .topBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    column-gap: 10px;
+    align-items: center;
+    height: 56px;
+    padding: 0 12px 0 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--hair);
+  }
+  .topBar .mastSub {
+    display: none;
+  }
+  .topBar .logo {
+    grid-row: auto;
+  }
+  .topBar .mastActions {
+    grid-column: 3;
+  }
+  .column > .masthead {
+    display: none;
+  }
+  .map {
+    top: 56px;
+    bottom: auto;
+    height: var(--band);
+  }
+  .map :global(.maplibregl-ctrl-top-left),
+  .root[data-card-docked] .map :global(.maplibregl-ctrl-top-left) {
+    left: 8px;
+    top: 8px;
+  }
+  .column,
+  .card {
+    top: var(--region-top);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card {
+    transform-origin: center bottom;
+  }
+  @starting-style {
+    .card {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  .root[data-card-docked] .column {
+    transform: none;
+  }
+  /* The list region scrolls as one: rule, tabs, scope line and rows. */
+  .column {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .listScroll {
+    flex: none;
+    overflow: visible;
+  }
+  .actions,
+  .slotHint {
+    display: none;
+  }
+  /* The key sits over the band's foot, one line until Key opens it; the caveat moves to the end of the list. */
+  .foot {
+    left: 8px;
+    right: 8px;
+    top: calc(56px + var(--band) - 8px);
+    bottom: auto;
+    transform: translateY(-100%);
+  }
+  .root[data-has-insp] .foot,
+  .root[data-card-docked] .foot {
+    left: 8px;
+    right: 8px;
+  }
+  .foot .caveat {
+    display: none;
+  }
+  .legend {
+    padding: 7px 10px 8px;
+    box-shadow: 0 1px 2px rgba(21, 24, 29, 0.08);
+  }
+  .legendTitle {
+    font-size: 12.5px;
+    line-height: 17px;
+  }
+  .listCaveat {
+    display: block;
+    margin: 0;
+    padding: 14px 20px 20px;
+    border-top: 1px solid var(--hair-2);
+    font-size: 12.5px;
+    line-height: 17px;
+    color: var(--ink-2);
+  }
+  .attribution {
+    bottom: 4px;
+    right: 8px;
+  }
+}
+
+@media (max-width: 1023px) and (max-height: 599px) {
+  .root {
+    --band: max(160px, 32vh);
+  }
+}
+
+.barButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.barButton:disabled {
+  color: var(--ink-3);
+}
+.barButton:not(:disabled):active {
+  transform: scale(0.97);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ruleButton,
   .pop,
-  .chevron {
+  .chevron,
+  .column,
+  .card,
+  .toast,
+  .keyToggle svg,
+  .actionButton,
+  .iconButton {
     transition-property: opacity;
   }
+  .root[data-card-docked] .column {
+    transform: none;
+    transition-property: opacity, visibility;
+  }
+  .toast,
+  .toast[data-on] {
+    transform: translate(-50%, 0);
+  }
   @starting-style {
-    .pop {
+    .pop,
+    .card {
       transform: none;
     }
   }

@@ -460,6 +460,16 @@ def school_detail_file(cap: Capture, name: str) -> None:
     cap.get(f"{API}/schools/by-key/{encoded}", f"schools/{encoded}.json")
 
 
+def capture_comparisons(cap: Capture) -> None:
+    """The circulated rule against each of the others: What changed reads one of these after any switch from it.
+    Where the data cannot be compared (one school, no data at all), the API's own refusal is what the mock answers."""
+    for rule_id in RULES:
+        if rule_id != CIRCULATED_RULE:
+            cap.get_as_answered(
+                f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
+            )
+
+
 def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     """Every request the web tests may make for this dataset. Returns the capture and the circulated rule's rows."""
     cap = Capture(client)
@@ -467,6 +477,7 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     if not ds.records:
         cap.get(f"{API}/results", "results/additive_u.json", status=404, rule="additive_u")
         cap.get(f"{API}/inputs", "inputs.json", status=404)
+        capture_comparisons(cap)
         return cap, []
     rows_by_rule = {}
     for rule_id in RULES:
@@ -480,13 +491,7 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     # School detail for every school, so a test can open any card. The order is the list's, so a rerun is identical.
     for row in default_rows:
         school_detail_file(cap, row["school"]["source_school_name"])
-    # The circulated rule against each of the others: What changed reads one of these after any switch from it.
-    # Where the data cannot be compared (one school), the API's own refusal is what the mock answers.
-    for rule_id in RULES:
-        if rule_id != CIRCULATED_RULE:
-            cap.get_as_answered(
-                f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
-            )
+    capture_comparisons(cap)
     return cap, default_rows
 
 

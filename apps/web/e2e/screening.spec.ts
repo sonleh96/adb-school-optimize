@@ -17,7 +17,6 @@
  * WebGL leak is in screening-leak.spec.ts. The map staying out of the initial bundle is held by `bundle:check`.
  */
 import { contrastRatio } from "../lib/screening/contrast";
-import { COPY } from "../components/screening/copy";
 import {
   INCOMPLETE,
   ORDERED_COUNT,
@@ -78,16 +77,16 @@ test("an exact range keeps the range treatment and carries its scope in the row"
   await expect(place).toHaveText("21stof 21");
   await expect(page.locator("[data-place=point]", { hasText: "of" })).toHaveCount(0);
 
+  // The card's figure carries the scope too, and says why the place cannot move.
   await row.click();
-  await expect(page.getByTestId("card-place")).toHaveText("21st");
-  await expect(page.getByRole("complementary", { name: "Sample School 25" })).toContainText(COPY.exactRange);
-  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
-
-  // A range school that is not exact has no such note.
-  await orderedRow(page, "Sample School 17").click();
-  await expect(page.getByRole("complementary", { name: "Sample School 17" })).not.toContainText(
-    COPY.exactRange
+  await expect(page.getByTestId("card-place")).toHaveText("21stof 21");
+  await expect(page.getByTestId("card-context")).toContainText(
+    "but under this rule that cannot change its place in the list."
   );
+
+  // A range school whose ends differ shows its range, never one place.
+  await orderedRow(page, "Sample School 17").click();
+  await expect(page.getByTestId("card-place")).toHaveText("11thto18th");
 });
 
 test("names the scope each place is counted in, in the list header, the card and the tooltip", async ({
@@ -104,13 +103,17 @@ test("names the scope each place is counted in, in the list header, the card and
   const point = await settledMark(page, keyOf("additive_u", "Sample School 13"));
   await page.mouse.move(point.x, point.y);
   await expect(page.getByRole("status").filter({ hasText: "Sample School 13" })).toContainText(
-    COPY.placeAmong("3rd", "complete under this rule (16)")
+    "3rd of the 16 schools with every input recorded"
   );
 
   await orderedRow(page, "Sample School 15").click();
-  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("complete under this rule (16)"));
+  await expect(page.getByTestId("card-context")).toHaveText(
+    "Among the 16 schools with every input recorded."
+  );
   await orderedRow(page, "Sample School 17").click();
-  await expect(page.getByTestId("card-scope")).toHaveText(COPY.cardScope("eligible (21)"));
+  await expect(page.getByTestId("card-context")).toContainText(
+    "Possible places among the 21 schools that can be put in order."
+  );
 });
 
 test("an exact range's tooltip carries the exact note", async ({ page }) => {
@@ -118,8 +121,8 @@ test("an exact range's tooltip carries the exact note", async ({ page }) => {
   const point = await settledMark(page, keyOf("additive_u", "Sample School 25"));
   await page.mouse.move(point.x, point.y);
   const tooltip = page.getByRole("status").filter({ hasText: "Sample School 25" });
-  await expect(tooltip).toContainText(COPY.placeAmong("21st", "eligible (21)"));
-  await expect(tooltip).toContainText(COPY.exactRange);
+  await expect(tooltip).toContainText("21st of the 21 schools that can be put in order.");
+  await expect(tooltip).toContainText("No air-quality reading");
 });
 
 test("keeps one map through rule switches and selections", async ({ page }) => {
@@ -134,7 +137,7 @@ test("keeps one map through rule switches and selections", async ({ page }) => {
     await orderedRow(page, "Sample School 15").click();
     await mainRule(page, RULE.main).click();
     await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
-    await page.getByRole("button", { name: "Close school card" }).click();
+    await page.getByRole("button", { name: "Close", exact: true }).click();
   }
   expect([await maps(), await canvases()]).toEqual([1, 1]);
 });
@@ -172,7 +175,7 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
   await page.mouse.click(queuedPoint.x, queuedPoint.y);
   await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 21")).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByTestId("card-place")).toHaveText("No place in the list yet");
+  await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
 });
 
 test("switching the rule shows that rule's rows and keeps the selection on the tab that holds it", async ({
@@ -183,7 +186,7 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   // Held back under the circulated rule, because its urgency is unknown.
   await tab(page, /Incomplete records/).click();
   await queuedRow(page, "Sample School 23").click();
-  await expect(page.getByTestId("card-place")).toHaveText("No place in the list yet");
+  await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
 
   await mainRule(page, RULE.proposed).click();
 
@@ -263,7 +266,10 @@ test("the map can be reached and left with the keyboard, and closing the card re
   const canvas = page.locator("canvas.maplibregl-canvas");
 
   // It has a name that points to the list as the keyboard route.
-  await expect(canvas).toHaveAttribute("aria-label", COPY.mapLabel);
+  await expect(canvas).toHaveAttribute(
+    "aria-label",
+    "Map of secondary schools in Papua New Guinea. To choose a school with the keyboard, use the list or the incomplete records."
+  );
 
   // Focus shows: an outline the user can see.
   await canvas.focus();
@@ -277,7 +283,7 @@ test("the map can be reached and left with the keyboard, and closing the card re
   // Closing the card hands focus back to the school's row.
   const key = keyOf("additive_u", "Sample School 13");
   await orderedRow(page, "Sample School 13").click();
-  await page.getByRole("button", { name: COPY.closeCard }).click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(orderedRow(page, "Sample School 13")).toBeFocused();
   expect(await page.evaluate(() => document.activeElement?.getAttribute("data-school-key"))).toBe(key);
 });
