@@ -218,25 +218,12 @@ export function SchoolCard(props: CardProps) {
           <IncompleteRecord copy={copy} rule={rule} school={record} />
         ) : (
           <>
-            <WhyItSitsHere
-              copy={copy}
-              rule={rule}
-              school={record}
-              persistent={persistentUnderMainRule(detail.data, rule)}
-            />
+            <WhyItSitsHere copy={copy} rule={rule} school={record} />
             <InNumbers copy={copy} rule={rule} school={record} detail={detail.data} />
           </>
         )}
       </div>
     </aside>
-  );
-}
-
-/** The paper's persistence flag belongs to the circulated rule only, and shows only while that rule is on screen. */
-function persistentUnderMainRule(detail: SchoolDetailResponse | undefined, rule: CopyRuleId): boolean {
-  if (rule !== "additive_u" || !detail) return false;
-  return detail.rules.some(
-    (entry) => entry.rule.rule_id === "additive_u" && entry.persistent_candidate === true
   );
 }
 
@@ -252,17 +239,7 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
   );
 }
 
-function WhyItSitsHere({
-  copy,
-  rule,
-  school,
-  persistent,
-}: {
-  copy: BoundCopy;
-  rule: CopyRuleId;
-  school: CopySchool;
-  persistent: boolean;
-}) {
+function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; school: CopySchool }) {
   const { LAYOUT, STRINGS, TERMS } = copy;
   const why = whyBlocks<InputKey>(
     copy.reasonSentence(school, rule),
@@ -270,6 +247,7 @@ function WhyItSitsHere({
     NEED_KEYS
   );
   const needValue = school.components.N;
+  const persistence = copy.persistenceNote(school, rule);
   return (
     <section className={styles.why} data-region="inspector-why" aria-label={LAYOUT.why}>
       <span className={`${styles.eyebrow} ${styles.eyebrowNavy}`}>{LAYOUT.why}</span>
@@ -319,9 +297,10 @@ function WhyItSitsHere({
             );
         }
       })}
-      {persistent ? (
+      {/* The paper's flag, under the circulated rule only; a flag only just over the line says so (copy owns both). */}
+      {persistence.length ? (
         <p className={styles.flag} data-region="persistent-flag">
-          {STRINGS.persistentFlag}
+          {persistence.join(" ")}
         </p>
       ) : null}
       {school.cohort === "interval" ? null : (

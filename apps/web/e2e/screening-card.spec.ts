@@ -6,7 +6,8 @@
  *  2. A range school reads as one place, or a missing reading reads as 0 or splits its label (R9, R10)
  *                                                                       -> "a range school's card..."
  *  3. An incomplete record's card has no reasons, or prints "null"      -> "an incomplete record's card..."
- *  4. The paper's persistence flag shows under another rule, or for a school without it -> "the persistence flag..."
+ *  4. The paper's persistence flag shows under another rule, or for a school without it, or a flag only just over
+ *     the line does not say so                                          -> "the persistence flag..."
  *  5. The card's arrows leave the list's order, or its count is not the list's -> "the card steps..."
  *  6. A record that fails to load leaves the card blank or broken      -> "a card whose record..."
  *  7. Copy link copies another address, or fails silently             -> "Copy link..."
@@ -43,6 +44,8 @@ const place = (page: Page) => page.getByTestId("card-place");
 const LOAD_FAILED = "Some of the information did not load, so there is nothing to show until you try again.";
 const PERSISTENT =
   "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.";
+const NEAR_LINE =
+  "In that test it stayed in the top 20 only just often enough to be flagged, within 0.6 percentage points of the line, so another round of random changes to the shares could take the flag away.";
 
 test("a complete school's card states one place, its reasons with the school need parts first, and its numbers", async ({
   page,
@@ -126,6 +129,12 @@ test("the persistence flag shows under the circulated rule only, and only for th
   await openWorkspace(page);
   await orderedRow(page, "Sample School 01").click();
   const flag = card(page).locator("[data-region=persistent-flag]");
+  await expect(flag).toHaveText(PERSISTENT);
+
+  // A school flagged only just over the line says that another run could take the flag away, and by how much.
+  await orderedRow(page, "Sample School 02").click();
+  await expect(flag).toHaveText(`${PERSISTENT} ${NEAR_LINE}`);
+  await orderedRow(page, "Sample School 01").click();
   await expect(flag).toHaveText(PERSISTENT);
 
   await mainRule(page, RULE.proposed).click();
