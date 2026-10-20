@@ -1,5 +1,9 @@
 import bundleAnalyzer from "@next/bundle-analyzer";
 
+import { assertNoTestSeams } from "./scripts/test-seams.mjs";
+
+assertNoTestSeams(process.env);
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
   openAnalyzer: false,
