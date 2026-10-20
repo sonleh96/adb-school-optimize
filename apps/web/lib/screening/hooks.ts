@@ -28,7 +28,7 @@ export interface RulePair {
 export const screeningKeys = {
   all: ["screening"] as const,
   rules: () => ["screening", "rules"] as const,
-  results: (query: ResultsQuery | null) => ["screening", "results", query] as const,
+  results: (query: ResultsQuery) => ["screening", "results", query] as const,
   school: (key: SchoolKey | null, pin: Pin) => ["screening", "school", key, pin] as const,
   compare: (pair: RulePair | null, pin: Pin) => ["screening", "compare", pair, pin] as const,
 };
@@ -42,13 +42,13 @@ export function useScreeningRules() {
 }
 
 /**
- * The ordered list of one rule. Pass `null` until the rule is known.
+ * The ordered list of one rule.
  * While another rule's list loads, the previous rows stay and `isPlaceholderData` is true, so callers can mark them stale.
  */
-export function useScreeningResults(query: ResultsQuery | null) {
+export function useScreeningResults(query: ResultsQuery) {
   return useQuery({
     queryKey: screeningKeys.results(query),
-    queryFn: query ? ({ signal }) => fetchScreeningResults(query, signal) : skipToken,
+    queryFn: ({ signal }) => fetchScreeningResults(query, signal),
     ...transient,
     placeholderData: keepPreviousData,
   });

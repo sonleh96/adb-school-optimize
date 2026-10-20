@@ -6,7 +6,7 @@ import { listView } from "@/lib/screening/errors";
 import { useScreeningResults, useScreeningRules } from "@/lib/screening/hooks";
 import { type ListTab, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { toMapSchools } from "@/lib/screening/marks";
-import type { RuleId, SchoolKey } from "@/lib/screening/types";
+import { RuleId, type SchoolKey } from "@/lib/screening/types";
 
 import { COPY } from "./copy";
 import { Legend } from "./Legend";
@@ -16,6 +16,13 @@ import { IncompleteList, OrderedList } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
 import styles from "./screening.module.css";
 
+/**
+ * The rule the API lists first. Its list is asked for at the same time as the rules, so the first list does not
+ * wait a round trip for them. If the API's default turns out to be another rule, the rules say so and that one
+ * is asked for instead.
+ */
+const EXPECTED_DEFAULT_RULE = RuleId.parse("additive_u", "expected default rule");
+
 /** Space the floating panels take on the map, so marks are framed and panned clear of them. */
 const PANEL = { column: 16 + 416 + 40, card: 16 + 392 + 40 };
 
@@ -24,8 +31,8 @@ export function ScreeningWorkspace() {
   const rules = useScreeningRules();
   const [chosenRule, setChosenRule] = useState<RuleId | null>(null);
   // The rule asked for. What is on screen is named by the data it came from, below, never by this.
-  const requestedRule = chosenRule ?? rules.data?.default_rule_id ?? null;
-  const results = useScreeningResults(requestedRule ? { rule: requestedRule } : null);
+  const requestedRule = chosenRule ?? rules.data?.default_rule_id ?? EXPECTED_DEFAULT_RULE;
+  const results = useScreeningResults({ rule: requestedRule });
 
   const data = results.data;
   const view = listView(
@@ -109,7 +116,7 @@ export function ScreeningWorkspace() {
             <h1 className={styles.title}>{COPY.title}</h1>
           </header>
 
-          {rules.data && requestedRule ? (
+          {rules.data ? (
             <RuleSwitch rules={rules.data.rules} active={requestedRule} onChange={setChosenRule} />
           ) : null}
 
