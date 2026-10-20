@@ -227,7 +227,9 @@ export function useScreeningData(): ScreeningData {
     rules: rulesList,
     shown,
     idleCopy,
-    statementReady: !mainCompare.isPending,
+    // A failed read goes back to pending while What changed's Retry asks for it again; it has still settled, so the
+    // column stays on screen.
+    statementReady: !mainCompare.isPending || mainCompare.errorUpdateCount > 0,
     statement,
     empty:
       isEmptyStore(results.error) ||

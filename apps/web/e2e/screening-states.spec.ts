@@ -6,7 +6,8 @@
  *  2. A 401 reads like any failure, so the user retries instead of signing in; 404, 5xx and an unreadable body
  *     are worded alike, and a parse failure leaves no trace in the console
  *     -> "tells ... apart"
- *  3. Counts show before there is data, or the page looks empty while it loads -> "a slow first load..."
+ *  3. Counts show before there is data, the page looks empty while it loads, or the column shifts as its parts
+ *     arrive one by one                                                           -> "a slow first load..."
  *  4. The basemap's style fails and the page breaks or stops panning to a selection -> "without the basemap..."
  *  5. A failed request for the expected default rule's list shows an error while the rules still load
  *     -> "a failed speculative list..." (the rules name another default: the list loads; the same default: it fails)
@@ -106,9 +107,9 @@ test("a slow first load shows that it is loading, with no counts, then the count
     await route.continue();
   });
   await page.goto("/screening");
+  // One loading line and nothing else, so nothing moves when the rule area, the tabs and the rows arrive together.
   await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
-  await expect(tab(page, /The list/)).toHaveText("The list");
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records");
+  await expect(page.getByRole("tab")).toHaveCount(0);
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
   await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
   await waitForMap(page);

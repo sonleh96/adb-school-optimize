@@ -242,7 +242,10 @@ function Workspace() {
   const data = useScreeningData();
   const { view, stale, shown } = data;
   const copy = shown?.copy ?? data.idleCopy;
-  const ready = view.kind === "ready" && shown !== null && !data.empty;
+  // Ready once the list and the comparison the statement reads have both settled. Until then the column shows only
+  // its masthead and one loading line, so nothing on screen moves when the rule area, tabs and rows arrive together.
+  const ready = view.kind === "ready" && shown !== null && !data.empty && data.statementReady;
+  const firstLoad = !ready && !data.empty && view.kind !== "failed";
   const keyboard = useKeyboardLast(root);
 
   // The map's script is fetched once the list (or its failure) has been painted.
@@ -473,138 +476,153 @@ function Workspace() {
         >
           <Masthead copy={copy} />
 
-          {data.rules ? (
-            <RuleArea
-              copy={copy}
-              rules={data.rules}
-              requested={data.requested}
-              shown={shown?.rule ?? null}
-              statement={comparing ? null : data.statement}
-              comparing={comparing}
-              disabled={!ready}
-              layer={layer}
-              onRule={changeRule}
-              onSeeWithout={seeWithout}
-              onBack={backToMain}
-            />
+          {firstLoad ? (
+            <p className={styles.state} role="status">
+              {COPY.loading}
+            </p>
           ) : (
-            <div className={styles.ruleSkeleton} aria-hidden />
-          )}
+            <>
+              {data.rules ? (
+                <RuleArea
+                  copy={copy}
+                  rules={data.rules}
+                  requested={data.requested}
+                  shown={shown?.rule ?? null}
+                  statement={comparing ? null : data.statement}
+                  comparing={comparing}
+                  disabled={!ready}
+                  layer={layer}
+                  onRule={changeRule}
+                  onSeeWithout={seeWithout}
+                  onBack={backToMain}
+                />
+              ) : (
+                <div className={styles.ruleSkeleton} aria-hidden />
+              )}
 
-          <div className={styles.tabs} role="tablist" aria-label={copy.LAYOUT.tabsAria} onKeyDown={onTabKey}>
-            {tab("ranked", copy.LAYOUT.orderedTab)}
-            {tab("queue", copy.LAYOUT.incompleteTab, "queue-tab")}
-          </div>
+              <div
+                className={styles.tabs}
+                role="tablist"
+                aria-label={copy.LAYOUT.tabsAria}
+                onKeyDown={onTabKey}
+              >
+                {tab("ranked", copy.LAYOUT.orderedTab)}
+                {tab("queue", copy.LAYOUT.incompleteTab, "queue-tab")}
+              </div>
 
-          <div
-            ref={list}
-            id="screening-list"
-            className={`${styles.listScroll} ${stale ? styles.stale : ""}`}
-            role="tabpanel"
-            aria-labelledby={`screening-tab-${state.view}`}
-          >
-            {data.empty || view.kind === "failed" ? (
-              <FullPanelState
-                copy={copy}
-                failure={data.empty ? null : view.kind === "failed" ? view.failure : null}
-                retrying={data.retrying}
-                retry={data.retry}
-              />
-            ) : !ready || !shown ? (
-              <p className={styles.state} role="status">
-                {COPY.loading}
-              </p>
-            ) : (
-              <>
-                {view.kind === "ready" && view.refreshFailed ? (
-                  <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
-                    {COPY.refreshFailed}{" "}
-                    <button type="button" className={styles.linkButton} onClick={data.retry}>
-                      {copy.LAYOUT.retry}
-                    </button>
+              <div
+                ref={list}
+                id="screening-list"
+                className={`${styles.listScroll} ${stale ? styles.stale : ""}`}
+                role="tabpanel"
+                aria-labelledby={`screening-tab-${state.view}`}
+              >
+                {data.empty || view.kind === "failed" ? (
+                  <FullPanelState
+                    copy={copy}
+                    failure={data.empty ? null : view.kind === "failed" ? view.failure : null}
+                    retrying={data.retrying}
+                    retry={data.retry}
+                  />
+                ) : !ready || !shown ? (
+                  <p className={styles.state} role="status">
+                    {COPY.loading}
                   </p>
-                ) : null}
-                {state.view === "ranked" ? (
-                  <>
-                    {comparing && data.comparison && data.comparison.status !== "loading" ? (
-                      <WhatChanged
-                        copy={shown.copy}
-                        from={data.comparison.from}
-                        to={data.comparison.to}
-                        schools={shown.schools}
-                        failed={data.comparison.status === "failed" || data.comparison.status === "retrying"}
-                        retrying={data.comparison.status === "retrying"}
-                        onRetry={data.comparison.retry}
-                        onHide={hideComparison}
-                        onBack={backFromComparison}
-                      />
-                    ) : null}
-                    <header className={styles.listHead} data-region="scope">
-                      <p className={styles.scopeLine}>
-                        {shown.copy.scope(shown.rule).scopeShort}
-                        {mixed ? null : (
-                          <>
-                            {" "}
-                            <button
-                              type="button"
-                              className={styles.moreLink}
-                              aria-expanded={scopeOpen}
-                              aria-controls="screening-scope-detail"
-                              onClick={() => store.setState({ scope: !state.scope })}
-                            >
-                              {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
-                            </button>
-                          </>
-                        )}
-                      </p>
-                      {scopeOpen ? (
-                        <p className={styles.scopeDetail} id="screening-scope-detail">
-                          {shown.copy.scope(shown.rule).scopeDetail}
-                        </p>
-                      ) : null}
-                    </header>
-                    <OrderedList
-                      rows={ordered}
-                      schools={schools}
-                      copy={shown.copy}
-                      rule={shown.rule}
-                      upper={state.place === "upper"}
-                      selected={selectedKey}
-                      hovered={hovered}
-                      onSelect={select}
-                      busy={stale}
-                      label={shown.copy.LAYOUT.orderedTab}
-                    />
-                  </>
                 ) : (
                   <>
-                    <header className={styles.listHead}>
-                      <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
-                      {/* With no incomplete record, the lead would say some schools are here, and the order
-                          sentence would describe nothing. */}
-                      {incomplete.length > 0 ? (
-                        <>
-                          <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
-                          <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
-                        </>
-                      ) : null}
-                    </header>
-                    <IncompleteList
-                      rows={incomplete}
-                      schools={schools}
-                      copy={shown.copy}
-                      selected={selectedKey}
-                      hovered={hovered}
-                      onSelect={select}
-                      busy={stale}
-                      label={shown.copy.LAYOUT.incompleteTab}
-                    />
+                    {view.kind === "ready" && view.refreshFailed ? (
+                      <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
+                        {COPY.refreshFailed}{" "}
+                        <button type="button" className={styles.linkButton} onClick={data.retry}>
+                          {copy.LAYOUT.retry}
+                        </button>
+                      </p>
+                    ) : null}
+                    {state.view === "ranked" ? (
+                      <>
+                        {comparing && data.comparison && data.comparison.status !== "loading" ? (
+                          <WhatChanged
+                            copy={shown.copy}
+                            from={data.comparison.from}
+                            to={data.comparison.to}
+                            schools={shown.schools}
+                            failed={
+                              data.comparison.status === "failed" || data.comparison.status === "retrying"
+                            }
+                            retrying={data.comparison.status === "retrying"}
+                            onRetry={data.comparison.retry}
+                            onHide={hideComparison}
+                            onBack={backFromComparison}
+                          />
+                        ) : null}
+                        <header className={styles.listHead} data-region="scope">
+                          <p className={styles.scopeLine}>
+                            {shown.copy.scope(shown.rule).scopeShort}
+                            {mixed ? null : (
+                              <>
+                                {" "}
+                                <button
+                                  type="button"
+                                  className={styles.moreLink}
+                                  aria-expanded={scopeOpen}
+                                  aria-controls="screening-scope-detail"
+                                  onClick={() => store.setState({ scope: !state.scope })}
+                                >
+                                  {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
+                                </button>
+                              </>
+                            )}
+                          </p>
+                          {scopeOpen ? (
+                            <p className={styles.scopeDetail} id="screening-scope-detail">
+                              {shown.copy.scope(shown.rule).scopeDetail}
+                            </p>
+                          ) : null}
+                        </header>
+                        <OrderedList
+                          rows={ordered}
+                          schools={schools}
+                          copy={shown.copy}
+                          rule={shown.rule}
+                          upper={state.place === "upper"}
+                          selected={selectedKey}
+                          hovered={hovered}
+                          onSelect={select}
+                          busy={stale}
+                          label={shown.copy.LAYOUT.orderedTab}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <header className={styles.listHead}>
+                          <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
+                          {/* With no incomplete record, the lead would say some schools are here, and the order
+                              sentence would describe nothing. */}
+                          {incomplete.length > 0 ? (
+                            <>
+                              <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
+                              <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
+                            </>
+                          ) : null}
+                        </header>
+                        <IncompleteList
+                          rows={incomplete}
+                          schools={schools}
+                          copy={shown.copy}
+                          selected={selectedKey}
+                          hovered={hovered}
+                          onSelect={select}
+                          busy={stale}
+                          label={shown.copy.LAYOUT.incompleteTab}
+                        />
+                      </>
+                    )}
+                    <p className={styles.listCaveat}>{copy.STRINGS.caveatPlain}</p>
                   </>
                 )}
-                <p className={styles.listCaveat}>{copy.STRINGS.caveatPlain}</p>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </section>
 
         <div className={styles.foot} data-stale={stale || undefined}>
