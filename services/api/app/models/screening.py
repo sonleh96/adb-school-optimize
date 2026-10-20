@@ -32,6 +32,18 @@ class Placement(str, Enum):
     UPPER = "upper"
 
 
+class ScopeCode(str, Enum):
+    """Which cohort a rank counts, as a code to branch on. The label beside it is for reading, not for parsing.
+
+    The engine writes one label per kind of scope (``point_rank_scope`` and ``rank_bounds_scope`` in the engine's
+    ``engine`` module), and a rank field has exactly one kind: a point rank counts the schools that are complete under
+    its rule, rank bounds count the eligible schools. The code is chosen by the field, never read from the label.
+    """
+
+    COMPLETE_UNDER_RULE = "complete_under_rule"
+    ELIGIBLE = "eligible"
+
+
 class RowPlacement(str, Enum):
     """How a listed row got its position. Only complete schools are placed exactly."""
 
@@ -68,6 +80,35 @@ class RuleOut(Out):
     available_input_versions: list[str]
 
 
+PERSISTENCE_LIMITATION = (
+    "These numbers come from an experiment that included urgency, so they describe the circulated rule only. "
+    "They are not a result of the proposed rule that leaves urgency out."
+)
+
+
+class PersistenceSettingOut(Out):
+    setting_id: str
+    top_level_concentration: float
+    school_need_concentration: float
+
+
+class PersistenceOut(Out):
+    """Where the persistence flag of an input version came from and how it was drawn.
+
+    A school is a persistent candidate when its lower top-20 frequency is at or above ``threshold`` in every setting.
+    ``rule_id`` names the one rule the flag describes; the API serves the flag nowhere else.
+    """
+
+    rule_id: str
+    experiment_id: str
+    source_path: str
+    source_sha256: str
+    draws: int
+    threshold: float
+    settings: list[PersistenceSettingOut]
+    limitation: str = PERSISTENCE_LIMITATION
+
+
 class InputVersionOut(Out):
     input_version: str
     description: str | None
@@ -76,6 +117,9 @@ class InputVersionOut(Out):
     created_at: dt.datetime
     is_default: bool
     rules_available: list[str]
+    persistence: PersistenceOut | None = Field(
+        description="Provenance of the persistent-candidate flag, or null when this version has none."
+    )
 
 
 class RulesResponse(Out):
@@ -136,8 +180,10 @@ class ManifestOut(Stored):
     anchors_sha256: str
     tie_rule: str
     point_rank_scope: str
+    point_rank_scope_code: ScopeCode
     point_rank_count: int
     rank_bounds_scope: str
+    rank_bounds_scope_code: ScopeCode
     rank_bounds_count: int
     cohort_counts: dict[str, int]
     input_sha256: str
@@ -145,7 +191,14 @@ class ManifestOut(Stored):
 
     @classmethod
     def from_stored(cls, manifest: dict[str, Any]) -> ManifestOut:
-        return cls.model_validate({**manifest, "cohort_counts": dict(manifest["cohort_counts"])})
+        return cls.model_validate(
+            {
+                **manifest,
+                "cohort_counts": dict(manifest["cohort_counts"]),
+                "point_rank_scope_code": ScopeCode.COMPLETE_UNDER_RULE,
+                "rank_bounds_scope_code": ScopeCode.ELIGIBLE,
+            }
+        )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -220,6 +273,7 @@ class ScoresOut(Out):
 class PointRankOut(Out):
     rank: int | None
     scope: str
+    scope_code: ScopeCode
     count: int
 
 
@@ -227,6 +281,7 @@ class RankBoundsOut(Out):
     best: int | None
     worst: int | None
     scope: str
+    scope_code: ScopeCode
     count: int
 
 
@@ -254,6 +309,15 @@ class ListedRowOut(SchoolResultOut):
     school: SchoolIdentityOut
 
 
+class ListedRowWithPersistenceOut(ListedRowOut):
+    """A row of the circulated rule's list. Rows of every other rule have no ``persistent_candidate`` key at all."""
+
+    persistent_candidate: bool | None = Field(
+        description="True or false from the experiment's lower top-20 frequencies; null when the school was not in the "
+        "experiment or this input version has no persistence numbers. It describes the circulated rule only."
+    )
+
+
 # ---------------------------------------------------------------------------------------------
 # Endpoint responses.
 # ---------------------------------------------------------------------------------------------
@@ -272,7 +336,13 @@ class ResultsResponse(Out):
     filters_note: str
     total_schools: int
     returned_schools: int
-    rows: list[ListedRowOut]
+    rows: list[ListedRowWithPersistenceOut | ListedRowOut]
+
+
+class CirculatedResultsResponse(ResultsResponse):
+    """The list of the circulated rule, the only one that carries the persistence flag and its provenance."""
+
+    persistence: PersistenceOut | None
 
 
 class RuleSummaryOut(Out):
@@ -288,14 +358,22 @@ class SchoolRuleResultOut(Out):
     rule: RuleSummaryOut
     run: RunOut
     point_rank_scope: str
+    point_rank_scope_code: ScopeCode
     rank_bounds_scope: str
+    rank_bounds_scope_code: ScopeCode
     result: SchoolResultOut
+
+
+class SchoolRuleResultWithPersistenceOut(SchoolRuleResultOut):
+    """The circulated rule's entry. The flag sits here and nowhere else, so it cannot be read as another rule's."""
+
+    persistent_candidate: bool | None
 
 
 class SchoolDetailOut(Out):
     school: SchoolIdentityOut
     inputs: dict[str, float | str | None]
-    rules: list[SchoolRuleResultOut]
+    rules: list[SchoolRuleResultWithPersistenceOut | SchoolRuleResultOut]
 
 
 class SchoolDetailResponse(SchoolDetailOut):
@@ -312,6 +390,22 @@ class LinkedSchoolsResponse(Out):
     input_version: str
     input_sha256: str
     schools: list[SchoolDetailOut]
+
+
+class InputSchoolOut(Out):
+    """A school's key and exact name, with its stored inputs in the shape of ``SchoolDetailOut.inputs``."""
+
+    school_key: str
+    source_school_name: str
+    inputs: dict[str, float | str | None]
+
+
+class InputsResponse(Out):
+    """The stored inputs of every school of an input version, in the order they were supplied."""
+
+    input_version: str
+    input_sha256: str
+    schools: list[InputSchoolOut]
 
 
 class TopKOut(Out):

@@ -271,8 +271,10 @@ def test_every_rule_returns_exactly_what_the_engine_produced(api, loaded):  # AP
         engine = {r.school_name: r for r in loaded.runs[rule_id].results}
         manifest = loaded.runs[rule_id].manifest
 
+        # The engine's manifest, plus the two scope codes the API adds beside the engine's labels.
+        codes = {"point_rank_scope_code": "complete_under_rule", "rank_bounds_scope_code": "eligible"}
         assert body["manifest"] == json.loads(
-            json.dumps(manifest.to_dict() | {"cohort_counts": dict(manifest.cohort_counts)})
+            json.dumps(manifest.to_dict() | {"cohort_counts": dict(manifest.cohort_counts)} | codes)
         )
         assert body["run"]["anchors_sha256"] == manifest.anchors_sha256
         assert body["run"]["input_sha256"] == manifest.input_sha256
@@ -298,12 +300,14 @@ def test_every_rule_returns_exactly_what_the_engine_produced(api, loaded):  # AP
             assert row["point_rank"] == {
                 "rank": expected.rank_point,
                 "scope": manifest.point_rank_scope,
+                "scope_code": "complete_under_rule",
                 "count": manifest.point_rank_count,
             }
             assert row["rank_bounds"] == {
                 "best": expected.rank_best,
                 "worst": expected.rank_worst,
                 "scope": manifest.rank_bounds_scope,
+                "scope_code": "eligible",
                 "count": manifest.rank_bounds_count,
             }
             assert row["contributions"] == [
@@ -490,7 +494,9 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
         listing = fetch(api, "/api/v1/screening/results", rule=entry["rule"]["rule_id"])
         row = next(r for r in listing["rows"] if r["school"]["source_school_name"] == school)
         assert entry["result"] == {
-            k: v for k, v in row.items() if k not in ("display_order", "placement", "school")
+            k: v
+            for k, v in row.items()
+            if k not in ("display_order", "placement", "school", "persistent_candidate")
         }
         assert entry["run"] == listing["run"]
         assert entry["point_rank_scope"] == entry["result"]["point_rank"]["scope"]

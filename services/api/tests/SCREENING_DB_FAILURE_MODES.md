@@ -78,3 +78,55 @@ With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of 
 | `test_command_names_a_table_without_the_key_column` | DB23 |
 | `test_command_names_a_source_table_it_cannot_read` | DB23 |
 | `test_command_says_so_when_the_source_tables_list_no_schools` | DB23 |
+
+## Persistence of top-20 membership
+
+Written before `test_screening_persistence_load.py`, whose tests carry these ids.
+The files and schools are invented.
+
+| Id | Failure mode | How it would show |
+| --- | --- | --- |
+| PE1 | The numbers are stored without their source. | A stored set lacks the path, the file hash, the experiment id, the draws, the settings, the threshold or the rule. |
+| PE2 | The flag disagrees with the frequencies. | A school at the threshold in every setting is not persistent, or a school below it in one setting is. |
+| PE3 | A rerun changes something. | The same file loaded twice, or a load without the file after one with it, alters any stored row. |
+| PE4 | A rerun with a different file overwrites. | A changed frequency, a missing school or another file is accepted over stored numbers. |
+| PE5 | A name matches no school and is skipped. | The load succeeds with fewer schools, or stores the numbers on another school. |
+| PE6 | A name matches two schools and one is chosen. | The load succeeds and one of two schools that differ only by spacing or case gets the numbers. |
+| PE7 | Two rows land on one school. | The second row replaces the first or the load fails with a database error instead of a message. |
+| PE8 | A file with a different hash is trusted. | A wrong expected hash loads, or an uppercase hash is refused. |
+| PE9 | The file's flag column is trusted over its frequencies. | A row whose flag disagrees with its frequencies loads. |
+| PE10 | The receipt's count is ignored. | A file that flags another number of schools than its receipt states loads. |
+| PE11 | A frequency is not a probability. | Empty, text, NaN, negative or above 1 loads, in the reader or the database. |
+| PE12 | One version lends its numbers to another. | A version loaded without the file reads the numbers of a sibling version. |
+| PE13 | The experiment is unnamed. | A path with no `EXP-` folder loads, so the provenance cannot say which experiment. |
+| PE14 | The numbers are stored for another rule. | The database accepts a set whose rule is not the circulated one. |
+| PE15 | The numbers outlive their school or version. | Deleting a school or a version leaves frequencies behind. |
+| PE16 | The Data API roles can reach the tables. | `anon` or `authenticated` holds a privilege, or row security is off. |
+| PE17 | The migration is not atomic or not re-runnable. | A failure before its commit leaves a table behind, or a second apply changes the schema or the rows. |
+| PE18 | The command crashes or half loads. | A wrong hash or a lone `--persistence-sha256` gives a traceback, or leaves inputs and runs stored. |
+
+| Test | Failure mode |
+| --- | --- |
+| `test_the_numbers_are_stored_with_their_provenance_and_the_flag_follows_the_threshold` | PE1, PE2 |
+| `test_a_rerun_with_the_same_file_changes_nothing` | PE3 |
+| `test_a_rerun_whose_file_differs_is_refused_and_leaves_the_stored_numbers` | PE4 |
+| `test_a_load_without_the_file_leaves_a_stored_set_alone` | PE3 |
+| `test_a_version_loaded_without_the_file_has_no_numbers_and_no_other_version_lends_its_own` | PE12 |
+| `test_a_name_that_matches_no_school_refuses_the_whole_load` | PE5 |
+| `test_a_blank_name_matches_no_school` | PE5 |
+| `test_a_name_that_matches_two_schools_refuses_the_whole_load` | PE6 |
+| `test_two_names_for_one_school_refuse_the_whole_load` | PE7 |
+| `test_a_file_that_does_not_hash_to_the_expected_value_is_refused` | PE8 |
+| `test_a_flag_column_that_disagrees_with_the_frequencies_is_refused` | PE9 |
+| `test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused` | PE10 |
+| `test_a_frequency_that_is_not_a_number_from_zero_to_one_is_refused` | PE11 |
+| `test_a_frequency_outside_zero_to_one_is_rejected_by_the_database` | PE11 |
+| `test_a_path_without_an_experiment_folder_is_refused` | PE13 |
+| `test_the_numbers_cannot_be_stored_for_any_rule_but_the_circulated_one` | PE14 |
+| `test_the_numbers_go_with_their_school_and_their_version` | PE15 |
+| `test_the_persistence_tables_are_closed_to_the_data_api_roles` | PE16 |
+| `test_the_migration_applies_a_second_time_and_keeps_the_numbers` | PE17 |
+| `test_a_failed_apply_leaves_no_persistence_table_behind` | PE17 |
+| `test_the_command_stores_the_numbers_and_a_rerun_changes_nothing` | PE18 |
+| `test_the_command_refuses_a_wrong_hash_without_a_traceback_and_stores_nothing` | PE8, PE18 |
+| `test_the_hash_alone_is_a_usage_error` | PE18 |
