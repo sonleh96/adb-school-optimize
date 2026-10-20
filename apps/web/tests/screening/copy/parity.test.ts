@@ -321,6 +321,8 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       ])
         same(`${k}`, prototypeValue(k, P[k], P.counts), Q[k]);
       same("groupsSentence()", P.groupsSentence(), Q.groupsSentence());
+      for (const r of proto.RULE_IDS as string[])
+        same(`groupsSentence(${r})`, P.groupsSentence(r), Q.groupsSentence(r));
       same("urgencyDefinition()", P.urgencyDefinition(), Q.urgencyDefinition());
       same(
         "defaultListStatement()",
@@ -495,6 +497,8 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
             );
           }
           one(`${t} placeHeadline`, (api, mode) => api.placeHeadline(s, r, counts(api, mode)));
+          one(`${t} missingSentences`, (api) => api.missingSentences(s, r));
+          one(`${t} missingSentence`, (api) => api.missingSentence(s, r));
           // A list that shows places and ranges together, and one that shows only ranges and incomplete records.
           for (const [name, list] of [
             ["mixed", data.schools],

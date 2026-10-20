@@ -14,7 +14,7 @@ export {
 } from "./adapter";
 export { bindCopy, type BoundRecords, type CopyResponses } from "./bind";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
-export { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
+export { countsFrom, groupsSentence, urgencyDefinition, type Reads } from "./counts";
 export { buildIdeas, IDEAS } from "./ideas";
 export { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
 export {
@@ -72,6 +72,7 @@ export {
   ruleLabel,
   ruleName,
   ruleOneLine,
+  ruleReads,
   ruleRelation,
   ruleRole,
   ruleRoleLine,

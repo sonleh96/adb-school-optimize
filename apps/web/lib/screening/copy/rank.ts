@@ -7,10 +7,12 @@ import {
   completePhrase,
   countWord,
   countsFrom,
+  everyInput,
   known,
   orderedPhrase,
   oneRange,
   rangePhrase,
+  type Reads,
 } from "./counts";
 import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
 import type {
@@ -24,7 +26,7 @@ import type {
   PlacedSchool,
 } from "./model";
 import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
-import { rule } from "./rules";
+import { rule, ruleReads } from "./rules";
 import { STRINGS, persistentNearLine } from "./strings";
 import { LAYOUT } from "./words";
 
@@ -76,13 +78,13 @@ export interface PlaceOpts {
 /* ------------------------------------------------------- rank sentences */
 
 // Which environment readings a school lacks, in reading order.
-type Reading = "aqi" | "emissions" | "land";
+export type Reading = "aqi" | "emissions" | "land";
 const READING_NAMES: Record<Reading, string> = {
   aqi: "air-quality reading",
   emissions: "nearby emissions figure",
   land: "land-cover figure",
 };
-function missingReadings(school: Pick<PlacedSchool, "missing_env" | "raw">): Reading[] {
+export function missingReadings(school: Pick<PlacedSchool, "missing_env" | "raw">): Reading[] {
   const m = school.missing_env || { aqi: false, emissions: false, land: false };
   const raw = school.raw || {};
   const out: Reading[] = [];
@@ -155,7 +157,7 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
   const head = nm
     ? seg`${nm} is ${ordinal(res.rank_complete120)}`
     : seg`${capitalise(ordinal(res.rank_complete120))}`;
-  return seg`${head} of ${completePhrase(c)}${rangeCountClause(res, c)}.`;
+  return seg`${head} of ${completePhrase(c, ruleReads(ruleId))}${rangeCountClause(res, c)}.`;
 }
 export const rankSentence = (school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string =>
   textOf(rankSegments(school, ruleId, opts));
@@ -227,7 +229,7 @@ export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
     return `Possible places among ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
   }
   if (!hasPlace(res)) return `${capitalise(r.name)} has no result for this school.`;
-  const head = `Among ${completePhrase(c)}.`;
+  const head = `Among ${completePhrase(c, ruleReads(ruleId))}.`;
   if (!opts.method || !rangeCountClause(res, c)) return head;
   // rangeCountClause is non-empty only when the bounds exist.
   const bounds = res as WithBounds;
@@ -247,7 +249,7 @@ export function fullRankingSentence(school: PlacedSchool, ruleId: CopyRuleId, op
   if (school.cohort !== "complete") return rankSentence(school, ruleId, opts);
   const res = resultFor(school, ruleId);
   if (!hasBounds(res) || res.rank_bounds_scope !== "eligible124") {
-    return `This rule was not run on ${amongAllOrdered(c)}, so only its place in the list among ${completePhrase(c)} is available.`;
+    return `This rule was not run on ${amongAllOrdered(c)}, so only its place in the list among ${completePhrase(c, ruleReads(ruleId))} is available.`;
   }
   if (!rangeCountClause(res, c)) return `Counting ${rangePhrase(c)} does not change its place in the list.`;
   const where =
@@ -295,8 +297,8 @@ export function rangeComparisonSegments(
   }
   if (sa.kind === "point" && sb.kind === "point") {
     if (sharedSize(cA, cB, "complete", perRule(opts)))
-      return seg`Among ${completePhrase(cA)}, ${nm} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
-    return seg`Under ${a.name}, ${nm} is ${ordinal(sa.place)} among ${completePhrase(cA)}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB)}.`;
+      return seg`Among ${completePhrase(cA, ruleReads(ruleA))}, ${nm} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
+    return seg`Under ${a.name}, ${nm} is ${ordinal(sa.place)} among ${completePhrase(cA, ruleReads(ruleA))}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB, ruleReads(ruleB))}.`;
   }
   const where = (st: Standing & { kind: "range" }, rr: { name: string }): string =>
     st.best === st.worst
@@ -317,10 +319,16 @@ export function rangeComparisonSegments(
       return seg`${among}, ${nm} sits ${where(sa, a)}, and ${where(sb, b)}.`;
   }
   // Each side on its own, with its own group. The first side names the school; the second says "it".
-  const clause = (st: Standing, rr: { name: string }, c: CountBag | undefined, first: boolean): Segments => {
+  const clause = (
+    st: Standing,
+    rr: { name: string },
+    c: CountBag | undefined,
+    reads: Reads,
+    first: boolean
+  ): Segments => {
     const subject: Segments = first ? [nm] : ["it"];
     if (st.kind === "point")
-      return seg`Under ${rr.name}, ${subject} is ${ordinal(st.place)} among ${completePhrase(c)}.`;
+      return seg`Under ${rr.name}, ${subject} is ${ordinal(st.place)} among ${completePhrase(c, reads)}.`;
     if (st.kind === "range")
       return st.best === st.worst
         ? seg`Under ${rr.name}, ${subject} is ${ordinal(st.best)} among ${orderedPhrase(c)}.`
@@ -329,12 +337,12 @@ export function rangeComparisonSegments(
       ? seg`It cannot be put in order under ${rr.name} yet, because its record is incomplete.`
       : seg`It has no result under ${rr.name}.`;
   };
-  const sides: [Standing, { name: string }, CountBag | undefined][] = [
-    [sa, a, cA],
-    [sb, b, cB],
+  const sides: [Standing, { name: string }, CountBag | undefined, Reads][] = [
+    [sa, a, cA, ruleReads(ruleA)],
+    [sb, b, cB, ruleReads(ruleB)],
   ];
   if (sa.kind === "none") sides.reverse();
-  return joinSegments(sides.map(([st, rr, c], i) => clause(st, rr, c, i === 0)));
+  return joinSegments(sides.map(([st, rr, c, reads], i) => clause(st, rr, c, reads, i === 0)));
 }
 export const rangeComparisonSentence = (
   school: PlacedSchool,
@@ -356,7 +364,7 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
     .slice(0, n)
     .map((x) => x.s);
   if (firsts.length === 0)
-    return seg`Under ${r.name}, no school has every input recorded, so the list has no single places yet.`;
+    return seg`Under ${r.name}, no school has ${everyInput(ruleReads(ruleId))}, so the list has no single places yet.`;
   const k = firsts.length;
   const ranges = schools.filter((s) => {
     const res = resultFor(s, ruleId);
@@ -365,8 +373,8 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
   const names = nameList(firsts.map((s) => displayName(s)));
   const sentence =
     k === 1
-      ? seg`Under ${r.name}, the first of ${completePhrase(c)} is ${names}.`
-      : seg`Under ${r.name}, the first ${countWord(k)} of ${completePhrase(c)} are ${names}.`;
+      ? seg`Under ${r.name}, the first of ${completePhrase(c, ruleReads(ruleId))} is ${names}.`
+      : seg`Under ${r.name}, the first ${countWord(k)} of ${completePhrase(c, ruleReads(ruleId))} are ${names}.`;
   if (!ranges.length) return sentence;
   return seg`${sentence} ${nameList(ranges.map((s) => displayName(s)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
 }
