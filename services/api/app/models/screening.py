@@ -19,6 +19,12 @@ class Out(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class Stored(Out):
+    """A model filled from stored JSON. A newer engine may add fields to what it stores, and reading must not break on them."""
+
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+
 class Placement(str, Enum):
     """Where an interval school sits in the list: at its lower or its upper score bound."""
 
@@ -40,7 +46,7 @@ class RowPlacement(str, Enum):
 # ---------------------------------------------------------------------------------------------
 
 
-class WeightOut(Out):
+class WeightOut(Stored):
     component: Component
     fraction: str
     value: float
@@ -98,7 +104,7 @@ class RunOut(Out):
     created_at: dt.datetime
 
 
-class AnchorOut(Out):
+class AnchorOut(Stored):
     component: Component
     name: str
     source_field: str
@@ -110,7 +116,7 @@ class AnchorOut(Out):
     degenerate: bool
 
 
-class ManifestOut(Out):
+class ManifestOut(Stored):
     """The run manifest as the engine wrote it. Parsed once, when it leaves the database."""
 
     rule_id: str
@@ -158,7 +164,7 @@ class SchoolIdentityOut(Out):
     longitude: float | None
 
 
-class ComponentsOut(Out):
+class ComponentsOut(Stored):
     """The components of a rule that does not read urgency. There is no ``U`` key at all."""
 
     N: float | None
@@ -173,7 +179,7 @@ class ComponentsWithUrgencyOut(ComponentsOut):
     U: float | None
 
 
-class NeedPartsOut(Out):
+class NeedPartsOut(Stored):
     permanent_classroom_deficit: float | None
     teacher_housing_deficit: float | None
     facility_presence_deficit: float | None
@@ -181,7 +187,7 @@ class NeedPartsOut(Out):
     locality_disadvantage: float | None
 
 
-class AreaPartsOut(Out):
+class AreaPartsOut(Stored):
     progression_g10_deficit: float | None
     progression_g12_deficit: float | None
     secondary_participation_deficit: float | None
@@ -190,14 +196,14 @@ class AreaPartsOut(Out):
     female_disadvantage: float | None
 
 
-class ContributionOut(Out):
+class ContributionOut(Stored):
     component: Component
     weight: float
     lower: float
     upper: float
 
 
-class MaximumTermOut(Out):
+class MaximumTermOut(Stored):
     share: float
     value: float
     attained_by: list[Component]
