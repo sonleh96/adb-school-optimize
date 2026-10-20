@@ -257,6 +257,462 @@
     "a": "additive_u",
     "b": "benchmark"
    }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/need_first_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/need_first_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/need_first_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/need_first_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/need_first_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_no_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/need_first_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_no_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/need_first_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "need_first_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/bottleneck_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "bottleneck_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/bottleneck_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "bottleneck_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/bottleneck_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "bottleneck_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_additive_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_additive_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "exports/top_additive_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "exports/top_additive_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_additive_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_additive_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_additive_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_need_first_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_need_first_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_need_first_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_no_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_need_first_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_no_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_need_first_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "exports/top_need_first_no_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_need_first_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_bottleneck_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_bottleneck_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_bottleneck_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_no_u_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_bottleneck_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_no_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_bottleneck_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "exports/top_bottleneck_no_u_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_bottleneck_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "exports/top_benchmark_10.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top10_benchmark.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "10",
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_benchmark_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_benchmark.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_benchmark_30.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top30_benchmark.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "30",
+    "rule": "benchmark"
+   }
   }
  ]
 }
