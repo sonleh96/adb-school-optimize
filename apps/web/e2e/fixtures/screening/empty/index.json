@@ -9,11 +9,6 @@
    "query": {}
   },
   {
-   "file": "input-versions.json",
-   "path": "/api/v1/screening/input-versions",
-   "query": {}
-  },
-  {
    "file": "results/additive_u.json",
    "path": "/api/v1/screening/results",
    "query": {

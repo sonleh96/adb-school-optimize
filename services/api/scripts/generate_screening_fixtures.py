@@ -460,7 +460,6 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     cap = Capture(client)
     cap.get(f"{API}/rules", "rules.json")
     if not ds.records:
-        cap.get(f"{API}/input-versions", "input-versions.json")
         cap.get(f"{API}/results", "results/additive_u.json", status=404, rule="additive_u")
         cap.get(f"{API}/inputs", "inputs.json", status=404)
         return cap, []
