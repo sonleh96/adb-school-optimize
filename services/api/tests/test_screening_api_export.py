@@ -259,7 +259,7 @@ def test_every_export_names_the_rule_it_was_asked_for(api, loaded, rule_id):  # 
     columns = rows[0].keys()
     assert ("contribution_U_lower" in columns) == rule.uses_urgency
     if not rule.uses_urgency:
-        assert {r["U"] for r in rows} == {""}
+        assert "U" not in columns  # no column at all, not an empty one
         assert "urgency" not in method["weights"].lower() and "U " not in method["weights"]
 
     workbook = openpyxl.load_workbook(io.BytesIO(api.get(XLSX, params={"rule": rule_id, "k": 5}).content))
@@ -537,3 +537,20 @@ def test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line(api,
     # A name with an accent survives the round trip.
     _, queue = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
     assert "Éclair queue" in {r["source_school_name"] for r in queue}
+
+
+def test_urgency_has_no_column_and_no_missing_input_under_an_urgency_omitted_rule(api, loaded):  # API27
+    _, with_urgency = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    _, without = parse_csv_export(export(api, INCOMPLETE, rule="additive_no_u"))
+
+    assert "U" in with_urgency[0] and "U" not in without[0]
+    beta_with = next(r for r in with_urgency if r["source_school_name"] == "Beta queue")
+    beta_without = next(r for r in without if r["source_school_name"] == "Beta queue")
+    assert "urgency_source_scalar" in beta_with["missing_input_fields"].split(";")
+    # Under the omitted rule the urgency source value is neither read nor asked for.
+    assert "urgency_source_scalar" not in beta_without["missing_input_fields"].split(";")
+    assert "teachers" in beta_without["missing_input_fields"].split(";")
+    _, top_rows = top(api, rule="need_first_no_u", k=50)
+    assert "U" not in top_rows[0] and not [c for c in top_rows[0] if c.endswith("_U_lower") or "_U_" in c]
+    _, top_with = top(api, rule="need_first_u", k=50)
+    assert "U" in top_with[0]

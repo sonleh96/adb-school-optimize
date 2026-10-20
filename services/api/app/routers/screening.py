@@ -32,6 +32,7 @@ from ..models.screening import (
     CommonRankOut,
     CompareResponse,
     ComponentsOut,
+    ComponentsWithUrgencyOut,
     ContributionOut,
     ExcludedSchoolOut,
     FiltersOut,
@@ -176,11 +177,13 @@ def _run_out(run: store.StoredRun) -> RunOut:
     )
 
 
-def _result_out(r: store.ResultRow) -> SchoolResultOut:
+def _result_out(r: store.ResultRow, uses_urgency: bool) -> SchoolResultOut:
     return SchoolResultOut(
         cohort=r.cohort,
         gate_failures=list(r.gate_failures),
-        components=ComponentsOut(**r.components),
+        components=ComponentsWithUrgencyOut(**r.components)
+        if uses_urgency
+        else ComponentsOut(**{k: v for k, v in r.components.items() if k != "U"}),
         need_parts=NeedPartsOut(**r.need_parts),
         area_parts=AreaPartsOut(**r.area_parts),
         contributions=[ContributionOut(**c) for c in r.contributions],
@@ -324,7 +327,7 @@ def get_results(
                 list_position=item.list_position,
                 placement=item.placement,
                 school=_identity_out(item.row.identity),
-                **dict(_result_out(item.row.result)),
+                **dict(_result_out(item.row.result, rule_.uses_urgency)),
             )
             for item in shown
         ],
@@ -372,7 +375,7 @@ def _school_details(
                 run=_run_out(runs[rule.rule_id]),
                 point_rank_scope=results[rule.rule_id][name].rank_point_scope,
                 rank_bounds_scope=results[rule.rule_id][name].rank_bounds_scope,
-                result=_result_out(results[rule.rule_id][name]),
+                result=_result_out(results[rule.rule_id][name], rule.uses_urgency),
             )
             for rule in RULES.values()
             if rule.rule_id in runs

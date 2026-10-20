@@ -277,7 +277,10 @@ def test_every_rule_returns_exactly_what_the_engine_produced(api, loaded):  # AP
             expected = engine[row["school"]["source_school_name"]]
             assert row["cohort"] == expected.cohort.value, rule_id
             assert row["gate_failures"] == [f.value for f in expected.gate_failures]
-            assert row["components"] == asdict(expected.components)
+            wanted = asdict(expected.components)
+            if not RULES[rule_id].uses_urgency:
+                wanted.pop("U")  # an urgency-omitted rule has no U key at all
+            assert row["components"] == wanted
             assert row["need_parts"] == asdict(expected.need_parts)
             assert row["area_parts"] == asdict(expected.area_parts)
             assert row["scores"] == {
@@ -349,7 +352,7 @@ def test_urgency_never_appears_in_an_urgency_omitted_rule(api, loaded, rule_id):
     assert body["manifest"]["uses_urgency"] is False and "U" not in body["manifest"]["maximum_components"]
     assert "U" not in [a["component"] for a in body["manifest"]["anchors"]]
     for row in body["rows"]:
-        assert row["components"]["U"] is None
+        assert "U" not in row["components"]  # the key is absent, not null
         assert "U" not in [c["component"] for c in row["contributions"]]
         if row["maximum_term"]:
             assert "U" not in row["maximum_term"]["attained_by"]
@@ -487,6 +490,8 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
         }
         assert entry["run"] == listing["run"]
         assert entry["point_rank_scope"] == entry["result"]["point_rank"]["scope"]
+    for entry in detail["rules"]:
+        assert ("U" in entry["result"]["components"]) == entry["rule"]["uses_urgency"]
     ranks = {e["rule"]["rule_id"]: e["result"]["point_rank"]["rank"] for e in detail["rules"]}
     assert ranks["additive_u"] == 1 and ranks["additive_no_u"] == 1
     assert {e["rule"]["rule_id"]: e["rule"]["uses_urgency"] for e in detail["rules"]}[

@@ -219,6 +219,11 @@ def _identity_values(kind: str, row: SchoolRow, manifest: ManifestOut, input_ver
     ]  # fmt: skip
 
 
+def component_columns(manifest: ManifestOut) -> tuple[str, ...]:
+    """The component columns of a rule. A rule that does not read urgency has no ``U`` column, not an empty one."""
+    return tuple(c for c in COMPONENT_COLUMNS if c != "U" or manifest.uses_urgency)
+
+
 def top_table(selection: TopSelection, manifest: ManifestOut, input_version: str) -> Table:
     """Point rows, then range rows. Range rows carry bounds only: no point score and no point rank."""
     contribution_columns = tuple(
@@ -228,7 +233,7 @@ def top_table(selection: TopSelection, manifest: ManifestOut, input_version: str
     has_maximum = bool(manifest.maximum_components)
     columns = (
         *_identity_columns(),
-        *COMPONENT_COLUMNS,
+        *component_columns(manifest),
         "sort_key_primary",
         *contribution_columns,
         *(f"need_part_contribution_{name}" for name in NEED_PART_NAMES if has_need_parts),
@@ -241,7 +246,7 @@ def top_table(selection: TopSelection, manifest: ManifestOut, input_version: str
         r = row.result
         by_component = {c["component"]: c for c in r.contributions}
         cells = [*_identity_values(kind, row, manifest, input_version)]
-        cells += [r.components[c] for c in COMPONENT_COLUMNS]
+        cells += [r.components[c] for c in component_columns(manifest)]
         cells.append(r.sort_key_primary)
         for w in manifest.weights:
             contribution = by_component.get(w.component.value)
@@ -271,9 +276,16 @@ def top_table(selection: TopSelection, manifest: ManifestOut, input_version: str
     return Table(columns, tuple(rows))
 
 
-def missing_input_fields(record: SchoolRecord) -> tuple[str, ...]:
-    """Names of the input-contract fields that are unknown for a school."""
-    return tuple(f.name for f in INPUT_CONTRACT if getattr(record, f.name) is None)
+def missing_input_fields(record: SchoolRecord, uses_urgency: bool) -> tuple[str, ...]:
+    """Names of the input-contract fields that are unknown for a school.
+
+    A rule that does not read urgency does not ask for its source value.
+    """
+    return tuple(
+        f.name
+        for f in INPUT_CONTRACT
+        if getattr(record, f.name) is None and (uses_urgency or f.name != "urgency_source_scalar")
+    )
 
 
 def incomplete_table(
@@ -284,7 +296,7 @@ def incomplete_table(
         *_identity_columns(),
         "gate_failure_details",
         "missing_input_fields",
-        *COMPONENT_COLUMNS,
+        *component_columns(manifest),
         "rank_point_scope",
         "rank_bounds_scope",
     )
@@ -295,8 +307,8 @@ def incomplete_table(
             (
                 *_identity_values("queue", row, manifest, input_version),
                 " ".join(GATE_FAILURE_DETAILS[f] for f in r.gate_failures),
-                ";".join(missing_input_fields(records[row.name])),
-                *(r.components[c] for c in COMPONENT_COLUMNS),
+                ";".join(missing_input_fields(records[row.name], manifest.uses_urgency)),
+                *(r.components[c] for c in component_columns(manifest)),
                 r.rank_point_scope,
                 r.rank_bounds_scope,
             )

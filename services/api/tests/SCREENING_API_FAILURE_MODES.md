@@ -35,6 +35,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
 | API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
 | API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
+| API27 | Urgency is present as a key or column, even empty, under a rule that does not read it. | `components` has a `U` key, an export has a `U` column, or the queue export lists the urgency source value as missing, for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`. |
 
 ## Test map
 
@@ -61,6 +62,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
 | `test_display_name_guards_formula_like_names_while_the_source_name_stays_exact` | API24 |
 | `test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line` | API29 |
+| `test_urgency_has_no_column_and_no_missing_input_under_an_urgency_omitted_rule` | API27 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |
 | `test_json_responses_carry_a_cache_policy_and_a_validator` | API10 |
 | `test_a_matching_validator_gets_304_and_any_other_gets_the_body` | API10 |
