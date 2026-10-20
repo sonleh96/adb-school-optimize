@@ -1,7 +1,7 @@
 /*
- * The screening workspace. Tokens and measures follow the design specification: warm paper behind the map,
- * floating panels, one navy accent, a 4 px grid. Everything is scoped to this module, so the old pages are
- * unaffected.
+ * The screening workspace. Tokens and measures follow the design specification (notes/final.md, "Tokens"): warm
+ * paper behind the map, floating panels, one navy accent, a 4 px grid. Everything is scoped to this module, so the
+ * old pages are unaffected.
  */
 .root {
   --paper: #f2f0ea;
@@ -18,6 +18,7 @@
   --navy-wash-2: rgba(10, 46, 115, 0.1);
   --queue: #6e6b63;
   --shadow: 0 1px 2px rgba(21, 24, 29, 0.05), 0 12px 32px -16px rgba(21, 24, 29, 0.2);
+  --shadow-pop: 0 1px 2px rgba(21, 24, 29, 0.06), 0 16px 40px -16px rgba(21, 24, 29, 0.28);
   --serif: var(--font-screening-serif), Georgia, serif;
   --sans: var(--font-screening-sans), system-ui, sans-serif;
   --mono: var(--font-screening-mono), ui-monospace, monospace;
@@ -41,38 +42,93 @@
   font: inherit;
   color: inherit;
 }
-
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.root button:disabled {
+  cursor: default;
 }
 
 .eyebrow {
+  margin: 0;
   font: 500 10.5px/14px var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
-
-/* ---------- layout: the rail slot, then the stage that holds the map and every floating panel ---------- */
-.rail {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: var(--rail-w);
-  background: var(--rail-bg);
-  border-right: 1px solid var(--hair);
-}
-.rail[data-empty="true"] {
-  display: none;
+.eyebrowNavy {
+  color: var(--navy);
 }
 
+/* The analyst letter beside a rule's words: "S", "S0" with the 0 lowered. */
+.sym {
+  font: italic 400 22px/24px var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink-2);
+}
+.sym sub {
+  font-size: 0.62em;
+  font-style: normal;
+  vertical-align: -0.28em;
+  line-height: 0;
+  margin-left: 0.04em;
+}
+
+.linkButton,
+.moreLink,
+.arrowLink,
+.otherRules {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-underline-offset: 3px;
+}
+.arrowLink,
+.otherRules {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.otherRules {
+  gap: 4px;
+}
+.otherRules svg {
+  opacity: 0.7;
+}
+.otherRulesActive {
+  font-weight: 600;
+}
+.moreLink {
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .linkButton:hover,
+  .moreLink:hover,
+  .arrowLink:hover,
+  .otherRules:hover {
+    text-decoration-color: var(--navy);
+  }
+}
+
+.root :is(button, a):focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* ---------- the stage holds the map and every floating panel ---------- */
 .stage {
   position: absolute;
   inset: 0 0 0 var(--rail-w);
+}
+/* Popovers render here, above the panels, so a panel's clipping never cuts them. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
 }
 
 .map {
@@ -108,22 +164,6 @@
 .stale > * {
   opacity: 0.5;
 }
-.scopeLine {
-  display: block;
-  margin-top: 4px;
-  color: var(--ink-3);
-}
-.rangeNote {
-  display: block;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--navy-2);
-}
-.groupRows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
 .notice {
   position: absolute;
   left: calc(var(--col-w) + var(--gap) * 2 + 48px);
@@ -152,6 +192,7 @@
   border-radius: 8px;
 }
 
+/* ---------- the column: masthead, rule, tabs, list ---------- */
 .column {
   position: absolute;
   left: var(--gap);
@@ -165,27 +206,573 @@
 }
 
 .masthead {
-  padding: 14px 20px 12px;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 1px;
+  align-items: center;
+  padding: 12px 20px 11px;
   border-bottom: 1px solid var(--hair-2);
 }
-.title {
-  margin: 2px 0 0;
-  font: 500 22px/26px var(--serif);
-  letter-spacing: -0.008em;
+.logo {
+  grid-row: 1 / 3;
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  font-family: var(--serif);
+}
+.mastName {
+  margin: 0;
+  font: 600 12px/14px var(--sans);
+  letter-spacing: 0.06em;
+}
+.mastSub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--ink-3);
 }
 
-.card {
+.rule {
+  padding: 12px 20px 13px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.ruleSkeleton {
+  height: 92px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.ruleTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ruleSeg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 8px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  padding: 3px;
+  gap: 3px;
+}
+.ruleButton {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 10px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.ruleButtonLabel {
+  font: 500 13px/17px var(--sans);
+  text-wrap: balance;
+}
+.ruleButton:not([aria-pressed="true"]):not(:disabled):active {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ruleButton:not([aria-pressed="true"]):not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
+.ruleButton[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+  cursor: default;
+}
+.ruleButton[aria-pressed="true"] .sym {
+  color: #fff;
+}
+.ruleButton:disabled:not([aria-pressed="true"]) {
+  opacity: 0.55;
+}
+
+.statement {
+  margin: 8px 0 0;
+  padding: 7px 10px 8px;
+  border-radius: 6px;
+  background: var(--navy-wash);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.ruleLine {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.ruleLine b {
+  font-weight: 600;
+}
+.symInline {
+  font-size: 17px;
+  line-height: 1;
+  margin-right: 4px;
+  color: var(--navy);
+}
+.ruleRole {
+  color: var(--ink-3);
+}
+
+/* Other rules: a popover of all seven, the other five first. */
+.pop {
   position: absolute;
-  right: var(--gap);
-  top: 64px;
-  bottom: 40px;
-  width: var(--card-w);
+  width: 320px;
+  display: flex;
+  pointer-events: auto;
+  background: var(--panel);
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+  transform-origin: top left;
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+@starting-style {
+  .pop {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.pop[data-instant] {
+  transition: none;
+}
+.popScroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 14px 10px 12px;
+}
+.popScroll > .eyebrow {
+  padding: 0 6px 6px;
+}
+.popList + .eyebrow {
+  margin-top: 10px;
+}
+.popList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.popRule {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  width: 100%;
+  padding: 8px 8px 9px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.popRule .sym {
+  justify-self: center;
+  margin-top: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .popRule:hover {
+    background: rgba(21, 24, 29, 0.04);
+  }
+}
+.popRule[aria-pressed="true"] {
+  background: var(--navy-wash-2);
+}
+.popRule[aria-pressed="true"] .popRuleLabel,
+.popRule[aria-pressed="true"] .sym {
+  color: var(--navy);
+}
+.popRuleText {
   display: flex;
   flex-direction: column;
-  overflow: auto;
-  z-index: 3;
+  gap: 1px;
+  min-width: 0;
+}
+.popRuleLabel {
+  font: 500 13px/17px var(--sans);
+}
+.popRuleLine {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.popRuleRole {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.popNote {
+  margin: 10px 6px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
 }
 
+/* ---------- tabs ---------- */
+.tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.tab {
+  position: relative;
+  padding: 10px 0 9px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink-3);
+}
+.tabCount {
+  margin-left: 5px;
+  font-weight: 400;
+}
+.tab[aria-selected="true"] {
+  color: var(--ink);
+}
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--navy);
+}
+
+/* ---------- the list region: What changed, the list head and the rows scroll together ---------- */
+.listScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.listScroll.stale {
+  opacity: 0.5;
+}
+.listScroll.stale > * {
+  opacity: 1;
+}
+
+.changed {
+  padding: 12px 20px 13px;
+  border-bottom: 1px solid var(--hair-2);
+  background: rgba(10, 46, 115, 0.035);
+}
+.changedTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.changedLead {
+  margin: 6px 0;
+  font: 400 15px/21px var(--serif);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.changedExample {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.exampleKey {
+  display: inline-block;
+  margin-right: 8px;
+  font: 500 10.5px/18px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.changedSource {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+}
+.changedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 8px 0 0;
+}
+
+.listHead {
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.scopeLine {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.scopeDetail {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.queueTitle {
+  margin: 0 0 3px;
+  font: 500 13px/18px var(--sans);
+}
+.queueLead {
+  margin: 0 0 6px;
+  font: 400 15.5px/21px var(--serif);
+  text-wrap: pretty;
+}
+
+.rows,
+.groupRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows {
+  padding-bottom: 8px;
+}
+.rows[aria-busy="true"] {
+  pointer-events: none;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 8px;
+  column-gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 7px 20px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.rowQueued {
+  grid-template-columns: minmax(0, 1fr) 8px;
+}
+li + li > .row::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 1px;
+  background: var(--hair-2);
+}
+.listNote + li > .row::before {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: rgba(21, 24, 29, 0.03);
+  }
+}
+.row[data-hover] {
+  background: rgba(21, 24, 29, 0.035);
+}
+.row[aria-pressed="true"] {
+  background: var(--navy-wash);
+}
+.row[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--navy);
+}
+li + li > .row[aria-pressed="true"]::before,
+li:has(> .row[aria-pressed="true"]) + li > .row::before {
+  opacity: 0;
+}
+.root .row:focus-visible {
+  outline-offset: -2px;
+}
+
+.place {
+  text-align: right;
+  font: 500 16px/19px var(--sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.ord {
+  position: relative;
+  top: -0.42em;
+  margin-left: 0.5px;
+  font-size: 0.62em;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 0;
+  vertical-align: baseline;
+  color: var(--ink-2);
+}
+.placeRange {
+  display: grid;
+  justify-items: end;
+  font-size: 14px;
+  line-height: 17px;
+  color: var(--navy-2);
+}
+.placeRange .ord {
+  color: var(--navy-2);
+}
+.placeTo {
+  margin: 0 0.3em;
+  font: italic 400 13px/14px var(--serif);
+  color: var(--ink-3);
+}
+.placeRange .placeTo {
+  margin: 0;
+}
+.ordinal {
+  white-space: nowrap;
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.name {
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+/* The separator and the province (or district) are one unbreakable piece, so "·" never ends a line (R6). */
+.where {
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tie {
+  margin-top: 1px;
+  font-size: 12.5px;
+  line-height: 17px;
+  font-style: italic;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.chevron {
+  align-self: center;
+  color: var(--ink-3);
+  opacity: 0.55;
+  transition:
+    opacity 150ms ease,
+    transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover .chevron {
+    opacity: 1;
+    color: var(--navy);
+    transform: translateX(2px);
+  }
+}
+.row[aria-pressed="true"] .chevron {
+  opacity: 1;
+  color: var(--navy);
+}
+
+.listNote {
+  position: relative;
+  margin: 0;
+  padding: 9px 20px 9px 78px;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.listNote + li {
+  border-top: 1px solid var(--hair-2);
+}
+/* The range note's glyph: a hatched bar, the range schools' sign in the list. */
+.rangeNote::before {
+  content: "";
+  position: absolute;
+  left: 58px;
+  top: 12px;
+  width: 6px;
+  height: 12px;
+  border: 1px solid var(--ink-2);
+  border-radius: 1px;
+  background: repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(74, 79, 87, 0.55) 1.5px 2.5px);
+}
+
+.groupHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 6px;
+  border-bottom: 1px solid var(--hair-2);
+  background: var(--panel);
+  font: 500 10px/12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.groupCount {
+  letter-spacing: 0;
+}
+.groupHead + .groupRows > li:first-child > .row::before {
+  display: none;
+}
+
+.state {
+  margin: 0;
+  padding: 28px 20px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.refreshFailed {
+  margin: 0;
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--hair-2);
+  color: var(--ink-2);
+}
+.error {
+  padding: 20px;
+  color: var(--ink);
+}
+.error p {
+  margin: 0 0 10px;
+}
+
+/* ---------- legend ---------- */
 .legend {
   position: absolute;
   left: calc(var(--gap) + var(--col-w) + var(--gap));
@@ -242,18 +829,12 @@
   font-size: 11.5px;
   color: var(--ink-2);
 }
-.markDot,
 .markRange,
 .markIncomplete {
   display: inline-block;
   flex: none;
   border-radius: 50%;
   box-sizing: border-box;
-}
-.markDot {
-  width: 11px;
-  height: 11px;
-  background: var(--navy-2);
 }
 .markRange {
   width: 13px;
@@ -276,291 +857,18 @@
   background: #fbfaf7;
 }
 
-/* ---------- rule switch ---------- */
-.rule {
-  padding: 12px 20px 13px;
-  border-bottom: 1px solid var(--hair-2);
-}
-.ruleTop {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-.ruleSeg {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 8px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
-  padding: 3px;
-  gap: 3px;
-}
-.ruleButton {
-  padding: 7px 10px 8px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  font: 500 13px/17px var(--sans);
-  text-wrap: balance;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease,
-    transform 160ms var(--ease-out);
-}
-.ruleButton:not([aria-pressed="true"]):active {
-  transform: scale(0.98);
-}
-@media (hover: hover) and (pointer: fine) {
-  .ruleButton:not([aria-pressed="true"]):hover {
-    background: rgba(21, 24, 29, 0.05);
-  }
-}
-.ruleButton[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
-  cursor: default;
-}
-.linkButton {
-  background: none;
-  border: 0;
-  padding: 2px 0;
-  cursor: pointer;
-  font: 500 12px/16px var(--sans);
-  color: var(--navy);
-  text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
-  text-underline-offset: 3px;
-}
-.linkButton:hover {
-  text-decoration-color: var(--navy);
-}
-.otherRules {
-  margin: 8px 0 0;
-  padding: 4px;
-  list-style: none;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
-  background: var(--panel);
-}
-.otherRuleButton {
-  display: block;
-  width: 100%;
-  padding: 7px 8px 8px;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-.otherRuleButton[aria-pressed="true"] {
-  background: var(--navy-wash-2);
-}
-@media (hover: hover) and (pointer: fine) {
-  .otherRuleButton:hover {
-    background: var(--navy-wash);
-  }
-}
-.otherRuleName {
-  display: block;
-  font-weight: 500;
-}
-.otherRuleLine {
-  display: block;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--ink-3);
-}
-
-/* ---------- tabs and rows ---------- */
-.tabs {
-  display: flex;
-  gap: 20px;
-  padding: 0 20px;
-  border-bottom: 1px solid var(--hair-2);
-}
-.tab {
-  position: relative;
-  padding: 10px 0 9px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  font: 500 13px/18px var(--sans);
-  color: var(--ink-3);
-}
-.tab span {
-  font-weight: 400;
-  margin-left: 5px;
-}
-.tab[aria-selected="true"] {
-  color: var(--ink);
-}
-.tab[aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--navy);
-}
-
-.listIntro {
-  margin: 0;
-  padding: 9px 20px;
-  border-bottom: 1px solid var(--hair-2);
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--ink-2);
-}
-
-.list {
-  flex: 1;
-  margin: 0;
-  padding: 0 0 8px;
-  list-style: none;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-}
-.list[aria-busy="true"] {
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 62px minmax(0, 1fr) 8px;
-  column-gap: 12px;
-  align-items: start;
-  width: 100%;
-  padding: 8px 20px 9px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-}
-.rowQueued {
-  grid-template-columns: minmax(0, 1fr) 8px;
-}
-li + li > .row::before {
-  content: "";
-}
-.row::before {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 0;
-  height: 1px;
-  background: var(--hair-2);
-}
-@media (hover: hover) and (pointer: fine) {
-  .row:hover {
-    background: rgba(21, 24, 29, 0.03);
-  }
-}
-.row[aria-pressed="true"] {
-  background: var(--navy-wash);
-}
-.row[aria-pressed="true"]::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--navy);
-}
-.row[aria-pressed="true"]::before {
-  opacity: 0;
-}
-.row:focus-visible,
-.tab:focus-visible,
-.ruleButton:focus-visible,
-.otherRuleButton:focus-visible,
-.linkButton:focus-visible,
-.closeButton:focus-visible {
-  outline: 2px solid var(--navy);
-  outline-offset: 2px;
-}
-
-.place {
-  text-align: right;
-  font: 500 16px/19px var(--sans);
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-.place sup {
-  position: relative;
-  top: -0.1em;
-  margin-left: 0.5px;
-  font-size: 0.62em;
-  font-weight: 500;
-  color: var(--ink-2);
-  vertical-align: super;
-  line-height: 0;
-}
-.placeRange {
-  display: grid;
-  justify-items: end;
-  font-size: 14px;
-  line-height: 17px;
-  color: var(--navy-2);
-}
-.placeRange sup {
-  color: var(--navy-2);
-}
-.placeTo {
-  font: italic 400 13px/14px var(--serif);
-  color: var(--ink-3);
-}
-.name {
-  font-size: 14px;
-  line-height: 19px;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-.province {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 400;
-  color: var(--ink-3);
-}
-.chevron {
-  align-self: center;
-  color: var(--ink-3);
-  opacity: 0.55;
-}
-.row[aria-pressed="true"] .chevron {
-  opacity: 1;
-  color: var(--navy);
-}
-.groupHead {
-  padding: 14px 20px 6px;
-  font: 500 10px/12px var(--mono);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-.state {
-  margin: 0;
-  padding: 28px 20px;
-  color: var(--ink-3);
-  font-size: 13px;
-}
-.error {
-  padding: 20px;
-  color: var(--ink);
-}
-.error p {
-  margin: 0 0 10px;
-}
-
 /* ---------- school card slot ---------- */
+.card {
+  position: absolute;
+  right: var(--gap);
+  top: 64px;
+  bottom: 40px;
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  z-index: 3;
+}
 .cardBar {
   display: flex;
   align-items: center;
@@ -660,7 +968,14 @@ li + li > .row::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ruleButton {
+  .ruleButton,
+  .pop,
+  .chevron {
     transition-property: opacity;
+  }
+  @starting-style {
+    .pop {
+      transform: none;
+    }
   }
 }

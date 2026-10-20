@@ -15,7 +15,11 @@ import type { Page } from "@playwright/test";
 
 import { COPY } from "../components/screening/copy";
 import {
+  ORDERED,
   ORDERED_COUNT,
+  RULE,
+  mainRule,
+  tab,
   expect,
   keyOf,
   listNames,
@@ -47,16 +51,13 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await orderedRow(page, "Sample School 15").click();
   await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency included"));
 
-  await page.getByRole("button", { name: "Additive, urgency omitted" }).click();
+  await mainRule(page, RULE.proposed).click();
 
   // The switch shows what was asked for; everything else names the rows actually on screen.
-  await expect(page.getByRole("button", { name: "Additive, urgency omitted" })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
+  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
   const legend = page.locator("[data-slot=legend]");
   const card = page.locator("[data-slot=school-card]");
-  const list = page.locator("ol[aria-label='Ordered list']");
+  const list = page.locator(ORDERED);
   await expect(legend).toHaveAttribute("aria-busy", "true");
   await expect(card).toHaveAttribute("aria-busy", "true");
   await expect(list).toHaveAttribute("aria-busy", "true");
@@ -92,10 +93,10 @@ test("a slow first load shows that it is loading, with no counts, then the count
   });
   await page.goto("/screening");
   await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText("Ordered list");
-  await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveText("Incomplete records");
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
-  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText(`Ordered list${ORDERED_COUNT}`);
+  await expect(tab(page, /The list/)).toHaveText("The list");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records");
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
+  await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
   await waitForMap(page);
 });
 
@@ -125,7 +126,7 @@ test("the map's scripts are not fetched until the list has loaded, so they never
   const before = scripts.size;
 
   release();
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
   await waitForMap(page);
   expect(scripts.size).toBeGreaterThan(before);
 });
@@ -156,8 +157,8 @@ test.describe("tells a session that ended, a missing list, a failing service and
         await expect(alert.getByRole("button", { name: COPY.retry })).toBeVisible();
       }
       // No counts and no stale list beside a failure.
-      await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText("Ordered list");
-      await expect(page.locator("ol[aria-label='Ordered list']")).toHaveCount(0);
+      await expect(tab(page, /The list/)).toHaveText("The list");
+      await expect(page.locator(ORDERED)).toHaveCount(0);
       expect(problems.some((p) => p.startsWith(`${status}:`))).toBe(true);
       problems.length = 0;
     });
@@ -222,7 +223,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
 
     failing = false;
     await page.getByRole("button", { name: COPY.retry }).click();
-    await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
+    await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
     await expect(page.locator("[data-failure]")).toHaveCount(0);
   });
 });
@@ -233,11 +234,11 @@ test("without the basemap the page says so, the marks still draw and a selection
 }) => {
   await page.route("**/api/v1/test/basemap-style.json", (route) => route.abort());
   await page.goto("/screening");
-  await expect(page.getByRole("heading", { name: "School screening", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
   await waitForMap(page);
   await expect(page.getByTestId("basemap-notice")).toHaveText(COPY.basemapUnavailable);
   await expect(mapLocator(page)).toHaveAttribute("data-basemap", "failed");
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 
   // Zoom in on the middle of the map until some marks are off screen.
   for (let step = 0; step < 3; step += 1) {
@@ -313,9 +314,7 @@ test("a failed speculative list is not an error while the rules load, and the li
   const release = await refuseSpeculativeListWhileRulesHeld(page, "additive_no_u");
 
   release();
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(
-    orderedNames("additive_no_u").length
-  );
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames("additive_no_u").length);
   expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   // The two refused requests were expected; they are not problems.
