@@ -95,11 +95,19 @@ def ordered_list(rule: Rule, rows: Sequence[SchoolRow], placement: Placement) ->
 
 @dataclass(frozen=True)
 class TopSelection:
-    """The shortlist of a rule: complete schools within the first ``k`` point ranks, and the range schools that could reach it."""
+    """The shortlist of a rule: complete schools within the first ``k`` point ranks, and the range schools that could reach it.
+
+    ``ranges_reaching_k`` is always computed, so a record can say how many range schools a list leaves out.
+    """
 
     k: int
+    include_ranges: bool
     point_rows: tuple[SchoolRow, ...]
-    range_rows: tuple[SchoolRow, ...]
+    ranges_reaching_k: tuple[SchoolRow, ...]
+
+    @property
+    def range_rows(self) -> tuple[SchoolRow, ...]:
+        return self.ranges_reaching_k if self.include_ranges else ()
 
 
 def select_top(rows: Sequence[SchoolRow], k: int, include_ranges: bool, filters: Filters) -> TopSelection:
@@ -113,15 +121,11 @@ def select_top(rows: Sequence[SchoolRow], k: int, include_ranges: bool, filters:
         (r for r in visible if r.result.cohort is Cohort.COMPLETE and r.result.rank_point <= k),
         key=lambda r: r.result.rank_point,
     )
-    ranges = (
-        sorted(
-            (r for r in visible if r.result.cohort is Cohort.INTERVAL and r.result.rank_best <= k),
-            key=lambda r: (r.result.rank_best, r.result.rank_worst, r.name),
-        )
-        if include_ranges
-        else []
+    reaching = sorted(
+        (r for r in visible if r.result.cohort is Cohort.INTERVAL and r.result.rank_best <= k),
+        key=lambda r: (r.result.rank_best, r.result.rank_worst, r.name),
     )
-    return TopSelection(k, tuple(point), tuple(ranges))
+    return TopSelection(k, include_ranges, tuple(point), tuple(reaching))
 
 
 def queue_rows(rows: Sequence[SchoolRow], filters: Filters) -> list[SchoolRow]:
