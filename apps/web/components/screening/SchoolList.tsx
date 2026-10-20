@@ -1,71 +1,24 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
 
-import {
-  type OrderedRow,
-  groupByProvince,
-  incompleteInDisplayOrder,
-  neighbour,
-  ordinal,
-  placeOf,
-} from "@/lib/screening/list";
+import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
+import { type OrderedRow, groupByProvince, incompleteInDisplayOrder, neighbour } from "@/lib/screening/list";
 import type { ListedRow, QueuedRow, SchoolKey } from "@/lib/screening/types";
+import { firstRangeIndex, placeForm, tieNoteAfter } from "@/lib/screening/workspace/rows";
 
 import { COPY } from "./copy";
+import { PlaceText } from "./PlaceText";
 import styles from "./screening.module.css";
-
-/** "3rd" with the suffix raised, as the design sets places. */
-function Ordinal({ n }: { n: number }) {
-  const text = ordinal(n);
-  const digits = String(n).length;
-  return (
-    <>
-      {text.slice(0, digits)}
-      <sup>{text.slice(digits)}</sup>
-    </>
-  );
-}
-
-function Place({ row }: { row: OrderedRow }) {
-  const place = placeOf(row);
-  if (place.kind === "point") {
-    return (
-      <span className={styles.place} data-place="point">
-        <Ordinal n={place.rank} />
-      </span>
-    );
-  }
-  if (place.kind === "range") {
-    // A range stays a range when both ends are the same place; it reads as that place, in the range colour.
-    if (place.exact) {
-      return (
-        <span className={`${styles.place} ${styles.placeRange}`} data-place="range" data-exact="true">
-          <span>
-            <Ordinal n={place.best} />
-          </span>
-        </span>
-      );
-    }
-    return (
-      <span className={`${styles.place} ${styles.placeRange}`} data-place="range">
-        <span>
-          <Ordinal n={place.best} />
-        </span>
-        <span className={styles.placeTo}>{COPY.rangeTo}</span>
-        <span>
-          <Ordinal n={place.worst} />
-        </span>
-      </span>
-    );
-  }
-  return null;
-}
 
 interface ListProps<Row extends ListedRow> {
   rows: readonly Row[];
+  /** The list's schools by key, as the copy reads them. */
+  schools: ReadonlyMap<string, ListedSchool>;
+  copy: BoundCopy;
   selected: SchoolKey | null;
+  hovered: SchoolKey | null;
   onSelect: (key: SchoolKey) => void;
   busy: boolean;
   label: string;
@@ -96,8 +49,8 @@ function arrowKeyHandler(
   };
 }
 
-/** Keeps the selected row in view when the selection came from the map. */
-function useScrollToSelected(list: React.RefObject<HTMLOListElement | null>, selected: SchoolKey | null) {
+/** Keeps the selected row in view when the selection came from elsewhere (the map, the card's arrows). */
+function useScrollToSelected(list: React.RefObject<HTMLElement | null>, selected: SchoolKey | null) {
   useEffect(() => {
     if (selected === null) return;
     const row = list.current?.querySelector<HTMLElement>(`[data-school-key="${CSS.escape(selected)}"]`);
@@ -105,58 +58,153 @@ function useScrollToSelected(list: React.RefObject<HTMLOListElement | null>, sel
   }, [list, selected]);
 }
 
-export function OrderedList({ rows, selected, onSelect, busy, label }: ListProps<OrderedRow>) {
+/** The school's name as the list shows it, with its province (or district) kept whole on the line (R6). */
+function NameLine({ name, place }: { name: string; place: string | null }) {
+  return (
+    <span className={styles.nameLine}>
+      <span className={styles.name}>{name}</span>
+      {place ? <span className={styles.where}>{` · ${place}`}</span> : null}
+    </span>
+  );
+}
+
+function Place({
+  row,
+  school,
+  copy,
+  rule,
+}: {
+  row: OrderedRow;
+  school: ListedSchool;
+  copy: BoundCopy;
+  rule: CopyRuleId;
+}) {
+  const form = placeForm(row);
+  switch (form.kind) {
+    case "point":
+      return (
+        <span className={styles.place} data-place="point">
+          <PlaceText text={copy.ordinal(form.rank)} />
+        </span>
+      );
+    // A range school's place is the copy's headline, which always carries its range or its scope, stacked.
+    case "range":
+    case "scoped":
+      return (
+        <span className={`${styles.place} ${styles.placeRange}`} data-place={form.kind}>
+          <PlaceText text={copy.placeHeadline(school, rule)} />
+        </span>
+      );
+  }
+}
+
+export function OrderedList({
+  rows,
+  schools,
+  copy,
+  rule,
+  upper,
+  selected,
+  hovered,
+  onSelect,
+  busy,
+  label,
+}: ListProps<OrderedRow> & { rule: CopyRuleId; upper: boolean }) {
   const list = useRef<HTMLOListElement>(null);
   const onKeyDown = arrowKeyHandler(rows, selected, onSelect);
   useScrollToSelected(list, selected);
-  if (rows.length === 0) return <p className={styles.state}>{COPY.noRows}</p>;
+
+  const all = [...schools.values()];
+  const ties = rows.map((row) => copy.tieNote(schools.get(row.school.school_key)!, rule, all, "row"));
+  const rangeAt = firstRangeIndex(rows);
+  const tieAt = tieNoteAfter(ties.map(Boolean));
+
   return (
-    <ol ref={list} className={styles.list} aria-label={label} aria-busy={busy} onKeyDown={onKeyDown}>
-      {rows.map((row) => {
+    <ol
+      ref={list}
+      className={styles.rows}
+      aria-label={label}
+      aria-busy={busy}
+      data-region="ranked-list"
+      onKeyDown={onKeyDown}
+    >
+      {rows.map((row, index) => {
         const key = row.school.school_key;
-        const exact = row.cohort === "interval" && row.rank_bounds.best === row.rank_bounds.worst;
+        const school = schools.get(key)!;
         return (
-          <li key={key}>
-            <button
-              type="button"
-              className={styles.row}
-              data-school-key={key}
-              data-cohort={row.cohort}
-              aria-pressed={key === selected}
-              onClick={() => onSelect(key)}
-            >
-              <Place row={row} />
-              <span>
-                <span className={styles.name}>{row.school.source_school_name}</span>
-                {row.school.province ? (
-                  <span className={styles.province}> · {row.school.province}</span>
-                ) : null}
-                {exact ? <span className={styles.rangeNote}>{COPY.exactRange}</span> : null}
-                {/* The "Why" line goes here with the copy system. */}
-              </span>
-              <ChevronRight className={styles.chevron} size={14} aria-hidden />
-            </button>
-          </li>
+          <Fragment key={key}>
+            {index === rangeAt ? (
+              <li className={`${styles.listNote} ${styles.rangeNote}`} data-region="list-order">
+                {upper ? copy.scope(rule).listOrderUpper : copy.scope(rule).listOrder}
+              </li>
+            ) : null}
+            <li>
+              <button
+                type="button"
+                className={styles.row}
+                data-school-key={key}
+                data-cohort={row.cohort}
+                data-hover={key === hovered || undefined}
+                aria-pressed={key === selected}
+                onClick={() => onSelect(key)}
+              >
+                <Place row={row} school={school} copy={copy} rule={rule} />
+                <span className={styles.rowText}>
+                  <NameLine
+                    name={copy.distinctName(school)}
+                    place={school.province?.trim() ? copy.cleanName(school.province) : null}
+                  />
+                  {ties[index] ? <span className={styles.tie}>{ties[index]}</span> : null}
+                </span>
+                <ChevronRight className={styles.chevron} size={14} aria-hidden />
+              </button>
+            </li>
+            {index === tieAt ? (
+              <li className={styles.listNote} data-region="tie-rule">
+                {copy.TERMS.tie_rule.line}
+              </li>
+            ) : null}
+          </Fragment>
         );
       })}
     </ol>
   );
 }
 
-export function IncompleteList({ rows, selected, onSelect, busy, label }: ListProps<QueuedRow>) {
+export function IncompleteList({
+  rows,
+  schools,
+  copy,
+  selected,
+  hovered,
+  onSelect,
+  busy,
+  label,
+}: ListProps<QueuedRow>) {
   const list = useRef<HTMLOListElement>(null);
   // The keys follow the grouped order on screen, whatever order the rows arrived in.
   const onKeyDown = arrowKeyHandler(incompleteInDisplayOrder(rows), selected, onSelect);
   useScrollToSelected(list, selected);
-  if (rows.length === 0) return <p className={styles.state}>{COPY.noRows}</p>;
   return (
-    <ol ref={list} className={styles.list} aria-label={label} aria-busy={busy} onKeyDown={onKeyDown}>
+    <ol
+      ref={list}
+      className={styles.rows}
+      aria-label={label}
+      aria-busy={busy}
+      data-region="queue-list"
+      onKeyDown={onKeyDown}
+    >
       {groupByProvince(rows).map((group) => (
         <li key={group.province ?? ""}>
-          <div className={styles.groupHead}>{group.province ?? COPY.provinceUnknown}</div>
+          <div className={styles.groupHead}>
+            <span>{group.province ?? COPY.provinceUnknown}</span>
+            <span className={styles.groupCount}>{copy.formatCount(group.rows.length)}</span>
+          </div>
           <ol className={styles.groupRows}>
             {group.rows.map((row) => {
               const key = row.school.school_key;
+              const school = schools.get(key)!;
+              const district = row.school.district?.trim() ? copy.cleanName(row.school.district) : null;
               return (
                 <li key={key}>
                   <button
@@ -164,15 +212,13 @@ export function IncompleteList({ rows, selected, onSelect, busy, label }: ListPr
                     className={`${styles.row} ${styles.rowQueued}`}
                     data-school-key={key}
                     data-cohort={row.cohort}
+                    data-hover={key === hovered || undefined}
                     aria-pressed={key === selected}
                     onClick={() => onSelect(key)}
                   >
-                    <span>
-                      <span className={styles.name}>{row.school.source_school_name}</span>
-                      {row.school.district ? (
-                        <span className={styles.province}> · {row.school.district}</span>
-                      ) : null}
-                      {/* What is missing from the record goes here with the copy system. */}
+                    <span className={styles.rowText}>
+                      <NameLine name={copy.distinctName(school)} place={district} />
+                      {/* What is missing from the record goes here once every school's inputs load in one read. */}
                     </span>
                     <ChevronRight className={styles.chevron} size={14} aria-hidden />
                   </button>

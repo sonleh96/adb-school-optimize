@@ -158,7 +158,9 @@ export function useScreeningData(): ScreeningData {
       hasData: Boolean(data && inputs.data),
       isPlaceholderData: results.isPlaceholderData,
       error: results.error ?? inputs.error,
-    }
+    },
+    // Until the rules name the default, a list asked for by default is a guess whose failure is not the page's.
+    state.rule === null
   );
 
   const comparison: Comparison | null =

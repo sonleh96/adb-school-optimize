@@ -72,19 +72,54 @@ export async function waitForMap(page: Page) {
   });
 }
 
-export async function openWorkspace(page: Page) {
-  await page.goto("/screening");
-  await expect(page.getByRole("heading", { name: "School screening", level: 1 })).toBeVisible();
+/** The lists' accessible names, as the copy system words the tabs. */
+export const ORDERED = "ol[aria-label='The list']";
+export const INCOMPLETE = "ol[aria-label='Incomplete records']";
+export const RULE = {
+  main: "Combined factors, with urgency",
+  proposed: "Combined factors, without urgency",
+  needFirst: "Need-first rule, with urgency",
+};
+
+export async function openWorkspace(page: Page, search = "") {
+  await page.goto(`/screening${search}`);
+  await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
   await waitForMap(page);
-  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(ORDERED_COUNT);
+  if (!search) await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 }
 
-export const orderedRow = (page: Page, name: string) =>
-  page.locator("ol[aria-label='Ordered list'] button", { hasText: name });
+export const orderedRow = (page: Page, name: string) => page.locator(`${ORDERED} button`, { hasText: name });
 export const queuedRow = (page: Page, name: string) =>
-  page.locator("ol[aria-label='Incomplete records'] button", { hasText: name });
+  page.locator(`${INCOMPLETE} button`, { hasText: name });
 export const listNames = (page: Page) =>
-  page.locator("ol[aria-label='Ordered list'] button span[class*=name]").allTextContents();
+  page.locator(`${ORDERED} button span[class*=name]`).allTextContents();
+/** One of the two main rules in the switch. */
+export const mainRule = (page: Page, label: string) =>
+  page.getByRole("group", { name: "The two main rules" }).getByRole("button", { name: label });
+export const tab = (page: Page, name: RegExp) => page.getByRole("tab", { name });
+
+/**
+ * The saved fixtures hold the recorded comparison of the two main rules only. Choosing any other rule asks for its
+ * comparison with the previous one, which the mock API answers with 501 until the fixtures capture every pair.
+ * A test that chooses another rule calls this at its end; it removes those answers and nothing else.
+ */
+export function allowUncapturedComparisons(problems: string[]) {
+  const answers = problems.filter((p) => /^501: .*\/api\/v1\/screening\/compare\?/.test(p)).length;
+  let notes = answers;
+  const kept = problems.filter((p) => {
+    if (/^501: .*\/api\/v1\/screening\/compare\?/.test(p)) return false;
+    // The browser's own console line for each of those answers, which carries no address.
+    if (
+      notes > 0 &&
+      p.startsWith("error: Failed to load resource: the server responded with a status of 501")
+    ) {
+      notes -= 1;
+      return false;
+    }
+    return true;
+  });
+  problems.splice(0, problems.length, ...kept);
+}
 
 export const markAt = (page: Page, key: string) =>
   page.evaluate((k) => window.__screeningMapTest?.project(k as never) ?? null, key);
@@ -163,6 +198,10 @@ export async function ringDrawnAround(page: Page, key: string, markRadius: numbe
   );
 }
 
+/** Where the app and the mock API listen. The launcher and the Playwright config read the same variables. */
+export const APP_ORIGIN = `http://127.0.0.1:${process.env.CI_APP_PORT ?? "3105"}`;
+export const MOCK_ORIGIN = `http://127.0.0.1:${process.env.CI_MOCK_API_PORT ?? "4100"}`;
+
 /** The datasets the mock API can serve; see scripts/mock-api.mjs. The default one is what a test gets unasked. */
 export type MockDataset = "default" | "worst-names" | "ties-and-ranges" | "one" | "empty";
 
@@ -179,7 +218,7 @@ export async function useMockDataset(
   const failures = Object.entries(fail)
     .map(([route, status]) => `${route}:${status}`)
     .join("|");
-  const url = "http://127.0.0.1:3105";
+  const url = APP_ORIGIN;
   await context.addCookies([
     { name: "mock-screening-dataset", value: dataset, url },
     ...(failures ? [{ name: "mock-screening-fail", value: encodeURIComponent(failures), url }] : []),

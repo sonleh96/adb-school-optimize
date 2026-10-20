@@ -19,10 +19,15 @@
 import { contrastRatio } from "../lib/screening/contrast";
 import { COPY } from "../components/screening/copy";
 import {
+  INCOMPLETE,
   ORDERED_COUNT,
+  RULE,
+  allowUncapturedComparisons,
   expect,
   keyOf,
   listNames,
+  mainRule,
+  tab,
   mapLocator,
   markAt,
   numberedPlaces,
@@ -60,21 +65,19 @@ test("shows the rows in the API's order, with range schools between complete one
   await expect(orderedRow(page, "Sample School 08").locator("[data-place=point]")).toHaveText("1st");
 
   // Counts appear with the data, never before it.
-  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveText(`Ordered list${ORDERED_COUNT}`);
-  await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveText("Incomplete records4");
+  await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(4)");
 });
 
-test("an exact range keeps the range treatment and says it is exact", async ({ page }) => {
+test("an exact range keeps the range treatment and carries its scope in the row", async ({ page }) => {
   await openWorkspace(page);
 
-  // Both ends are the 21st place, yet the school is not a plain 21st.
+  // Both ends are the 21st place, yet the school is not a plain 21st: the row says what the 21st counts among.
   const row = orderedRow(page, "Sample School 25");
   const place = row.locator("[data-place]");
-  await expect(place).toHaveAttribute("data-place", "range");
-  await expect(place).toHaveAttribute("data-exact", "true");
-  await expect(place).toHaveText("21st");
-  await expect(row).toContainText(COPY.exactRange);
-  await expect(page.locator("[data-place=point][data-exact]")).toHaveCount(0);
+  await expect(place).toHaveAttribute("data-place", "scoped");
+  await expect(place).toHaveText("21stof 21");
+  await expect(page.locator("[data-place=point]", { hasText: "of" })).toHaveCount(0);
 
   await row.click();
   await expect(page.getByTestId("card-place")).toHaveText("21st");
@@ -92,8 +95,8 @@ test("names the scope each place is counted in, in the list header, the card and
   page,
 }) => {
   await openWorkspace(page);
-  await expect(page.getByTestId("list-scopes")).toHaveText(
-    COPY.listScopes("complete under this rule (16)", "eligible (21)")
+  await expect(page.locator("[data-region=scope] p").first()).toHaveText(
+    "21 schools can be put in order, 16 with every input recorded and 5 that show a range of places. Read more"
   );
 
   // The tooltip names it too. It is checked on the map's first view, where every mark is on screen: choosing
@@ -127,10 +130,10 @@ test("keeps one map through rule switches and selections", async ({ page }) => {
   expect([await maps(), await canvases()]).toEqual([1, 1]);
 
   for (let round = 0; round < 3; round += 1) {
-    await page.getByRole("button", { name: "Additive, urgency omitted" }).click();
+    await mainRule(page, RULE.proposed).click();
     await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
     await orderedRow(page, "Sample School 15").click();
-    await page.getByRole("button", { name: "Additive, urgency included" }).click();
+    await mainRule(page, RULE.main).click();
     await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
     await page.getByRole("button", { name: "Close school card" }).click();
   }
@@ -168,43 +171,39 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
   const queued = keyOf("additive_u", "Sample School 21");
   const queuedPoint = await settledMark(page, queued);
   await page.mouse.click(queuedPoint.x, queuedPoint.y);
-  await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveAttribute(
-    "aria-selected",
-    "true"
-  );
+  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 21")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("card-place")).toHaveText("No place in the list yet");
 });
 
 test("switching the rule shows that rule's rows and keeps the selection on the tab that holds it", async ({
   page,
+  problems,
 }) => {
   await openWorkspace(page);
 
   // Held back under the circulated rule, because its urgency is unknown.
-  await page.getByRole("tab", { name: /Incomplete records/ }).click();
+  await tab(page, /Incomplete records/).click();
   await queuedRow(page, "Sample School 23").click();
   await expect(page.getByTestId("card-place")).toHaveText("No place in the list yet");
 
-  await page.getByRole("button", { name: "Additive, urgency omitted" }).click();
+  await mainRule(page, RULE.proposed).click();
 
-  await expect(page.getByRole("tab", { name: /Ordered list/ })).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
   await expect(orderedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("card-place")).toHaveText("17th");
   expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
-  await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveText("Incomplete records3");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
 
   // A rule from "Other rules" lists its own order.
-  await page.getByRole("button", { name: "Other rules" }).click();
-  await page.getByRole("button", { name: "School-need-first, urgency included" }).click();
+  await page.getByRole("button", { name: /Other rules/ }).click();
+  await page.getByRole("button", { name: new RegExp(`^${RULE.needFirst}`) }).click();
   // Urgency is included again, so the selected school is held back and the list follows it to its tab.
-  await expect(page.getByRole("tab", { name: /Incomplete records/ })).toHaveAttribute(
-    "aria-selected",
-    "true"
-  );
+  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
-  await page.getByRole("tab", { name: /Ordered list/ }).click();
+  await tab(page, /The list/).click();
   expect(await listNames(page)).toEqual(orderedNames("need_first_u"));
+  allowUncapturedComparisons(problems);
 });
 
 test("arrow keys move through the list in the order on screen and Escape closes the card", async ({
@@ -225,26 +224,24 @@ test("arrow keys move through the list in the order on screen and Escape closes 
 
 test("arrow keys on the incomplete records follow the grouped order on screen", async ({ page }) => {
   await openWorkspace(page);
-  await page.getByRole("tab", { name: /Incomplete records/ }).click();
-  const onScreen = await page
-    .locator("ol[aria-label='Incomplete records'] button span[class*=name]")
-    .allTextContents();
+  await tab(page, /Incomplete records/).click();
+  const onScreen = await page.locator(`${INCOMPLETE} button span[class*=name]`).allTextContents();
   expect(onScreen).toEqual(queuedNames("additive_u"));
 
   await queuedRow(page, onScreen[0]).click();
   for (let step = 1; step < onScreen.length; step += 1) {
     await page.keyboard.press("ArrowDown");
     // Each press lands on the next row as the groups show them.
-    await expect(
-      page.locator("ol[aria-label='Incomplete records'] button[aria-pressed=true] span[class*=name]")
-    ).toHaveText(onScreen[step]);
+    await expect(page.locator(`${INCOMPLETE} button[aria-pressed=true] span[class*=name]`)).toHaveText(
+      onScreen[step]
+    );
   }
 
   // Keys that come faster than a render still move one row each, from the row that has focus.
   for (let step = 1; step < onScreen.length; step += 1) await page.keyboard.press("ArrowUp");
-  await expect(
-    page.locator("ol[aria-label='Incomplete records'] button[aria-pressed=true] span[class*=name]")
-  ).toHaveText(onScreen[0]);
+  await expect(page.locator(`${INCOMPLETE} button[aria-pressed=true] span[class*=name]`)).toHaveText(
+    onScreen[0]
+  );
 });
 
 test("a school without coordinates is listed and selectable but has no mark", async ({ page }) => {
@@ -347,13 +344,13 @@ test("the first ten places carry their number on their dot, and the numbers foll
   };
   await expectEarlierPlacesOnTop("additive_u");
 
-  await page.getByRole("button", { name: "Additive, urgency omitted" }).click();
+  await mainRule(page, RULE.proposed).click();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(
     numberedPlaces("additive_no_u").length
   );
   await expectEarlierPlacesOnTop("additive_no_u");
 
-  await page.getByRole("button", { name: "Additive, urgency included" }).click();
+  await mainRule(page, RULE.main).click();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(numbered.length);
   await expectEarlierPlacesOnTop("additive_u");
 
