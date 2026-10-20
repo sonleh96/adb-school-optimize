@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import io
 import re
@@ -516,3 +517,23 @@ def test_display_name_guards_formula_like_names_while_the_source_name_stays_exac
         for row in sheet.iter_rows(min_row=2, values_only=True)
     }
     assert {k.replace("_x000D_", "\r"): v.replace("_x000D_", "\r") for k, v in in_xlsx.items()} == shown
+
+
+def test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line(api, loaded):  # API29
+    raw = export(api, CSV, rule="additive_no_u", k=5)
+
+    assert raw.startswith(b"\xef\xbb\xbf")  # a byte order mark, so that Excel reads UTF-8
+    text = raw.decode("utf-8")
+    lines = text.lstrip("\ufeff").split("\n")
+    first_data = next(i for i, line in enumerate(lines) if line.startswith("row_kind,"))
+    record_lines = lines[:first_data]
+    # Every record line is one quoted cell, even when its value holds commas, quotes or semicolons.
+    assert all(line.startswith('"# ') and line.endswith('"') for line in record_lines)
+    assert any("," in line for line in record_lines)  # for example the weights
+    parsed = list(csv.reader(io.StringIO(text.lstrip("\ufeff"), newline="")))
+    assert [len(row) for row in parsed[:first_data]] == [1] * first_data
+    header_width = len(parsed[first_data])
+    assert header_width > 20 and {len(row) for row in parsed[first_data:]} == {header_width}
+    # A name with an accent survives the round trip.
+    _, queue = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    assert "Éclair queue" in {r["source_school_name"] for r in queue}

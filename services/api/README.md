@@ -89,7 +89,7 @@ Reading the list:
 
 Exports:
 
-- The CSV opens with the method record as `# key: value` lines. Skip the leading `#` lines, then parse the header row. The XLSX has the same record on its first sheet, "Method record".
+- The CSV is UTF-8 with a byte order mark. It opens with the method record, one quoted cell per line, `"# key: value"`, so Excel keeps each line in one column. Then come the header row and the data rows. Parse it as CSV, decode with `utf-8-sig`, and skip the leading one-cell rows that start with `# `. The XLSX has the same record on its first sheet, "Method record".
 - `k` cuts the rule's full list: point rows have a point rank of at most `k`. Range rows (`include_ranges`, true by default) are interval schools whose best possible rank is at most `k`. They carry bounds only, in rows flagged `row_kind=range`, after the point rows. The method record always says how many range schools reach `k` after the filters and whether they are included.
 - To rebuild the list, keep `row_kind=point`, sort by the record's `sort_columns` descending, then `source_school_name` ascending in code point order. The result is the order of `rank_point`.
 - Text parameters (`rule`, `input_version`, `package_version`, `province`, `district`, ids) are rejected with 422 when they contain a control character. Characters that XML cannot hold in stored text are written to the XLSX as Excel's escape, for example `_x0007_`; the CSV keeps them.

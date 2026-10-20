@@ -1,8 +1,8 @@
 """CSV and XLSX exports of screening lists, each with the method record needed to read and rebuild it.
 
 An export is a table plus a method record.
-The CSV opens with the record as ``#`` lines, then one header row and the data rows.
-Skip the leading lines that start with ``#`` before parsing.
+The CSV starts with a byte order mark, then the record as quoted one-cell lines that start with ``# ``, then one header row and the data rows.
+Parse it as CSV (decode with ``utf-8-sig``) and skip the leading one-cell rows that start with ``# ``.
 The XLSX holds the record on its own first sheet.
 Floats are written in full precision, and a missing value is an empty cell, never zero.
 """
@@ -314,15 +314,20 @@ def _csv_cell(value: Cell) -> str | int | float:
 
 
 def render_csv(record: Sequence[tuple[str, str]], table: Table) -> bytes:
-    """``#`` lines for the method record, then the header, then the rows. Floats print with their shortest exact repr."""
+    """A UTF-8 file with a byte order mark, so that Excel reads accents correctly.
+
+    The method record comes first, one quoted cell per line, ``"# key: value"``, so that Excel keeps each line in one column.
+    Then comes the header row and the data rows. Floats print with their shortest exact repr.
+    """
     buffer = io.StringIO()
+    record_writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_ALL)
     for key, value in record:
-        buffer.write(f"# {key}: {' '.join(str(value).split())}\n")
+        record_writer.writerow([f"# {key}: {' '.join(str(value).split())}"])
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(table.columns)
     for row in table.rows:
         writer.writerow([_csv_cell(v) for v in row])
-    return buffer.getvalue().encode("utf-8")
+    return ("\ufeff" + buffer.getvalue()).encode("utf-8")
 
 
 _xlsx_lock = threading.Lock()
