@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { listView } from "@/lib/screening/errors";
-import { useScreeningResults, useScreeningRules } from "@/lib/screening/hooks";
+import { useAfterPaint, useScreeningResults, useScreeningRules } from "@/lib/screening/hooks";
 import { type ListTab, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { toMapSchools } from "@/lib/screening/marks";
 import { RuleId, type SchoolKey } from "@/lib/screening/types";
@@ -41,6 +41,8 @@ export function ScreeningWorkspace() {
   );
   // While a new rule loads, the previous rule's rows stay on screen. Everything that shows them says so together.
   const stale = view.kind === "ready" && view.stale;
+  // The map's script is fetched once the list (or its failure) has been painted.
+  const loadMap = useAfterPaint(view.kind !== "loading");
   const shownRuleLabel = data?.manifest.rule_label ?? "";
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
@@ -104,6 +106,7 @@ export function ScreeningWorkspace() {
 
       <div className={styles.stage}>
         <ScreeningMap
+          load={loadMap}
           schools={schools}
           selectedKey={selectedKey}
           onSelect={setPickedKey}

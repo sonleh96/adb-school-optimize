@@ -1,6 +1,7 @@
 "use client";
 
 import { keepPreviousData, skipToken, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import {
   type Pin,
@@ -32,6 +33,27 @@ export const screeningKeys = {
   school: (key: SchoolKey | null, pin: Pin) => ["screening", "school", key, pin] as const,
   compare: (pair: RulePair | null, pin: Pin) => ["screening", "compare", pair, pin] as const,
 };
+
+/**
+ * False until `when` has held and the browser has painted what it showed. Gate heavy work on it so that work
+ * starts after the first paint of what the user came for, not alongside it.
+ */
+export function useAfterPaint(when: boolean): boolean {
+  const [painted, setPainted] = useState(false);
+  useEffect(() => {
+    if (!when || painted) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // The frame callback runs just before the paint; the timeout that follows runs after it.
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => setPainted(true), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [when, painted]);
+  return painted;
+}
 
 export function useScreeningRules() {
   return useQuery({
