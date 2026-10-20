@@ -85,14 +85,28 @@ export function tolerant<T>(inner: Schema<T>): OptionalSchema<T> {
   return {
     optional: true,
     parse: (value, path) => {
+      if (value === undefined) return undefined;
       try {
         return inner.parse(value, path);
       } catch (error) {
-        if (error instanceof ParseError) return undefined;
-        throw error;
+        if (!(error instanceof ParseError)) throw error;
+        // Absent is not a change, but a block of another shape is, and a developer should see it once.
+        warnOnce(error.message);
+        return undefined;
       }
     },
   };
+}
+
+const warned = new Set<string>();
+function warnOnce(message: string): void {
+  if (warned.has(message)) return;
+  warned.add(message);
+  console.warn(`${message}. The page ignores it and carries on without it.`);
+}
+/** Lets the next ignored field say so again; for tests. */
+export function forgetWarnings(): void {
+  warned.clear();
 }
 
 export function list<T>(item: Schema<T>): Schema<T[]> {

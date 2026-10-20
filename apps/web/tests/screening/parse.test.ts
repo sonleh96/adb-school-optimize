@@ -10,9 +10,9 @@
  *  5. The persistence flag appears on a rule it does not describe, or a scope is told apart by its label. The
  *     parser keeps the flag only where the API sent it and carries the scope code the page branches on.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { ParseError, parseWith } from "@/lib/screening/schema";
+import { ParseError, forgetWarnings, parseWith } from "@/lib/screening/schema";
 import {
   compareResponse,
   inputsResponse,
@@ -156,6 +156,29 @@ describe("fields the page does not read", () => {
     const inputs = copy(readFixture("inputs.json")) as Record<string, unknown>;
     delete inputs.input_sha256;
     expect(() => parseWith(inputsResponse, inputs, "inputs")).not.toThrow();
+  });
+
+  it("say so once in the console when a block the page can do without has changed, naming the field", () => {
+    forgetWarnings();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = { standard_error: "n/a" };
+      expect(parseWith(resultsResponse, body, "results").rows).toHaveLength(25);
+      parseWith(resultsResponse, body, "results");
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain("persistence.standard_error");
+      // A block that is absent, or null, is not a change and says nothing.
+      forgetWarnings();
+      warn.mockClear();
+      const quiet = copy(readFixture("results/additive_no_u.json")) as Record<string, unknown>;
+      parseWith(resultsResponse, quiet, "results");
+      quiet.persistence = null;
+      parseWith(resultsResponse, quiet, "results");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("include the provenance block, which only adds a margin, so a changed one leaves the list whole", () => {
