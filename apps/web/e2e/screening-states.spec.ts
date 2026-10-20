@@ -8,15 +8,21 @@
  *     -> "tells ... apart"
  *  3. Counts show before there is data, or the page looks empty while it loads -> "a slow first load..."
  *  4. The basemap's style fails and the page breaks or stops panning to a selection -> "without the basemap..."
+ *  5. A failed request for the expected default rule's list shows an error while the rules still load
+ *     -> "a failed speculative list..." (the rules name another default: the list loads; the same default: it fails)
  */
+import type { Page } from "@playwright/test";
+
 import { COPY } from "../components/screening/copy";
 import {
   ORDERED_COUNT,
   expect,
   keyOf,
+  listNames,
   mapLocator,
   markAt,
   openWorkspace,
+  orderedNames,
   orderedRow,
   ringDrawnAround,
   rowsOf,
@@ -248,5 +254,62 @@ test("without the basemap the page says so, the marks still draw and a selection
     .toBe(true);
 
   expect(problems.some((p) => p.includes("basemap-style.json"))).toBe(true);
+  problems.length = 0;
+});
+
+/**
+ * The page asks for the expected default rule's list before the rules say which rule is the default. This holds
+ * the rules back until the returned function releases them, refuses that speculative list (its one retry is
+ * refused too), and answers the rules with `rulesDefault` as the default. It resolves once the page is holding.
+ */
+async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: string) {
+  let release!: () => void;
+  const rulesHeld = new Promise<void>((resolve) => (release = resolve));
+  let speculativeRequests = 0;
+  await page.route(RESULTS("additive_u"), (route) => {
+    speculativeRequests += 1;
+    return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
+  });
+  await page.route("**/api/v1/screening/rules", async (route) => {
+    await rulesHeld;
+    const body = await (await route.fetch()).json();
+    await route.fulfill({ json: { ...body, default_rule_id: rulesDefault } });
+  });
+  await page.goto("/screening");
+  // A failed list is retried once, so the failure is final after the second refusal.
+  await expect.poll(() => speculativeRequests).toBe(2);
+  await page.waitForTimeout(300);
+  // The page's failure is the alert with a failure kind; other alerts on the page (the route announcer) are empty.
+  await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: COPY.loading })).toBeVisible();
+  return release;
+}
+
+test("a failed speculative list is not an error while the rules load, and the list loads when they name another default", async ({
+  page,
+  problems,
+}) => {
+  const release = await refuseSpeculativeListWhileRulesHeld(page, "additive_no_u");
+
+  release();
+  await expect(page.locator("ol[aria-label='Ordered list'] button")).toHaveCount(
+    orderedNames("additive_no_u").length
+  );
+  expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
+  await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
+  // The two refused requests were expected; they are not problems.
+  problems.length = 0;
+});
+
+test("a failed speculative list shows its failure once the rules name the same default", async ({
+  page,
+  problems,
+}) => {
+  const release = await refuseSpeculativeListWhileRulesHeld(page, "additive_u");
+
+  release();
+  const failure = page.locator("[role=alert][data-failure]");
+  await expect(failure).toHaveAttribute("data-failure", "server");
+  await expect(failure.getByRole("button", { name: COPY.retry })).toBeVisible();
   problems.length = 0;
 });

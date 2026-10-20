@@ -50,7 +50,11 @@ export interface ReadState {
   error: unknown;
 }
 
-export function listView(rules: ReadState, results: ReadState): ListView {
+/**
+ * `speculative` marks a list asked for before the rules named the default. While the rules are still out, its
+ * failure is not yet the page's: the rules may name another rule, whose list then loads.
+ */
+export function listView(rules: ReadState, results: ReadState, speculative = false): ListView {
   if (results.hasData && rules.hasData) {
     return {
       kind: "ready",
@@ -59,5 +63,6 @@ export function listView(rules: ReadState, results: ReadState): ListView {
     };
   }
   const error = results.error ?? rules.error;
-  return error ? { kind: "failed", failure: classifyFailure(error) } : { kind: "loading" };
+  const awaitingRules = speculative && !rules.hasData && !rules.error;
+  return error && !awaitingRules ? { kind: "failed", failure: classifyFailure(error) } : { kind: "loading" };
 }
