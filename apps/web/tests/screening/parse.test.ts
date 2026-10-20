@@ -146,16 +146,24 @@ describe("fields the page does not read", () => {
     const body = copy(readFixture("results/additive_u.json")) as {
       rows: Array<Record<string, unknown> & { scores: Record<string, unknown> }>;
     };
-    for (const row of body.rows) {
-      row.lowest_top20_frequency = "a text now";
-      row.scores.upper = "a text now";
-    }
+    for (const row of body.rows) row.lowest_top20_frequency = "a text now";
     const parsed = parseWith(resultsResponse, body, "results");
     expect(parsed.rows).toHaveLength(25);
     expect(parsed.rows[0]).not.toHaveProperty("lowest_top20_frequency");
     const inputs = copy(readFixture("inputs.json")) as Record<string, unknown>;
     delete inputs.input_sha256;
     expect(() => parseWith(inputsResponse, inputs, "inputs")).not.toThrow();
+  });
+
+  it("include none that the card shows: the engine's score bounds are read, and one that is missing is named", () => {
+    const parsed = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    const range = parsed.rows.find((row) => row.cohort === "interval");
+    expect(range?.scores.lower).toBeLessThan(range?.scores.upper as number);
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ scores: Record<string, unknown> }>;
+    };
+    delete body.rows[2].scores.upper;
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow("rows[2].scores.upper");
   });
 
   it("say so once in the console when a block the page can do without has changed, naming the field", () => {
