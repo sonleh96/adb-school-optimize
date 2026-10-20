@@ -131,7 +131,7 @@ def test_results_list_complete_schools_by_point_rank_then_interval_at_lower_boun
     body = fetch(api, "/api/v1/screening/results", rule="additive_u")
 
     assert names(body) == [*COMPLETE_ORDER_ADDITIVE_U, "Interval No Air", "Interval No Land", *QUEUE_ORDER]
-    assert [r["list_position"] for r in body["rows"]] == list(range(1, 16))
+    assert [r["display_order"] for r in body["rows"]] == list(range(1, 16))
     assert [r["placement"] for r in body["rows"]] == ["point"] * 9 + ["lower"] * 2 + ["queue"] * 4
     assert body["placement"] == "lower"
     assert [r["point_rank"]["rank"] for r in body["rows"]] == [*range(1, 10), *[None] * 6]
@@ -158,7 +158,7 @@ def test_results_list_complete_schools_by_point_rank_then_interval_at_lower_boun
     assert interval["Interval No Air"]["scores"]["upper"] == pytest.approx(0.5735556831228474, abs=1e-12)
 
 
-def test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so(api, loaded):  # API5
+def test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so(api, loaded):  # API5, API28
     body = fetch(api, "/api/v1/screening/results", rule="additive_u", placement="upper")
 
     assert body["placement"] == "upper"
@@ -174,6 +174,10 @@ def test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so
     )
     assert [r["placement"] for r in body["rows"]].count("upper") == 2
     assert "lower" not in {r["placement"] for r in body["rows"]}
+    # The display order counts the two interval schools placed among them; the ranks do not.
+    complete = [r for r in body["rows"] if r["placement"] == "point"]
+    assert [r["display_order"] - r["point_rank"]["rank"] for r in complete] == [0, 0, 0, 0, 2, 2, 2, 2, 2]
+    assert "list_position" not in body["rows"][0]
     # Ranks do not follow the placement: complete schools keep their point ranks.
     assert [r["point_rank"]["rank"] for r in body["rows"] if r["placement"] == "point"] == list(range(1, 10))
 
@@ -246,7 +250,7 @@ def test_filters_hide_rows_and_never_renumber_ranks(api, loaded):  # API4
     ]
     # Complete North schools hold ranks 5 to 9 of the full list, not 1 to 5.
     assert [r["point_rank"]["rank"] for r in north["rows"][:5]] == [5, 6, 7, 8, 9]
-    assert [r["list_position"] for r in north["rows"]] == [5, 6, 7, 8, 9, 10, 12, 13, 14]
+    assert [r["display_order"] for r in north["rows"]] == [5, 6, 7, 8, 9, 10, 12, 13, 14]
     by_name = {r["school"]["source_school_name"]: r for r in everything["rows"]}
     assert all(r == by_name[r["school"]["source_school_name"]] for r in north["rows"])
     assert north["manifest"] == everything["manifest"] and north["run"] == everything["run"]
@@ -486,7 +490,7 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
         listing = fetch(api, "/api/v1/screening/results", rule=entry["rule"]["rule_id"])
         row = next(r for r in listing["rows"] if r["school"]["source_school_name"] == school)
         assert entry["result"] == {
-            k: v for k, v in row.items() if k not in ("list_position", "placement", "school")
+            k: v for k, v in row.items() if k not in ("display_order", "placement", "school")
         }
         assert entry["run"] == listing["run"]
         assert entry["point_rank_scope"] == entry["result"]["point_rank"]["scope"]

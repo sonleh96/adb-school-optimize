@@ -57,7 +57,7 @@ class Filters:
 
 @dataclass(frozen=True)
 class ListedRow:
-    list_position: int
+    display_order: int
     placement: RowPlacement
     row: SchoolRow
 

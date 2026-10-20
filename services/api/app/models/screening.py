@@ -11,7 +11,7 @@ import uuid
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from school_scoring.screening import Cohort, Component, GateFailure, PolicyRole, Provenance
 
 
@@ -241,7 +241,9 @@ class SchoolResultOut(Out):
 
 
 class ListedRowOut(SchoolResultOut):
-    list_position: int
+    display_order: int = Field(
+        description="Place of this row in the full unfiltered display. It is not a rank and it does not change with a filter."
+    )
     placement: RowPlacement
     school: SchoolIdentityOut
 

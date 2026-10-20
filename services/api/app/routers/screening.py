@@ -324,7 +324,7 @@ def get_results(
         returned_schools=len(shown),
         rows=[
             ListedRowOut(
-                list_position=item.list_position,
+                display_order=item.display_order,
                 placement=item.placement,
                 school=_identity_out(item.row.identity),
                 **dict(_result_out(item.row.result, rule_.uses_urgency)),
