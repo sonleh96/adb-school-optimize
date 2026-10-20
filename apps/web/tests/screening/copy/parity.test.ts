@@ -458,6 +458,10 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           one(`${t} fullRankingSentence`, (api, mode) => api.fullRankingSentence(s, r, counts(api, mode)));
           one(`${t} tieNote card`, (api) => api.tieNote(s, r, data.schools, "card"));
           one(`${t} tieNote row`, (api) => api.tieNote(s, r, data.schools, "row"));
+          // The design records carry the flag but no margin, so every other flagged school is made threshold-adjacent.
+          const near = { ...s, threshold_adjacent_circulated: s.id.length % 2 === 0 };
+          for (const opts of [{}, { standardError: 0.005656854249492379 }, { standardError: 0.00001 }])
+            one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));
           one(`${t} contributions`, (api) => api.contributions(s, r));

@@ -9,6 +9,7 @@ export {
   placedFromResults,
   schoolFromDetail,
   schoolsFromLists,
+  standardErrorFromResults,
   type ListedSchool,
 } from "./adapter";
 export { BANNED } from "./banned";
@@ -40,6 +41,7 @@ export {
   listStartsSegments,
   listStartsSentence,
   locationLine,
+  persistenceNote,
   placeContext,
   placeHeadline,
   rangeComparisonSegments,

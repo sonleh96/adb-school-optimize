@@ -228,6 +228,21 @@ export const resultsResponse = obj({
     rank_bounds_count: int,
   }),
   rows: list(listedRow),
+  /**
+   * Where the persistence flag came from, in the circulated rule's list only; null when the version has none. The
+   * standard error is the margin inside which a school counts as only just above the line.
+   */
+  persistence: optional(
+    nullable(
+      obj({
+        rule_id: str,
+        threshold: num,
+        draws: int,
+        standard_error: num,
+        limitation: str,
+      })
+    )
+  ),
 });
 export type ResultsResponse = Infer<typeof resultsResponse>;
 
