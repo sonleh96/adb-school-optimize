@@ -24,7 +24,7 @@ import {
   isCopyRuleId,
   pairwiseFromCompare,
 } from "@/lib/screening/copy";
-import { type ListView, listView } from "@/lib/screening/errors";
+import { type ListView, isEmptyStore, listView } from "@/lib/screening/errors";
 import {
   type RulePair,
   useScreeningCompare,
@@ -77,6 +77,10 @@ export interface Comparison {
 
 export interface ScreeningData {
   view: ListView;
+  /** The API holds no schools at all: one sentence and Retry, not a failure (R14). */
+  empty: boolean;
+  /** A Retry is under way. */
+  retrying: boolean;
   /** The rows on screen belong to the previous rule while the next one loads. */
   stale: boolean;
   /** The rule asked for; the switch shows it at once. */
@@ -130,7 +134,8 @@ export function useScreeningData(): ScreeningData {
   // The other lists the copy reads: both combined-factors rules (what each input adds, the persistence flag) and the
   // rule being compared with (a school's places under both). The shown rule's own list is `results`.
   const extra = (rule: RuleId | null) =>
-    urlRead && rule !== null && rule !== requested ? { rule, placement } : null;
+    // Asked for once the shown list is in: the first list never waits on them, and no data means no request.
+    data && rule !== null && rule !== requested ? { rule, placement } : null;
   const circulated = useScreeningResults(extra(MAIN_PAIR.a));
   const proposed = useScreeningResults(extra(MAIN_PAIR.b));
   const fromList = useScreeningResults(
@@ -224,6 +229,11 @@ export function useScreeningData(): ScreeningData {
     idleCopy,
     statementReady: !mainCompare.isPending,
     statement,
+    empty:
+      isEmptyStore(results.error) ||
+      isEmptyStore(inputs.error) ||
+      (data !== undefined && data.rows.length === 0),
+    retrying: (rules.isFetching || results.isFetching) && view.kind !== "ready",
     comparison,
     retry: () => {
       void rules.refetch();

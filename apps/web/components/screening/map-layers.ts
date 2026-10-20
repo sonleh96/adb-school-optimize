@@ -55,11 +55,17 @@ const position = (school: MapSchool): [number, number] => [school.lon, school.la
 /**
  * The marks, bottom to top. A better place is never covered by a worse one: dots go worst first.
  * The numbers on the first ten dots are not drawn here (see RankLabels).
- * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked.
+ * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked. While the incomplete
+ * records are the list on screen, the schools with a place step back so the empty rings carry the map.
  */
-export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): Layer[] {
+export function buildMarkLayers(
+  schools: readonly MapSchool[],
+  stale: boolean,
+  emphasis: "all" | "incomplete" = "all"
+): Layer[] {
   const pickable = !stale;
   const opacity = stale ? 0.4 : 1;
+  const placedOpacity = stale ? 0.4 : emphasis === "incomplete" ? 0.3 : 1;
   const incomplete = schools.filter((s) => s.mark.kind === "incomplete");
   const ranges = schools.filter((s) => s.mark.kind === "range");
   const dots = schools.filter(isDot).sort((a, b) => b.mark.rank - a.mark.rank);
@@ -84,7 +90,7 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       id: "range",
       data: ranges,
       pickable,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: () => RANGE_RADIUS,
@@ -98,7 +104,7 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
     new ScatterplotLayer<MapSchool>({
       id: "range-centre",
       data: ranges,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: () => 2,
@@ -108,7 +114,7 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       id: "dots",
       data: dots,
       pickable,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: (s) => RAMP_RADIUS[s.mark.step],

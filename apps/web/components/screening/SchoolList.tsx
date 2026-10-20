@@ -10,6 +10,7 @@ import { firstRangeIndex, placeForm, tieNoteAfter } from "@/lib/screening/worksp
 
 import { COPY } from "./copy";
 import { PlaceText } from "./PlaceText";
+import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
 
 interface ListProps<Row extends ListedRow> {
@@ -115,7 +116,9 @@ export function OrderedList({
   useScrollToSelected(list, selected);
 
   const all = [...schools.values()];
-  const ties = rows.map((row) => copy.tieNote(schools.get(row.school.school_key)!, rule, all, "row"));
+  const ties = rows.map((row) =>
+    copy.segments.tieNote(schools.get(row.school.school_key)!, rule, all, "row")
+  );
   const rangeAt = firstRangeIndex(rows);
   const tieAt = tieNoteAfter(ties.map(Boolean));
 
@@ -154,7 +157,11 @@ export function OrderedList({
                     name={copy.distinctName(school)}
                     place={school.province?.trim() ? copy.cleanName(school.province) : null}
                   />
-                  {ties[index] ? <span className={styles.tie}>{ties[index]}</span> : null}
+                  {ties[index] ? (
+                    <span className={styles.tie}>
+                      <Sentence segments={ties[index]!} />
+                    </span>
+                  ) : null}
                 </span>
                 <ChevronRight className={styles.chevron} size={14} aria-hidden />
               </button>

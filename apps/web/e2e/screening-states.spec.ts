@@ -52,7 +52,9 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   });
   await openWorkspace(page);
   await orderedRow(page, "Sample School 15").click();
-  await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency included"));
+  await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
+    "Place in the list under the combined-factors rule with urgency (S)"
+  );
 
   await mainRule(page, RULE.proposed).click();
 
@@ -68,8 +70,12 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(mapLocator(page)).toHaveAttribute("aria-busy", "true");
   await expect(page.locator("[data-rank-label][data-stale=true]").first()).toBeVisible();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(0);
-  await expect(page.getByTestId("legend-rule")).toContainText("Additive, urgency included");
-  await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency included"));
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule with urgency (S)"
+  );
+  await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
+    "Place in the list under the combined-factors rule with urgency (S)"
+  );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
 
   // A stale mark cannot be picked: the click does nothing.
@@ -79,8 +85,12 @@ test("while the next rule loads, everything on screen is labelled by the rows it
 
   // Then the new rule's rows arrive and everything is relabelled together.
   release();
-  await expect(page.getByTestId("legend-rule")).toContainText("Additive, urgency omitted");
-  await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency omitted"));
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule without urgency (S0)"
+  );
+  await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
+    "Place in the list under the combined-factors rule without urgency (S0)"
+  );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
   await expect(legend).toHaveAttribute("aria-busy", "false");
   await expect(card).toHaveAttribute("aria-busy", "false");
@@ -151,14 +161,19 @@ test.describe("tells a session that ended, a missing list, a failing service and
 
       const alert = page.locator("[data-failure]");
       await expect(alert).toHaveAttribute("data-failure", failure);
-      await expect(alert).toContainText(COPY.failure[failure]);
+      // A failed read is one sentence and Retry (R14); only an ended session has its own way out.
+      await expect(alert).toContainText(
+        failure === "session"
+          ? COPY.failure.session
+          : "Some of the information did not load, so there is nothing to show until you try again."
+      );
       if (failure === "session") {
         // The way out is signing in, to a page that returns here afterwards.
         const link = alert.getByRole("link", { name: COPY.signIn });
         await expect(link).toHaveAttribute("href", "/sign-in?next=%2Fscreening");
         await expect(alert.getByRole("button")).toHaveCount(0);
       } else {
-        await expect(alert.getByRole("button", { name: COPY.retry })).toBeVisible();
+        await expect(alert.getByRole("button", { name: "Retry" })).toBeVisible();
       }
       // No counts and no stale list beside a failure.
       await expect(tab(page, /The list/)).toHaveText("The list");
@@ -178,7 +193,9 @@ test.describe("tells a session that ended, a missing list, a failing service and
     await page.goto("/screening");
 
     await expect(page.locator("[data-failure]")).toHaveAttribute("data-failure", "malformed");
-    await expect(page.locator("[data-failure]")).toContainText(COPY.failure.malformed);
+    await expect(page.locator("[data-failure]")).toContainText(
+      "Some of the information did not load, so there is nothing to show until you try again."
+    );
     // A developer finds the cause in the console: which response and which field.
     expect(problems.some((p) => p.startsWith("error: ") && p.includes("Screening results: run:"))).toBe(true);
     problems.length = 0;
@@ -226,7 +243,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
     problems.length = 0;
 
     failing = false;
-    await page.getByRole("button", { name: COPY.retry }).click();
+    await page.getByRole("button", { name: "Retry" }).click();
     await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
     await expect(page.locator("[data-failure]")).toHaveCount(0);
   });
@@ -334,6 +351,6 @@ test("a failed speculative list shows its failure once the rules name the same d
   release();
   const failure = page.locator("[role=alert][data-failure]");
   await expect(failure).toHaveAttribute("data-failure", "server");
-  await expect(failure.getByRole("button", { name: COPY.retry })).toBeVisible();
+  await expect(failure.getByRole("button", { name: "Retry" })).toBeVisible();
   problems.length = 0;
 });

@@ -10,7 +10,7 @@
  */
 import type { Page } from "@playwright/test";
 
-import { COPY } from "../components/screening/copy";
+import { LAYOUT } from "../lib/screening/copy";
 import {
   INCOMPLETE,
   ORDERED,
@@ -35,21 +35,26 @@ async function open(page: Page, search = "") {
 
 test.describe("an empty store and a failed list", () => {
   const cases = [
-    { name: "an empty store", dataset: "empty", fail: {}, failure: "not_found" },
-    { name: "a failing list", dataset: "default", fail: { results: 503 }, failure: "server" },
+    { name: "an empty store", dataset: "empty", fail: {}, state: "[data-empty]", words: LAYOUT.emptyData },
+    {
+      name: "a failing list",
+      dataset: "default",
+      fail: { results: 503 },
+      state: "[role=alert][data-failure=server]",
+      words: LAYOUT.loadFailed,
+    },
   ] as const;
-  for (const { name, dataset, fail, failure } of cases) {
-    test(`${name} shows one failure with Retry and no counts, and the map still reports ready`, async ({
+  for (const { name, dataset, fail, state, words } of cases) {
+    test(`${name} shows one sentence with Retry and no counts, and the map still reports ready`, async ({
       page,
       context,
       problems,
     }) => {
       await useMockDataset(context, dataset, fail);
       await page.goto("/screening");
-      const alert = page.locator("[role=alert][data-failure]");
-      await expect(alert).toHaveAttribute("data-failure", failure);
-      await expect(alert).toContainText(COPY.failure[failure]);
-      await expect(alert.getByRole("button", { name: COPY.retry })).toBeVisible();
+      const panel = page.locator(state);
+      await expect(panel).toContainText(words);
+      await expect(panel.getByRole("button", { name: LAYOUT.retry })).toBeVisible();
       await expect(tab(page, /The list/)).toHaveText("The list");
       await expect(page.locator(ORDERED)).toHaveCount(0);
 
@@ -104,11 +109,11 @@ test("exact ties are marked on every tied row, with the tie sentence once after 
   await useMockDataset(context, "ties-and-ranges");
   await open(page);
   const tied = ["Ranked 08", "Tie Alpha", "Tie Bravo", "Tie Charlie"];
-  // A tie marker names the other schools, so a row is found by its own name only.
+  // A tie marker names the other schools, each in a marked name, so a row is found by its own name only.
   const row = (name: string) =>
-    page
-      .locator(`${ORDERED} button`)
-      .filter({ has: page.locator("span[class*=name]", { hasText: new RegExp(`^${name}$`) }) });
+    page.locator(`${ORDERED} button`).filter({
+      has: page.locator("span[class*=name]:not([data-name-kind])", { hasText: new RegExp(`^${name}$`) }),
+    });
   for (const name of tied) {
     const others = tied.filter((n) => n !== name);
     await expect(row(name).locator("span[class*=tie]")).toHaveText(
