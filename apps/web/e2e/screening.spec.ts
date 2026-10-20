@@ -322,6 +322,16 @@ test("the first ten places carry their number on their dot, and the numbers foll
   expect(numbered.length).toBeGreaterThan(5);
   // Nothing else is numbered: not the places after the tenth, not the ranges, not the incomplete records.
   await expect(page.locator("[data-rank-label]")).toHaveCount(numbered.length);
+  // Where two dots overlap, the earlier place's number must sit on top, as its dot does: later siblings paint
+  // above earlier ones, so the numbers come in falling order.
+  const stacking = await page
+    .locator("[data-rank-label]")
+    .evaluateAll((labels) => labels.map((label) => Number(label.getAttribute("data-rank-label"))));
+  expect(stacking).toEqual([...stacking].sort((a, b) => b - a));
+  // The list states every place, so a screen reader is not read the numbers on the map as well.
+  for (const label of await page.locator("[data-rank-label]").all()) {
+    await expect(label).toHaveAttribute("aria-hidden", "true");
+  }
 
   const expectLabelsOnTheirDots = async () => {
     for (const { key, rank } of numbered) {
