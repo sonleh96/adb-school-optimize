@@ -46,7 +46,7 @@ describe("the records of a list", () => {
   it("gives a reason, a place sentence and every input's note for every school under every rule", () => {
     for (const r of RULES) {
       const all = schoolsFromLists(inputs, lists, r);
-      const P = copy.copyFor({ schools: all, counts: countsFromResults(lists[RULES.indexOf(r)], all) });
+      const P = copy.bindCopy({ view: r, inputs, lists }).copy;
       for (const s of all) {
         const tag = `${s.name} ${r}`;
         expect(
@@ -152,7 +152,7 @@ describe("the counts that need every record", () => {
   });
 
   it("let the help card state them", () => {
-    const P = copy.copyFor({ schools, counts: countsFromResults(shown, schools) });
+    const P = copy.bindCopy({ view, inputs, lists }).copy;
     expect(P.TERMS.persistent_flag.help).toMatch(/schools? (has|have) the flag\./);
     expect(P.TERMS.persistent_flag.help).not.toContain("Some schools have the flag.");
   });

@@ -13,6 +13,7 @@ export {
   type ListedSchool,
 } from "./adapter";
 export { BANNED } from "./banned";
+export { bindCopy, type BoundRecords, type CopyResponses } from "./bind";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
 export { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
 export { buildHow, buildQuestions, FIRST_QUESTIONS, HOW_IT_WORKS, howExampleSegments } from "./explainer";

@@ -470,6 +470,27 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           one(`${a}>${b} rangeComparisonSentence`, (api, mode) =>
             api.rangeComparisonSentence(s, a, b, counts(api, mode))
           );
+        // Counts for each rule, as the API gives them: equal, different, and not given for a rule.
+        for (const [a, b] of pairs) {
+          const sized = (complete: number, ranked: number) => ({
+            complete,
+            range: ranked - complete,
+            ranked,
+          });
+          for (const [label, byRule] of [
+            ["equal", { [a]: sized(5, 8), [b]: sized(5, 8) }],
+            ["differ", { [a]: sized(5, 8), [b]: sized(6, 9) }],
+            ["one unknown", { [a]: sized(5, 8) }],
+            ["none", {}],
+            ["shared", "shared"],
+          ] as const)
+            one(`${a}>${b} rangeComparisonSentence per rule ${label}`, (api) =>
+              api.rangeComparisonSentence(s, a, b, { counts: sized(7, 10), countsByRule: byRule })
+            );
+          one(`${a} rankSentence per rule`, (api) =>
+            api.rankSentence(s, a, { counts: sized(7, 10), countsByRule: { [a]: sized(5, 8) } })
+          );
+        }
         if (mismatches.length >= 40) break;
       }
       flush();

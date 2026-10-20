@@ -433,7 +433,13 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       const placed = placedFromResults(view, ...rows.filter((r) => r !== view));
       expect(placed.map((s) => s.id)).toEqual(schools.map((s) => s.id));
 
-      const Q: Api = port.copyFor({ schools: placed, counts, pairwise: [], top20Changes: [] });
+      const Q: Api = port.copyFor({
+        schools: placed,
+        counts,
+        countsByRule: "shared",
+        pairwise: [],
+        top20Changes: [],
+      });
       const R: Api = proto.copyFor({ schools, pairwise: [], top20Changes: [] });
       const byId = new Map(schools.map((s) => [s.id, s]));
       for (const s of placed) {
@@ -540,7 +546,13 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
           row.maximum_absolute_rank_shift != null
       );
       const R: Api = proto.copyFor({ schools, pairwise: kept, top20Changes: data.top20Changes });
-      const Q: Api = port.copyFor({ schools: placed, counts, pairwise, top20Changes });
+      const Q: Api = port.copyFor({
+        schools: placed,
+        counts,
+        countsByRule: "shared",
+        pairwise,
+        top20Changes,
+      });
 
       for (const k of ["TERMS", "STRINGS", "IDEAS", "HOW_IT_WORKS", "FIRST_QUESTIONS", "LAYOUT"])
         same(k, prototypeValue(k, R[k], counts), Q[k]);

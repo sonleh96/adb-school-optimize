@@ -19,6 +19,7 @@ import type {
   CopySchool,
   CountBag,
   CountsByRule,
+  CountsByRuleArg,
   NamedSchool,
   PlacedSchool,
 } from "./model";
@@ -41,13 +42,22 @@ export const hasPlace = (r: CopyResult | null | undefined): r is WithPlace =>
   !!r && Number.isInteger(r.rank_complete120);
 
 /** The group sizes of the run that gave `ruleId` its places: that rule's own when known, otherwise `opts.counts`. */
+export const perRule = (opts: { countsByRule?: CountsByRuleArg }): opts is { countsByRule: CountsByRule } =>
+  !!opts.countsByRule && opts.countsByRule !== "shared";
 export const countsOf = (
-  opts: { counts?: CountBag; countsByRule?: CountsByRule },
+  opts: { counts?: CountBag; countsByRule?: CountsByRuleArg },
   ruleId: CopyRuleId
-): CountBag | undefined => opts.countsByRule?.[ruleId] ?? opts.counts;
-/** True when two rules count a group the same size, or nothing says they differ. */
-export const sharedSize = (a: CountBag | undefined, b: CountBag | undefined, k: string): boolean =>
-  a === b || (known(a, k) && known(b, k) && a[k] === b[k]);
+): CountBag | undefined => (perRule(opts) ? opts.countsByRule[ruleId] : opts.counts);
+/**
+ * True when two rules count a group the same size. When the sizes are not both known they are the same only if
+ * nothing says they differ (`strict` is false): one run's counts shared by every rule.
+ */
+export const sharedSize = (
+  a: CountBag | undefined,
+  b: CountBag | undefined,
+  k: string,
+  strict = false
+): boolean => (known(a, k) && known(b, k) ? a[k] === b[k] : !strict && a === b);
 
 export interface PlaceOpts {
   /** Start the sentence with the school's name. */
@@ -59,7 +69,7 @@ export interface PlaceOpts {
   /** From `countsFrom`. */
   counts?: CountBag;
   /** The group sizes of each rule's own run, when they differ from `counts`. */
-  countsByRule?: CountsByRule;
+  countsByRule?: CountsByRuleArg;
 }
 
 /* ------------------------------------------------------- rank sentences */
@@ -256,7 +266,7 @@ export function rangeComparisonSegments(
       : seg`${nm} is not computed under ${a.name} or ${b.name}, because both were only run on ${completePhrase(cA)}.`;
   }
   if (sa.kind === "point" && sb.kind === "point") {
-    if (sharedSize(cA, cB, "complete"))
+    if (sharedSize(cA, cB, "complete", perRule(opts)))
       return seg`Among ${completePhrase(cA)}, ${nm} is ${ordinal(sa.place)} under ${a.name} and ${ordinal(sb.place)} under ${b.name}.`;
     return seg`Under ${a.name}, ${nm} is ${ordinal(sa.place)} among ${completePhrase(cA)}. Under ${b.name}, it is ${ordinal(sb.place)} among ${completePhrase(cB)}.`;
   }
@@ -268,7 +278,7 @@ export function rangeComparisonSegments(
     school.cohort === "interval" &&
     sa.kind !== "point" &&
     sb.kind !== "point" &&
-    sharedSize(cA, cB, "ranked")
+    sharedSize(cA, cB, "ranked", perRule(opts))
   ) {
     const among = `Among ${orderedPhrase(cA)}`;
     if (sa.kind === "none" && sb.kind === "range")

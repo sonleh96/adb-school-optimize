@@ -180,6 +180,13 @@ export type CountBag = Readonly<Partial<Record<string, number>>>;
  */
 export type CountsByRule = Readonly<Partial<Record<CopyRuleId, CountBag>>>;
 
+/**
+ * Given as an object, `CountsByRule` is the whole truth: a rule it does not hold has unknown counts, never another
+ * rule's. `"shared"` says that every rule counts the groups in `counts`, which is right only for data of one run
+ * (the design prototype's). `bindCopy` builds the object from the lists.
+ */
+export type CountsByRuleArg = CountsByRule | "shared";
+
 export type Counts = {
   readonly all: number;
   readonly complete: number;
