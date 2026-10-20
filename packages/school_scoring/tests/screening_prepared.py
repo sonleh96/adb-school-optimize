@@ -34,8 +34,8 @@ def prepared(*rows: tuple, with_parts: bool = False) -> PreparedRecords:
         for name, values, *failures in rows
     )
     anchors = (
-        Anchor(Component.U, "urgency", "urgency_source_scalar", "t", 1, 1, 0.0, 1.0),
-        Anchor(Component.R, "reach", "walking_catchment_population", "t", 1, 1, 0.0, 1.0),
+        Anchor(Component.U, "urgency", "urgency_source_scalar", "t", 1, 1, 0.0, 1.0, False),
+        Anchor(Component.R, "reach", "walking_catchment_population", "t", 1, 1, 0.0, 1.0, False),
     )
     return PreparedRecords(built, anchors, "input-hash")
 

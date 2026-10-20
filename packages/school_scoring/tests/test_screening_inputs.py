@@ -81,3 +81,19 @@ def test_records_hash_changes_with_any_input_value_and_not_with_object_identity(
     a = parse_records(frame_of({}))
     assert records_sha256(a) == records_sha256(parse_records(frame_of({})))
     assert records_sha256(a) != records_sha256(parse_records(frame_of({"aqi_p95_selected": 31.0})))
+
+
+def test_records_hash_depends_on_record_order():  # FM9
+    forward = parse_records(frame_of({"school_name": "A"}, {"school_name": "B"}))
+    assert records_sha256(forward) != records_sha256(tuple(reversed(forward)))
+
+
+@pytest.mark.parametrize("name", ["", " ", "\t\n", None])
+def test_blank_school_names_are_rejected(name):  # FM2
+    with pytest.raises(InputContractError, match="school_name"):
+        parse_records(frame_of({"school_name": name}))
+
+
+def test_school_names_with_padding_are_kept_as_given():  # FM2
+    (record,) = parse_records(frame_of({"school_name": "  Padded name "}))
+    assert record.school_name == "  Padded name "

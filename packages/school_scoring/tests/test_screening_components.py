@@ -233,3 +233,41 @@ def test_negative_luminosity_is_floored_at_zero_before_log1p():
 
 def test_preparing_no_records_returns_no_records():
     assert prepare(()).records == ()
+
+
+def test_negative_environmental_inputs_are_unknown_and_stay_out_of_the_anchors():  # FM3, FM4
+    members = (
+        *ladder("aqi_p95_selected"),
+        record("Negative AQI", aqi_p95_selected=-1.0),
+        record("Negative emissions", emissions_co2e_100yr_10km_tonnes=-1.0),
+        record("Negative land", water_flooded_vegetation_fraction_500m=-0.2),
+    )
+    prepared_set = prepare(members)
+    aqi, emissions, land = prepared_set.records[-3:]
+    assert (aqi.components.Q, emissions.components.E, land.components.L) == (None, None, None)
+    assert (aqi.missing_components, emissions.missing_components, land.missing_components) == (
+        (Q,),
+        (E,),
+        (L,),
+    )
+    anchors = {a.name: a for a in prepared_set.anchors}
+    assert (anchors["aqi"].n_valid, anchors["emissions"].n_valid, anchors["land"].n_valid) == (23, 23, 23)
+
+
+def test_share_parts_are_unknown_when_their_denominator_is_zero():  # FM3
+    parts = prepare_with_target(
+        total_classrooms=0.0, teachers=0.0, permanent_classrooms=3.0, teacher_houses=3.0
+    ).need_parts
+    assert (parts.permanent_classroom_deficit, parts.teacher_housing_deficit) == (None, None)
+
+
+def test_anchors_flag_a_scale_that_cannot_discriminate():  # FM4
+    def aqi_anchor(values):
+        members = tuple(record(f"S{i:02d}", aqi_p95_selected=values(i)) for i in range(21))
+        return next(a for a in prepare(members).anchors if a.name == "aqi")
+
+    assert aqi_anchor(lambda i: float(i)).degenerate is False
+    constant = aqi_anchor(lambda i: 40.0)
+    assert (constant.degenerate, constant.p05, constant.p95) == (True, 40.0, 40.0)
+    empty = aqi_anchor(lambda i: None)
+    assert (empty.degenerate, empty.n_valid, empty.p05, empty.p95) == (True, 0, None, None)

@@ -119,6 +119,7 @@ class RunManifest:
     maximum_components: tuple[Component, ...]
     maximum_share: str
     anchors: tuple[Anchor, ...]
+    degenerate_anchors: tuple[str, ...]
     anchors_sha256: str
     tie_rule: str
     point_rank_scope: str
@@ -299,6 +300,7 @@ def _manifest(rule: Rule, prepared: PreparedRecords, cohorts: list[Cohort]) -> R
         maximum_components=rule.max_components,
         maximum_share=str(rule.max_share),
         anchors=anchors,
+        degenerate_anchors=tuple(a.name for a in anchors if a.degenerate),
         anchors_sha256=anchors_hash,
         tie_rule=TIE_RULE,
         point_rank_scope=point_rank_scope(cohorts.count(Cohort.COMPLETE)),

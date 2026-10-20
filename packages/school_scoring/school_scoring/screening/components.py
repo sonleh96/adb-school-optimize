@@ -110,6 +110,7 @@ class Anchor:
     n_valid: int
     p05: float | None
     p95: float | None
+    degenerate: bool
 
 
 @dataclass(frozen=True)
@@ -190,7 +191,15 @@ def _scale(values: np.ndarray, spec: ScaleSpec) -> tuple[np.ndarray, Anchor]:
     scaled = np.full(values.shape, np.nan)
     if observed.size == 0:
         anchor = Anchor(
-            spec.component, spec.name, spec.source_field, spec.transform.value, len(values), 0, None, None
+            spec.component,
+            spec.name,
+            spec.source_field,
+            spec.transform.value,
+            len(values),
+            0,
+            None,
+            None,
+            True,
         )
         return scaled, anchor
     p05 = float(np.quantile(observed, 0.05))
@@ -210,6 +219,7 @@ def _scale(values: np.ndarray, spec: ScaleSpec) -> tuple[np.ndarray, Anchor]:
         int(valid.sum()),
         p05,
         p95,
+        p95 <= p05,
     )
     return scaled, anchor
 
@@ -219,7 +229,15 @@ def _natural_fraction(values: np.ndarray) -> tuple[np.ndarray, Anchor]:
         valid = np.isfinite(values) & (values >= 0.0) & (values <= 1.0)
     scaled = np.where(valid, values, np.nan)
     anchor = Anchor(
-        Component.L, "land", LAND_FIELD, "natural 0..1 fraction", len(values), int(valid.sum()), None, None
+        Component.L,
+        "land",
+        LAND_FIELD,
+        "natural 0..1 fraction",
+        len(values),
+        int(valid.sum()),
+        None,
+        None,
+        not valid.any(),
     )
     return scaled, anchor
 
