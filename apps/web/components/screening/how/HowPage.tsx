@@ -12,6 +12,7 @@ import { type Segments, textOf } from "@/lib/screening/copy";
 import type { GuideId } from "@/lib/screening/guide/machine";
 
 import { Sentence } from "../Sentence";
+import { acted } from "../guide/dom";
 import { useLayerStore, useLayers } from "../guide/GuidanceProvider";
 import type { GuideData } from "../guide/types";
 import { useLater } from "../guide/useLater";
@@ -77,7 +78,7 @@ export default function HowPage({ data }: { data: GuideData }) {
 
   const ready = later.status === "ready";
   useEffect(() => {
-    if (ready) title.current?.focus({ preventScroll: true });
+    if (ready && acted()) title.current?.focus({ preventScroll: true });
   }, [ready]);
 
   // The contents mark the section being read; at the end of the page, the last one.

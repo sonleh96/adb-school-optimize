@@ -51,13 +51,20 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
     if (plan) store.setCatalog(catalogOf(plan));
   }, [store, plan]);
 
-  // The panels slide to their new place when the rail opens, closes or widens; a key moves them at once.
+  // The panels slide to their new place when the rail opens, closes or widens; a key moves them at once, and the
+  // rail a first visit opens with is in place before the first paint.
   const lastRail = useRef(frame.rail);
+  const painted = useRef(false);
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => (painted.current = true));
+    return () => cancelAnimationFrame(frameId);
+  }, []);
   useLayoutEffect(() => {
     const dx = lastRail.current - frame.rail;
     lastRail.current = frame.rail;
     const stage = root?.querySelector<HTMLElement>('[data-slot="stage"]');
-    if (!dx || !stage || keyboard.current || reducedMotion() || data.mode === "narrow") return;
+    if (!dx || !stage || !painted.current || keyboard.current || reducedMotion() || data.mode === "narrow")
+      return;
     stage.animate([{ transform: `translateX(${dx}px)` }, { transform: "none" }], {
       duration: 240,
       easing: "cubic-bezier(0.23, 1, 0.32, 1)",

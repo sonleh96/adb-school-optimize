@@ -92,8 +92,32 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
   const range = besides(roles.ranges, open);
   const placeOf = (s: CopySchool | null, opts: { shortlist?: number } = {}): Example[] =>
     s ? [{ text: copy.segments.rankSentence(s, rule, { name: true, ...opts }), school: s.id }] : [];
-  const about = (s: CopySchool | null | undefined, text: (s: CopySchool) => string): Example[] =>
-    s ? [{ who: copy.distinctName(s), text: plain(text(s)), school: s.id }] : [];
+  // An example about another school can still say word for word what the open card says (two schools with no
+  // facility of the six read the same), so the example is the first school of its role whose sentence differs.
+  const openSchool = open ? (ctx.schools.find((x) => x.id === open) ?? null) : null;
+  const said = (school: CopySchool, text: (s: CopySchool) => string): string | null => {
+    try {
+      return text(school);
+    } catch {
+      return null;
+    }
+  };
+  const about = (
+    candidates: CopySchool | null | undefined | readonly CopySchool[],
+    text: (s: CopySchool) => string
+  ): Example[] => {
+    const list: readonly CopySchool[] = Array.isArray(candidates)
+      ? candidates
+      : candidates
+        ? [candidates as CopySchool]
+        : [];
+    const onCard = openSchool ? said(openSchool, text) : null;
+    const s =
+      list.find((x) => x.id !== open && said(x, text) !== null && said(x, text) !== onCard) ??
+      list.find((x) => x.id !== open) ??
+      null;
+    return s ? [{ who: copy.distinctName(s), text: plain(text(s)), school: s.id }] : [];
+  };
   const incomplete = roles.missing
     ? [roles.missing, ...roles.incomplete.filter((s) => s !== roles.missing)]
     : [];
@@ -110,12 +134,12 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
     case "cohort_ranked":
       return { examples: placeOf(range), note: STRINGS.groupsMeaning };
     case "score":
-      return { examples: about(first, (s) => copy.reasonSentence(s, rule)) };
+      return { examples: about(roles.complete, (s) => copy.reasonSentence(s, rule)) };
     case "queue":
     case "mark_ring":
     case "not_placed":
       return {
-        examples: about(besides(incomplete, open), (s) => copy.missingSentence(s, rule)),
+        examples: about(incomplete, (s) => copy.missingSentence(s, rule)),
         note: IDEAS.queue.short,
       };
     case "missing_all_but_remoteness":
@@ -142,11 +166,11 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
       return { examples: about(s, (x) => copy.missingValueNote(x, k)) };
     }
     case "not_calculable":
-      return { examples: about(besides(incomplete, open), (s) => copy.missingValueNote(s, "need")) };
+      return { examples: about(incomplete, (s) => copy.missingValueNote(s, "need")) };
     case "source":
       return { examples: [{ text: plain(STRINGS.source) }] };
     case "school_need": {
-      const s = besides(roles.reasons ? [roles.reasons, ...roles.complete] : roles.complete, open);
+      const s = roles.reasons ? [roles.reasons, ...roles.complete] : roles.complete;
       return { examples: about(s, (x) => copy.reasonSentence(x, "need_first_no_u")) };
     }
     case "need_classrooms":
@@ -154,7 +178,7 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
     case "need_facilities":
     case "need_services":
     case "need_locality":
-      return { examples: about(first, (s) => copy.inputSentence(s, NEED_INPUT[key as TermKey]!)) };
+      return { examples: about(roles.complete, (s) => copy.inputSentence(s, NEED_INPUT[key as TermKey]!)) };
     case "area_context":
     case "area_grade10":
     case "area_grade12":
@@ -162,7 +186,7 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
     case "area_activity":
     case "area_conflict":
     case "area_girls":
-      return { examples: about(first, (s) => copy.inputSentence(s, "area")) };
+      return { examples: about(roles.complete, (s) => copy.inputSentence(s, "area")) };
     case "urgency": {
       const s = besides(
         roles.complete.filter((x) => (x.components.U ?? 0) > 0),
@@ -182,12 +206,12 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
       };
     }
     case "reach":
-      return { examples: about(first, (s) => copy.inputSentence(s, "reach")) };
+      return { examples: about(roles.complete, (s) => copy.inputSentence(s, "reach")) };
     case "air_quality":
       return {
         examples: [
-          ...about(first, (s) => copy.inputSentence(s, "air")),
-          ...about(range, (s) => copy.inputSentence(s, "air")),
+          ...about(roles.complete, (s) => copy.inputSentence(s, "air")),
+          ...about(roles.ranges, (s) => copy.inputSentence(s, "air")),
         ],
         note: STRINGS.separateMeasures,
       };
