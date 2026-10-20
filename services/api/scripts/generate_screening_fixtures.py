@@ -54,7 +54,7 @@ API = "/api/v1/screening"
 MAIN_RULES = ("additive_u", "additive_no_u")
 
 # What the web tests rely on, written down so a reviewer sees the shape of the data without reading the loop.
-COMPLETE, INTERVAL, QUEUED = 16, 4, 4
+COMPLETE, INTERVAL, QUEUED = 16, 5, 4
 # Names without a ``schools`` row, so their coordinates are unknown: one complete school and one queued school.
 WITHOUT_COORDINATES = ("Sample School 05", "Sample School 22")
 
@@ -85,7 +85,7 @@ LOCALITIES = ("Accessible", "Remote", "Very remote", "Highly accessible", "Moder
 
 
 def invented_records() -> tuple[SchoolRecord, ...]:
-    """Sixteen complete schools, four interval schools and four queued ones under the urgency-included additive rule."""
+    """Sixteen complete schools, five interval schools and four queued ones under the urgency-included additive rule."""
     complete = [
         record(
             f"Sample School {i + 1:02d}",
@@ -131,8 +131,32 @@ def invented_records() -> tuple[SchoolRecord, ...]:
             water_flooded_vegetation_fraction_500m=None,
         ),
     ]
+    # Last, so that adding it moves no other school's place. Its record is so little in need that even with the
+    # worst possible air-quality reading it stays below every other school: its best and worst place are the same.
+    exact_range = record(
+        "Sample School 25",
+        aqi_p95_selected=None,
+        locality="Highly accessible",
+        permanent_classrooms=8.0,
+        teacher_houses=10.0,
+        libraries=1.0,
+        workshops=1.0,
+        practical_skills_buildings=1.0,
+        home_economics_buildings=1.0,
+        computer_labs=1.0,
+        specialized_classrooms=1.0,
+        power_source="Grid",
+        water_source="Piped",
+        secondary_students_per_1000=900.0,
+        progression_g10_corrected_pct=100.0,
+        progression_g12_corrected_pct=100.0,
+        walking_catchment_population=1e6,
+        emissions_co2e_100yr_10km_tonnes=0.0,
+        water_flooded_vegetation_fraction_500m=0.0,
+        urgency_source_scalar=0.0,
+    )
     placed = []
-    for i, r in enumerate([*complete, *interval, *queued]):
+    for i, r in enumerate([*complete, *interval, *queued, exact_range]):
         province, district, _, _ = PLACES[i % len(PLACES)]
         placed.append(replace(r, province=province, district=district))
     return tuple(placed)
@@ -190,7 +214,6 @@ class Capture:
 def capture_all(client: TestClient) -> Capture:
     cap = Capture(client)
     cap.get(f"{API}/rules", "rules.json")
-    cap.get(f"{API}/input-versions", "input-versions.json")
     rows_by_rule = {}
     for rule_id in RULES:
         rows_by_rule[rule_id] = cap.get(f"{API}/results", f"results/{rule_id}.json", rule=rule_id)["rows"]
