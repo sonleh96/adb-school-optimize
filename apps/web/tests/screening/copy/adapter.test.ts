@@ -320,16 +320,23 @@ describe("a stored input or a contribution that is missing", () => {
     );
   });
 
-  it("fails when a number arrives as text, or a text as a number", () => {
+  it("notes a number that arrives as text, or a text as a number, as an input that cannot be read", () => {
     const b = body();
     b.inputs.teachers = "ten";
-    expect(() => schoolFromDetail(load(b), "additive_u")).toThrow(
-      'inputs.teachers: expected a number or null, got string "ten"'
-    );
+    const s = schoolFromDetail(load(b), "additive_u");
+    expect(s.unreadable).toEqual(["teachers"]);
+    expect(s.condition.teachers).toBeNull();
     const c = body();
     c.inputs.power_source = 5;
-    expect(() => schoolFromDetail(load(c), "additive_u")).toThrow(
-      "inputs.power_source: expected a string or null, got number 5"
+    expect(schoolFromDetail(load(c), "additive_u").unreadable).toEqual(["power_source"]);
+    expect(schoolFromDetail(load(body()), "additive_u")).not.toHaveProperty("unreadable");
+  });
+
+  it("still fails when an input is missing altogether", () => {
+    const b = body();
+    delete b.inputs.teachers;
+    expect(() => schoolFromDetail(load(b), "additive_u")).toThrow(
+      "inputs.teachers: expected a number or null, got undefined"
     );
   });
 
