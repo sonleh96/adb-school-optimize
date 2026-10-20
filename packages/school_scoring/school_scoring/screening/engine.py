@@ -74,7 +74,8 @@ class ManifestWeight:
 class RunManifest:
     rule_id: str
     rule_label: str
-    rule_role: str
+    provenance: str
+    policy_role: str
     rule_formula: str
     uses_urgency: bool
     weights: tuple[ManifestWeight, ...]
@@ -198,7 +199,8 @@ def _manifest(rule: Rule, prepared: PreparedRecords, cohorts: list[Cohort]) -> R
     return RunManifest(
         rule_id=rule.rule_id,
         rule_label=rule.label,
-        rule_role=rule.role.value,
+        provenance=rule.provenance.value,
+        policy_role=rule.policy_role.value,
         rule_formula=rule.formula,
         uses_urgency=rule.uses_urgency,
         weights=tuple(ManifestWeight(c, str(w), float(w)) for c, w in rule.weights),

@@ -5,7 +5,15 @@ from __future__ import annotations
 from fractions import Fraction
 
 import pytest
-from school_scoring.screening import RULES, Component, RuleKind, UnknownRuleError, get_rule
+from school_scoring.screening import (
+    RULES,
+    Component,
+    PolicyRole,
+    Provenance,
+    RuleKind,
+    UnknownRuleError,
+    get_rule,
+)
 
 N, A, U, R, Q, E, L = Component
 
@@ -85,3 +93,23 @@ def test_need_first_sorts_on_n_and_scores_the_remaining_components():
 def test_unknown_rule_id_is_refused():  # FM8
     with pytest.raises(UnknownRuleError, match="additive_u"):
         get_rule("additive")
+
+
+@pytest.mark.parametrize("rule_id", ["additive_u", "need_first_u", "bottleneck_u", "benchmark"])
+def test_urgency_included_and_benchmark_rules_come_from_the_circulated_paper(rule_id):  # FM8
+    assert get_rule(rule_id).provenance is Provenance.CIRCULATED_PAPER
+
+
+@pytest.mark.parametrize("rule_id", ["additive_no_u", "need_first_no_u", "bottleneck_no_u"])
+def test_urgency_omitted_rules_are_the_proposed_follow_up_pending_author_review(rule_id):  # FM8
+    rule = get_rule(rule_id)
+    assert rule.provenance is Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW
+    assert "urgency omitted" in rule.label
+
+
+def test_policy_role_is_independent_of_provenance():  # FM8
+    roles = {rule_id: rule.policy_role for rule_id, rule in RULES.items()}
+    assert roles["additive_u"] is roles["additive_no_u"] is PolicyRole.PRIMARY
+    assert roles["need_first_u"] is roles["need_first_no_u"] is PolicyRole.STRICT_ALTERNATIVE
+    assert roles["bottleneck_u"] is roles["bottleneck_no_u"] is PolicyRole.POLICY_SENSITIVITY
+    assert roles["benchmark"] is PolicyRole.CONVENTIONAL_REFERENCE
