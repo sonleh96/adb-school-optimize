@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { expect, test as base, type Page } from "@playwright/test";
 
+import { isSoftwareGlNote } from "./console-noise";
+
 const FIXTURES = path.resolve(__dirname, "fixtures/screening");
 const fixture = (file: string) => JSON.parse(readFileSync(path.join(FIXTURES, file), "utf8"));
 
@@ -25,16 +27,18 @@ export const keyOf = (rule: string, name: string) =>
 export const ORDERED_COUNT = orderedNames("additive_u").length;
 
 /**
- * Every test fails on console errors and warnings, page errors, failed requests and HTTP errors. A test that
- * provokes some on purpose empties `problems` after asserting what it expects.
+ * Every test fails on console errors and warnings, page errors, failed requests and HTTP errors, except the one
+ * browser driver note that console-noise.ts describes. A test that provokes some on purpose empties `problems`
+ * after asserting what it expects.
  */
 export const test = base.extend<{ problems: string[] }>({
   problems: [
     async ({ page }, use) => {
       const problems: string[] = [];
       page.on("console", (message) => {
-        if (["error", "warning"].includes(message.type()))
-          problems.push(`${message.type()}: ${message.text()}`);
+        const entry = { type: message.type(), text: message.text() };
+        if (["error", "warning"].includes(entry.type) && !isSoftwareGlNote(entry))
+          problems.push(`${entry.type}: ${entry.text}`);
       });
       page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
       page.on("requestfailed", (request) => problems.push(`requestfailed: ${request.url()}`));
