@@ -33,7 +33,7 @@ async function getApiAccessToken(): Promise<string | null> {
   return data.accessToken;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const accessToken = await getApiAccessToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
