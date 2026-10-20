@@ -27,6 +27,7 @@ import {
   refine,
   scalar,
   str,
+  tolerant,
 } from "./schema";
 
 export const SchoolKey = branded<"SchoolKey">();
@@ -104,7 +105,6 @@ const components = obj({
 });
 const scores = obj({
   lower: nullable(num),
-  upper: nullable(num),
   point: nullable(num),
   sort_key_primary: nullable(num),
 });
@@ -149,8 +149,6 @@ const rawListedRow = obj({
    * because the experiment included urgency. It must never be shown for another rule.
    */
   persistent_candidate: optional(nullable(bool)),
-  /** The school's lowest top-20 frequency over the experiment's settings; null when it was not in the experiment. */
-  lowest_top20_frequency: optional(nullable(num)),
   /**
    * True for a persistent school whose lowest frequency is less than one standard error above the threshold, so
    * "only just above the line" can be said from data. Same presence rule as `persistent_candidate`.
@@ -229,20 +227,11 @@ export const resultsResponse = obj({
   }),
   rows: list(listedRow),
   /**
-   * Where the persistence flag came from, in the circulated rule's list only; null when the version has none. The
-   * standard error is the margin inside which a school counts as only just above the line.
+   * Where the persistence flag came from, in the circulated rule's list only; null when the version has none. Only
+   * the standard error is read: it is the margin inside which a school counts as only just above the line. The block
+   * adds a margin to a sentence, so a change to it reads as absent instead of blanking the list.
    */
-  persistence: optional(
-    nullable(
-      obj({
-        rule_id: str,
-        threshold: num,
-        draws: int,
-        standard_error: num,
-        limitation: str,
-      })
-    )
-  ),
+  persistence: tolerant(nullable(obj({ standard_error: num }))),
 });
 export type ResultsResponse = Infer<typeof resultsResponse>;
 
@@ -264,7 +253,6 @@ export const schoolDetailResponse = obj({
       result: detailResult,
       /** As on a listed row: only the circulated rule's entry has these three. */
       persistent_candidate: optional(nullable(bool)),
-      lowest_top20_frequency: optional(nullable(num)),
       threshold_adjacent: optional(nullable(bool)),
     })
   ),
@@ -274,7 +262,6 @@ export type SchoolDetailResponse = Infer<typeof schoolDetailResponse>;
 /** The stored inputs of every school of an input version, as `inputs` is in a school's detail. */
 export const inputsResponse = obj({
   input_version: str,
-  input_sha256: str,
   schools: list(
     obj({
       school_key: SchoolKey,

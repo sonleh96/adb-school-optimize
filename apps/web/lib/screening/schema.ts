@@ -77,6 +77,24 @@ export function optional<T>(inner: Schema<T>): OptionalSchema<T> {
   };
 }
 
+/**
+ * A key that only adds to what the page says. When it is absent, or not the shape the page expects, it reads as
+ * absent, so a change to it cannot blank a screen that does not need it.
+ */
+export function tolerant<T>(inner: Schema<T>): OptionalSchema<T> {
+  return {
+    optional: true,
+    parse: (value, path) => {
+      try {
+        return inner.parse(value, path);
+      } catch (error) {
+        if (error instanceof ParseError) return undefined;
+        throw error;
+      }
+    },
+  };
+}
+
 export function list<T>(item: Schema<T>): Schema<T[]> {
   return {
     parse: (value, path) => {
