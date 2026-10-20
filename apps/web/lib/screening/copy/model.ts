@@ -30,6 +30,11 @@ export type NeedField =
   | "facility_presence_deficit"
   | "service_deficit"
   | "locality_disadvantage";
+/** The other reasons the engine holds a school back for, named by the reason. */
+export type OtherGate =
+  "negative_stock_value" | "unresolved_area_context" | "unresolved_reach" | "urgency_unknown";
+/** Why a school is held back: a need part that cannot be used, or one of the other reasons. */
+export type GateKey = NeedField | OtherGate;
 export type AreaField =
   | "progression10_deficit"
   | "progression12_deficit"
@@ -139,8 +144,11 @@ export interface CopySchool extends PlacedSchool {
   readonly area_parts: AreaParts | null;
   readonly components: CopyComponents;
   readonly raw: CopyRaw;
-  /** The need parts that are blank or unusable. Empty for a school that can be put in order. */
-  readonly gate_failures: readonly NeedField[];
+  /**
+   * Why the school is held back under the rule shown: the need parts that are blank or unusable, then the other
+   * reasons in the engine's order. Empty for a school that can be put in order.
+   */
+  readonly gate_failures: readonly GateKey[];
   readonly contributions?: Partial<Record<"additive_u" | "additive_no_u", RecordedContribution>>;
   readonly persistent_candidate_circulated?: boolean;
 }
@@ -152,6 +160,7 @@ export interface CountableSchool {
   readonly components?: Partial<CopyComponents>;
   readonly raw?: Partial<CopyRaw>;
   readonly gate_failures?: readonly string[];
+  readonly missing_env?: Partial<MissingEnv>;
   readonly condition?: Readonly<Record<string, unknown>>;
   readonly persistent_candidate_circulated?: boolean;
 }

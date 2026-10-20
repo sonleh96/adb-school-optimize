@@ -87,6 +87,8 @@ export type WireResults = Infer<typeof wireResults>;
 
 const schoolResult = obj({
   cohort,
+  /** Why the engine holds the school back under this rule. Empty unless the school is in the queue. */
+  gate_failures: list(str),
   components,
   need_parts: needParts,
   area_parts: areaParts,

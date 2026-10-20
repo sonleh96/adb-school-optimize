@@ -10,8 +10,9 @@
  *    Each function takes the rule being shown and a school's group is its group under that rule. Its results under
  *    the other rules are kept as the API gave them, so a sentence about another rule reads that rule's own place
  *    or range. A result for a school held for verification under that rule is left out.
- *  - The need parts a record cannot give are not named by the API, which gives one reason code for any gap. They
- *    are read from the need parts that are blank, as the study listed them.
+ *  - The API names why it holds a school back (`gate_failures`). The reasons about the stored counts and sources
+ *    name no part, so the need parts a record cannot give are read from the need parts that are blank, as the
+ *    study listed them. The other reasons (negative count, district context, reach, urgency) are carried as sent.
  *
  * Input shapes are in `wire.ts`. Parse a response with them before it reaches these functions.
  */
@@ -26,6 +27,7 @@ import type {
   CopyRuleId,
   CopySchool,
   CountBag,
+  GateKey,
   MissingEnv,
   NeedField,
   NeedParts,
@@ -35,6 +37,7 @@ import type {
   ResultsByRule,
   Top20Change,
 } from "./model";
+import { OTHER_GATES } from "./gates";
 import { isCopyRuleId } from "./rules";
 import type {
   WireCohort,
@@ -174,6 +177,17 @@ function recordedContribution(id: "additive_u" | "additive_no_u", r: WireSchoolR
 }
 
 /**
+ * Why a school is held back: the need parts that are blank (the API's reasons about counts and sources name none),
+ * then the other reasons it sent, in the engine's order. A reason this copy has no words for is left out.
+ */
+function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[] {
+  return [
+    ...NEED_FIELD_ORDER.filter((f) => needParts[f] == null),
+    ...OTHER_GATES.filter((g) => sent.includes(g)),
+  ];
+}
+
+/**
  * One school with its whole record, as it reads under `view`: the rule the screen is showing.
  * `detail` is the `/schools/by-key` response, which carries the stored inputs and the result under every rule.
  */
@@ -220,8 +234,7 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
     area_parts: areaPartsFrom(shown.area_parts),
     components,
     raw,
-    // The study listed the need parts a queue school lacks. The API gives one reason code, so read them off the parts.
-    gate_failures: cohort === "queue" ? NEED_FIELD_ORDER.filter((f) => needParts[f] == null) : [],
+    gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
     results,
     contributions,
   };

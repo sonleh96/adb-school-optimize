@@ -3,13 +3,14 @@
  * A function that states a count takes `opts.counts` and, without it, says the same thing without a number.
  */
 import { SMALL, capitalise, formatCount, plural } from "./format";
+import { isNeedGate } from "./gates";
 import type { CountBag, CountableSchool, Counts } from "./model";
 
 /** A school whose record gives only its remoteness category and nothing else. */
 export function isRemotenessOnly(school: CountableSchool): boolean {
   return (
     Array.isArray(school.gate_failures) &&
-    school.gate_failures.length === 4 &&
+    school.gate_failures.filter(isNeedGate).length === 4 &&
     !!school.condition &&
     Object.values(school.condition).every((v) => v == null) &&
     school.locality != null
@@ -35,7 +36,7 @@ export function countsFrom(schools: readonly CountableSchool[] = []): Counts {
     else if (s.cohort === "queue") c.queue += 1;
     if (s.components && s.components.U === 0) c.urgencyZero += 1;
     if (s.cohort !== "queue" && s.raw && s.raw.E_raw === 0) c.emissionsNone += 1;
-    if (s.cohort !== "queue" && s.raw && s.raw.Q_raw == null) c.airMissing += 1;
+    if (s.cohort !== "queue" && ((s.raw && s.raw.Q_raw == null) || s.missing_env?.aqi)) c.airMissing += 1;
     if (s.cohort === "queue" && isRemotenessOnly(s)) c.remotenessOnly += 1;
     if (s.persistent_candidate_circulated) c.flagged += 1;
   }

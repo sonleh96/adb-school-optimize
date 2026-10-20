@@ -63,6 +63,14 @@ const NEED_FIELDS = [
   "service_deficit",
   "locality_disadvantage",
 ];
+/** The API reasons that name the stored counts and sources; the adapter reads the blank parts instead. */
+const GATE_CODE: Record<string, string> = {
+  permanent_classroom_deficit: "missing_stock_field",
+  teacher_housing_deficit: "missing_stock_field",
+  facility_presence_deficit: "missing_stock_field",
+  service_deficit: "unrecognized_service_coding",
+  locality_disadvantage: "unrecognized_locality",
+};
 const URGENCY_RULES = new Set(["additive_u", "need_first_u", "bottleneck_u", "benchmark"]);
 const COHORT: Record<string, string> = {
   complete: "complete",
@@ -258,6 +266,8 @@ function wireDetail(s: any, rules: readonly string[]) {
         rule: { rule_id: rule },
         result: {
           cohort: COHORT[s.cohort],
+          gate_failures:
+            s.cohort === "queue" ? [...new Set(s.gate_failures.map((f: string) => GATE_CODE[f]))] : [],
           components: wireComponents(s, rule),
           need_parts: s.need_parts,
           area_parts: wireArea(s.area_parts),

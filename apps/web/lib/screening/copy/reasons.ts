@@ -3,7 +3,7 @@
  * plain sentence for each input read from the school's own record. A blank source cell reads as not recorded and
  * a zero denominator as unusable; nothing is filled in.
  */
-import { REMOTENESS_SCALE } from "./definitions";
+import { REMOTENESS_CATEGORIES, REMOTENESS_SCALE } from "./definitions";
 import {
   SMALL,
   capitalise,
@@ -14,16 +14,9 @@ import {
   joinList,
   plural,
 } from "./format";
-import type {
-  AreaField,
-  CopyRuleId,
-  CopySchool,
-  FacilityField,
-  InputKey,
-  NeedField,
-  NeedKey,
-  NeedParts,
-} from "./model";
+import type { AreaField, CopyRuleId, CopySchool, InputKey, NeedField, NeedKey, NeedParts } from "./model";
+import { gateSentence, otherCause } from "./causes";
+import { AREA_PARTS, FACILITIES } from "./inputs";
 import { isNeedFirst, resultFor } from "./rank";
 import { rule } from "./rules";
 
@@ -44,15 +37,6 @@ export const ORDER: readonly InputKey[] = [
   "air",
   "emissions",
   "land",
-];
-
-export const FACILITIES: readonly (readonly [FacilityField, string])[] = [
-  ["libraries", "library"],
-  ["workshops", "workshop"],
-  ["practical_skills", "practical-skills room"],
-  ["home_economics", "home-economics room"],
-  ["computer_labs", "computer laboratory"],
-  ["specialized_classrooms", "special classroom"],
 ];
 
 const POWER: Record<string, string | undefined> = {
@@ -80,15 +64,6 @@ function required(value: number | null | undefined, what: string): number {
   if (value == null) throw new Error(`A school that can be put in order has no ${what}`);
   return value;
 }
-
-const AREA_PARTS: readonly (readonly [AreaField, number])[] = [
-  ["progression10_deficit", 0.25],
-  ["progression12_deficit", 0.15],
-  ["secondary_participation_deficit", 0.25],
-  ["activity_deficit", 0.15],
-  ["conflict_exposure", 0.1],
-  ["female_disadvantage", 0.1],
-];
 
 /** How much each input adds to the rule's screening score. A key is absent when the rule does not use it. */
 export type Contribution = Partial<Record<InputKey, number | null>>;
@@ -238,14 +213,22 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
       return `Its power comes from ${p}${join}its water ${w}.`;
     }
     case "locality":
-      return school.locality == null || String(school.locality).trim() === ""
-        ? "Its remoteness category is not recorded."
-        : `Its record classes it as ${norm(school.locality)}, on ${REMOTENESS_SCALE}.`;
+      if (school.locality == null || String(school.locality).trim() === "")
+        return "Its remoteness category is not recorded.";
+      if (!REMOTENESS_CATEGORIES.includes(norm(school.locality)))
+        return `Its remoteness category is recorded as ${String(school.locality).trim()}, which is not on the study's scale.`;
+      return `Its record classes it as ${norm(school.locality)}, on ${REMOTENESS_SCALE}.`;
     case "area":
+      if (school.cohort === "queue" && school.components.A === null)
+        return gateSentence(otherCause(school, "unresolved_area_context"));
       return describeDistrict(school);
     case "urgency":
+      if (school.cohort === "queue" && school.components.U === null)
+        return gateSentence(otherCause(school, "urgency_unknown"));
       return `Its urgency value is ${required(school.components.U, "urgency value").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
     case "reach": {
+      if (school.cohort === "queue" && school.components.R === null)
+        return gateSentence(otherCause(school, "unresolved_reach"));
       const R = required(school.components.R, "reach value");
       const who =
         R >= 0.67
@@ -259,12 +242,16 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     }
     case "air": {
       const q = school.raw.Q_raw;
+      if (q != null && school.missing_env?.aqi)
+        return "Its air-quality reading is recorded, but the study cannot use it, so it is not counted as 0.";
       return q == null
         ? "Its air-quality reading is not recorded. The study assigns an air-pollution index to each school's location, and none was assigned to this one."
         : `Its air-quality index, a measure of air pollution assigned to its location, reaches ${formatCount(q)} on its worst 1 day in 20.`;
     }
     case "emissions": {
       const e = school.raw.E_raw;
+      if (e != null && school.missing_env?.emissions)
+        return "Its nearby emissions figure is recorded, but the study cannot use it, so it is not counted as 0.";
       if (e == null) return "Its nearby emissions figure is not recorded, so it is not counted as 0.";
       return e > 0
         ? `Fixed emission sources within 10 km account for about ${formatApprox(e)} tonnes of CO2-equivalent a year in the Climate TRACE inventory.`
@@ -272,6 +259,8 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     }
     case "land": {
       const l = school.raw.L_raw;
+      if (l != null && school.missing_env?.land)
+        return "Its land-cover figure is recorded, but the study cannot use it, so it is not counted as 0.";
       if (l == null) return "Its land-cover figure is not recorded, so it is not counted as 0.";
       return l > 0
         ? `Satellite maps class ${l < 0.0005 ? "less than 0.1%" : formatPercent(l)} of the area within 500 m as water or flooded vegetation.`
@@ -409,3 +398,5 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
   }
   return parts.join(" ");
 }
+
+export { AREA_PARTS, FACILITIES };
