@@ -52,6 +52,8 @@ export interface WorkspaceStore extends WorkspaceController {
     location: Pick<Location, "search" | "pathname" | "hash">,
     history: Pick<History, "replaceState">
   ): void;
+  /** Read the URL again after Back or Forward, and follow it. */
+  readUrl(): void;
   markReady(): void;
 }
 
@@ -122,6 +124,7 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
       url = { location, history };
       readUrl();
     },
+    readUrl,
     markReady: () => markReady(),
   };
 }
