@@ -54,12 +54,28 @@ class RuleKind(str, Enum):
     BOTTLENECK = "bottleneck"
 
 
-class RuleRole(str, Enum):
-    CIRCULATED_REFERENCE = "circulated_reference"
-    PROPOSED_PRIMARY_PENDING_AUTHOR_REVIEW = "proposed_primary_pending_author_review"
+class Provenance(str, Enum):
+    """Where a rule comes from. This says nothing about how the rule is used."""
+
+    CIRCULATED_PAPER = "circulated_paper"
+    PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW = "proposed_follow_up_pending_author_review"
+
+
+class PolicyRole(str, Enum):
+    """How a rule is meant to be used in a decision."""
+
+    PRIMARY = "primary"
     STRICT_ALTERNATIVE = "strict_alternative"
     POLICY_SENSITIVITY = "policy_sensitivity"
     CONVENTIONAL_REFERENCE = "conventional_reference"
+
+
+class ScoreKind(str, Enum):
+    """What the exported score column means under a rule."""
+
+    ADDITIVE = "additive score"
+    NEED_FIRST_SECONDARY = "need-first secondary score"
+    BOTTLENECK = "bottleneck score"
 
 
 class UnknownRuleError(SchoolScoringError, KeyError):
@@ -70,7 +86,8 @@ class UnknownRuleError(SchoolScoringError, KeyError):
 class Rule:
     rule_id: str
     label: str
-    role: RuleRole
+    provenance: Provenance
+    policy_role: PolicyRole
     kind: RuleKind
     formula: str
     weights: tuple[tuple[Component, Fraction], ...]
@@ -81,22 +98,39 @@ class Rule:
         return dict(self.weights).get(component, Fraction(0))
 
     @property
+    def primary_sort_key(self) -> Component | None:
+        """Under need-first ordering N sorts first and is not a summand."""
+        return Component.N if self.kind is RuleKind.NEED_FIRST else None
+
+    @property
+    def score_kind(self) -> ScoreKind:
+        return {
+            RuleKind.ADDITIVE: ScoreKind.ADDITIVE,
+            RuleKind.NEED_FIRST: ScoreKind.NEED_FIRST_SECONDARY,
+            RuleKind.BOTTLENECK: ScoreKind.BOTTLENECK,
+        }[self.kind]
+
+    @property
+    def sort_columns(self) -> tuple[str, ...]:
+        """Export columns that decide point rank, all descending, before school name ascending."""
+        return ("N", "score_point") if self.primary_sort_key else ("score_point",)
+
+    @property
     def score_components(self) -> tuple[Component, ...]:
         """Components that carry a weight in the score, in summation order.
 
         Under need-first ordering N is the primary sort key, not a summand.
         """
         weighted = {component for component, weight in self.weights if weight > 0}
-        if self.kind is RuleKind.NEED_FIRST:
-            weighted.discard(Component.N)
+        weighted.discard(self.primary_sort_key)
         return tuple(c for c in COMPONENT_ORDER if c in weighted)
 
     @property
     def required_components(self) -> tuple[Component, ...]:
         """Every component this rule reads. Nothing else may influence its output."""
         needed = set(self.score_components) | set(self.max_components)
-        if self.kind is RuleKind.NEED_FIRST:
-            needed.add(Component.N)
+        if self.primary_sort_key:
+            needed.add(self.primary_sort_key)
         return tuple(c for c in COMPONENT_ORDER if c in needed)
 
     @property
@@ -126,40 +160,45 @@ _BOTTLENECK_SHARE = Fraction("0.40")
 _RULE_LIST = (
     Rule(
         "additive_u",
-        "Additive, U included",
-        RuleRole.CIRCULATED_REFERENCE,
+        "Additive, urgency included",
+        Provenance.CIRCULATED_PAPER,
+        PolicyRole.PRIMARY,
         RuleKind.ADDITIVE,
         "S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L",
         _CIRCULATED,
     ),
     Rule(
         "additive_no_u",
-        "Additive, U omitted",
-        RuleRole.PROPOSED_PRIMARY_PENDING_AUTHOR_REVIEW,
+        "Additive, urgency omitted",
+        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        PolicyRole.PRIMARY,
         RuleKind.ADDITIVE,
         "S0 = (S - 0.05U) / 0.95 = (12N + 3A + R + Q + E + L) / 19",
         _URGENCY_OMITTED,
     ),
     Rule(
         "need_first_u",
-        "School-need-first, U included",
-        RuleRole.STRICT_ALTERNATIVE,
+        "School-need-first, urgency included",
+        Provenance.CIRCULATED_PAPER,
+        PolicyRole.STRICT_ALTERNATIVE,
         RuleKind.NEED_FIRST,
         "Sort N descending, then 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L descending, then school name ascending",
         _CIRCULATED,
     ),
     Rule(
         "need_first_no_u",
-        "School-need-first, U omitted",
-        RuleRole.STRICT_ALTERNATIVE,
+        "School-need-first, urgency omitted",
+        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        PolicyRole.STRICT_ALTERNATIVE,
         RuleKind.NEED_FIRST,
         "Sort N descending, then (0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95 descending, then school name ascending",
         _URGENCY_OMITTED,
     ),
     Rule(
         "bottleneck_u",
-        "Bottleneck, U included",
-        RuleRole.POLICY_SENSITIVITY,
+        "Bottleneck, urgency included",
+        Provenance.CIRCULATED_PAPER,
+        PolicyRole.POLICY_SENSITIVITY,
         RuleKind.BOTTLENECK,
         "T = 0.60S + 0.40 max(N, A, U)",
         _CIRCULATED,
@@ -168,8 +207,9 @@ _RULE_LIST = (
     ),
     Rule(
         "bottleneck_no_u",
-        "Bottleneck, U omitted",
-        RuleRole.POLICY_SENSITIVITY,
+        "Bottleneck, urgency omitted",
+        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        PolicyRole.POLICY_SENSITIVITY,
         RuleKind.BOTTLENECK,
         "T0 = 0.60S0 + 0.40 max(N, A)",
         _URGENCY_OMITTED,
@@ -179,7 +219,8 @@ _RULE_LIST = (
     Rule(
         "benchmark",
         "Conventional benchmark",
-        RuleRole.CONVENTIONAL_REFERENCE,
+        Provenance.CIRCULATED_PAPER,
+        PolicyRole.CONVENTIONAL_REFERENCE,
         RuleKind.ADDITIVE,
         "B = 0.55N + 0.20A + 0.15U + 0.10R",
         _BENCHMARK,
