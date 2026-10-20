@@ -15,7 +15,9 @@ import {
   groupsSentence,
   known,
   orderedPhrase,
+  oneRange,
   rangePhrase,
+  theirScore,
   urgencyDefinition,
 } from "./counts";
 import type { CountBag, Term } from "./model";
@@ -325,7 +327,7 @@ export function buildTerms(c: CountBag = {}) {
     list_order: {
       technical: "Lower-score placement",
       label: "Where range schools sit",
-      line: `In the list, ${rangePhrase(c)} sit where they would if their missing readings added nothing to their screening score.`,
+      line: `In the list, ${rangePhrase(c)} ${oneRange(c) ? "sits where it would if its" : "sit where they would if their"} missing readings added nothing to ${theirScore(c)} screening score.`,
       help: "The study uses this as its main order. Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
       where: "Note under the scope line, sensitivity toggle",
     },

@@ -204,6 +204,72 @@ describe("one school under two rules", () => {
   });
 });
 
+describe("one school that shows a range", () => {
+  const one = copy.copyFor({ counts: { complete: 9, range: 1, ranked: 10 } });
+  const four = copy.copyFor({ counts: { complete: 9, range: 4, ranked: 13 } });
+
+  it("agrees the subject, the verb and the pronouns in the list order", () => {
+    expect(one.STRINGS.listOrder).toBe(
+      "The one school that shows a range is listed where it would sit if its missing readings added nothing to its screening score. The study uses this as its main order."
+    );
+    expect(one.STRINGS.listOrderUpper).toBe(
+      "Sensitivity check: the one school that shows a range is listed where it would sit if its missing readings added as much as they can to its screening score."
+    );
+    expect(one.TERMS.list_order.line).toBe(
+      "In the list, the one school that shows a range sits where it would if its missing readings added nothing to its screening score."
+    );
+    expect(four.STRINGS.listOrder).toBe(
+      "The four schools that show a range are listed where they would sit if their missing readings added nothing to their screening score. The study uses this as its main order."
+    );
+    expect(four.TERMS.list_order.line).toBe(
+      "In the list, the four schools that show a range sit where they would if their missing readings added nothing to their screening score."
+    );
+  });
+
+  it("agrees the verb where the range schools are counted", () => {
+    const s = {
+      ...school({ id: "c", place: 5 }),
+      results: {
+        additive_u: { rank_complete120: 5, rank_best: 5, rank_worst: 6, rank_bounds_scope: "eligible124" },
+      },
+    };
+    expect(one.rankSentence(s, "additive_u")).toBe(
+      "5th of the 9 schools with every input recorded, and 5th or 6th once the one school that shows a range is counted."
+    );
+    expect(one.fullRankingSentence(s, "additive_u")).toBe(
+      "Once the one school that shows a range is counted, it would sit between 5th and 6th of all 10 schools that can be put in order."
+    );
+    expect(four.rankSentence(s, "additive_u")).toContain(
+      "once the four schools that show a range are counted."
+    );
+  });
+
+  it("agrees the pronoun in the reassurance about leaving urgency out", () => {
+    const rows = [
+      {
+        left_rule: "additive_u",
+        right_rule: "additive_no_u",
+        n: 9,
+        top10_overlap: 9,
+        top20_overlap: 9,
+        top30_overlap: 9,
+        top40_overlap: 9,
+        median_absolute_rank_shift: 1,
+        maximum_absolute_rank_shift: 2,
+      },
+    ];
+    const range = (id: string) => school({ id, cohort: "interval", bounds: [3, 4] });
+    const complete = (id: string) => school({ id, place: 1 });
+    const text = (schools: copy.CopySchool[]) => copy.urgencyReassurance({ pairwise: rows, schools });
+    expect(text([complete("a"), range("r")])).toMatch(
+      /For the one school that shows a range, leaving it out can still move its possible places\.$/
+    );
+    expect(text([complete("a"), range("r"), range("q")])).toMatch(
+      /For the two schools that show a range, leaving it out can still move their possible places\.$/
+    );
+  });
+});
+
 describe("one school under two rules, whatever its group under each", () => {
   const complete = (
     id: string,
@@ -351,8 +417,8 @@ describe("a school's name and where it is", () => {
     const c = school({ id: "s3", name: "Lumi  ", district: "South" });
     const loner = school({ id: "s4", name: "Kwikila" });
     const list = [a, b, c, loner];
-    expect(copy.distinctName(a, [a, b])).toBe("Lumi, North");
-    expect(copy.distinctName(b, [a, b])).toBe("Lumi, South");
+    expect(copy.distinctName(a, [a, b])).toBe("Lumi (North)");
+    expect(copy.distinctName(b, [a, b])).toBe("Lumi (South)");
     // b and c share name and district, so only the record can tell them apart.
     expect(copy.distinctName(b, list)).toBe("Lumi (record s2)");
     expect(copy.distinctName(c, list)).toBe("Lumi (record s3)");
@@ -361,13 +427,30 @@ describe("a school's name and where it is", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
+  it("reads a district that arrives as an empty string, or only whitespace or zero-width characters, as blank", () => {
+    // The API sends a blank district as "", not null.
+    for (const blank of ["", "  ", "\u200B", " \u200B\uFEFF "]) {
+      const x = school({ id: "d1", name: "Lumi ", district: blank, province: "West" });
+      const y = school({ id: "d2", name: "Lumi", district: "South", province: "West" });
+      const tag = JSON.stringify(blank);
+      expect(copy.locationLine(x), tag).toBe("District not recorded, West");
+      expect(copy.distinctName(y, [x, y]), tag).toBe("Lumi (South)");
+      expect(copy.distinctName(x, [x, y]), tag).toBe("Lumi (record d1)");
+      expect(copy.inputSentence(x, "area"), tag).toContain(
+        "In its district, which the record does not name,"
+      );
+      const noProvince = school({ id: "d3", district: blank, province: blank });
+      expect(copy.locationLine(noProvince), tag).toBe("Location not recorded");
+    }
+  });
+
   it("tells apart two schools that both have a blank name", () => {
     const a = school({ id: "b1", name: null });
     const b = school({ id: "b2", name: "" });
     expect(copy.distinctName(a, [a, b])).toBe("Unnamed school (record b1)");
     expect(copy.distinctName(b, [a, b])).toBe("Unnamed school (record b2)");
     const c = school({ id: "b3", name: "  ", district: "Other" });
-    expect(copy.distinctName(c, [a, b, c])).toBe("Unnamed school, Other");
+    expect(copy.distinctName(c, [a, b, c])).toBe("Unnamed school (Other)");
   });
 });
 
@@ -419,7 +502,7 @@ describe("ties", () => {
     const x = school({ id: "x1", name: "Lumi ", score: 0.7, district: "North" });
     const y = school({ id: "x2", name: "Lumi", score: 0.7, district: "South" });
     expect(copy.tieNote(x, "additive_u", [x, y])).toBe(
-      "It has exactly the same screening score as Lumi, South, so the order goes by the name as recorded, which differs only in spacing."
+      "It has exactly the same screening score as Lumi (South), so the order goes by the name as recorded, which differs only in spacing."
     );
   });
 

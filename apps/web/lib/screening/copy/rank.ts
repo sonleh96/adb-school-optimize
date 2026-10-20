@@ -9,6 +9,7 @@ import {
   countsFrom,
   known,
   orderedPhrase,
+  oneRange,
   rangePhrase,
 } from "./counts";
 import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
@@ -97,7 +98,7 @@ function rangeCountClause(res: CopyResult | null, c: CountBag | undefined): stri
       : res.rank_worst === res.rank_best + 1
         ? `${ordinal(res.rank_best)} or ${ordinal(res.rank_worst)}`
         : `anywhere from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)}`;
-  return `, and ${where} once ${rangePhrase(c)} are counted`;
+  return `, and ${where} once ${rangePhrase(c)} ${oneRange(c) ? "is" : "are"} counted`;
 }
 
 function shortlistClause(res: WithBounds, k: number | undefined): string {
@@ -203,7 +204,7 @@ export function fullRankingSentence(school: PlacedSchool, ruleId: CopyRuleId, op
     res.rank_best === res.rank_worst
       ? ordinal(res.rank_best)
       : `between ${ordinal(res.rank_best)} and ${ordinal(res.rank_worst)}`;
-  return `Once ${rangePhrase(c)} are counted, it would sit ${where} of ${amongAllOrdered(c)}.`;
+  return `Once ${rangePhrase(c)} ${oneRange(c) ? "is" : "are"} counted, it would sit ${where} of ${amongAllOrdered(c)}.`;
 }
 
 type Standing =
@@ -342,7 +343,7 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
   const twins = schools.filter((x) => x.id !== school.id && displayName(x) === name);
   if (!twins.length) return name;
   const district = cleanedOrNull(school.district);
-  if (district && twins.every((x) => cleanedOrNull(x.district) !== district)) return `${name}, ${district}`;
+  if (district && twins.every((x) => cleanedOrNull(x.district) !== district)) return `${name} (${district})`;
   return `${name} (record ${school.id})`;
 }
 

@@ -76,9 +76,14 @@ export const rangePhrase = (c: CountBag | null | undefined): string => {
 export const allRecords = (c: CountBag | undefined): string =>
   known(c, "all") && c.all > 0 ? `all ${formatCount(c.all)} records` : "all the records";
 
+// One range school takes a singular verb and pronoun: "The one school that shows a range is listed where it would sit".
+export const oneRange = (c: CountBag | null | undefined): boolean => known(c, "range") && c.range === 1;
 // "The four schools that show a range are" / "The one school that shows a range is".
 export const rangeSubject = (c: CountBag | undefined): string =>
-  `${capitalise(rangePhrase(c))} ${known(c, "range") && c.range === 1 ? "is" : "are"}`;
+  `${capitalise(rangePhrase(c))} ${oneRange(c) ? "is" : "are"}`;
+export const theyWould = (c: CountBag | undefined): string =>
+  oneRange(c) ? "it would sit" : "they would sit";
+export const theirScore = (c: CountBag | null | undefined): string => (oneRange(c) ? "its" : "their");
 export const amongAllOrdered = (c: CountBag | undefined): string =>
   known(c, "ranked") && c.ranked > 0
     ? `all ${formatCount(c.ranked)} schools that can be put in order`
