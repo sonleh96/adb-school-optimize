@@ -158,12 +158,13 @@ def write_persistence_files(
     *,
     flags: dict[str, bool] | None = None,
     receipt_count: int | None = None,
+    receipt_names: list[str] | None = None,
     threshold: float = 0.8,
 ) -> str:
     """Write a persistence table and its receipt under ``reference_root``. Returns the path relative to the root.
 
     The flag column is derived from the frequencies unless ``flags`` overrides a school's value.
-    ``receipt_count`` defaults to the number of flagged schools.
+    ``receipt_count`` defaults to the number of flagged schools, and ``receipt_names`` to their names as the file spells them.
     """
     path = reference_root / PERSISTENCE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -184,6 +185,11 @@ def write_persistence_files(
             }
             for sid, top, need in SETTINGS
         ],
+        "persistent_investigation_candidates": [
+            n for n, f in frequencies.items() if f and all(x >= threshold for x in f)
+        ]
+        if receipt_names is None
+        else receipt_names,
         "persistent_investigation_count_at_0_80_all_settings": sum(
             all(f >= threshold for f in freqs) for freqs in frequencies.values()
         )

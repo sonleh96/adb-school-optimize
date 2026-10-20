@@ -68,6 +68,9 @@ To store the top-20 persistence numbers of the recorded experiment with the vers
 The numbers come from an experiment that included urgency, so the migration stores them for `additive_u` only.
 
 - The file names schools by name. Each name is joined to the version's schools through `normalize_join_key`. A name that matches no school or several, or two names for one school, refuses the whole load.
+- A name equal to a stored name byte for byte is that school. Otherwise it must match exactly one school through `normalize_join_key`.
+- The experiment's `run_receipt.json` must sit beside the file and list the persistent schools. The schools the file flags must be the schools the receipt names, under the same normalisation. A difference refuses the load and is reported by count.
+- Numbers are attached when a version is created and never later, because a response that names a version is cached as immutable. To add them to a version that is already loaded, load a new input version.
 - The file's flag column must equal "at or above the threshold in every setting" for every row, and the flagged count must equal its `run_receipt.json`. Otherwise the load is refused.
 - The flag itself is never stored. It is derived on read from the stored frequencies, so it cannot disagree with them.
 - A rerun with the same file changes nothing. A rerun whose file differs from the stored numbers is refused.

@@ -5,9 +5,11 @@ The files are invented: the schools, frequencies and experiment id are made up h
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import psycopg
@@ -133,6 +135,19 @@ def test_a_rerun_whose_file_differs_is_refused_and_leaves_the_stored_numbers(con
     assert snapshot(connection) == before
 
 
+def test_numbers_cannot_be_attached_to_a_version_that_was_loaded_without_them(connection, reference):  # PE19
+    # A pinned response is cached as immutable. Attaching numbers later would change the list and the detail of a
+    # version that clients already hold, so the load is refused and the operator loads a new version.
+    load(connection, mixed_records())
+    before = snapshot(connection)
+
+    with pytest.raises(PersistenceConflict, match="Load a new input version"):
+        load(connection, mixed_records(), persistence=source(reference))
+
+    assert snapshot(connection) == before
+    assert store.read_persistence(connection, VERSION) is None
+
+
 def test_a_load_without_the_file_leaves_a_stored_set_alone(connection, reference):  # PE3
     load(connection, mixed_records(), persistence=source(reference))
     before = snapshot(connection)
@@ -167,14 +182,41 @@ def test_a_name_that_matches_no_school_refuses_the_whole_load(connection, refere
     assert_nothing_stored(connection)
 
 
-def test_a_name_that_matches_two_schools_refuses_the_whole_load(connection, reference):  # PE6
+def test_a_name_that_matches_two_schools_only_through_normalisation_refuses_the_whole_load(
+    connection, reference
+):  # PE6
     records = (*mixed_records(), record("Twin School"), record("twin   school"))
-    parsed = source(reference, {**FREQUENCIES, "Twin School": (1.0, 1.0, 1.0)})
+    parsed = source(reference, {**FREQUENCIES, "TWIN SCHOOL": (1.0, 1.0, 1.0)})
 
     with pytest.raises(ScreeningLoadError, match=r"matches 2 schools: \['Twin School', 'twin   school'\]"):
         load(connection, records, persistence=parsed)
 
     assert_nothing_stored(connection)
+
+
+def test_a_name_equal_to_a_stored_name_is_that_school_even_when_a_twin_normalises_alike(
+    connection, reference
+):  # PE6
+    records = (*mixed_records(), record("Twin School"), record("Twin  School"))
+    parsed = source(reference, {**FREQUENCIES, "Twin School": (1.0, 1.0, 1.0)})
+
+    load(connection, records, persistence=parsed)
+
+    stored = store.read_persistence(connection, VERSION)
+    assert stored.is_persistent("Twin School") is True
+    assert stored.is_persistent("Twin  School") is None  # the twin was not named, and is not guessed
+
+
+def test_two_exact_twins_can_both_be_named(connection, reference):  # PE6
+    records = (*mixed_records(), record("Twin School"), record("Twin  School"))
+    parsed = source(
+        reference, {**FREQUENCIES, "Twin School": (1.0, 1.0, 1.0), "Twin  School": (0.1, 0.1, 0.1)}
+    )
+
+    load(connection, records, persistence=parsed)
+
+    stored = store.read_persistence(connection, VERSION)
+    assert (stored.is_persistent("Twin School"), stored.is_persistent("Twin  School")) == (True, False)
 
 
 def test_two_names_for_one_school_refuse_the_whole_load(connection, reference):  # PE7
@@ -208,6 +250,53 @@ def test_a_flag_column_that_disagrees_with_the_frequencies_is_refused(reference)
     relative = write_persistence_files(reference, FREQUENCIES, flags={"UPPER Case School": True})
 
     with pytest.raises(ScreeningLoadError, match=r"'UPPER Case School' is True .* but its frequencies"):
+        read_persistence_source(reference, relative)
+
+
+def test_a_receipt_that_names_other_schools_than_the_file_flags_is_refused_by_count(
+    connection, reference
+):  # PE20
+    others = ["Interval No Air"]  # in the experiment, but not persistent
+    parsed = source(reference, receipt_names=["Leading Space School", *others])
+
+    with pytest.raises(ScreeningLoadError) as error:
+        load(connection, mixed_records(), persistence=parsed)
+
+    message = str(error.value)
+    assert (
+        "flags 1 school(s) the receipt does not list, and the receipt lists 1 the file does not flag"
+        in message
+    )
+    assert "Trailing Space School" not in message and "Interval No Air" not in message  # counts, never names
+    assert_nothing_stored(connection)
+
+
+def test_a_receipt_may_spell_a_name_differently_when_it_normalises_alike(connection, reference):  # PE20
+    parsed = source(reference, receipt_names=["leading  space school", "Trailing Space School "])
+
+    load(connection, mixed_records(), persistence=parsed)
+
+    assert store.read_persistence(connection, VERSION).is_persistent(AWK[0]) is True
+
+
+def test_a_receipt_that_lists_a_school_the_version_does_not_have_is_refused(connection, reference):  # PE20
+    parsed = source(reference, receipt_names=["Leading Space School", "Trailing Space School"])
+    parsed = replace(parsed, receipt_flagged=("Leading Space School", "Nowhere School"))
+
+    with pytest.raises(ScreeningLoadError, match=r"persistence receipt: 1 name.* match no school"):
+        load(connection, mixed_records(), persistence=parsed)
+
+    assert_nothing_stored(connection)
+
+
+def test_a_receipt_without_the_list_of_names_is_refused(reference):  # PE20
+    relative = write_persistence_files(reference, FREQUENCIES)
+    receipt_path = (reference / relative).parent / "run_receipt.json"
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    del receipt["persistent_investigation_candidates"]
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+
+    with pytest.raises(ScreeningLoadError, match="persistent_investigation_candidates"):
         read_persistence_source(reference, relative)
 
 

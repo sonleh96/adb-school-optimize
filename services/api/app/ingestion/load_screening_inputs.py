@@ -163,6 +163,7 @@ PERSISTENCE_RULE_ID = store.PERSISTENCE_RULE_ID
 PERSISTENCE_THRESHOLD = 0.80
 PERSISTENCE_FLAG_COLUMN = "persistent_at_0_80_all_settings"
 PERSISTENCE_COUNT_KEY = "persistent_investigation_count_at_0_80_all_settings"
+PERSISTENCE_FLAGGED_KEY = "persistent_investigation_candidates"
 EXPERIMENT_FOLDER = re.compile(r"EXP-[A-Za-z0-9._-]+")
 
 
@@ -177,6 +178,8 @@ class PersistenceSource:
     threshold: float
     settings: tuple[store.PersistenceSetting, ...]
     rows: tuple[tuple[str, tuple[float, ...]], ...]
+    # The names the experiment's receipt lists as persistent, spelled as the receipt spells them.
+    receipt_flagged: tuple[str, ...]
 
 
 def _persistence_receipt(path: Path) -> dict[str, Any]:
@@ -236,6 +239,9 @@ def read_persistence_source(
         )
         draws = {int(s["draws"]) for s in receipt["concentration_settings"]}
         receipt_count = int(receipt[PERSISTENCE_COUNT_KEY])
+        receipt_flagged = tuple(receipt[PERSISTENCE_FLAGGED_KEY])
+        if not all(isinstance(name, str) for name in receipt_flagged):
+            raise TypeError(PERSISTENCE_FLAGGED_KEY)
     except (KeyError, TypeError, ValueError) as error:
         raise ScreeningLoadError(f"persistence receipt lacks {error} or states it wrongly") from error
     if not settings or len(draws) != 1 or len({s.setting_id for s in settings}) != len(settings):
@@ -269,7 +275,7 @@ def read_persistence_source(
             )
         rows.append((name, frequencies))
     derived = sum(store.is_persistent(f, PERSISTENCE_THRESHOLD) for _, f in rows)
-    if derived != receipt_count:
+    if derived != receipt_count or len(receipt_flagged) != receipt_count:
         raise ScreeningLoadError(
             f"persistence file flags {derived} schools but its receipt states {receipt_count}"
         )
@@ -281,6 +287,7 @@ def read_persistence_source(
         threshold=PERSISTENCE_THRESHOLD,
         settings=settings,
         rows=tuple(rows),
+        receipt_flagged=receipt_flagged,
     )
 
 
@@ -470,8 +477,12 @@ def _check_stored_inputs(
     )
 
 
-_MATCH_PERSISTENCE_NAMES = """
-select n.name, coalesce(array_agg(i.source_school_name order by i.record_position) filter (where i.source_school_name is not null), '{}')
+_MATCH_NAMES = """
+select n.name,
+       coalesce(array_agg(i.source_school_name order by i.record_position)
+                filter (where i.source_school_name = n.name), '{}') as exact,
+       coalesce(array_agg(i.source_school_name order by i.record_position)
+                filter (where i.source_school_name is not null), '{}') as normalised
 from unnest(%(names)s::text[]) as n(name)
 left join screening_inputs i
   on i.input_version = %(version)s and i.source_school_name_norm = normalize_join_key(n.name)
@@ -479,32 +490,47 @@ group by n.name
 """
 
 
-def _join_persistence_names(
-    connection: psycopg.Connection, input_version: str, source: PersistenceSource
+def _join_names(
+    connection: psycopg.Connection, input_version: str, names: Sequence[str], where: str
 ) -> dict[str, str]:
-    """The school of the version that each name of the file stands for, through ``normalize_join_key``.
+    """The school of the version that each name stands for.
 
-    A name that matches no school or several, or two names that match one school, refuse the load: a guess would
-    put a school's persistence on another school.
+    A name equal to a stored name byte for byte is that school. Otherwise the name must match exactly one school
+    through ``normalize_join_key``. A name that matches no school or several refuses the load: a guess would put
+    a school's numbers on another school.
     """
-    names = [name for name, _ in source.rows]
     found = {
-        name: tuple(matches)
-        for name, matches in _fetch(
-            connection, _MATCH_PERSISTENCE_NAMES, {"names": names, "version": input_version}
+        name: (tuple(exact), tuple(normalised))
+        for name, exact, normalised in _fetch(
+            connection, _MATCH_NAMES, {"names": list(names), "version": input_version}
         )
     }
-    none = [n for n in names if not found[n]]
-    several = [n for n in names if len(found[n]) > 1]
+    joined: dict[str, str] = {}
+    none, several = [], []
+    for name in names:
+        exact, normalised = found[name]
+        if exact:
+            joined[name] = exact[0]
+        elif len(normalised) == 1:
+            joined[name] = normalised[0]
+        else:
+            (several if normalised else none).append(name)
     if none or several:
         problems = [f"{n!r} matches no school of the version" for n in none[:5]]
-        problems += [f"{n!r} matches {len(found[n])} schools: {list(found[n])!r}" for n in several[:5]]
+        problems += [f"{n!r} matches {len(found[n][1])} schools: {list(found[n][1])!r}" for n in several[:5]]
         raise ScreeningLoadError(
-            f"persistence file: {len(none)} name(s) match no school and {len(several)} match several. "
+            f"{where}: {len(none)} name(s) match no school and {len(several)} match several. "
             + "; ".join(problems)
             + ". Nothing was loaded."
         )
-    joined = {name: found[name][0] for name in names}
+    return joined
+
+
+def _join_persistence_names(
+    connection: psycopg.Connection, input_version: str, source: PersistenceSource
+) -> dict[str, str]:
+    """The school each name of the file stands for. Two names for one school refuse the load."""
+    joined = _join_names(connection, input_version, [name for name, _ in source.rows], "persistence file")
     owners: dict[str, list[str]] = {}
     for name, school in joined.items():
         owners.setdefault(school, []).append(name)
@@ -518,9 +544,39 @@ def _join_persistence_names(
     return joined
 
 
-def _store_persistence(connection: psycopg.Connection, input_version: str, source: PersistenceSource) -> str:
-    """Store the persistence numbers of a version, or confirm that the stored ones equal the file."""
+def _check_against_receipt(
+    connection: psycopg.Connection,
+    input_version: str,
+    source: PersistenceSource,
+    school_of: dict[str, str],
+) -> None:
+    """The schools the file flags must be the schools the experiment's receipt names, under one normalisation.
+
+    The receipt was written by the experiment, apart from the table, so it is an independent statement of who is
+    persistent. Differences are reported by count.
+    """
+    listed = set(
+        _join_names(connection, input_version, source.receipt_flagged, "persistence receipt").values()
+    )
+    flagged = {school_of[name] for name, freqs in source.rows if store.is_persistent(freqs, source.threshold)}
+    if flagged != listed:
+        raise ScreeningLoadError(
+            f"persistence file and its receipt disagree about who is persistent: the file flags "
+            f"{len(flagged - listed)} school(s) the receipt does not list, and the receipt lists "
+            f"{len(listed - flagged)} the file does not flag. Nothing was loaded."
+        )
+
+
+def _store_persistence(
+    connection: psycopg.Connection, input_version: str, source: PersistenceSource, version_created: bool
+) -> str:
+    """Store the persistence numbers of a version, or confirm that the stored ones equal the file.
+
+    Numbers are attached when the version is created, never later: a response that names an input version is
+    cached as immutable, and numbers attached afterwards would change what clients already hold.
+    """
     school_of = _join_persistence_names(connection, input_version, source)
+    _check_against_receipt(connection, input_version, source, school_of)
     expected_set = store.PersistenceSet(
         input_version=input_version,
         rule_id=PERSISTENCE_RULE_ID,
@@ -541,6 +597,12 @@ def _store_persistence(connection: psycopg.Connection, input_version: str, sourc
                 "A stored set is never overwritten; use a new input version."
             )
         return f"unchanged ({len(expected.frequencies)} schools, sha256 {source.source_sha256})"
+    if not version_created:
+        raise PersistenceConflict(
+            f"input version {input_version!r} was loaded without persistence numbers, and responses that name a "
+            "version are cached as immutable, so numbers are not attached to it later. "
+            "Load a new input version with the persistence file."
+        )
 
     connection.execute(
         "insert into screening_persistence_sets "
@@ -630,7 +692,9 @@ def load_screening(
 
         matched, unmatched, ambiguous, changed = _link_schools(connection, input_version)
         persistence_state = (
-            None if persistence is None else _store_persistence(connection, input_version, persistence)
+            None
+            if persistence is None
+            else _store_persistence(connection, input_version, persistence, existing is None)
         )
     return LoadReport(
         input_version=input_version,
