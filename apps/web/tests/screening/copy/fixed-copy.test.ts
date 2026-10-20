@@ -516,7 +516,7 @@ describe("counts belong to the data they came from", () => {
 
   it("differs from copy bound to empty data, which counts zero schools", () => {
     expect(copyFor({}).scope("additive_u").groups).toBe(
-      "0 schools have every input recorded, so 0 schools can be put in order."
+      "No school has every input recorded, so no school can be put in order."
     );
     expect(copy.TERMS.cohort_complete.label).toBe("Every input recorded");
     expect(copy.TERMS.cohort_ranked.label).toBe("Can be put in order");
