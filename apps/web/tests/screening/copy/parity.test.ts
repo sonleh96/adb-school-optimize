@@ -248,6 +248,18 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     flush();
   });
 
+  it("says an urgency value that is known but not loaded is recorded, and prints one that is loaded", () => {
+    const base = school({ id: "u" });
+    const rest = Object.fromEntries(Object.entries(base.components).filter(([k]) => k !== "U"));
+    for (const x of [base, { ...base, components: rest }])
+      sameOutcome(
+        `inputSentence urgency, U ${"U" in x.components ? "loaded" : "not loaded"}`,
+        run(() => proto.inputSentence(x, "urgency")),
+        run(() => (port as Api).inputSentence(x, "urgency"))
+      );
+    flush();
+  });
+
   it("formats numbers the same way", () => {
     const nums = [
       0,

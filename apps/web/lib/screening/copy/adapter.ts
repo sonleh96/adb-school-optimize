@@ -254,7 +254,8 @@ function buildSchool(
 
   // The components do not depend on the rule. Whether urgency is known comes from the stored input, so it does not
   // depend on which lists are loaded: an unknown value is null, and a known one is the rules' own figure when a rule
-  // that reads it is loaded (the stored value otherwise). A record without the entry leaves urgency unread.
+  // that reads it is loaded. The stored value is on its own scale, so it only decides known or unknown and is never
+  // used as the engine's figure: without that figure urgency stays unset.
   const unreadable: UnreadableInput[] = [];
   const condition = conditionFrom(inputs, unreadable);
   const raw = {
@@ -266,8 +267,9 @@ function buildSchool(
     "urgency_source_scalar" in inputs
       ? numberInput(inputs, "urgency_source_scalar", "urgency", unreadable)
       : undefined;
+  const unknownUrgency = stored === null;
   const fromRules = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
-  const urgency = stored === null ? null : fromRules !== undefined ? fromRules : stored;
+  const urgency = unknownUrgency ? null : fromRules;
   const { N, A, R, Q, E, L } = shown.components;
   const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
 

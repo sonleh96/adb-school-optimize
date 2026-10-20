@@ -16,6 +16,17 @@ const only = schoolsFromLists(fixtureInputs(), [fixtureResults("additive_no_u")]
 const named = (name: string) => only.find((s) => s.name === name) as copy.CopySchool;
 
 describe("with only a list that leaves urgency out", () => {
+  it("reads no scale into the stored value: it prints the engine's figure only when the engine's list is loaded", () => {
+    const withList = schoolsFromLists(
+      fixtureInputs(),
+      [fixtureResults("additive_no_u"), fixtureResults("additive_u")],
+      "additive_no_u"
+    );
+    const s08 = withList.find((s) => s.name === "Sample School 08") as copy.CopySchool;
+    expect(copy.inputSentence(s08, "urgency")).toMatch(/^Its urgency value is 0\.21 on a 0 to 1 scale/);
+    expect(copy.inputSentence(named("Sample School 08"), "urgency")).not.toMatch(/0\.15|0\.21/);
+  });
+
   it("knows a school with no urgency value has none", () => {
     const s23 = named("Sample School 23");
     expect(s23.components.U).toBeNull();
@@ -25,9 +36,13 @@ describe("with only a list that leaves urgency out", () => {
     );
   });
 
-  it("knows a school with an urgency value has one", () => {
+  it("knows a school with an urgency value has one, and does not print the stored number as the engine's figure", () => {
     const s08 = named("Sample School 08");
-    expect(s08.components.U).not.toBeNull();
+    // The stored scalar is on its own scale; the engine's component (0.21 for this school) is not loaded.
+    expect(s08.components).not.toHaveProperty("U");
+    expect(copy.inputSentence(s08, "urgency")).toBe(
+      "Its urgency value is recorded. No one could trace where that value comes from."
+    );
     expect(copy.missingValueKind(s08, "urgency")).toBe("recorded");
     expect(copy.missingValueNote(s08, "urgency")).toBe("Recorded in the source.");
   });
