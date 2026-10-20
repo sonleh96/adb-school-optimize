@@ -15,6 +15,7 @@ from .components import (
 )
 from .engine import (
     ComponentContribution,
+    MaximumTerm,
     RunManifest,
     SchoolResult,
     ScreeningRun,
@@ -63,6 +64,7 @@ __all__ = [
     "GateFailure",
     "InputContractError",
     "InputField",
+    "MaximumTerm",
     "NeedParts",
     "PolicyRole",
     "PreparedRecord",

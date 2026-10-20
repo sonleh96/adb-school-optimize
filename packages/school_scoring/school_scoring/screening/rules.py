@@ -113,7 +113,7 @@ class Rule:
     @property
     def sort_columns(self) -> tuple[str, ...]:
         """Export columns that decide point rank, all descending, before school name ascending."""
-        return ("N", "score_point") if self.primary_sort_key else ("score_point",)
+        return ("sort_key_primary", "score_point") if self.primary_sort_key else ("score_point",)
 
     @property
     def score_components(self) -> tuple[Component, ...]:
