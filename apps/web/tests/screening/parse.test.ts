@@ -7,18 +7,27 @@
  *  3. A row says "interval" but carries one exact place, or says "complete" with none. It is rejected at the
  *     boundary, so no later code has to wonder.
  *  4. The API adds a field, or a new member of an enum the page does not branch on. The page must keep working.
+ *  5. The persistence flag appears on a rule it does not describe, or a scope is told apart by its label. The
+ *     parser keeps the flag only where the API sent it and carries the scope code the page branches on.
  */
 import { describe, expect, it } from "vitest";
 
 import { ParseError, parseWith } from "@/lib/screening/schema";
-import { compareResponse, resultsResponse, rulesResponse, schoolDetailResponse } from "@/lib/screening/types";
+import {
+  compareResponse,
+  inputsResponse,
+  resultsResponse,
+  rulesResponse,
+  schoolDetailResponse,
+} from "@/lib/screening/types";
 
-import { copy, fixtureIndex, readFixture } from "./fixtures";
+import { DATASETS, copy, fixtureIndex, readFixture } from "./fixtures";
 
 const SCHEMAS: Record<string, Parameters<typeof parseWith>[0]> = {
   "/api/v1/screening/rules": rulesResponse,
   "/api/v1/screening/results": resultsResponse,
   "/api/v1/screening/compare": compareResponse,
+  "/api/v1/screening/inputs": inputsResponse,
 };
 
 function schemaFor(requestPath: string) {
@@ -29,11 +38,106 @@ function schemaFor(requestPath: string) {
   return schema;
 }
 
-describe("responses the API sent", () => {
-  const { requests } = fixtureIndex();
+describe.each(DATASETS)("responses the API sent, dataset %j", (dataset) => {
+  const { requests } = fixtureIndex(dataset);
+
+  it("has requests", () => {
+    expect(requests.length).toBeGreaterThan(0);
+  });
 
   it.each(requests.map((r) => [r.file, r] as const))("%s parses", (_file, request) => {
-    expect(() => parseWith(schemaFor(request.path), readFixture(request.file), request.file)).not.toThrow();
+    const body = readFixture(request.file, dataset);
+    if (request.status !== undefined) {
+      // A failed read has no schema of its own: it is the API's error envelope, which the page shows in words.
+      expect(request.status).toBeGreaterThanOrEqual(400);
+      expect(body).toMatchObject({ error: { code: expect.any(String), message: expect.any(String) } });
+      return;
+    }
+    expect(() => parseWith(schemaFor(request.path), body, request.file)).not.toThrow();
+  });
+});
+
+describe("the scope codes and the persistence flag", () => {
+  it("carries the scope code of every rank and of the manifest", () => {
+    const parsed = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    expect(parsed.manifest.point_rank_scope_code).toBe("complete_under_rule");
+    expect(parsed.manifest.rank_bounds_scope_code).toBe("eligible");
+    for (const row of parsed.rows) {
+      expect(row.point_rank.scope_code).toBe("complete_under_rule");
+      expect(row.rank_bounds.scope_code).toBe("eligible");
+    }
+  });
+
+  it("keeps the flag as true, false or null on the circulated rule and has none on any other rule", () => {
+    const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    const flags = circulated.rows.map((row) => row.persistent_candidate);
+    expect(flags).toContain(true);
+    expect(flags).toContain(false);
+    expect(flags).toContain(null);
+    for (const rule of ["additive_no_u", "need_first_u", "bottleneck_no_u", "benchmark"]) {
+      const other = parseWith(resultsResponse, readFixture(`results/${rule}.json`), rule);
+      expect(
+        other.rows.every((row) => !("persistent_candidate" in row)),
+        rule
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the flag only on the circulated rule's entry of a school's detail", () => {
+    const detail = parseWith(
+      schoolDetailResponse,
+      readFixture(fixtureIndex().requests.find((r) => r.path.includes("/by-key/"))!.file),
+      "detail"
+    );
+    const flagged = detail.rules.filter((entry) => "persistent_candidate" in entry);
+    expect(flagged.map((entry) => entry.rule.rule_id)).toEqual(["additive_u"]);
+    for (const entry of detail.rules) expect(entry.point_rank_scope_code).toBe("complete_under_rule");
+  });
+
+  it("accepts a scope code the page does not know", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ rank_bounds: { scope_code: string } }>;
+    };
+    body.rows[0].rank_bounds.scope_code = "a_scope_added_later";
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.rows[0].rank_bounds.scope_code).toBe("a_scope_added_later");
+  });
+
+  it("rejects a flag that is not true, false or null", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    body.rows[0].persistent_candidate = "yes";
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      'rows[0].persistent_candidate: expected a boolean, got string "yes"'
+    );
+  });
+});
+
+describe("the bulk inputs", () => {
+  it("holds every school once, with the same inputs as its detail", () => {
+    const bulk = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+    const results = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    expect(bulk.schools.map((s) => s.school_key).sort()).toEqual(
+      results.rows.map((row) => row.school.school_key).sort()
+    );
+    const request = fixtureIndex().requests.find((r) => r.path.includes("/by-key/"))!;
+    const detail = readFixture(request.file) as { school: { school_key: string }; inputs: unknown };
+    expect(bulk.schools.find((s) => s.school_key === detail.school.school_key)?.inputs).toEqual(
+      detail.inputs
+    );
+  });
+
+  it("keeps an unknown reading as null, never zero", () => {
+    const bulk = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+    const values = bulk.schools.flatMap((s) => Object.values(s.inputs));
+    expect(values).toContain(null);
+  });
+
+  it("names the path of a removed key", () => {
+    const body = copy(readFixture("inputs.json")) as { schools: Array<Record<string, unknown>> };
+    delete body.schools[2].school_key;
+    expect(() => parseWith(inputsResponse, body, "Screening inputs")).toThrow(
+      "Screening inputs: schools[2].school_key: expected a string, got undefined"
+    );
   });
 });
 
