@@ -23,11 +23,9 @@ export class ApiRequestError extends Error {
 
 const SESSION_ENDED = "Your session has expired. Sign in again.";
 let cachedAuthState: { required: false } | { required: true; token: string; expiresAt: number } | null = null;
+let pendingToken: Promise<string | null> | null = null;
 
-async function getApiAccessToken(): Promise<string | null> {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedAuthState?.required === false) return null;
-  if (cachedAuthState?.required && cachedAuthState.expiresAt > now + 30) return cachedAuthState.token;
+async function fetchAccessToken(): Promise<string | null> {
   const response = await fetch("/auth/token", { cache: "no-store" });
   if (!response.ok) throw new ApiRequestError(SESSION_ENDED, 401);
   const data = (await response.json()) as {
@@ -42,6 +40,17 @@ async function getApiAccessToken(): Promise<string | null> {
   if (!data.accessToken || !data.expiresAt) throw new ApiRequestError(SESSION_ENDED, 401);
   cachedAuthState = { required: true, token: data.accessToken, expiresAt: data.expiresAt };
   return data.accessToken;
+}
+
+async function getApiAccessToken(): Promise<string | null> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedAuthState?.required === false) return null;
+  if (cachedAuthState?.required && cachedAuthState.expiresAt > now + 30) return cachedAuthState.token;
+  // Reads that start together (a page's first requests) share one token request instead of each making their own.
+  pendingToken ??= fetchAccessToken().finally(() => {
+    pendingToken = null;
+  });
+  return pendingToken;
 }
 
 /**
