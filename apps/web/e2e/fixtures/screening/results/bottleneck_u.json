@@ -1,0 +1,1688 @@
+{
+  "filters": { "district": null, "province": null },
+  "filters_note": "Filters only hide rows. Ranks, bounds and normalization anchors are those of the full run, so a rank may skip numbers in a filtered list.",
+  "manifest": {
+    "anchors": [
+      {
+        "component": "A",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 23,
+        "name": "secondary_participation",
+        "p05": 54.300000000000004,
+        "p95": 220.7,
+        "source_field": "secondary_students_per_1000",
+        "transformation": "observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "A",
+        "degenerate": true,
+        "n_records": 24,
+        "n_valid": 23,
+        "name": "activity_scale",
+        "p05": 6.90875477931522,
+        "p95": 6.90875477931522,
+        "source_field": "district_luminosity_area_integral",
+        "transformation": "log1p of the value floored at 0, then observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "A",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 23,
+        "name": "conflict_exposure",
+        "p05": 0.0,
+        "p95": 0.26236426446749106,
+        "source_field": "conflict_population_exposure",
+        "transformation": "log1p then observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "U",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 22,
+        "name": "urgency",
+        "p05": 0.052500000000000005,
+        "p95": 0.6974999999999999,
+        "source_field": "urgency_source_scalar",
+        "transformation": "observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "R",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 23,
+        "name": "reach",
+        "p05": 5.343685443728056,
+        "p95": 7.306992303103816,
+        "source_field": "walking_catchment_population",
+        "transformation": "log1p then observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "Q",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 21,
+        "name": "aqi",
+        "p05": 29.0,
+        "p95": 146.0,
+        "source_field": "aqi_p95_selected",
+        "transformation": "observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "E",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 21,
+        "name": "emissions",
+        "p05": 0.0,
+        "p95": 7.581209826196346,
+        "source_field": "emissions_co2e_100yr_10km_tonnes",
+        "transformation": "log1p then observed 5th/95th percentile scaling"
+      },
+      {
+        "component": "L",
+        "degenerate": false,
+        "n_records": 24,
+        "n_valid": 22,
+        "name": "land",
+        "p05": null,
+        "p95": null,
+        "source_field": "water_flooded_vegetation_fraction_500m",
+        "transformation": "natural 0..1 fraction"
+      }
+    ],
+    "anchors_sha256": "e127008bdf24e1716e86dbc705b7e5d6a222858beb29d76a388ae782a8e48cb0",
+    "cohort_counts": { "complete": 16, "interval": 4, "records": 24, "verification_queue": 4 },
+    "degenerate_anchors": ["activity_scale"],
+    "input_sha256": "cc1ef1ebf5549921e6b7b4dac6a07803e2b0ad0d2a6f9423b303aa27819acf1d",
+    "maximum_components": ["N", "A", "U"],
+    "maximum_share": "2/5",
+    "package_version": "0.1.0",
+    "point_rank_count": 16,
+    "point_rank_scope": "complete under this rule (16)",
+    "policy_role": "policy_sensitivity",
+    "primary_sort_key": null,
+    "provenance": "circulated_paper",
+    "rank_bounds_count": 20,
+    "rank_bounds_scope": "eligible (20)",
+    "rule_formula": "T = 0.60S + 0.40 max(N, A, U)",
+    "rule_id": "bottleneck_u",
+    "rule_label": "Bottleneck, urgency included",
+    "score_kind": "bottleneck score",
+    "sort_columns": ["score_point"],
+    "tie_rule": "exact numeric score descending, then school name ascending in Unicode code point order",
+    "uses_urgency": true,
+    "weights": [
+      { "component": "N", "fraction": "3/5", "value": 0.6 },
+      { "component": "A", "fraction": "3/20", "value": 0.15 },
+      { "component": "U", "fraction": "1/20", "value": 0.05 },
+      { "component": "R", "fraction": "1/20", "value": 0.05 },
+      { "component": "Q", "fraction": "1/20", "value": 0.05 },
+      { "component": "E", "fraction": "1/20", "value": 0.05 },
+      { "component": "L", "fraction": "1/20", "value": 0.05 }
+    ]
+  },
+  "placement": "lower",
+  "returned_schools": 24,
+  "rows": [
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.6949176449925621,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.48,
+        "progression_g12_deficit": 0.84,
+        "secondary_participation_deficit": 0.6171875
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.5647886394992563,
+        "E": 0.7767728493655814,
+        "L": 0.3,
+        "N": 0.6233333333333333,
+        "Q": 0.38461538461538464,
+        "R": 0.6157073396518786,
+        "U": 1.0
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2244, "upper": 0.2244, "weight": 0.36 },
+        { "component": "A", "lower": 0.050830977554933064, "upper": 0.050830977554933064, "weight": 0.09 },
+        { "component": "U", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "R", "lower": 0.018471220189556357, "upper": 0.018471220189556357, "weight": 0.03 },
+        { "component": "Q", "lower": 0.011538461538461539, "upper": 0.011538461538461539, "weight": 0.03 },
+        { "component": "E", "lower": 0.023303185480967444, "upper": 0.023303185480967444, "weight": 0.03 },
+        { "component": "L", "lower": 0.009, "upper": 0.009, "weight": 0.03 }
+      ],
+      "display_order": 1,
+      "gate_failures": [],
+      "maximum_term": { "attained_by": ["U"], "contribution": 0.4, "share": 0.4, "value": 1.0 },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.048,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.018,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0648
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.6666666666666667,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.9
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 1, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 1, "count": 20, "scope": "eligible (20)", "worst": 1 },
+      "school": {
+        "district": "North Two",
+        "latitude": -5.535,
+        "locality": "Remote",
+        "longitude": 146.4,
+        "province": "North Province",
+        "school_id": "8167420b-4804-5ef4-b3af-db451ea3349f",
+        "school_key": "40a9cb22a2b52bb08dca8f6a0a04cc59",
+        "source_school_name": "Sample School 07"
+      },
+      "scores": {
+        "lower": 0.7675438447639185,
+        "point": 0.7675438447639185,
+        "sort_key_primary": null,
+        "upper": 0.7675438447639185
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.45999999999999996,
+        "progression_g12_deficit": 0.78,
+        "secondary_participation_deficit": 0.1484375
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.364109375,
+        "E": 0.9593577757032727,
+        "L": 0.6,
+        "N": 0.6683333333333333,
+        "Q": 0.8461538461538461,
+        "R": 0.930676234363799,
+        "U": 0.8488372093023256
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.24059999999999998, "upper": 0.24059999999999998, "weight": 0.36 },
+        { "component": "A", "lower": 0.03276984375, "upper": 0.03276984375, "weight": 0.09 },
+        { "component": "U", "lower": 0.025465116279069767, "upper": 0.025465116279069767, "weight": 0.03 },
+        { "component": "R", "lower": 0.027920287030913968, "upper": 0.027920287030913968, "weight": 0.03 },
+        { "component": "Q", "lower": 0.025384615384615384, "upper": 0.025384615384615384, "weight": 0.03 },
+        { "component": "E", "lower": 0.02878073327109818, "upper": 0.02878073327109818, "weight": 0.03 },
+        { "component": "L", "lower": 0.018, "upper": 0.018, "weight": 0.03 }
+      ],
+      "display_order": 2,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["U"],
+        "contribution": 0.33953488372093027,
+        "share": 0.4,
+        "value": 0.8488372093023256
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.048,
+        "locality_disadvantage": 0.0648,
+        "permanent_classroom_deficit": 0.027000000000000003,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0576
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.6666666666666667,
+        "locality_disadvantage": 0.9,
+        "permanent_classroom_deficit": 0.375,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.8
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 2, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 2, "count": 20, "scope": "eligible (20)", "worst": 2 },
+      "school": {
+        "district": "South One",
+        "latitude": -7.445,
+        "locality": "Very remote",
+        "longitude": 146.42499999999998,
+        "province": "South Province",
+        "school_id": "3cd5e936-3393-5fc6-bb4c-41e16276e5fb",
+        "school_key": "f43b8c426ef8c16d0c02fa0b66cea21e",
+        "source_school_name": "Sample School 13"
+      },
+      "scores": {
+        "lower": 0.7384554794366276,
+        "point": 0.7384554794366276,
+        "sort_key_primary": null,
+        "upper": 0.7384554794366276
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 1.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.41000000000000003,
+        "progression_g12_deficit": 0.73,
+        "secondary_participation_deficit": 0.5390625
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.541765625,
+        "E": 0.817342385958391,
+        "L": 0.35,
+        "N": 0.7933333333333333,
+        "Q": 0.46153846153846156,
+        "R": 0.6836300178603018,
+        "U": 0.15116279069767444
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.28559999999999997, "upper": 0.28559999999999997, "weight": 0.36 },
+        { "component": "A", "lower": 0.04875890625, "upper": 0.04875890625, "weight": 0.09 },
+        { "component": "U", "lower": 0.004534883720930233, "upper": 0.004534883720930233, "weight": 0.03 },
+        { "component": "R", "lower": 0.020508900535809053, "upper": 0.020508900535809053, "weight": 0.03 },
+        { "component": "Q", "lower": 0.013846153846153847, "upper": 0.013846153846153847, "weight": 0.03 },
+        { "component": "E", "lower": 0.02452027157875173, "upper": 0.02452027157875173, "weight": 0.03 },
+        { "component": "L", "lower": 0.010499999999999999, "upper": 0.010499999999999999, "weight": 0.03 }
+      ],
+      "display_order": 3,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.31733333333333336,
+        "share": 0.4,
+        "value": 0.7933333333333333
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.048,
+        "locality_disadvantage": 0.0648,
+        "permanent_classroom_deficit": 0.072,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0576
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.6666666666666667,
+        "locality_disadvantage": 0.9,
+        "permanent_classroom_deficit": 1.0,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.8
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 3, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 3, "count": 20, "scope": "eligible (20)", "worst": 3 },
+      "school": {
+        "district": "South One",
+        "latitude": -7.355,
+        "locality": "Very remote",
+        "longitude": 146.23749999999998,
+        "province": "South Province",
+        "school_id": "a660168e-c4bc-5dff-aa9f-31d54143d135",
+        "school_key": "4e65114f0b8790b6b906088a6d549020",
+        "source_school_name": "Sample School 08"
+      },
+      "scores": {
+        "lower": 0.7256024492649782,
+        "point": 0.7256024492649782,
+        "sort_key_primary": null,
+        "upper": 0.7256024492649782
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.3632742439134066,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.27,
+        "progression_g12_deficit": 0.81,
+        "secondary_participation_deficit": 0.3828125
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.4160305493913407,
+        "E": 0.8835355052395478,
+        "L": 0.45,
+        "N": 0.5466666666666667,
+        "Q": 0.6153846153846154,
+        "R": 0.7971598164154449,
+        "U": 0.926356589147287
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.19680000000000003, "upper": 0.19680000000000003, "weight": 0.36 },
+        { "component": "A", "lower": 0.03744274944522066, "upper": 0.03744274944522066, "weight": 0.09 },
+        { "component": "U", "lower": 0.02779069767441861, "upper": 0.02779069767441861, "weight": 0.03 },
+        { "component": "R", "lower": 0.023914794492463344, "upper": 0.023914794492463344, "weight": 0.03 },
+        { "component": "Q", "lower": 0.018461538461538463, "upper": 0.018461538461538463, "weight": 0.03 },
+        { "component": "E", "lower": 0.026506065157186433, "upper": 0.026506065157186433, "weight": 0.03 },
+        { "component": "L", "lower": 0.0135, "upper": 0.0135, "weight": 0.03 }
+      ],
+      "display_order": 4,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["U"],
+        "contribution": 0.3705426356589148,
+        "share": 0.4,
+        "value": 0.926356589147287
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.024,
+        "locality_disadvantage": 0.0324,
+        "permanent_classroom_deficit": 0.054000000000000006,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0432
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.33333333333333337,
+        "locality_disadvantage": 0.45,
+        "permanent_classroom_deficit": 0.75,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.6
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 4, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 4, "count": 20, "scope": "eligible (20)", "worst": 4 },
+      "school": {
+        "district": "East One",
+        "latitude": -6.29,
+        "locality": "Moderately accessible",
+        "longitude": 147.7125,
+        "province": "East Province",
+        "school_id": "e0cf8268-f0cc-5528-af1d-3e83f24021e5",
+        "school_key": "05802263d65f56dbc0a4986392d3b856",
+        "source_school_name": "Sample School 10"
+      },
+      "scores": {
+        "lower": 0.7149584808897423,
+        "point": 0.7149584808897423,
+        "sort_key_primary": null,
+        "upper": 0.7149584808897423
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 1.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.25,
+        "progression_g12_deficit": 0.75,
+        "secondary_participation_deficit": 0.0
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.37,
+        "E": 1.0,
+        "L": 0.75,
+        "N": 0.635,
+        "Q": 1.0,
+        "R": 1.0,
+        "U": 0.7713178294573645
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2286, "upper": 0.2286, "weight": 0.36 },
+        { "component": "A", "lower": 0.033299999999999996, "upper": 0.033299999999999996, "weight": 0.09 },
+        { "component": "U", "lower": 0.023139534883720933, "upper": 0.023139534883720933, "weight": 0.03 },
+        { "component": "R", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "Q", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "E", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "L", "lower": 0.0225, "upper": 0.0225, "weight": 0.03 }
+      ],
+      "display_order": 5,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["U"],
+        "contribution": 0.30852713178294583,
+        "share": 0.4,
+        "value": 0.7713178294573645
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0144,
+        "permanent_classroom_deficit": 0.063,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.072
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.2,
+        "permanent_classroom_deficit": 0.875,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 1.0
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 5, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 5, "count": 20, "scope": "eligible (20)", "worst": 5 },
+      "school": {
+        "district": "North One",
+        "latitude": -5.6,
+        "locality": "Accessible",
+        "longitude": 145.04999999999998,
+        "province": "North Province",
+        "school_id": "a716e2a6-1757-5e10-bcb7-6862bc2dda2a",
+        "school_key": "24e96dd3ce3e2cd7a556a4e831b76895",
+        "source_school_name": "Sample School 16"
+      },
+      "scores": {
+        "lower": 0.7060666666666668,
+        "point": 0.7060666666666668,
+        "sort_key_primary": null,
+        "upper": 0.7060666666666668
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 1.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.29000000000000004,
+        "progression_g12_deficit": 0.87,
+        "secondary_participation_deficit": 0.8515625
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.610890625,
+        "E": 0.595005231345779,
+        "L": 0.15,
+        "N": 0.485,
+        "Q": 0.15384615384615385,
+        "R": 0.33121464455397,
+        "U": 1.0
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.17459999999999998, "upper": 0.17459999999999998, "weight": 0.36 },
+        { "component": "A", "lower": 0.05498015625, "upper": 0.05498015625, "weight": 0.09 },
+        { "component": "U", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "R", "lower": 0.009936439336619099, "upper": 0.009936439336619099, "weight": 0.03 },
+        { "component": "Q", "lower": 0.004615384615384616, "upper": 0.004615384615384616, "weight": 0.03 },
+        { "component": "E", "lower": 0.01785015694037337, "upper": 0.01785015694037337, "weight": 0.03 },
+        { "component": "L", "lower": 0.0045, "upper": 0.0045, "weight": 0.03 }
+      ],
+      "display_order": 6,
+      "gate_failures": [],
+      "maximum_term": { "attained_by": ["U"], "contribution": 0.4, "share": 0.4, "value": 1.0 },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.045,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0504
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.625,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.7
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 6, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 6, "count": 20, "scope": "eligible (20)", "worst": 6 },
+      "school": {
+        "district": "South Two",
+        "latitude": -7.18,
+        "locality": "Highly accessible",
+        "longitude": 144.6875,
+        "province": "South Province",
+        "school_id": "24a9c924-527e-5216-bbf8-593120763c4f",
+        "school_key": "117eaebf0a8de28d6176e827fc49aa6d",
+        "source_school_name": "Sample School 04"
+      },
+      "scores": {
+        "lower": 0.6964821371423771,
+        "point": 0.6964821371423771,
+        "sort_key_primary": null,
+        "upper": 0.6964821371423771
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.6949176449925621,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.36,
+        "progression_g12_deficit": 0.6799999999999999,
+        "secondary_participation_deficit": 0.9296875
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.5889136394992562,
+        "E": 0.4898389771342717,
+        "L": 0.1,
+        "N": 0.7766666666666666,
+        "Q": 0.07692307692307693,
+        "R": 0.18510851693166888,
+        "U": 0.6937984496124032
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.27959999999999996, "upper": 0.27959999999999996, "weight": 0.36 },
+        { "component": "A", "lower": 0.05300222755493306, "upper": 0.05300222755493306, "weight": 0.09 },
+        { "component": "U", "lower": 0.020813953488372096, "upper": 0.020813953488372096, "weight": 0.03 },
+        { "component": "R", "lower": 0.0055532555079500666, "upper": 0.0055532555079500666, "weight": 0.03 },
+        { "component": "Q", "lower": 0.002307692307692308, "upper": 0.002307692307692308, "weight": 0.03 },
+        { "component": "E", "lower": 0.014695169314028152, "upper": 0.014695169314028152, "weight": 0.03 },
+        { "component": "L", "lower": 0.003, "upper": 0.003, "weight": 0.03 }
+      ],
+      "display_order": 7,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.31066666666666665,
+        "share": 0.4,
+        "value": 0.7766666666666666
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.06,
+        "locality_disadvantage": 0.0648,
+        "permanent_classroom_deficit": 0.054000000000000006,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0576
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.8333333333333334,
+        "locality_disadvantage": 0.9,
+        "permanent_classroom_deficit": 0.75,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.8
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 7, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 7, "count": 20, "scope": "eligible (20)", "worst": 7 },
+      "school": {
+        "district": "South One",
+        "latitude": -7.265000000000001,
+        "locality": "Very remote",
+        "longitude": 146.04999999999998,
+        "province": "South Province",
+        "school_id": "9d89f2bd-65fa-5426-b075-627814f27c6d",
+        "school_key": "4eab09bc1da00ea467b7c56918aeb12d",
+        "source_school_name": "Sample School 03"
+      },
+      "scores": {
+        "lower": 0.6896389648396424,
+        "point": 0.6896389648396424,
+        "sort_key_primary": null,
+        "upper": 0.6896389648396424
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.6949176449925621,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.31999999999999995,
+        "progression_g12_deficit": 0.86,
+        "secondary_participation_deficit": 0.0
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.3734917644992562,
+        "E": 1.0,
+        "L": 0.7,
+        "N": 0.6966666666666668,
+        "Q": 1.0,
+        "R": 1.0,
+        "U": 0.3837209302325582
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2508, "upper": 0.2508, "weight": 0.36 },
+        { "component": "A", "lower": 0.03361425880493306, "upper": 0.03361425880493306, "weight": 0.09 },
+        { "component": "U", "lower": 0.011511627906976745, "upper": 0.011511627906976745, "weight": 0.03 },
+        { "component": "R", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "Q", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "E", "lower": 0.03, "upper": 0.03, "weight": 0.03 },
+        { "component": "L", "lower": 0.020999999999999998, "upper": 0.020999999999999998, "weight": 0.03 }
+      ],
+      "display_order": 8,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.27866666666666673,
+        "share": 0.4,
+        "value": 0.6966666666666668
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.06,
+        "locality_disadvantage": 0.0324,
+        "permanent_classroom_deficit": 0.072,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0432
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.8333333333333334,
+        "locality_disadvantage": 0.45,
+        "permanent_classroom_deficit": 1.0,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.6
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 8, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 8, "count": 20, "scope": "eligible (20)", "worst": 8 },
+      "school": {
+        "district": "East One",
+        "latitude": -6.38,
+        "locality": "Moderately accessible",
+        "longitude": 147.4125,
+        "province": "East Province",
+        "school_id": "6c05ec0f-569c-555c-a0b1-7b8c91ca3ed4",
+        "school_key": "f3f18d0d5561abaff277738730ba3f7d",
+        "source_school_name": "Sample School 15"
+      },
+      "scores": {
+        "lower": 0.6855925533785767,
+        "point": 0.6855925533785767,
+        "sort_key_primary": null,
+        "upper": 0.6855925533785767
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 1.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.13,
+        "progression_g12_deficit": 0.89,
+        "secondary_participation_deficit": 0.2265625
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.417640625,
+        "E": 0.9364206909327706,
+        "L": 0.55,
+        "N": 0.6733333333333332,
+        "Q": 0.7692307692307693,
+        "R": 0.8899395272868671,
+        "U": 0.4612403100775194
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.24239999999999995, "upper": 0.24239999999999995, "weight": 0.36 },
+        { "component": "A", "lower": 0.03758765625, "upper": 0.03758765625, "weight": 0.09 },
+        { "component": "U", "lower": 0.013837209302325583, "upper": 0.013837209302325583, "weight": 0.03 },
+        { "component": "R", "lower": 0.026698185818606012, "upper": 0.026698185818606012, "weight": 0.03 },
+        { "component": "Q", "lower": 0.023076923076923078, "upper": 0.023076923076923078, "weight": 0.03 },
+        { "component": "E", "lower": 0.028092620727983117, "upper": 0.028092620727983117, "weight": 0.03 },
+        { "component": "L", "lower": 0.0165, "upper": 0.0165, "weight": 0.03 }
+      ],
+      "display_order": 9,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.2693333333333333,
+        "share": 0.4,
+        "value": 0.6733333333333332
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.048,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.036,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0648
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.6666666666666667,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.5,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.9
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 9, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 9, "count": 20, "scope": "eligible (20)", "worst": 9 },
+      "school": {
+        "district": "North Two",
+        "latitude": -5.625,
+        "locality": "Remote",
+        "longitude": 146.5875,
+        "province": "North Province",
+        "school_id": "ec200754-958a-5442-9199-107826a2089e",
+        "school_key": "b0e591749f1d685f0d8c06a70b6bf565",
+        "source_school_name": "Sample School 12"
+      },
+      "scores": {
+        "lower": 0.657525928509171,
+        "point": 0.657525928509171,
+        "sort_key_primary": null,
+        "upper": 0.657525928509171
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.6949176449925621,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.7,
+        "secondary_participation_deficit": 0.3046875
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.3956636394992562,
+        "E": 0.9112997711054635,
+        "L": 0.5,
+        "N": 0.6516666666666667,
+        "Q": 0.6923076923076923,
+        "R": 0.845659294198421,
+        "U": 0.07364341085271318
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2346, "upper": 0.2346, "weight": 0.36 },
+        { "component": "A", "lower": 0.03560972755493306, "upper": 0.03560972755493306, "weight": 0.09 },
+        { "component": "U", "lower": 0.0022093023255813954, "upper": 0.0022093023255813954, "weight": 0.03 },
+        { "component": "R", "lower": 0.02536977882595263, "upper": 0.02536977882595263, "weight": 0.03 },
+        { "component": "Q", "lower": 0.02076923076923077, "upper": 0.02076923076923077, "weight": 0.03 },
+        { "component": "E", "lower": 0.027338993133163902, "upper": 0.027338993133163902, "weight": 0.03 },
+        { "component": "L", "lower": 0.015, "upper": 0.015, "weight": 0.03 }
+      ],
+      "display_order": 10,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.2606666666666667,
+        "share": 0.4,
+        "value": 0.6516666666666667
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.06,
+        "locality_disadvantage": 0.0144,
+        "permanent_classroom_deficit": 0.045,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.072
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.8333333333333334,
+        "locality_disadvantage": 0.2,
+        "permanent_classroom_deficit": 0.625,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 1.0
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 10, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 10, "count": 20, "scope": "eligible (20)", "worst": 10 },
+      "school": {
+        "district": "North One",
+        "latitude": -5.51,
+        "locality": "Accessible",
+        "longitude": 145.35,
+        "province": "North Province",
+        "school_id": "cd24c1a5-1705-59d3-9705-931d59fa9a7b",
+        "school_key": "922a4dbe744ffc84db8dd29c3885cbdd",
+        "source_school_name": "Sample School 11"
+      },
+      "scores": {
+        "lower": 0.6215636992755285,
+        "point": 0.6215636992755285,
+        "sort_key_primary": null,
+        "upper": 0.6215636992755285
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.3632742439134066,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.43000000000000005,
+        "progression_g12_deficit": 0.79,
+        "secondary_participation_deficit": 1.0
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.6073274243913406,
+        "E": 0.31629453975968447,
+        "L": 0.05,
+        "N": 0.7150000000000001,
+        "Q": 0.0,
+        "R": 0.0,
+        "U": 0.30620155038759694
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2574, "upper": 0.2574, "weight": 0.36 },
+        { "component": "A", "lower": 0.05465946819522065, "upper": 0.05465946819522065, "weight": 0.09 },
+        { "component": "U", "lower": 0.009186046511627908, "upper": 0.009186046511627908, "weight": 0.03 },
+        { "component": "R", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "E", "lower": 0.009488836192790534, "upper": 0.009488836192790534, "weight": 0.03 },
+        { "component": "L", "lower": 0.0015, "upper": 0.0015, "weight": 0.03 }
+      ],
+      "display_order": 11,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.28600000000000003,
+        "share": 0.4,
+        "value": 0.7150000000000001
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.063,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0648
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.875,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.9
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 11, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 11, "count": 20, "scope": "eligible (20)", "worst": 11 },
+      "school": {
+        "district": "North Two",
+        "latitude": -5.445,
+        "locality": "Remote",
+        "longitude": 146.2125,
+        "province": "North Province",
+        "school_id": "ee48eee7-5f3e-57bf-ab51-66b10816071d",
+        "school_key": "47edc08ba610de29e27c14d2a9ab7372",
+        "source_school_name": "Sample School 02"
+      },
+      "scores": {
+        "lower": 0.6182343508996391,
+        "point": 0.6182343508996391,
+        "sort_key_primary": null,
+        "upper": 0.6182343508996391
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.33999999999999997,
+        "progression_g12_deficit": 0.62,
+        "secondary_participation_deficit": 0.4609375
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.388234375,
+        "E": 0.8525063420073296,
+        "L": 0.4,
+        "N": 0.6016666666666667,
+        "Q": 0.5384615384615384,
+        "R": 0.7435515273167417,
+        "U": 0.5387596899224808
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2166, "upper": 0.2166, "weight": 0.36 },
+        { "component": "A", "lower": 0.03494109375, "upper": 0.03494109375, "weight": 0.09 },
+        { "component": "U", "lower": 0.016162790697674425, "upper": 0.016162790697674425, "weight": 0.03 },
+        { "component": "R", "lower": 0.022306545819502248, "upper": 0.022306545819502248, "weight": 0.03 },
+        { "component": "Q", "lower": 0.016153846153846154, "upper": 0.016153846153846154, "weight": 0.03 },
+        { "component": "E", "lower": 0.025575190260219885, "upper": 0.025575190260219885, "weight": 0.03 },
+        { "component": "L", "lower": 0.012, "upper": 0.012, "weight": 0.03 }
+      ],
+      "display_order": 12,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.2406666666666667,
+        "share": 0.4,
+        "value": 0.6016666666666667
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.06,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.063,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0504
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.8333333333333334,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.875,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.7
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 12, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 12, "count": 20, "scope": "eligible (20)", "worst": 13 },
+      "school": {
+        "district": "South Two",
+        "latitude": -6.775,
+        "locality": "Highly accessible",
+        "longitude": 144.875,
+        "province": "South Province",
+        "school_id": "0e14ca52-6a35-529c-af95-930a8800c680",
+        "school_key": "573210c70830ee57034d5981a41a7462",
+        "source_school_name": "Sample School 09"
+      },
+      "scores": {
+        "lower": 0.5844061333479094,
+        "point": 0.5844061333479094,
+        "sort_key_primary": null,
+        "upper": 0.5844061333479094
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.5,
+        "progression_g12_deficit": 0.9,
+        "secondary_participation_deficit": 1.0
+      },
+      "cohort": "complete",
+      "components": { "A": 0.605, "E": 0.0, "L": 0.0, "N": 0.6933333333333335, "Q": 0.0, "R": 0.0, "U": 0.0 },
+      "contributions": [
+        { "component": "N", "lower": 0.24960000000000004, "upper": 0.24960000000000004, "weight": 0.36 },
+        { "component": "A", "lower": 0.05445, "upper": 0.05445, "weight": 0.09 },
+        { "component": "U", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "R", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "E", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "L", "lower": 0.0, "upper": 0.0, "weight": 0.03 }
+      ],
+      "display_order": 13,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.2773333333333334,
+        "share": 0.4,
+        "value": 0.6933333333333335
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.048,
+        "locality_disadvantage": 0.0144,
+        "permanent_classroom_deficit": 0.072,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.072
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.6666666666666667,
+        "locality_disadvantage": 0.2,
+        "permanent_classroom_deficit": 1.0,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 1.0
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 13, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 13, "count": 20, "scope": "eligible (20)", "worst": 14 },
+      "school": {
+        "district": "North One",
+        "latitude": -5.824999999999999,
+        "locality": "Accessible",
+        "longitude": 144.975,
+        "province": "North Province",
+        "school_id": "9133f051-edf8-5a03-8090-64dfebfb5262",
+        "school_key": "b6060cfbcad4b4fc803a5b67fbd99b05",
+        "source_school_name": "Sample School 01"
+      },
+      "scores": {
+        "lower": 0.5813833333333334,
+        "point": 0.5813833333333334,
+        "sort_key_primary": null,
+        "upper": 0.5813833333333334
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "interval",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": 0.0,
+        "L": 0.1,
+        "N": 0.635,
+        "Q": null,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2286, "upper": 0.2286, "weight": 0.36 },
+        { "component": "A", "lower": 0.04017061298076923, "upper": 0.04017061298076923, "weight": 0.09 },
+        { "component": "U", "lower": 0.006860465116279072, "upper": 0.006860465116279072, "weight": 0.03 },
+        { "component": "R", "lower": 0.023914794492463344, "upper": 0.023914794492463344, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0, "upper": 0.03, "weight": 0.03 },
+        { "component": "E", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "L", "lower": 0.003, "upper": 0.003, "weight": 0.03 }
+      ],
+      "display_order": 14,
+      "gate_failures": [],
+      "maximum_term": { "attained_by": ["N"], "contribution": 0.254, "share": 0.4, "value": 0.635 },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.063,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.036
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.875,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "lower",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 12, "count": 20, "scope": "eligible (20)", "worst": 15 },
+      "school": {
+        "district": "North Two",
+        "latitude": -5.220000000000001,
+        "locality": "Remote",
+        "longitude": 146.2875,
+        "province": "North Province",
+        "school_id": "6b9f4e24-d7bb-532b-a59b-2991b00bf258",
+        "school_key": "299ec8fe96b5bb7a121b9d6ff0aaddf9",
+        "source_school_name": "Sample School 17"
+      },
+      "scores": {
+        "lower": 0.5565458725895116,
+        "point": null,
+        "sort_key_primary": null,
+        "upper": 0.5865458725895116
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.3632742439134066,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.15000000000000002,
+        "progression_g12_deficit": 0.65,
+        "secondary_participation_deficit": 0.6953125
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.4401555493913407,
+        "E": 0.7288352473821478,
+        "L": 0.25,
+        "N": 0.535,
+        "Q": 0.3076923076923077,
+        "R": 0.5373125885897244,
+        "U": 0.616279069767442
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.1926, "upper": 0.1926, "weight": 0.36 },
+        { "component": "A", "lower": 0.03961399944522066, "upper": 0.03961399944522066, "weight": 0.09 },
+        { "component": "U", "lower": 0.01848837209302326, "upper": 0.01848837209302326, "weight": 0.03 },
+        { "component": "R", "lower": 0.01611937765769173, "upper": 0.01611937765769173, "weight": 0.03 },
+        { "component": "Q", "lower": 0.009230769230769232, "upper": 0.009230769230769232, "weight": 0.03 },
+        { "component": "E", "lower": 0.021865057421464433, "upper": 0.021865057421464433, "weight": 0.03 },
+        { "component": "L", "lower": 0.0075, "upper": 0.0075, "weight": 0.03 }
+      ],
+      "display_order": 15,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["U"],
+        "contribution": 0.24651162790697678,
+        "share": 0.4,
+        "value": 0.616279069767442
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0144,
+        "permanent_classroom_deficit": 0.027000000000000003,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.072
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.2,
+        "permanent_classroom_deficit": 0.375,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 1.0
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 14, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 15, "count": 20, "scope": "eligible (20)", "worst": 16 },
+      "school": {
+        "district": "North One",
+        "latitude": -5.42,
+        "locality": "Accessible",
+        "longitude": 145.1625,
+        "province": "North Province",
+        "school_id": "2cf889e3-5dc2-540b-a3fc-a742c14bdb03",
+        "school_key": "156f675a7d8baee1770ba83a0466844c",
+        "source_school_name": "Sample School 06"
+      },
+      "scores": {
+        "lower": 0.5519292037551461,
+        "point": 0.5519292037551461,
+        "sort_key_primary": null,
+        "upper": 0.5519292037551461
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.21999999999999997,
+        "progression_g12_deficit": 0.76,
+        "secondary_participation_deficit": 0.7734375
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.457359375,
+        "E": 0.6702629898761042,
+        "L": 0.2,
+        "N": 0.5966666666666668,
+        "Q": 0.23076923076923078,
+        "R": 0.444617535556493,
+        "U": 0.22868217054263573
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.21480000000000005, "upper": 0.21480000000000005, "weight": 0.36 },
+        { "component": "A", "lower": 0.04116234375, "upper": 0.04116234375, "weight": 0.09 },
+        { "component": "U", "lower": 0.006860465116279072, "upper": 0.006860465116279072, "weight": 0.03 },
+        { "component": "R", "lower": 0.01333852606669479, "upper": 0.01333852606669479, "weight": 0.03 },
+        { "component": "Q", "lower": 0.006923076923076923, "upper": 0.006923076923076923, "weight": 0.03 },
+        { "component": "E", "lower": 0.020107889696283125, "upper": 0.020107889696283125, "weight": 0.03 },
+        { "component": "L", "lower": 0.006, "upper": 0.006, "weight": 0.03 }
+      ],
+      "display_order": 16,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.23866666666666672,
+        "share": 0.4,
+        "value": 0.5966666666666668
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.06,
+        "locality_disadvantage": 0.0324,
+        "permanent_classroom_deficit": 0.036,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0432
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.8333333333333334,
+        "locality_disadvantage": 0.45,
+        "permanent_classroom_deficit": 0.5,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.6
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 15, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 16, "count": 20, "scope": "eligible (20)", "worst": 18 },
+      "school": {
+        "district": "East One",
+        "latitude": null,
+        "locality": "Moderately accessible",
+        "longitude": null,
+        "province": "East Province",
+        "school_id": null,
+        "school_key": "369ff3a44a83d14b6ed9f102fe1b458c",
+        "source_school_name": "Sample School 05"
+      },
+      "scores": {
+        "lower": 0.5478589682190007,
+        "point": 0.5478589682190007,
+        "sort_key_primary": null,
+        "upper": 0.5478589682190007
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "interval",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": 0.0,
+        "L": null,
+        "N": 0.61,
+        "Q": 0.008547008547008548,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.2196, "upper": 0.2196, "weight": 0.36 },
+        { "component": "A", "lower": 0.04017061298076923, "upper": 0.04017061298076923, "weight": 0.09 },
+        { "component": "U", "lower": 0.006860465116279072, "upper": 0.006860465116279072, "weight": 0.03 },
+        { "component": "R", "lower": 0.023914794492463344, "upper": 0.023914794492463344, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0002564102564102564, "upper": 0.0002564102564102564, "weight": 0.03 },
+        { "component": "E", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "L", "lower": 0.0, "upper": 0.03, "weight": 0.03 }
+      ],
+      "display_order": 17,
+      "gate_failures": [],
+      "maximum_term": { "attained_by": ["N"], "contribution": 0.244, "share": 0.4, "value": 0.61 },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.054000000000000006,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.036
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.75,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "lower",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 14, "count": 20, "scope": "eligible (20)", "worst": 18 },
+      "school": {
+        "district": "South One",
+        "latitude": -7.535,
+        "locality": "Remote",
+        "longitude": 146.125,
+        "province": "South Province",
+        "school_id": "48276957-82fb-5688-9af8-0028d67a436a",
+        "school_key": "6658bc7f7d9b68d371cd462945f10531",
+        "source_school_name": "Sample School 18"
+      },
+      "scores": {
+        "lower": 0.5348022828459219,
+        "point": null,
+        "sort_key_primary": null,
+        "upper": 0.5648022828459219
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "interval",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": null,
+        "L": 0.1,
+        "N": 0.585,
+        "Q": 0.008547008547008548,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.21059999999999998, "upper": 0.21059999999999998, "weight": 0.36 },
+        { "component": "A", "lower": 0.04017061298076923, "upper": 0.04017061298076923, "weight": 0.09 },
+        { "component": "U", "lower": 0.006860465116279072, "upper": 0.006860465116279072, "weight": 0.03 },
+        { "component": "R", "lower": 0.023914794492463344, "upper": 0.023914794492463344, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0002564102564102564, "upper": 0.0002564102564102564, "weight": 0.03 },
+        { "component": "E", "lower": 0.0, "upper": 0.03, "weight": 0.03 },
+        { "component": "L", "lower": 0.003, "upper": 0.003, "weight": 0.03 }
+      ],
+      "display_order": 18,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.23399999999999999,
+        "share": 0.4,
+        "value": 0.585
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.045,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.036
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.625,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "lower",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 16, "count": 20, "scope": "eligible (20)", "worst": 19 },
+      "school": {
+        "district": "South Two",
+        "latitude": -6.955,
+        "locality": "Remote",
+        "longitude": 144.76250000000002,
+        "province": "South Province",
+        "school_id": "6139075b-2ccd-5530-92a3-d5cae4244a80",
+        "school_key": "cad74bfca6abd75b54810c7fce747646",
+        "source_school_name": "Sample School 19"
+      },
+      "scores": {
+        "lower": 0.5188022828459219,
+        "point": null,
+        "sort_key_primary": null,
+        "upper": 0.5488022828459219
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "interval",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": null,
+        "L": 0.1,
+        "N": 0.51,
+        "Q": null,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.18359999999999999, "upper": 0.18359999999999999, "weight": 0.36 },
+        { "component": "A", "lower": 0.04017061298076923, "upper": 0.04017061298076923, "weight": 0.09 },
+        { "component": "U", "lower": 0.006860465116279072, "upper": 0.006860465116279072, "weight": 0.03 },
+        { "component": "R", "lower": 0.023914794492463344, "upper": 0.023914794492463344, "weight": 0.03 },
+        { "component": "Q", "lower": 0.0, "upper": 0.03, "weight": 0.03 },
+        { "component": "E", "lower": 0.0, "upper": 0.03, "weight": 0.03 },
+        { "component": "L", "lower": 0.003, "upper": 0.003, "weight": 0.03 }
+      ],
+      "display_order": 19,
+      "gate_failures": [],
+      "maximum_term": {
+        "attained_by": ["N"],
+        "contribution": 0.20400000000000001,
+        "share": 0.4,
+        "value": 0.51
+      },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0504,
+        "permanent_classroom_deficit": 0.018,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.036
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "lower",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 18, "count": 20, "scope": "eligible (20)", "worst": 19 },
+      "school": {
+        "district": "East One",
+        "latitude": -5.9750000000000005,
+        "locality": "Remote",
+        "longitude": 147.6,
+        "province": "East Province",
+        "school_id": "3bb2521f-577f-5ce1-9e06-8a11255b6eed",
+        "school_key": "17d7f7af2b46961f4b0b87d9c7e23b5e",
+        "source_school_name": "Café Sample 20"
+      },
+      "scores": {
+        "lower": 0.46154587258951163,
+        "point": null,
+        "sort_key_primary": null,
+        "upper": 0.5215458725895117
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.3632742439134066,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.39,
+        "progression_g12_deficit": 0.6699999999999999,
+        "secondary_participation_deficit": 0.07031249999999989
+      },
+      "cohort": "complete",
+      "components": {
+        "A": 0.34690554939134066,
+        "E": 0.9804603116529108,
+        "L": 0.65,
+        "N": 0.41,
+        "Q": 0.9230769230769231,
+        "R": 0.9683947741177156,
+        "U": 0.0
+      },
+      "contributions": [
+        { "component": "N", "lower": 0.14759999999999998, "upper": 0.14759999999999998, "weight": 0.36 },
+        { "component": "A", "lower": 0.03122149944522066, "upper": 0.03122149944522066, "weight": 0.09 },
+        { "component": "U", "lower": 0.0, "upper": 0.0, "weight": 0.03 },
+        { "component": "R", "lower": 0.029051843223531465, "upper": 0.029051843223531465, "weight": 0.03 },
+        { "component": "Q", "lower": 0.027692307692307693, "upper": 0.027692307692307693, "weight": 0.03 },
+        { "component": "E", "lower": 0.029413809349587323, "upper": 0.029413809349587323, "weight": 0.03 },
+        { "component": "L", "lower": 0.0195, "upper": 0.0195, "weight": 0.03 }
+      ],
+      "display_order": 20,
+      "gate_failures": [],
+      "maximum_term": { "attained_by": ["N"], "contribution": 0.164, "share": 0.4, "value": 0.41 },
+      "need_part_contributions": {
+        "facility_presence_deficit": 0.036,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.018,
+        "service_deficit": 0.0432,
+        "teacher_housing_deficit": 0.0504
+      },
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.0,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.7
+      },
+      "placement": "point",
+      "point_rank": { "count": 16, "rank": 16, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": 20, "count": 20, "scope": "eligible (20)", "worst": 20 },
+      "school": {
+        "district": "South Two",
+        "latitude": -6.865,
+        "locality": "Highly accessible",
+        "longitude": 144.57500000000002,
+        "province": "South Province",
+        "school_id": "47a9662a-ed19-57d3-adc0-1c4b7e68d499",
+        "school_key": "a5ac5b6a50c05c5268870c0449f24c65",
+        "source_school_name": "Sample School 14"
+      },
+      "scores": {
+        "lower": 0.44847945971064707,
+        "point": 0.44847945971064707,
+        "sort_key_primary": null,
+        "upper": 0.44847945971064707
+      }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "verification_queue",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": 0.0,
+        "L": 0.1,
+        "N": null,
+        "Q": 0.008547008547008548,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [],
+      "display_order": 21,
+      "gate_failures": ["missing_stock_field"],
+      "maximum_term": null,
+      "need_part_contributions": null,
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": null
+      },
+      "placement": "queue",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": null, "count": 20, "scope": "eligible (20)", "worst": null },
+      "school": {
+        "district": "North One",
+        "latitude": -5.6899999999999995,
+        "locality": "Remote",
+        "longitude": 145.23749999999998,
+        "province": "North Province",
+        "school_id": "43e561d7-b812-506e-9891-10d20663b386",
+        "school_key": "52f5775bbd7f52d844925499e8c3aa83",
+        "source_school_name": "Sample School 21"
+      },
+      "scores": { "lower": null, "point": null, "sort_key_primary": null, "upper": null }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "verification_queue",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": 0.0,
+        "L": 0.1,
+        "N": null,
+        "Q": 0.008547008547008548,
+        "R": 0.7971598164154449,
+        "U": 0.22868217054263573
+      },
+      "contributions": [],
+      "display_order": 22,
+      "gate_failures": ["unrecognized_locality"],
+      "maximum_term": null,
+      "need_part_contributions": null,
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": null,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "queue",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": null, "count": 20, "scope": "eligible (20)", "worst": null },
+      "school": {
+        "district": "North Two",
+        "latitude": null,
+        "locality": "Nowhere",
+        "longitude": null,
+        "province": "North Province",
+        "school_id": null,
+        "school_key": "ab0fd239b18ad57e4bd6cf8b3df00b90",
+        "source_school_name": "Sample School 22"
+      },
+      "scores": { "lower": null, "point": null, "sort_key_primary": null, "upper": null }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": 0.5,
+        "conflict_exposure": 0.0,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": 0.7253605769230769
+      },
+      "cohort": "verification_queue",
+      "components": {
+        "A": 0.44634014423076923,
+        "E": 0.0,
+        "L": 0.1,
+        "N": 0.51,
+        "Q": 0.008547008547008548,
+        "R": 0.7971598164154449,
+        "U": null
+      },
+      "contributions": [],
+      "display_order": 23,
+      "gate_failures": ["urgency_unknown"],
+      "maximum_term": null,
+      "need_part_contributions": null,
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": 0.5
+      },
+      "placement": "queue",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": null, "count": 20, "scope": "eligible (20)", "worst": null },
+      "school": {
+        "district": "South One",
+        "latitude": -7.625,
+        "locality": "Remote",
+        "longitude": 146.3125,
+        "province": "South Province",
+        "school_id": "00cef20d-e32f-5ac1-8438-4bfb4effb8f2",
+        "school_key": "0e7a962b5fd2dcfbd6000ee2a7a298a9",
+        "source_school_name": "Sample School 23"
+      },
+      "scores": { "lower": null, "point": null, "sort_key_primary": null, "upper": null }
+    },
+    {
+      "area_parts": {
+        "activity_scale_deficit": null,
+        "conflict_exposure": null,
+        "female_disadvantage": 0.19999999999999996,
+        "progression_g10_deficit": 0.19999999999999996,
+        "progression_g12_deficit": 0.8,
+        "secondary_participation_deficit": null
+      },
+      "cohort": "verification_queue",
+      "components": { "A": null, "E": null, "L": null, "N": null, "Q": null, "R": null, "U": null },
+      "contributions": [],
+      "display_order": 24,
+      "gate_failures": [
+        "missing_stock_field",
+        "unresolved_area_context",
+        "unresolved_reach",
+        "urgency_unknown"
+      ],
+      "maximum_term": null,
+      "need_part_contributions": null,
+      "need_parts": {
+        "facility_presence_deficit": 0.5,
+        "locality_disadvantage": 0.7,
+        "permanent_classroom_deficit": 0.25,
+        "service_deficit": 0.6,
+        "teacher_housing_deficit": null
+      },
+      "placement": "queue",
+      "point_rank": { "count": 16, "rank": null, "scope": "complete under this rule (16)" },
+      "rank_bounds": { "best": null, "count": 20, "scope": "eligible (20)", "worst": null },
+      "school": {
+        "district": "South Two",
+        "latitude": -7.045,
+        "locality": "Remote",
+        "longitude": 144.95000000000002,
+        "province": "South Province",
+        "school_id": "7ae45d73-33f2-5957-9e4a-a83ed38ebead",
+        "school_key": "4b3f4957788a373680488b8b6ad6dc69",
+        "source_school_name": "Sample School 24"
+      },
+      "scores": { "lower": null, "point": null, "sort_key_primary": null, "upper": null }
+    }
+  ],
+  "run": {
+    "anchors_sha256": "e127008bdf24e1716e86dbc705b7e5d6a222858beb29d76a388ae782a8e48cb0",
+    "created_at": "2026-01-01T00:00:00Z",
+    "input_sha256": "cc1ef1ebf5549921e6b7b4dac6a07803e2b0ad0d2a6f9423b303aa27819acf1d",
+    "input_version": "synthetic-fixture-v1",
+    "package_version": "0.1.0",
+    "rule_id": "bottleneck_u",
+    "run_id": "b9cd4105-3861-532e-8c43-3dfd290de8af"
+  },
+  "total_schools": 24
+}
