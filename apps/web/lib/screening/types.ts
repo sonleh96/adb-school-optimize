@@ -90,6 +90,12 @@ export const rulesResponse = obj({
 });
 export type RulesResponse = Infer<typeof rulesResponse>;
 
+export const inputVersionsResponse = obj({
+  default_input_version: nullable(str),
+  input_versions: list(inputVersion),
+});
+export type InputVersionsResponse = Infer<typeof inputVersionsResponse>;
+
 // ---------------------------------------------------------------------------------------------
 // A run and its manifest.
 // ---------------------------------------------------------------------------------------------
@@ -351,9 +357,13 @@ const topChange = obj({
   school: schoolIdentity,
   rank_a: int,
   rank_b: int,
+  rank_scope: str,
   score_a: num,
   score_b: num,
 });
+
+/** A school the comparison leaves out, with the reason, because it is not complete under both rules. */
+const excludedSchool = obj({ school: schoolIdentity, cohort_a: cohort, cohort_b: cohort, reason: str });
 
 export const compareResponse = obj({
   input_version: str,
@@ -371,9 +381,10 @@ export const compareResponse = obj({
     maximum_absolute_rank_shift: nullable(num),
     top_k: list(obj({ k: int, overlap: int, jaccard: nullable(num), size_a: int, size_b: int })),
   }),
-  ranks: list(obj({ school: schoolIdentity, rank_a: int, rank_b: int })),
+  ranks: list(obj({ school: schoolIdentity, rank_a: int, rank_b: int, rank_scope: str })),
   entrants: list(topChange),
   exits: list(topChange),
+  excluded_schools: list(excludedSchool),
   interval_schools: list(obj({ school: schoolIdentity, under_a: intervalBounds, under_b: intervalBounds })),
 });
 export type CompareResponse = Infer<typeof compareResponse>;
