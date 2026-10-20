@@ -6,7 +6,8 @@
  *  3. The range note sits somewhere other than just before the first range school.
  *  4. The tie sentence is missing when rows are tied, repeated, or shown with no tie.
  *  5. What changed names a school by id or name instead of by role, or names one that lacks a place under one of the
- *     two rules, or a school with an incomplete record (R13).
+ *     two rules, or a school with an incomplete record (R13), or a school whose places do not move, which teaches
+ *     nothing about what changed.
  */
 import { describe, expect, it } from "vitest";
 
@@ -59,16 +60,23 @@ describe("where the list's notes go", () => {
 describe("exampleSchool", () => {
   const both = placedFromResults(results("additive_no_u"), results("additive_u"));
 
-  it("takes the first school that shows a range under both rules", () => {
-    const school = exampleSchool(both, "additive_u", "additive_no_u");
-    expect(school?.name).toBe("Sample School 17");
-    expect(school?.cohort).toBe("interval");
+  const name = (school: { name: string | null } | null) => school?.name ?? null;
+
+  it("takes the range school whose possible places move most, the first of any that tie", () => {
+    // 11th to 18th becomes 10th to 17th, and 21st becomes 22nd: both move two places; Sample School 17 comes first.
+    expect(name(exampleSchool(both, "additive_u", "additive_no_u"))).toBe("Sample School 17");
   });
 
-  it("falls back to the first school with a single place under both when no range school has both", () => {
+  it("passes over a range school whose places do not move when another one moves", () => {
+    // Sample School 18 is 12th to 19th under both; Sample School 19 goes from 12th to 20th to 12th to 19th.
+    const two = both.filter((s) => s.name === "Sample School 18" || s.name === "Sample School 19");
+    expect(name(exampleSchool(two, "additive_u", "additive_no_u"))).toBe("Sample School 19");
+  });
+
+  it("falls back to the school with a single place that moves most when no range school has both", () => {
     const completeOnly = both.filter((s) => s.cohort !== "interval");
-    const school = exampleSchool(completeOnly, "additive_u", "additive_no_u");
-    expect(school?.name).toBe("Sample School 08");
+    // 5th under one rule and 3rd under the other; the two schools above it keep their places.
+    expect(name(exampleSchool(completeOnly, "additive_u", "additive_no_u"))).toBe("Sample School 12");
   });
 
   it("is none when no school has a place under the other rule", () => {
