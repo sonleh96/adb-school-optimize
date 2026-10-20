@@ -78,7 +78,10 @@ export const listNames = (page: Page) =>
 export const markAt = (page: Page, key: string) =>
   page.evaluate((k) => window.__screeningMapTest?.project(k as never) ?? null, key);
 
-/** A mark's position once the map has stopped moving (a selection can pan it). */
+/**
+ * A mark's position once the map has stopped moving (a selection can pan it). A mark that settles outside the
+ * map cannot be pointed at, so that is an error here and not a mouse move into nothing.
+ */
 export async function settledMark(page: Page, key: string) {
   const map = mapLocator(page);
   let previous = await markAt(page, key);
@@ -89,7 +92,20 @@ export async function settledMark(page: Page, key: string) {
     const still = current && previous && current.x === previous.x && current.y === previous.y;
     const idle = (await map.getAttribute("data-map-moving")) === "false";
     steady = still && idle ? steady + 1 : 0;
-    if (steady >= 4 && current) return current;
+    if (steady >= 4 && current) {
+      const box = (await map.boundingBox())!;
+      const inside =
+        current.x >= box.x &&
+        current.x <= box.x + box.width &&
+        current.y >= box.y &&
+        current.y <= box.y + box.height;
+      if (!inside) {
+        throw new Error(
+          `The mark of ${key} settled at (${Math.round(current.x)}, ${Math.round(current.y)}), outside the map`
+        );
+      }
+      return current;
+    }
     previous = current;
   }
   throw new Error(`The mark of ${key} never settled`);
