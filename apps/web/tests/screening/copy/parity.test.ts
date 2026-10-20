@@ -138,6 +138,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         flagged: 20,
       },
       { range: 1 },
+      { range: 1, queue: 1, all: 8, ranked: 7 },
       { complete: 7 },
       { urgencyZero: 1, all: 5 },
     ];
