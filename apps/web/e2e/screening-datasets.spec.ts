@@ -14,7 +14,6 @@ import { COPY } from "../components/screening/copy";
 import {
   INCOMPLETE,
   ORDERED,
-  allowUncapturedComparisons,
   expect,
   orderedRow,
   tab,
@@ -74,7 +73,6 @@ test.describe("an empty store and a failed list", () => {
 test("an empty Incomplete records tab says no school is in it and cannot be chosen", async ({
   page,
   context,
-  problems,
 }) => {
   await useMockDataset(context, "worst-names");
   await open(page);
@@ -97,7 +95,6 @@ test("an empty Incomplete records tab says no school is in it and cannot be chos
   await expect(page.locator("#screening-list")).not.toContainText("what is missing");
   await list.click();
   await expect(queue).toBeDisabled();
-  allowUncapturedComparisons(problems);
 });
 
 test("exact ties are marked on every tied row, with the tie sentence once after them", async ({
@@ -132,7 +129,6 @@ test("exact ties are marked on every tied row, with the tie sentence once after 
 test("blank and unbroken names render as words, stay inside their rows and keep the province whole", async ({
   page,
   context,
-  problems,
 }) => {
   await useMockDataset(context, "worst-names");
   await open(page);
@@ -156,10 +152,9 @@ test("blank and unbroken names render as words, stay inside their rows and keep 
   );
   expect(report.filter((r) => r.overflows || r.whereLines !== 1)).toEqual([]);
   expect(report.map((r) => r.name)).toContain("UnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnb");
-  allowUncapturedComparisons(problems);
 });
 
-test("a list of one school states only its own counts", async ({ page, context, problems }) => {
+test("a list of one school states only its own counts", async ({ page, context }) => {
   await useMockDataset(context, "one");
   await open(page);
   await expect(tab(page, /The list/)).toHaveText("The list(1)");
@@ -172,5 +167,4 @@ test("a list of one school states only its own counts", async ({ page, context, 
   const numbers = said.join(" ").match(/\d+/g) ?? [];
   expect(numbers.length).toBeGreaterThan(0);
   expect(numbers.filter((n) => n !== "0" && n !== "1")).toEqual([]);
-  allowUncapturedComparisons(problems);
 });

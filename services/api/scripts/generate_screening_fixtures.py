@@ -59,6 +59,7 @@ DEFAULT_OUT = REPO / "apps" / "web" / "e2e" / "fixtures" / "screening"
 VERSION = "synthetic-fixture-v1"
 API = "/api/v1/screening"
 MAIN_RULES = ("additive_u", "additive_no_u")
+CIRCULATED_RULE = "additive_u"
 
 # What the web tests rely on in the default dataset, written down so a reviewer sees the shape of the data
 # without reading the loop.
@@ -149,8 +150,6 @@ class Dataset:
     # Lower top-20 frequencies of the invented experiment, by school name, in the order of the three settings.
     persistence: dict[str, tuple[float, float, float]]
     without_coordinates: tuple[str, ...] = ()
-    # Schools whose detail is saved, besides the first, a range, a queued and an unlocated school of the list.
-    details: tuple[str, ...] = ()
     # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
     claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
 
@@ -362,7 +361,6 @@ def datasets() -> tuple[Dataset, ...]:
             persistence={NAME_72_WITH_DIACRITICS: (0.95, 0.96, 0.99), "Worst Case 01": (0.5, 0.5, 0.5)},
             # Two names that differ only by spaces cannot be told apart by the school table, so neither is located.
             without_coordinates=SPACED_PAIR,
-            details=(NAME_72_WITH_DIACRITICS, NAME_59_NO_BREAK, NAME_LOOKS_BLANK, *SPACED_PAIR),
             claims=WORST_NAMES_CLAIMS,
         ),
         Dataset(
@@ -370,7 +368,6 @@ def datasets() -> tuple[Dataset, ...]:
             directory="ties-and-ranges",
             records=ties_and_ranges_records(),
             persistence={"Ranked 01": (1.0, 1.0, 1.0), "Range Air": (0.3, 0.4, 0.5)},
-            details=("Tie Alpha", "Range All", "Queue Reach"),
             claims=TIES_CLAIMS,
         ),
         Dataset(
@@ -451,6 +448,12 @@ class Capture:
         self.bodies[file] = response.text
         return response.json()
 
+    def get_as_answered(self, path: str, file: str, **params: str) -> int:
+        """Records the request with whatever status the API gives, for reads whose answer depends on the data."""
+        status = self.client.get(path, params=params).status_code
+        self.get(path, file, status=status, **params)
+        return status
+
 
 def school_detail_file(cap: Capture, name: str) -> None:
     encoded = quote(school_key(VERSION, name), safe="")
@@ -474,22 +477,16 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     cap.get(f"{API}/inputs", "inputs.pinned.json", input_version=VERSION)
     default_rows = rows_by_rule["additive_u"]
 
-    # School detail for the first listed school, one range school, one queued school and one without coordinates,
-    # where the dataset has them, then the schools the dataset names.
-    wanted = [default_rows[0]]
-    for pick in (
-        lambda r: r["cohort"] == "interval",
-        lambda r: r["cohort"] == "verification_queue",
-        lambda r: r["school"]["latitude"] is None and r["cohort"] == "complete",
-    ):
-        found = next((r for r in default_rows if pick(r)), None)
-        if found is not None and found not in wanted:
-            wanted.append(found)
-    names = [r["school"]["source_school_name"] for r in wanted] + [n for n in ds.details]
-    for name in dict.fromkeys(names):
-        school_detail_file(cap, name)
-    if sum(r["cohort"] == "complete" for r in default_rows) >= 2:
-        cap.get(f"{API}/compare", "compare/additive_u__additive_no_u.json", a="additive_u", b="additive_no_u")
+    # School detail for every school, so a test can open any card. The order is the list's, so a rerun is identical.
+    for row in default_rows:
+        school_detail_file(cap, row["school"]["source_school_name"])
+    # The circulated rule against each of the others: What changed reads one of these after any switch from it.
+    # Where the data cannot be compared (one school), the API's own refusal is what the mock answers.
+    for rule_id in RULES:
+        if rule_id != CIRCULATED_RULE:
+            cap.get_as_answered(
+                f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
+            )
     return cap, default_rows
 
 

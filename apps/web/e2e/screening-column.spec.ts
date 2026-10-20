@@ -18,7 +18,6 @@ import {
   INCOMPLETE,
   ORDERED,
   RULE,
-  allowUncapturedComparisons,
   expect,
   mainRule,
   openWorkspace,
@@ -108,7 +107,6 @@ test("the statement shows under the main rule only, never beside What changed, a
 
 test("Other rules lists all seven, closes on a choice or on Escape, and the rule line names the choice", async ({
   page,
-  problems,
 }) => {
   await openWorkspace(page);
   const button = page.getByRole("button", { name: "Other rules (5)" });
@@ -139,7 +137,6 @@ test("Other rules lists all seven, closes on a choice or on Escape, and the rule
     "Need-first rule, with urgency. Schools go in order of school need"
   );
   expect(search(page)).toBe("?rule=need_first_u&compare=additive_u");
-  allowUncapturedComparisons(problems);
 });
 
 test("the scope line opens its detail in place, and opens it by itself when two rows would show the same number", async ({

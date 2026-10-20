@@ -22,7 +22,6 @@ import {
   INCOMPLETE,
   ORDERED_COUNT,
   RULE,
-  allowUncapturedComparisons,
   expect,
   keyOf,
   listNames,
@@ -178,7 +177,6 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
 
 test("switching the rule shows that rule's rows and keeps the selection on the tab that holds it", async ({
   page,
-  problems,
 }) => {
   await openWorkspace(page);
 
@@ -195,15 +193,17 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
   await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
 
-  // A rule from "Other rules" lists its own order.
+  // Urgency is included again, so the selected school is held back and the list follows it to its tab.
+  await mainRule(page, RULE.main).click();
+  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
+  await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
+
+  // A rule from "Other rules" lists its own order, and the selection stays where it is held back.
   await page.getByRole("button", { name: /Other rules/ }).click();
   await page.getByRole("button", { name: new RegExp(`^${RULE.needFirst}`) }).click();
-  // Urgency is included again, so the selected school is held back and the list follows it to its tab.
-  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
   await tab(page, /The list/).click();
   expect(await listNames(page)).toEqual(orderedNames("need_first_u"));
-  allowUncapturedComparisons(problems);
 });
 
 test("arrow keys move through the list in the order on screen and Escape closes the card", async ({

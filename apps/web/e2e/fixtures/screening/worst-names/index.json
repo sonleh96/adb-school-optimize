@@ -91,18 +91,13 @@
    "query": {}
   },
   {
-   "file": "schools/c64b1545886f33da42447fa9325a3e21.json",
-   "path": "/api/v1/screening/schools/by-key/c64b1545886f33da42447fa9325a3e21",
+   "file": "schools/b52660d8931df8cd2811ba136de3a754.json",
+   "path": "/api/v1/screening/schools/by-key/b52660d8931df8cd2811ba136de3a754",
    "query": {}
   },
   {
-   "file": "schools/4f0df5879f0df148dcd45c418d5304c7.json",
-   "path": "/api/v1/screening/schools/by-key/4f0df5879f0df148dcd45c418d5304c7",
-   "query": {}
-  },
-  {
-   "file": "schools/276e547e8c634f6b5e2527e28438adfb.json",
-   "path": "/api/v1/screening/schools/by-key/276e547e8c634f6b5e2527e28438adfb",
+   "file": "schools/61918e3f20ab0adb93094f7f10eaae64.json",
+   "path": "/api/v1/screening/schools/by-key/61918e3f20ab0adb93094f7f10eaae64",
    "query": {}
   },
   {
@@ -111,11 +106,116 @@
    "query": {}
   },
   {
+   "file": "schools/b146f57e68c28077bf0019ea40d56691.json",
+   "path": "/api/v1/screening/schools/by-key/b146f57e68c28077bf0019ea40d56691",
+   "query": {}
+  },
+  {
+   "file": "schools/4f0df5879f0df148dcd45c418d5304c7.json",
+   "path": "/api/v1/screening/schools/by-key/4f0df5879f0df148dcd45c418d5304c7",
+   "query": {}
+  },
+  {
+   "file": "schools/140c220a8c547fb3086df236123115ac.json",
+   "path": "/api/v1/screening/schools/by-key/140c220a8c547fb3086df236123115ac",
+   "query": {}
+  },
+  {
+   "file": "schools/102a874736ad27be83be6af9497b15be.json",
+   "path": "/api/v1/screening/schools/by-key/102a874736ad27be83be6af9497b15be",
+   "query": {}
+  },
+  {
+   "file": "schools/c64b1545886f33da42447fa9325a3e21.json",
+   "path": "/api/v1/screening/schools/by-key/c64b1545886f33da42447fa9325a3e21",
+   "query": {}
+  },
+  {
+   "file": "schools/8f02b421f2102d31fe79bb0997be7e04.json",
+   "path": "/api/v1/screening/schools/by-key/8f02b421f2102d31fe79bb0997be7e04",
+   "query": {}
+  },
+  {
+   "file": "schools/a13b0e6f0811cf84d729e84e4a1b0e82.json",
+   "path": "/api/v1/screening/schools/by-key/a13b0e6f0811cf84d729e84e4a1b0e82",
+   "query": {}
+  },
+  {
+   "file": "schools/592d4c655e42e1152b264fd8c16ccdf8.json",
+   "path": "/api/v1/screening/schools/by-key/592d4c655e42e1152b264fd8c16ccdf8",
+   "query": {}
+  },
+  {
+   "file": "schools/2ea43d068e902b15dc427909eb8b4948.json",
+   "path": "/api/v1/screening/schools/by-key/2ea43d068e902b15dc427909eb8b4948",
+   "query": {}
+  },
+  {
+   "file": "schools/758a3759438601e4ac4ca62665043076.json",
+   "path": "/api/v1/screening/schools/by-key/758a3759438601e4ac4ca62665043076",
+   "query": {}
+  },
+  {
+   "file": "schools/423c1929d54b077ad40f0b4dd8c4cac9.json",
+   "path": "/api/v1/screening/schools/by-key/423c1929d54b077ad40f0b4dd8c4cac9",
+   "query": {}
+  },
+  {
+   "file": "schools/e3302458e542656c93a50301fbe5c377.json",
+   "path": "/api/v1/screening/schools/by-key/e3302458e542656c93a50301fbe5c377",
+   "query": {}
+  },
+  {
+   "file": "schools/276e547e8c634f6b5e2527e28438adfb.json",
+   "path": "/api/v1/screening/schools/by-key/276e547e8c634f6b5e2527e28438adfb",
+   "query": {}
+  },
+  {
    "file": "compare/additive_u__additive_no_u.json",
    "path": "/api/v1/screening/compare",
    "query": {
     "a": "additive_u",
     "b": "additive_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
    }
   }
  ]
