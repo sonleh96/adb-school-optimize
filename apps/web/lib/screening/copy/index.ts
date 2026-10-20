@@ -84,7 +84,7 @@ export {
   urgencyNote,
   type FactorKey,
 } from "./rules";
-export { buildStrings, STRINGS } from "./strings";
+export { buildScope, buildStrings, STRINGS } from "./strings";
 export { buildTerms, term, TERMS, type TermKey } from "./terms";
 export { HELP, KEYS, LAYOUT, removeViewSegments, savedViewSegments } from "./words";
 export {

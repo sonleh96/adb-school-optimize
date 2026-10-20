@@ -304,16 +304,18 @@ export function missingGroupLabel(school: CopySchool): string {
 }
 
 // The same content as missingSentence, one standalone sentence per item, for record lists.
-export function missingSentences(school: CopySchool, ruleId?: CopyRuleId): string[] {
+export function missingSentences(school: CopySchool, ruleId: CopyRuleId): string[] {
+  // The rule shown decides which inputs "recorded" is said of, so a call without it is refused, not guessed.
+  if (!ruleId) throw new Error("missingSentences: the rule shown is required");
   const unread = unreadableSentence(school);
   const rest = sentencesFor(school, ruleId);
   return unread ? [unread, ...rest] : rest;
 }
 
-function sentencesFor(school: CopySchool, ruleId?: CopyRuleId): string[] {
+function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   // A rule that leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order
   // without them, so "recorded" is said of the inputs the rule reads and any figure it does not read is named.
-  const reads = ruleId ? ruleReads(ruleId) : { urgency: true, readings: true };
+  const reads = ruleReads(ruleId);
   const all = reads.urgency && reads.readings;
   const notRead = (): string[] => {
     const out: string[] = [];
@@ -373,6 +375,6 @@ function sentencesFor(school: CopySchool, ruleId?: CopyRuleId): string[] {
   return parts;
 }
 
-export function missingSentence(school: CopySchool, ruleId?: CopyRuleId): string {
+export function missingSentence(school: CopySchool, ruleId: CopyRuleId): string {
   return missingSentences(school, ruleId).join(" ");
 }

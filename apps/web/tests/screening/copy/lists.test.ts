@@ -55,7 +55,7 @@ describe("the records of a list", () => {
         ).toEqual([]);
         if (s.cohort === "queue") {
           expect(copy.missingLabels(s).length, tag).toBeGreaterThan(0);
-          for (const t of copy.missingSentences(s))
+          for (const t of copy.missingSentences(s, "additive_u"))
             expect(textProblems(t, { schoolNames: [s.name as string] }), tag).toEqual([]);
           for (const k of copy.INPUT_KEYS) copy.missingValueNote(s, k);
         } else {
@@ -184,7 +184,7 @@ describe.each(["", "ties-and-ranges/", "worst-names/", "one/"])("the API's datas
         const bare = (t: string) => names.reduce((acc, n) => acc.split(n).join("Name"), t);
         const problems = [
           ...(s.cohort === "queue"
-            ? copy.missingSentences(s)
+            ? copy.missingSentences(s, "additive_u")
             : [copy.reasonSentence(s, r), copy.rankSentence(s, r, { name: true })]),
           ...copy.missingLabels(s),
         ].flatMap((t) => textProblems(bare(t), { sentence: false }));

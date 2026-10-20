@@ -369,8 +369,8 @@ describe("the explainer and the questions", async () => {
   it("explains the two group sizes together, in the groups sentence, before it states either alone", () => {
     const flat = P.HOW_IT_WORKS.flatMap((s) => s.sentences);
     const firstCount = flat.find((t) => new RegExp(`\\b(${FULL.complete}|${FULL.ranked})\\b`).test(t));
-    expect(firstCount).toBe(P.STRINGS.groups);
-    expect(P.STRINGS.groups).toBe(
+    expect(firstCount).toBe(P.groupsSentence());
+    expect(P.scope("additive_u").groups).toBe(
       "96 schools have every input recorded, and three more lack a reading such as air quality and show a range of places, so 99 schools can be put in order."
     );
   });
@@ -420,15 +420,15 @@ describe("the fixed strings that carry a rule of the project", () => {
   it("opens every scope sentence with the groups sentence", () => {
     const P = copyFor({ counts: FULL });
     for (const t of [
-      P.STRINGS.scopeComplete,
-      P.STRINGS.scopeRanked,
+      P.scope("additive_u").scopeComplete,
+      P.scope("additive_u").scopeRanked,
       P.TERMS.cohort_complete.line,
       P.TERMS.cohort_ranked.line,
       P.TERMS.rank_range.help,
     ]) {
-      expect(t.startsWith(P.STRINGS.groups)).toBe(true);
+      expect(t.startsWith(P.scope("additive_u").groups)).toBe(true);
     }
-    expect(P.STRINGS.scopeShort).toBe(
+    expect(P.scope("additive_u").scopeShort).toBe(
       "99 schools can be put in order, 96 with every input recorded and 3 that show a range of places."
     );
   });
@@ -494,7 +494,7 @@ describe("counts belong to the data they came from", () => {
     expect(copy.IDEAS).toEqual(copy.buildIdeas({}));
     expect(later.HOW_IT_WORKS).toEqual(later.buildHow({}));
     expect(later.FIRST_QUESTIONS).toEqual(later.buildQuestions());
-    expect(copy.STRINGS.groups).toBe(
+    expect(copy.buildScope({}).groups).toBe(
       "Schools with every input recorded have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order."
     );
   });
@@ -513,7 +513,7 @@ describe("counts belong to the data they came from", () => {
   });
 
   it("differs from copy bound to empty data, which counts zero schools", () => {
-    expect(copyFor({}).STRINGS.groups).toBe(
+    expect(copyFor({}).scope("additive_u").groups).toBe(
       "0 schools have every input recorded, so 0 schools can be put in order."
     );
     expect(copy.TERMS.cohort_complete.label).toBe("Every input recorded");

@@ -117,7 +117,7 @@ async function everything(schools: CopySchool[], corpus: Corpus, tag: string): P
     const at = `${tag} ${s.id}`;
     corpus.add(`${at} distinctName`, P.distinctName(s), { ...opts, sentence: false });
     corpus.add(`${at} locationLine`, P.locationLine(s), { ...opts, sentence: false });
-    corpus.add(`${at} missingSentence`, P.missingSentence(s), opts);
+    corpus.add(`${at} missingSentence`, P.missingSentence(s, "additive_u"), opts);
     P.missingLabels(s).forEach((l, i) => corpus.add(`${at} chip ${i}`, l, { ...opts, sentence: false }));
     for (const key of ["need", ...copy.INPUT_KEYS] as const)
       corpus.add(`${at} note ${key}`, P.missingValueNote(s, key), opts);
@@ -191,10 +191,10 @@ describe("data of other sizes", () => {
       remotenessOnly: 1,
       flagged: 0,
     });
-    expect(P.STRINGS.groups).toBe(
+    expect(P.scope("additive_u").groups).toBe(
       "5 schools have every input recorded, and two more lack a reading such as air quality and show a range of places, so 7 schools can be put in order."
     );
-    expect(P.STRINGS.scopeShort).toBe(
+    expect(P.scope("additive_u").scopeShort).toBe(
       "7 schools can be put in order, 5 with every input recorded and 2 that show a range of places."
     );
     expect(P.TERMS.queue.label).toBe("Schools with incomplete records (3)");
@@ -251,7 +251,7 @@ describe("data of other sizes", () => {
       school({ id: "q", cohort: "queue", gate: ["service_deficit"] }),
     ];
     const P = copyFor({ schools });
-    expect(P.STRINGS.groups).toBe(
+    expect(P.scope("additive_u").groups).toBe(
       "2 schools have every input recorded, and one more lacks a reading such as air quality and shows a range of places, so 3 schools can be put in order."
     );
     expect(P.STRINGS.listOrder.startsWith("The one school that shows a range is listed where ")).toBe(true);
@@ -371,7 +371,9 @@ describe("no schools, and one school", () => {
     await everything(one, corpus, "one");
     expect(corpus.problems).toEqual([]);
     const P = copyFor({ schools: one });
-    expect(P.STRINGS.groups).toBe("1 school has every input recorded, so 1 school can be put in order.");
+    expect(P.scope("additive_u").groups).toBe(
+      "1 school has every input recorded, so 1 school can be put in order."
+    );
     expect(P.rankSentence(one[0], "additive_u")).toBe("1st of the one school with every input recorded.");
     expect(P.listStartsSentence(one, "additive_u")).toBe(
       "Under the combined-factors rule with urgency (S), the first of the one school with every input recorded is Only."

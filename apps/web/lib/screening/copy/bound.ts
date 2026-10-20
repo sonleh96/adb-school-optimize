@@ -86,7 +86,7 @@ import {
   shareSentence,
   urgencyNote,
 } from "./rules";
-import { buildStrings } from "./strings";
+import { buildScope, buildStrings } from "./strings";
 import { type TermKey, buildTerms } from "./terms";
 import { HELP, KEYS, LAYOUT } from "./words";
 
@@ -157,6 +157,8 @@ export function copyFor(data: CopyData = {}) {
       if (!t) throw new Error(`Unknown term: ${key}`);
       return t;
     },
+    /** What the groups of schools are under one rule: its counts and the inputs it reads. */
+    scope: (ruleId: CopyRuleId) => buildScope(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
     groupsSentence: (ruleId?: CopyRuleId) =>
       ruleId ? groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)) : groupsSentence(c),
     urgencyDefinition: () => urgencyDefinition(c),

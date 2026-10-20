@@ -572,10 +572,10 @@ describe("a missing reading", () => {
     expect(P.rankSentence(s, "additive_u")).toContain(
       "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded, so the screen shows"
     );
-    expect(P.missingSentence(s)).toBe(
+    expect(P.missingSentence(s, "additive_u")).toBe(
       "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded. Every other input is recorded."
     );
-    expect(P.missingSentences(s)).toHaveLength(2);
+    expect(P.missingSentences(s, "additive_u")).toHaveLength(2);
   });
 
   it("says one of its readings is missing when the flags and raw values give no name", () => {
@@ -583,13 +583,15 @@ describe("a missing reading", () => {
       ...school({ id: "r", cohort: "interval", bounds: [4, 9] }),
       missing_env: { aqi: false, emissions: false, land: false },
     };
-    expect(P.missingSentence(s)).toBe("One of its readings is missing. Every other input is recorded.");
+    expect(P.missingSentence(s, "additive_u")).toBe(
+      "One of its readings is missing. Every other input is recorded."
+    );
   });
 
   it("reads a blank raw reading as missing even when the flag was never set", () => {
     const base = school({ id: "r", cohort: "interval", bounds: [4, 9] });
     const s = { ...base, raw: { ...base.raw, E_raw: null } };
-    expect(P.missingSentence(s)).toBe(
+    expect(P.missingSentence(s, "additive_u")).toBe(
       "Its nearby emissions figure is not recorded. Every other input is recorded."
     );
   });
@@ -980,14 +982,16 @@ describe("what is missing from a record", () => {
     });
     const zeroRooms =
       s.gate_failures.includes("permanent_classroom_deficit") && s.condition.classrooms_total === 0;
-    expect(/gives 0 classrooms in total/.test(P.missingSentence(s))).toBe(zeroRooms);
+    expect(/gives 0 classrooms in total/.test(P.missingSentence(s, "additive_u"))).toBe(zeroRooms);
     expect(/gives 0 classrooms in total/.test(P.missingValueNote(s, "need"))).toBe(zeroRooms);
     expect(P.missingValueKind(s, "need")).toBe("not_calculable");
     expect(P.missingValueNote(s, "need")).toMatch(/^School need cannot be worked out, because /);
-    expect(P.missingSentence(s)).toMatch(/Having no place in the list yet does not mean its need is low\.$/);
-    expect(P.missingSentences(s).join(" ")).toBe(P.missingSentence(s));
+    expect(P.missingSentence(s, "additive_u")).toMatch(
+      /Having no place in the list yet does not mean its need is low\.$/
+    );
+    expect(P.missingSentences(s, "additive_u").join(" ")).toBe(P.missingSentence(s, "additive_u"));
     const corpus = new Corpus();
-    P.missingSentences(s).forEach((t, i) => corpus.add(`sentence ${i}`, t));
+    P.missingSentences(s, "additive_u").forEach((t, i) => corpus.add(`sentence ${i}`, t));
     labels.forEach((l, i) => corpus.add(`label ${i}`, l, { sentence: false }));
     expect(corpus.problems).toEqual([]);
   });
@@ -998,7 +1002,7 @@ describe("what is missing from a record", () => {
     expect(P.missingValueNote(s, "need")).toBe(
       "School need cannot be worked out, because the record gives 0 classrooms in total."
     );
-    expect(P.missingSentence(s)).toBe(
+    expect(P.missingSentence(s, "additive_u")).toBe(
       "The record gives 0 classrooms in total, which needs checking, and until then the share built of permanent materials cannot be worked out. Until these are checked, its school need cannot be worked out, so it has no place in the list yet. Having no place in the list yet does not mean its need is low."
     );
   });
@@ -1025,7 +1029,9 @@ describe("what is missing from a record", () => {
     expect(P.missingValueNote(s, "need")).toBe(
       "School need cannot be worked out, because only the remoteness category is recorded."
     );
-    expect(P.missingSentences(s)[0]).toBe("Only its remoteness category is recorded, as remote.");
+    expect(P.missingSentences(s, "additive_u")[0]).toBe(
+      "Only its remoteness category is recorded, as remote."
+    );
     expect(
       copyFor({ counts: { ...COUNTS, remotenessOnly: 1 } }).term("missing_all_but_remoteness").help
     ).toBe(
@@ -1041,11 +1047,11 @@ describe("what is missing from a record", () => {
       condition: { classrooms_total: null },
       locality: null,
     });
-    expect(P.missingSentences(s)).toContain("The remoteness category is blank in the record.");
+    expect(P.missingSentences(s, "additive_u")).toContain("The remoteness category is blank in the record.");
   });
 
   it("says a complete school has every input and a range school only its readings missing", () => {
-    expect(P.missingSentence(school({ id: "a" }))).toBe("All of its inputs are recorded.");
+    expect(P.missingSentence(school({ id: "a" }), "additive_u")).toBe("All of its inputs are recorded.");
     expect(P.missingLabels(school({ id: "a" }))).toEqual([]);
     expect(P.missingValueKind(school({ id: "a" }), "need")).toBe("recorded");
     expect(P.missingValueKind(school({ id: "a" }), "classrooms")).toBe("recorded");
@@ -1184,7 +1190,7 @@ describe("the sentences over the saved synthetic schools", () => {
         const tag = `${s.name} ${rule}`;
         const opts = { schoolNames: names };
         corpus.add(`${tag} reason`, copy.reasonSentence(s, rule), opts);
-        corpus.add(`${tag} missing`, copy.missingSentence(s), opts);
+        corpus.add(`${tag} missing`, copy.missingSentence(s, "additive_u"), opts);
         for (const key of ["need", ...copy.INPUT_KEYS] as const)
           corpus.add(`${tag} note ${key}`, copy.missingValueNote(s, key), opts);
         if (s.cohort !== "queue")

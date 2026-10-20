@@ -10,12 +10,14 @@ import { formatCount, lowerFirst, plural } from "./format";
 import {
   amongAllOrdered,
   completePhrase,
+  everyInput,
   groupsSentence,
   known,
   rangeSubject,
   theirScore,
   theyWould,
   urgencyDefinition,
+  type Reads,
 } from "./counts";
 import type { CountBag } from "./model";
 
@@ -40,12 +42,37 @@ export function persistentNearLine(standardError?: number): string {
 
 /* --------------------------------------------------------- fixed strings */
 
-// The fixed strings for a set of counts; STRINGS is the count-free version.
-export function buildStrings(c: CountBag = {}) {
+/**
+ * The lines that say what the groups of schools are, for one rule: its counts and the inputs it reads. A rule that
+ * leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order without them, so
+ * its group is "every input the rule reads", and the benchmark, which reads no air-quality figure, has no range
+ * schools to mention. They are bound per rule (`scope(ruleId)`) so a screen cannot show the main rule's words
+ * under another rule.
+ */
+export function buildScope(c: CountBag = {}, reads?: Reads) {
+  const every = everyInput(reads);
+  const readsReadings = reads?.readings ?? true;
   const scopeShort =
     known(c, "ranked") && known(c, "complete") && known(c, "range")
-      ? `${formatCount(c.ranked)} ${plural(c.ranked, "school", "schools")} can be put in order, ${formatCount(c.complete)} with every input recorded and ${formatCount(c.range)} that ${plural(c.range, "shows", "show")} a range of places.`
-      : "Schools with every input recorded have one place; schools that show a range have possible places.";
+      ? !readsReadings
+        ? `${formatCount(c.ranked)} ${plural(c.ranked, "school", "schools")} can be put in order, ${c.complete === c.ranked ? "all" : formatCount(c.complete)} with ${every}.`
+        : `${formatCount(c.ranked)} ${plural(c.ranked, "school", "schools")} can be put in order, ${formatCount(c.complete)} with ${every} and ${formatCount(c.range)} that ${plural(c.range, "shows", "show")} a range of places.`
+      : readsReadings
+        ? `Schools with ${every} have one place; schools that show a range have possible places.`
+        : `Schools with ${every} have one place each.`;
+  const groups = groupsSentence(c, reads);
+  return Object.freeze({
+    groups,
+    scopeComplete: `${groups} ${GROUPS_MEANING} Single places count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : `the schools with ${every}`}.`,
+    scopeRanked: `${groups} ${GROUPS_MEANING} Ranges count among ${amongAllOrdered(c)}.`,
+    // Short line for under the tabs; the detail goes in a disclosure or help card.
+    scopeShort,
+    scopeDetail: `${GROUPS_MEANING} Single places count among ${completePhrase(c, reads)}, and ranges among ${amongAllOrdered(c)}.`,
+  });
+}
+
+// The fixed strings for a set of counts; STRINGS is the count-free version.
+export function buildStrings(c: CountBag = {}) {
   return Object.freeze({
     caveat:
       "This screen proposes schools for inspection. It does not establish school condition, site safety, intervention benefit or an optimal investment plan.",
@@ -54,13 +81,7 @@ export function buildStrings(c: CountBag = {}) {
       "This screen proposes schools for inspection. It does not establish school condition, site safety, intervention benefit or an optimal investment plan.",
     caveatPlain:
       "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money.",
-    groups: groupsSentence(c),
     groupsMeaning: GROUPS_MEANING,
-    scopeComplete: `${groupsSentence(c)} ${GROUPS_MEANING} Single places count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : "the schools with every input recorded"}.`,
-    scopeRanked: `${groupsSentence(c)} ${GROUPS_MEANING} Ranges count among ${amongAllOrdered(c)}.`,
-    // Short line for under the tabs; the detail goes in a disclosure or help card.
-    scopeShort,
-    scopeDetail: `${GROUPS_MEANING} Single places count among ${completePhrase(c)}, and ranges among ${amongAllOrdered(c)}.`,
     filterNote: `Filtered view. Places in the list still count among ${amongAllOrdered(c)}, because filtering never changes the scale.`,
     listOrder: `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,
     listOrderUpper: `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} screening score.`,
