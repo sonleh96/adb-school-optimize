@@ -24,7 +24,7 @@ URGENCY_OMITTED = ("additive_no_u", "need_first_no_u", "bottleneck_no_u")
 
 
 def only(rule_id: str, **component_values):
-    (result,) = screen(prepared(("S", COMPLETE, components(**component_values))), rule_id).results
+    (result,) = screen(prepared(("S", components(**component_values))), rule_id).results
     return result
 
 
@@ -54,8 +54,8 @@ def test_bottleneck_reports_the_maximum_it_used_and_urgency_enters_it_only_when_
 
 
 def test_missing_environmental_input_spans_zero_to_its_weight_without_imputation():  # FM3, FM7
-    (s0,) = screen(prepared(("S", INTERVAL, components(Q=None))), "additive_no_u").results
-    (s,) = screen(prepared(("S", INTERVAL, components(Q=None))), "additive_u").results
+    (s0,) = screen(prepared(("S", components(Q=None))), "additive_no_u").results
+    (s,) = screen(prepared(("S", components(Q=None))), "additive_u").results
     assert s0.score_lower == pytest.approx((12 * 0.8 + 3 * 0.4 + 0.6 + 0.7 + 0.5) / 19, abs=1e-12)
     assert s0.score_upper - s0.score_lower == pytest.approx(1 / 19, abs=1e-12)
     assert s.score_upper - s.score_lower == pytest.approx(0.05, abs=1e-12)
@@ -65,15 +65,15 @@ def test_missing_environmental_input_spans_zero_to_its_weight_without_imputation
 
 
 def test_every_missing_environmental_input_adds_its_own_weight_to_the_upper_bound():  # FM7
-    (result,) = screen(prepared(("S", INTERVAL, components(Q=None, E=None, L=None))), "additive_no_u").results
+    (result,) = screen(prepared(("S", components(Q=None, E=None, L=None))), "additive_no_u").results
     assert result.score_upper - result.score_lower == pytest.approx(3 / 19, abs=1e-12)
 
 
 def test_interval_school_has_no_point_rank_and_envelope_is_over_the_eligible_cohort():  # FM10
     members = prepared(
-        ("P", COMPLETE, components(N=0.9, A=0, U=0, R=0, Q=0, E=0, L=0)),
-        ("I", INTERVAL, components(N=0.7, A=0, U=0, R=0, Q=None, E=0, L=0)),
-        ("R", COMPLETE, components(N=0.5, A=0, U=0, R=0, Q=0, E=0, L=0)),
+        ("P", components(N=0.9, A=0, U=0, R=0, Q=0, E=0, L=0)),
+        ("I", components(N=0.7, A=0, U=0, R=0, Q=None, E=0, L=0)),
+        ("R", components(N=0.5, A=0, U=0, R=0, Q=0, E=0, L=0)),
     )
     p, i, r = screen(members, "additive_no_u").results
     assert (p.rank_point, i.rank_point, r.rank_point) == (1, None, 2)
@@ -84,8 +84,8 @@ def test_interval_school_has_no_point_rank_and_envelope_is_over_the_eligible_coh
 
 def test_a_complete_school_inside_an_interval_gets_different_best_and_worst_rank():  # FM7
     members = prepared(
-        ("I", INTERVAL, components(N=0.7, A=0, R=0, Q=None, E=0, L=0)),
-        ("C", COMPLETE, components(N=0.7, A=0, R=0, Q=0.2, E=0, L=0)),
+        ("I", components(N=0.7, A=0, R=0, Q=None, E=0, L=0)),
+        ("C", components(N=0.7, A=0, R=0, Q=0.2, E=0, L=0)),
     )
     i, c = screen(members, "additive_no_u").results
     assert (i.rank_best, i.rank_worst, c.rank_best, c.rank_worst, c.rank_point) == (1, 2, 1, 2, 1)
@@ -93,17 +93,17 @@ def test_a_complete_school_inside_an_interval_gets_different_best_and_worst_rank
 
 def test_scores_that_agree_to_display_precision_are_still_ordered_exactly():  # FM6
     members = prepared(
-        ("A", COMPLETE, components(N=0.80000)),
-        ("B", COMPLETE, components(N=0.80001)),
+        ("A", components(N=0.80000)),
+        ("B", components(N=0.80001)),
     )
     assert [r.rank_point for r in screen(members, "additive_no_u").results] == [2, 1]
 
 
 def test_verification_queue_school_is_returned_unscored_in_input_order_with_identity_intact():  # FM1, FM2
     members = prepared(
-        ("Zed ", COMPLETE, components()),
-        ("Queue", QUEUE, components(N=None)),
-        ("Alpha", COMPLETE, components(N=0.1)),
+        ("Zed ", components()),
+        ("Queue", components(N=None), (GateFailure.MISSING_STOCK_FIELD,)),
+        ("Alpha", components(N=0.1)),
     )
     results = screen(members, "additive_no_u").results
     assert [r.school_name for r in results] == ["Zed ", "Queue", "Alpha"]
@@ -121,10 +121,10 @@ def test_verification_queue_school_is_returned_unscored_in_input_order_with_iden
 def test_urgency_has_no_direct_or_indirect_role_in_urgency_omitted_rules():  # FM8
     def outputs(u):
         members = prepared(
-            ("A", COMPLETE, components(N=0.8, U=u)),
-            ("B", COMPLETE, components(N=0.8, U=u)),
-            ("C", INTERVAL, components(N=0.6, U=u, Q=None)),
-            ("D", COMPLETE, components(N=0.4, U=u)),
+            ("A", components(N=0.8, U=u)),
+            ("B", components(N=0.8, U=u)),
+            ("C", components(N=0.6, U=u, Q=None)),
+            ("D", components(N=0.4, U=u)),
         )
         runs = screen_all(members)
         return {
@@ -148,8 +148,9 @@ def test_urgency_does_move_the_urgency_included_rules():  # FM8
 
 
 def test_unknown_urgency_queues_the_school_only_under_urgency_included_rules():  # FM1, FM8
-    members = prepared(("S", COMPLETE, components(U=None)))
+    members = prepared(("S", components(U=None)))
     included, omitted = screen(members, "additive_u").results[0], screen(members, "additive_no_u").results[0]
+    assert screen(members, "benchmark").results[0].cohort is QUEUE
     assert (included.cohort, included.gate_failures, included.rank_point) == (
         QUEUE,
         (GateFailure.URGENCY_UNKNOWN,),
@@ -159,31 +160,32 @@ def test_unknown_urgency_queues_the_school_only_under_urgency_included_rules(): 
 
 
 def test_urgency_omitted_runs_do_not_carry_the_urgency_value_or_anchor():  # FM8
-    run = screen(prepared(("S", COMPLETE, components(U=0.9))), "bottleneck_no_u")
+    run = screen(prepared(("S", components(U=0.9))), "bottleneck_no_u")
     assert run.results[0].components.U is None
     assert [a.name for a in run.manifest.anchors] == ["reach"]
-    assert [
-        a.name for a in screen(prepared(("S", COMPLETE, components())), "additive_u").manifest.anchors
-    ] == ["urgency", "reach"]
+    assert [a.name for a in screen(prepared(("S", components())), "additive_u").manifest.anchors] == [
+        "urgency",
+        "reach",
+    ]
 
 
 def test_equal_scores_and_equal_need_fall_back_to_school_name():  # FM6
-    members = prepared(("Bravo", COMPLETE, components()), ("Alpha", COMPLETE, components()))
+    members = prepared(("Bravo", components()), ("Alpha", components()))
     for rule_id in ("additive_no_u", "need_first_no_u", "bottleneck_no_u", "benchmark"):
         assert [r.rank_point for r in screen(members, rule_id).results] == [2, 1]
 
 
 def test_need_first_ranks_by_need_before_context():  # FM7
     members = prepared(
-        ("High need", COMPLETE, components(N=0.9, A=0.0, R=0.0, Q=0.0, E=0.0, L=0.0)),
-        ("Low need", COMPLETE, components(N=0.8, A=1.0, R=1.0, Q=1.0, E=1.0, L=1.0)),
+        ("High need", components(N=0.9, A=0.0, R=0.0, Q=0.0, E=0.0, L=0.0)),
+        ("Low need", components(N=0.8, A=1.0, R=1.0, Q=1.0, E=1.0, L=1.0)),
     )
     assert [r.rank_point for r in screen(members, "need_first_no_u").results] == [1, 2]
     assert [r.rank_point for r in screen(members, "additive_no_u").results] == [2, 1]
 
 
 def test_contributions_reconstruct_the_score_and_split_school_need_into_its_parts():  # FM7
-    (result,) = screen(prepared(("S", COMPLETE, components()), with_parts=True), "additive_u").results
+    (result,) = screen(prepared(("S", components()), with_parts=True), "additive_u").results
     assert sum(c.lower for c in result.contributions) == pytest.approx(0.655, abs=1e-12)
     assert result.contributions[0].lower == pytest.approx(0.6 * 0.8, abs=1e-15)
     assert result.need_part_contributions == NeedParts(
@@ -192,21 +194,48 @@ def test_contributions_reconstruct_the_score_and_split_school_need_into_its_part
 
 
 def test_need_first_has_no_n_contribution_and_no_need_part_contributions():
-    (result,) = screen(prepared(("S", COMPLETE, components()), with_parts=True), "need_first_u").results
+    (result,) = screen(prepared(("S", components()), with_parts=True), "need_first_u").results
     assert [c.component.value for c in result.contributions] == ["A", "U", "R", "Q", "E", "L"]
     assert result.need_part_contributions is None
 
 
-def test_benchmark_has_no_environmental_width_so_an_interval_school_is_ranked_exactly():  # FM7, FM10
-    members = prepared(("I", INTERVAL, components(Q=None)), ("C", COMPLETE, components(N=0.1)))
-    i, c = screen(members, "benchmark").results
-    assert (i.score_lower == i.score_upper, i.rank_best, i.rank_worst, i.rank_point) == (True, 1, 1, None)
-    assert (c.rank_best, c.rank_point) == (2, 1)
+def test_cohort_is_relative_to_the_rule_a_missing_environmental_input_matters_only_where_it_is_read():  # FM1, FM10
+    members = prepared(("I", components(Q=None)), ("C", components(N=0.1)))
+    cohorts = {rule_id: [r.cohort for r in run.results] for rule_id, run in screen_all(members).items()}
+    assert cohorts["benchmark"] == [COMPLETE, COMPLETE]
+    for rule_id in (
+        "additive_u",
+        "additive_no_u",
+        "need_first_u",
+        "need_first_no_u",
+        "bottleneck_u",
+        "bottleneck_no_u",
+    ):
+        assert cohorts[rule_id] == [INTERVAL, COMPLETE]
+
+
+def test_benchmark_gives_every_gate_passing_school_a_point_score_and_a_point_rank():  # FM10
+    members = prepared(
+        ("I", components(Q=None)),
+        ("C", components(N=0.1)),
+        ("X", components(), (GateFailure.MISSING_STOCK_FIELD,)),
+    )
+    run = screen(members, "benchmark")
+    i, c, x = run.results
+    assert (i.score_point is not None, i.rank_point, i.rank_best, i.rank_worst) == (True, 1, 1, 1)
+    assert (c.rank_point, c.rank_best, c.rank_worst) == (2, 2, 2)
+    assert x.rank_point is None
+    assert (run.manifest.point_rank_scope, run.manifest.rank_bounds_scope) == (
+        "complete under this rule (2)",
+        "eligible (2)",
+    )
 
 
 def test_manifest_describes_the_rule_scopes_and_cohort_counts():  # FM9, FM10
     members = prepared(
-        ("A", COMPLETE, components()), ("B", INTERVAL, components(Q=None)), ("C", QUEUE, components(N=None))
+        ("A", components()),
+        ("B", components(Q=None)),
+        ("C", components(N=None), (GateFailure.MISSING_STOCK_FIELD,)),
     )
     manifest = screen(members, "additive_no_u").manifest.to_dict()
     assert manifest["rule_id"] == "additive_no_u"
@@ -219,16 +248,17 @@ def test_manifest_describes_the_rule_scopes_and_cohort_counts():  # FM9, FM10
         ["verification_queue", 1],
     ]
     assert (manifest["point_rank_scope"], manifest["rank_bounds_scope"]) == (
-        "complete cohort",
-        "eligible cohort",
+        "complete under this rule (1)",
+        "eligible (2)",
     )
+    assert (manifest["point_rank_count"], manifest["rank_bounds_count"]) == (1, 2)
     assert "school name ascending" in manifest["tie_rule"]
     assert manifest["input_sha256"] == "input-hash"
     json.dumps(manifest)
 
 
 def test_manifest_is_identical_across_repeated_runs_and_the_anchor_hash_follows_the_anchors():  # FM9
-    members = prepared(("A", COMPLETE, components()))
+    members = prepared(("A", components()))
     first, second = screen(members, "additive_u").manifest, screen(members, "additive_u").manifest
     assert first == second
     changed = dataclasses.replace(
@@ -240,25 +270,33 @@ def test_manifest_is_identical_across_repeated_runs_and_the_anchor_hash_follows_
 def test_manifest_version_matches_the_package_metadata():  # FM9
     pyproject = (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text()
     assert re.search(rf'^version = "{re.escape(PACKAGE_VERSION)}"$', pyproject, re.MULTILINE)
-    assert (
-        screen(prepared(("A", COMPLETE, components())), "benchmark").manifest.package_version
-        == PACKAGE_VERSION
-    )
+    assert screen(prepared(("A", components())), "benchmark").manifest.package_version == PACKAGE_VERSION
 
 
 def test_unknown_rule_id_is_refused_by_screen():  # FM8
     with pytest.raises(UnknownRuleError):
-        screen(prepared(("A", COMPLETE, components())), "additive")
+        screen(prepared(("A", components())), "additive")
 
 
 def test_export_frame_carries_rule_identity_scopes_and_gate_reasons_for_every_row():  # FM10
-    members = prepared(("A", COMPLETE, components()), ("C", QUEUE, components(U=None)))
+    members = prepared(("A", components()), ("C", components(U=None), (GateFailure.MISSING_STOCK_FIELD,)))
     frame = screen(members, "additive_u").to_frame()
     assert frame["rule_id"].tolist() == ["additive_u", "additive_u"]
     assert frame["school_name"].tolist() == ["A", "C"]
-    assert frame["rank_point_scope"].unique().tolist() == ["complete cohort"]
-    assert frame["rank_bounds_scope"].unique().tolist() == ["eligible cohort"]
+    assert frame["rank_point_scope"].unique().tolist() == ["complete under this rule (1)"]
+    assert frame["rank_bounds_scope"].unique().tolist() == ["eligible (1)"]
     assert frame["rank_point"].tolist()[0] == 1 and frame["cohort"].tolist() == [
         "complete",
         "verification_queue",
     ]
+
+
+def test_a_complete_schools_point_rank_and_its_eligible_bounds_are_different_scopes_and_can_disagree():  # FM10
+    members = prepared(
+        ("I", components(N=0.9, A=0, R=0, Q=None, E=0, L=0)),
+        ("C", components(N=0.5, A=0, R=0, Q=0.0, E=0, L=0)),
+    )
+    interval, complete = screen(members, "additive_no_u").results
+    assert complete.rank_point == 1
+    assert (complete.rank_best, complete.rank_worst) == (2, 2)
+    assert interval.rank_point is None

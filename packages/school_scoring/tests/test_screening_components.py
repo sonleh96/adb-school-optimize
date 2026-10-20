@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from school_scoring.screening import Cohort, GateFailure, prepare
+from school_scoring.screening import Component, GateFailure, prepare
 from school_scoring.screening.components import POWER_DEFICIT, WATER_DEFICIT
 from screening_factories import expm1_ladder, ladder, record
 
@@ -14,33 +14,32 @@ def prepare_with_target(**overrides):
     return prepare((*others, record("Target", **overrides))).records[-1]
 
 
-# FM1: each gate reason, and the complete and interval cohorts.
+N, A, R, Q, E, L = Component.N, Component.A, Component.R, Component.Q, Component.E, Component.L
+
+
+# FM1: each gate reason, and which components stay unknown.
 @pytest.mark.parametrize(
-    ("overrides", "cohort", "failures"),
+    ("overrides", "failures", "missing"),
     [
-        ({}, Cohort.COMPLETE, ()),
-        ({"teachers": None}, Cohort.VERIFICATION_QUEUE, (GateFailure.MISSING_STOCK_FIELD,)),
-        ({"water_source": None}, Cohort.VERIFICATION_QUEUE, (GateFailure.MISSING_STOCK_FIELD,)),
-        ({"libraries": -1.0}, Cohort.VERIFICATION_QUEUE, (GateFailure.NEGATIVE_STOCK_VALUE,)),
-        ({"total_classrooms": 0.0}, Cohort.VERIFICATION_QUEUE, (GateFailure.NONPOSITIVE_DENOMINATOR,)),
-        ({"teachers": 0.0}, Cohort.VERIFICATION_QUEUE, (GateFailure.NONPOSITIVE_DENOMINATOR,)),
-        ({"power_source": "Candle"}, Cohort.VERIFICATION_QUEUE, (GateFailure.UNRECOGNIZED_SERVICE_CODING,)),
-        ({"locality": "Sea"}, Cohort.VERIFICATION_QUEUE, (GateFailure.UNRECOGNIZED_LOCALITY,)),
-        ({"locality": None}, Cohort.VERIFICATION_QUEUE, (GateFailure.UNRECOGNIZED_LOCALITY,)),
-        (
-            {"progression_g12_corrected_pct": None},
-            Cohort.VERIFICATION_QUEUE,
-            (GateFailure.UNRESOLVED_AREA_CONTEXT,),
-        ),
-        ({"walking_catchment_population": -5.0}, Cohort.VERIFICATION_QUEUE, (GateFailure.UNRESOLVED_REACH,)),
-        ({"aqi_p95_selected": None}, Cohort.INTERVAL, ()),
-        ({"emissions_co2e_100yr_10km_tonnes": None}, Cohort.INTERVAL, ()),
-        ({"water_flooded_vegetation_fraction_500m": 1.5}, Cohort.INTERVAL, ()),
+        ({}, (), ()),
+        ({"teachers": None}, (GateFailure.MISSING_STOCK_FIELD,), (N,)),
+        ({"water_source": None}, (GateFailure.MISSING_STOCK_FIELD,), (N,)),
+        ({"libraries": -1.0}, (GateFailure.NEGATIVE_STOCK_VALUE,), ()),
+        ({"total_classrooms": 0.0}, (GateFailure.NONPOSITIVE_DENOMINATOR,), (N,)),
+        ({"teachers": 0.0}, (GateFailure.NONPOSITIVE_DENOMINATOR,), (N,)),
+        ({"power_source": "Candle"}, (GateFailure.UNRECOGNIZED_SERVICE_CODING,), (N,)),
+        ({"locality": "Sea"}, (GateFailure.UNRECOGNIZED_LOCALITY,), (N,)),
+        ({"locality": None}, (GateFailure.UNRECOGNIZED_LOCALITY,), (N,)),
+        ({"progression_g12_corrected_pct": None}, (GateFailure.UNRESOLVED_AREA_CONTEXT,), (A,)),
+        ({"walking_catchment_population": -5.0}, (GateFailure.UNRESOLVED_REACH,), (R,)),
+        ({"aqi_p95_selected": None}, (), (Q,)),
+        ({"emissions_co2e_100yr_10km_tonnes": None}, (), (E,)),
+        ({"water_flooded_vegetation_fraction_500m": 1.5}, (), (L,)),
     ],
 )
-def test_gate_assigns_cohort_and_reasons(overrides, cohort, failures):
+def test_gate_failures_and_missing_components(overrides, failures, missing):
     target = prepare_with_target(**overrides)
-    assert (target.cohort, target.gate_failures) == (cohort, failures)
+    assert (target.gate_failures, target.missing_components) == (failures, missing)
 
 
 def test_a_school_failing_two_conditions_reports_both_reasons():  # FM1
@@ -202,7 +201,7 @@ def test_anchors_are_fit_on_every_record_including_the_verification_queue():  # 
     prepared_set = prepare(members)
     aqi_anchor = next(a for a in prepared_set.anchors if a.name == "aqi")
     assert (aqi_anchor.p05, aqi_anchor.p95, aqi_anchor.n_valid, aqi_anchor.n_records) == (1.0, 19.0, 21, 21)
-    assert prepared_set.records[15].cohort is Cohort.COMPLETE
+    assert prepared_set.records[15].gate_failures == ()
     assert pytest.approx((15 - 1) / 18, abs=1e-15) == prepared_set.records[15].components.Q
 
 

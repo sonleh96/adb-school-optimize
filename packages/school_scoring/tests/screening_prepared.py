@@ -5,7 +5,6 @@ from __future__ import annotations
 from school_scoring.screening import (
     Anchor,
     AreaParts,
-    Cohort,
     Component,
     ComponentValues,
     NeedParts,
@@ -15,12 +14,24 @@ from school_scoring.screening import (
 from screening_factories import record
 
 
-def prepared(*rows: tuple[str, Cohort, ComponentValues], with_parts: bool = False) -> PreparedRecords:
-    """Prepared records built from literal component values, for tests of the scoring layer."""
+def prepared(*rows: tuple, with_parts: bool = False) -> PreparedRecords:
+    """Prepared records built from literal component values, for tests of the scoring layer.
+
+    A row is ``(name, components)`` or ``(name, components, gate_failures)``.
+    The cohort is not given: ``screen`` decides it from the rule.
+    """
     need = NeedParts(0.25, 0.5, 0.5, 0.6, 0.7) if with_parts else NeedParts(None, None, None, None, None)
     area = AreaParts(None, None, None, None, None, None)
     built = tuple(
-        PreparedRecord(record(name), cohort, (), need, area, components) for name, cohort, components in rows
+        PreparedRecord(
+            record(name),
+            failures[0] if failures else (),
+            tuple(c for c in Component if values.get(c) is None),
+            need,
+            area,
+            values,
+        )
+        for name, values, *failures in rows
     )
     anchors = (
         Anchor(Component.U, "urgency", "urgency_source_scalar", "t", 1, 1, 0.0, 1.0),

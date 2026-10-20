@@ -10,7 +10,14 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .components import Anchor, AreaParts, ComponentValues, NeedParts, PreparedRecords
+from .components import (
+    Anchor,
+    AreaParts,
+    ComponentValues,
+    NeedParts,
+    PreparedRecord,
+    PreparedRecords,
+)
 from .ranking import need_first_envelope, point_ranks, rank_envelope
 from .rules import (
     ENVIRONMENTAL,
@@ -25,8 +32,13 @@ from .rules import (
 )
 from .version import PACKAGE_VERSION
 
-POINT_RANK_SCOPE = "complete cohort"
-RANK_BOUNDS_SCOPE = "eligible cohort"
+
+def point_rank_scope(count: int) -> str:
+    return f"complete under this rule ({count})"
+
+
+def rank_bounds_scope(count: int) -> str:
+    return f"eligible ({count})"
 
 
 @dataclass(frozen=True)
@@ -39,6 +51,13 @@ class ComponentContribution:
 
 @dataclass(frozen=True)
 class SchoolResult:
+    """One record under one rule.
+
+    ``rank_point`` ranks among the complete cohort of this rule.
+    ``rank_best`` and ``rank_worst`` bound the rank among the eligible cohort, which also holds the interval schools.
+    The two scopes differ, so a complete school's point rank can lie outside its own bounds.
+    """
+
     school_name: str
     province: str | None
     district: str | None
@@ -85,7 +104,9 @@ class RunManifest:
     anchors_sha256: str
     tie_rule: str
     point_rank_scope: str
+    point_rank_count: int
     rank_bounds_scope: str
+    rank_bounds_count: int
     cohort_counts: tuple[tuple[str, int], ...]
     input_sha256: str
     package_version: str
@@ -122,10 +143,10 @@ class ScreeningRun:
                 score_upper=r.score_upper,
                 score_point=r.score_point,
                 rank_point=r.rank_point,
-                rank_point_scope=POINT_RANK_SCOPE,
+                rank_point_scope=self.manifest.point_rank_scope,
                 rank_best=r.rank_best,
                 rank_worst=r.rank_worst,
-                rank_bounds_scope=RANK_BOUNDS_SCOPE,
+                rank_bounds_scope=self.manifest.rank_bounds_scope,
             )
             rows.append(row)
         return pd.DataFrame(rows)
@@ -209,27 +230,40 @@ def _manifest(rule: Rule, prepared: PreparedRecords, cohorts: list[Cohort]) -> R
         anchors=anchors,
         anchors_sha256=anchors_hash,
         tie_rule=TIE_RULE,
-        point_rank_scope=POINT_RANK_SCOPE,
-        rank_bounds_scope=RANK_BOUNDS_SCOPE,
+        point_rank_scope=point_rank_scope(cohorts.count(Cohort.COMPLETE)),
+        point_rank_count=cohorts.count(Cohort.COMPLETE),
+        rank_bounds_scope=rank_bounds_scope(len(cohorts) - cohorts.count(Cohort.VERIFICATION_QUEUE)),
+        rank_bounds_count=len(cohorts) - cohorts.count(Cohort.VERIFICATION_QUEUE),
         cohort_counts=(("records", len(cohorts)), *((c.value, cohorts.count(c)) for c in Cohort)),
         input_sha256=prepared.input_sha256,
         package_version=PACKAGE_VERSION,
     )
 
 
+def _cohort(rule: Rule, p: PreparedRecord) -> tuple[Cohort, tuple[GateFailure, ...]]:
+    """Cohort of one record under one rule. It depends only on what the rule reads.
+
+    Queue: the gate fails, or the rule reads U and U is unknown.
+    Interval: the rule reads an environmental component that is missing.
+    Complete: otherwise.
+    """
+    failures = p.gate_failures
+    if Component.U in rule.required_components and Component.U in p.missing_components:
+        failures = (*failures, GateFailure.URGENCY_UNKNOWN)
+    if failures:
+        return Cohort.VERIFICATION_QUEUE, failures
+    if any(c in p.missing_components for c in ENVIRONMENTAL if c in rule.required_components):
+        return Cohort.INTERVAL, failures
+    return Cohort.COMPLETE, failures
+
+
 def screen(prepared: PreparedRecords, rule_id: str) -> ScreeningRun:
     """Score and rank every record under one rule. Only the components the rule requires are ever read."""
     rule = get_rule(rule_id)
     rows = prepared.records
-    cohorts: list[Cohort] = []
-    failures: list[tuple[GateFailure, ...]] = []
-    for p in rows:
-        if rule.uses_urgency and p.components.U is None and p.cohort is not Cohort.VERIFICATION_QUEUE:
-            cohorts.append(Cohort.VERIFICATION_QUEUE)
-            failures.append((*p.gate_failures, GateFailure.URGENCY_UNKNOWN))
-        else:
-            cohorts.append(p.cohort)
-            failures.append(p.gate_failures)
+    decided = [_cohort(rule, p) for p in rows]
+    cohorts = [cohort for cohort, _ in decided]
+    failures = [gate for _, gate in decided]
 
     eligible = np.array([c is not Cohort.VERIFICATION_QUEUE for c in cohorts], dtype=bool)
     complete = np.array([c is Cohort.COMPLETE for c in cohorts], dtype=bool)

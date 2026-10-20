@@ -3,6 +3,7 @@
 Pipeline: ``parse_records`` (boundary) -> ``prepare`` (components, anchors, cohorts) -> ``screen`` (one rule).
 """
 
+from .comparison import CommonCohort, CommonRanks, common_cohort, rank_in_common_cohort
 from .components import (
     Anchor,
     AreaParts,
@@ -13,12 +14,12 @@ from .components import (
     prepare,
 )
 from .engine import (
-    POINT_RANK_SCOPE,
-    RANK_BOUNDS_SCOPE,
     ComponentContribution,
     RunManifest,
     SchoolResult,
     ScreeningRun,
+    point_rank_scope,
+    rank_bounds_scope,
     screen,
     screen_all,
 )
@@ -50,12 +51,12 @@ from .version import PACKAGE_VERSION
 __all__ = [
     "INPUT_CONTRACT",
     "PACKAGE_VERSION",
-    "POINT_RANK_SCOPE",
-    "RANK_BOUNDS_SCOPE",
     "RULES",
     "Anchor",
     "AreaParts",
     "Cohort",
+    "CommonCohort",
+    "CommonRanks",
     "Component",
     "ComponentContribution",
     "ComponentValues",
@@ -77,9 +78,13 @@ __all__ = [
     "Table",
     "UnknownRuleError",
     "assemble_frame",
+    "common_cohort",
     "get_rule",
     "parse_records",
+    "point_rank_scope",
     "prepare",
+    "rank_bounds_scope",
+    "rank_in_common_cohort",
     "records_sha256",
     "screen",
     "screen_all",

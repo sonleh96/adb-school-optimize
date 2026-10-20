@@ -1,4 +1,6 @@
-"""Deterministic component preparation: parts, normalization anchors, the evidence gate and cohorts.
+"""Deterministic component preparation: parts, normalization anchors and the evidence gate.
+
+Cohorts are not decided here. They depend on the rule, so ``engine.screen`` decides them.
 
 Anchors are fit on every supplied record, never on a filtered subset.
 A value that cannot be computed stays ``None``; nothing is imputed.
@@ -13,7 +15,7 @@ from fractions import Fraction
 import numpy as np
 
 from .inputs import SchoolRecord, records_sha256
-from .rules import ENVIRONMENTAL, Cohort, Component, GateFailure
+from .rules import Component, GateFailure
 
 # ---------------------------------------------------------------------------------------------
 # Coding tables. Order matters: the first matching token group wins, as in the study code.
@@ -113,8 +115,8 @@ class Anchor:
 @dataclass(frozen=True)
 class PreparedRecord:
     record: SchoolRecord
-    cohort: Cohort
     gate_failures: tuple[GateFailure, ...]
+    missing_components: tuple[Component, ...]
     need_parts: NeedParts
     area_parts: AreaParts
     components: ComponentValues
@@ -312,7 +314,7 @@ def _gate_failures(
 
 
 def prepare(records: tuple[SchoolRecord, ...]) -> PreparedRecords:
-    """Compute parts, components, anchors, gate failures and cohorts for the full record set."""
+    """Compute parts, components, anchors, gate failures and missing components for the full record set."""
     need = _need_part_arrays(records)
     need_mean = _sequential_sum([need[f.name] for f in fields(NeedParts)]) / len(fields(NeedParts))
 
@@ -358,17 +360,11 @@ def prepare(records: tuple[SchoolRecord, ...]) -> PreparedRecords:
             area_known=not np.isnan(area_context[row]),
             reach_known=not np.isnan(values[Component.R][row]),
         )
-        if failures:
-            cohort = Cohort.VERIFICATION_QUEUE
-        elif any(np.isnan(values[c][row]) for c in ENVIRONMENTAL):
-            cohort = Cohort.INTERVAL
-        else:
-            cohort = Cohort.COMPLETE
         prepared.append(
             PreparedRecord(
                 record=record,
-                cohort=cohort,
                 gate_failures=failures,
+                missing_components=tuple(c for c in Component if np.isnan(values[c][row])),
                 need_parts=NeedParts(**{f.name: _optional(need[f.name][row]) for f in fields(NeedParts)}),
                 area_parts=AreaParts(**{f.name: _optional(area[f.name][row]) for f in fields(AreaParts)}),
                 components=ComponentValues(**{c.value: _optional(values[c][row]) for c in Component}),
