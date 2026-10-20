@@ -23,6 +23,7 @@ const RAMP: Color[] = RAMP_HEX.map(rgba);
 const PAPER = rgba(MARK_PAPER_HEX);
 const RING_INK = rgba(RANGE_RING_HEX);
 const INCOMPLETE_INK = rgba(INCOMPLETE_RING_HEX);
+const INCOMPLETE_FILL: Color = [PAPER[0], PAPER[1], PAPER[2], 230];
 const SELECTION_INK: Color = [21, 24, 29, 255];
 const RANGE_RADIUS = 6.5;
 const INCOMPLETE_RADIUS = 3.5;
@@ -42,6 +43,14 @@ export function radiusOf(school: MapSchool): number {
 }
 
 const position = (school: MapSchool): [number, number] => [school.lon, school.lat];
+
+/*
+ * Every layer here gives its radius and its fill colour as a function, even where all marks share one value.
+ * deck.gl feeds a constant to the GPU differently from a per-mark value, and each way is a separate GPU pipeline,
+ * compiled the first time it draws. Without a graphics card that compile stalls the page for hundreds of
+ * milliseconds, so layers that all read the same way share one compile instead of paying for two.
+ * (A Linux container with software GL: first map frame 650 ms with constants, 390 ms without.)
+ */
 
 /**
  * The marks, bottom to top. A better place is never covered by a worse one: dots go worst first.
@@ -63,9 +72,9 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       opacity,
       getPosition: position,
       radiusUnits: "pixels",
-      getRadius: INCOMPLETE_RADIUS,
+      getRadius: () => INCOMPLETE_RADIUS,
       filled: true,
-      getFillColor: [PAPER[0], PAPER[1], PAPER[2], 230],
+      getFillColor: () => INCOMPLETE_FILL,
       stroked: true,
       lineWidthUnits: "pixels",
       getLineWidth: 1.5,
@@ -78,9 +87,9 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       opacity,
       getPosition: position,
       radiusUnits: "pixels",
-      getRadius: RANGE_RADIUS,
+      getRadius: () => RANGE_RADIUS,
       filled: true,
-      getFillColor: PAPER,
+      getFillColor: () => PAPER,
       stroked: true,
       lineWidthUnits: "pixels",
       getLineWidth: 2,
@@ -92,8 +101,8 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       opacity,
       getPosition: position,
       radiusUnits: "pixels",
-      getRadius: 2,
-      getFillColor: RING_INK,
+      getRadius: () => 2,
+      getFillColor: () => RING_INK,
     }),
     new ScatterplotLayer<Dot>({
       id: "dots",
@@ -123,6 +132,7 @@ export function buildRingLayers(selected: MapSchool | null, hovered: MapSchool |
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: (s) => radiusOf(s) + gap,
+      getFillColor: () => SELECTION_INK,
       filled: false,
       stroked: true,
       lineWidthUnits: "pixels",
