@@ -593,11 +593,11 @@ function Workspace() {
                       <>
                         <header className={styles.listHead}>
                           <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
-                          {/* With no incomplete record, the lead would say some schools are here, and there is
-                              nothing to group or put in order. */}
+                          {/* The lead says none when there is no incomplete record; then there is nothing to group or
+                              put in order. */}
+                          <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
                           {incomplete.length > 0 ? (
                             <>
-                              <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
                               <div className={styles.groupBy} data-region="queue-missing">
                                 <span id="screening-group-by">{shown.copy.LAYOUT.groupBy}</span>
                                 <div
@@ -621,11 +621,13 @@ function Workspace() {
                                   </button>
                                 </div>
                               </div>
+                              {/* Each grouping has its own order sentence. */}
+                              <p className={styles.scopeLine} data-region="queue-order">
+                                {state.qgroup === "province"
+                                  ? shown.copy.STRINGS.queueOrder
+                                  : shown.copy.STRINGS.queueOrderMissing}
+                              </p>
                             </>
-                          ) : null}
-                          {/* The order sentence describes the province grouping; grouped by gap it would be untrue. */}
-                          {incomplete.length > 0 && state.qgroup === "province" ? (
-                            <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
                           ) : null}
                         </header>
                         <IncompleteList
