@@ -872,10 +872,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   right: 260px;
   bottom: 12px;
   z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
   pointer-events: none;
 }
 .root[data-has-insp] .foot {
@@ -898,7 +894,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   display: none;
 }
 
+/* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
 .legend {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 18px;
   max-width: min(760px, 100%);
   padding: 10px 14px 11px;
   display: flex;
@@ -1797,12 +1798,18 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     display: none;
   }
   /* The key sits over the band's foot, one line until Key opens it; the caveat moves to the end of the list. */
+  /* The caveat leaves the foot here, so the foot is a line at the band's foot and the key sits on it. */
   .foot {
     left: 8px;
     right: 8px;
     top: calc(56px + var(--band) - 8px);
     bottom: auto;
-    transform: translateY(-100%);
+  }
+  .foot .legend {
+    margin-bottom: 0;
+    right: 0;
+    width: max-content;
+    max-width: 100%;
   }
   .root[data-has-insp] .foot,
   .root[data-card-docked] .foot {
