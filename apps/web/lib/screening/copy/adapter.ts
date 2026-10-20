@@ -206,13 +206,22 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
   for (const [id, r] of entries) if (r.cohort !== "verification_queue") results[id] = toResult(id, r);
   for (const id of ["additive_u", "additive_no_u"] as const) {
     const r = entries.get(id);
-    if (r && r.cohort !== "verification_queue") contributions[id] = recordedContribution(id, r);
+    if (!r || r.cohort === "verification_queue") continue;
+    try {
+      contributions[id] = recordedContribution(id, r);
+    } catch (error) {
+      // A broken part fails the rules built on it, not the whole card. The rule shown and the largest-factor rule
+      // built on this one need it; any other rule's card is unaffected.
+      const needed = view === id || view === (id === "additive_u" ? "bottleneck_u" : "bottleneck_no_u");
+      if (!(error instanceof ParseError) || needed) throw error;
+    }
   }
 
-  // The components do not depend on the rule; urgency is missing from the rules that leave it out.
+  // The components do not depend on the rule; urgency is absent from the rules that leave it out. It is null when a
+  // rule that reads it found it unknown, and absent when no rule that reads it has a run (it was not read).
   const urgency = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
   const { N, A, R, Q, E, L } = shown.components;
-  const components: CopyComponents = { N, A, U: urgency ?? null, R, Q, E, L };
+  const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
 
   const needParts: NeedParts = shown.need_parts;
   const raw = {

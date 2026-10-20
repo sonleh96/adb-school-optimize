@@ -351,6 +351,8 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
     return "This school has no place in the list yet, so there is no screening score to explain. Its entry shows what is missing.";
   }
   if (!resultFor(school, ruleId)) return `Not computed for this school under ${r.name}.`;
+  if (!contributions(school, ruleId))
+    return `What adds to the screening score under ${r.name} is not available for this school.`;
   const drivers = topDrivers(school, ruleId);
   if (drivers.length === 0) return `Under ${r.name}, none of its inputs adds to its screening score.`;
   const n = drivers.length;

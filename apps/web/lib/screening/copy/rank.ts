@@ -347,7 +347,7 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
 }
 
 // A tie note for the card or the row, or null when the school is level with no other.
-// Ties are exact: the same screening score, or under need-first the same school need.
+// Ties are exact, as the engine compares them: the same screening score, or under need-first the same school need.
 export function tieNote(
   school: PlacedSchool,
   ruleId: CopyRuleId,
@@ -369,7 +369,7 @@ export function tieNote(
   if (mine == null) return null;
   const level = schools.filter((x) => {
     const v = value(x);
-    return x.id !== school.id && x.cohort === "complete" && v != null && Math.abs(v - mine) < 1e-12;
+    return x.id !== school.id && x.cohort === "complete" && v != null && v === mine;
   });
   if (!level.length) return null;
   const names = joinList(level.map((x) => distinctName(x, schools)));
@@ -379,7 +379,7 @@ export function tieNote(
     const mineSecond = second(school);
     const exact = level.filter((x) => {
       const s2 = second(x);
-      return s2 != null && mineSecond != null && Math.abs(s2 - mineSecond) < 1e-12;
+      return s2 != null && mineSecond != null && s2 === mineSecond;
     });
     if (form === "row") return `Same school need as ${names}`;
     return exact.length === level.length
