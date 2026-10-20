@@ -197,13 +197,13 @@ describe("data of other sizes", () => {
     expect(P.scope("additive_u").scopeShort).toBe(
       "7 schools can be put in order, 5 with every input recorded and 2 that show a range of places."
     );
-    expect(P.TERMS.queue.label).toBe("Schools with incomplete records (3)");
-    expect(P.TERMS.cohort_ranked.label).toBe("Can be put in order (7)");
-    expect(P.TERMS.missing_all_but_remoteness.help).toBe(
+    expect(P.termsFor("additive_u").queue.label).toBe("Schools with incomplete records (3)");
+    expect(P.termsFor("additive_u").cohort_ranked.label).toBe("Can be put in order (7)");
+    expect(P.termsFor("additive_u").missing_all_but_remoteness.help).toBe(
       "1 of the 3 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );
     expect(P.STRINGS.urgencyDefinition).toMatch(/, and no school has 0\.$/);
-    expect(P.LAYOUT.amongAll124).toBe("All 7 schools that can be put in order");
+    expect(P.scope("additive_u").amongAll).toBe("All 7 schools that can be put in order");
     expect(P.IDEAS.ranges.title).toBe("Two schools show a range because a reading is missing");
     expect(P.IDEAS.queue.title).toBe(
       "Some schools have no place in the list yet because their records are incomplete"
@@ -254,7 +254,9 @@ describe("data of other sizes", () => {
     expect(P.scope("additive_u").groups).toBe(
       "2 schools have every input recorded, and one more lacks a reading such as air quality and shows a range of places, so 3 schools can be put in order."
     );
-    expect(P.STRINGS.listOrder.startsWith("The one school that shows a range is listed where ")).toBe(true);
+    expect(
+      P.scope("additive_u").listOrder.startsWith("The one school that shows a range is listed where ")
+    ).toBe(true);
     expect((await P.later()).HOW_IT_WORKS.find((s) => s.key === "placed")?.sentences).toContain(
       "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
     );
@@ -361,7 +363,7 @@ describe("no schools, and one school", () => {
       flagged: 0,
     });
     expect(P.STRINGS.urgencyDefinition).toMatch(/not known\.$/);
-    expect(P.LAYOUT.amongAll124).toBe("All schools that can be put in order");
+    expect(P.scope("additive_u").amongAll).toBe("All schools that can be put in order");
     expect(copyFor().counts.all).toBe(0);
   });
 

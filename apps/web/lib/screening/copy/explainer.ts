@@ -49,7 +49,8 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
         sentences: [
           "A school can be put in order only when its record has everything school need uses.",
           "That means a classroom count above 0 and how many classrooms are built of permanent materials, a teacher count above 0 and the number of teacher houses, all six facility counts, a power and a water source, and a remoteness category.",
-          groupsSentence(c),
+          // The counts here are the paper's main rule's; another rule can put a different number of schools in a group.
+          `Under the paper's main rule, ${lowerFirst(groupsSentence(c))}`,
           GROUPS_MEANING,
           known(c, "queue") && c.queue === 1
             ? "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
@@ -109,7 +110,7 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
           `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score, the study's main order.`,
           "Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
           known(c, "complete") && known(c, "ranked")
-            ? `Places among the ${formatCount(c.complete)} and possible places among all ${formatCount(c.ranked)} answer different questions.`
+            ? `Under the paper's main rule, places among the ${formatCount(c.complete)} and possible places among all ${formatCount(c.ranked)} answer different questions.`
             : "Places among the schools with every input recorded and possible places among all schools that can be put in order answer different questions.",
           example ||
             "Agreement among the schools with every input recorded does not carry over to all schools that can be put in order, because the schools that show a range can still move.",

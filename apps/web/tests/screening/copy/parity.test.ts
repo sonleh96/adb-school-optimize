@@ -31,6 +31,7 @@ import {
   loadDatasets,
   loadPrototype,
   mismatches,
+  groupFree,
   prototypeValue,
   ready,
   run,
@@ -144,7 +145,12 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     ];
     bags.forEach((bag, i) => {
       const tag = `bag ${i}`;
-      same(`${tag} buildTerms`, prototypeValue("TERMS", proto.buildTerms(bag), bag), port.buildTerms(bag));
+      for (const reads of [undefined, { urgency: false, readings: true }, { urgency: true, readings: false }])
+        same(
+          `${tag} buildTerms ${JSON.stringify(reads)}`,
+          prototypeValue("TERMS", proto.buildTerms(bag, reads), bag),
+          port.buildTerms(bag, reads)
+        );
       same(
         `${tag} buildStrings`,
         prototypeValue("buildStrings", proto.buildStrings(bag)),
@@ -375,8 +381,15 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         "FIRST_QUESTIONS",
         "RULE_IDS",
       ])
-        same(`${k}`, prototypeValue(k, P[k], P.counts), Q[k]);
-      same("groupsSentence()", P.groupsSentence(), Q.groupsSentence());
+        same(
+          `${k}`,
+          k === "TERMS"
+            ? prototypeValue(k, proto.buildTerms(groupFree(P.counts)), groupFree(P.counts))
+            : prototypeValue(k, P[k], P.counts),
+          Q[k]
+        );
+      for (const r of proto.RULE_IDS as string[])
+        same(`termsFor(${r})`, prototypeValue("TERMS", P.termsFor(r), P.counts), Q.termsFor(r));
       for (const r of proto.RULE_IDS as string[])
         same(`groupsSentence(${r})`, P.groupsSentence(r), Q.groupsSentence(r));
       for (const r of proto.RULE_IDS as string[]) same(`scope(${r})`, P.scope(r), Q.scope(r));

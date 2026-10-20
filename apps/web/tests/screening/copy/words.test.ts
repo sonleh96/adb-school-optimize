@@ -117,14 +117,9 @@ describe("the words that join values", () => {
 });
 
 describe("the strings that state a count", () => {
-  it("take it from the data, and say it without a number when it is unknown", () => {
-    expect(copy.buildStrings({ complete: 16 }).notComputedNote).toBe(
-      "This rule was only run on the 16 schools with every input recorded, and these schools have a missing reading."
-    );
-    expect(copy.buildStrings({ complete: 36 }).notComputedNote).toContain("the 36 schools");
-    expect(copy.STRINGS.notComputedNote).toBe(
-      "This rule was only run on the schools with every input recorded, and these schools have a missing reading."
-    );
+  it("leave out the note that said a rule was only run on some schools, which the engine does not do", () => {
+    expect(copy.buildStrings({ complete: 16 })).not.toHaveProperty("notComputedNote");
+    expect(copy.STRINGS).not.toHaveProperty("notComputedNote");
   });
 
   it("number the first dots on the map only as far as there are schools", () => {

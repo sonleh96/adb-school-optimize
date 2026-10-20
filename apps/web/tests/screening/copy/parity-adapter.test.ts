@@ -44,6 +44,7 @@ import {
   loadPrototype,
   mismatches,
   note,
+  groupFree,
   prototypeValue,
   ready,
   run,
@@ -558,7 +559,15 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       );
 
       for (const k of ["TERMS", "STRINGS", "IDEAS", "HOW_IT_WORKS", "FIRST_QUESTIONS", "LAYOUT"])
-        same(k, prototypeValue(k, R[k], counts), Q[k]);
+        same(
+          k,
+          k === "TERMS"
+            ? prototypeValue(k, proto.buildTerms(groupFree(counts)), groupFree(counts))
+            : prototypeValue(k, R[k], counts),
+          Q[k]
+        );
+      for (const r of port.RULE_IDS)
+        same(`termsFor(${r})`, prototypeValue("TERMS", R.termsFor(r), counts), Q.termsFor(r));
       for (const a of port.RULE_IDS) {
         for (const b of port.RULE_IDS) {
           for (const top of [undefined, 10, 20])

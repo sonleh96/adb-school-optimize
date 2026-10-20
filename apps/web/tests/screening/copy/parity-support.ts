@@ -89,7 +89,23 @@ export const FN_ARGS: Record<string, unknown[][]> = {
  *  - the reason a retired word is banned says "these are", not a count.
  */
 /** The lines the port binds per rule instead of keeping on the fixed strings. */
-export const SCOPE_KEYS = ["groups", "scopeComplete", "scopeRanked", "scopeShort", "scopeDetail"] as const;
+export const SCOPE_KEYS = [
+  "groups",
+  "scopeComplete",
+  "scopeRanked",
+  "scopeShort",
+  "scopeDetail",
+  "filterNote",
+  "listOrder",
+  "listOrderUpper",
+  "notComputedNote",
+] as const;
+
+/** The counts without the sizes of the groups, which belong to one rule; the port words the bound TERMS without them. */
+export const groupFree = (counts: Record<string, number>): Record<string, number> =>
+  Object.fromEntries(
+    Object.entries(counts).filter(([k]) => !["complete", "range", "ranked", "queue"].includes(k))
+  );
 export const withoutScope = (strings: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(strings).filter(([k]) => !(SCOPE_KEYS as readonly string[]).includes(k)));
 
@@ -113,6 +129,8 @@ export function prototypeValue(key: string, value: any, counts?: Record<string, 
   }
   // The port keeps the group lines out of the fixed strings, so that they are said per rule (see `scope`).
   if (key === "STRINGS" || key === "buildStrings") return withoutScope(value);
+  // The port binds the size of the ranked group per rule (`scope(ruleId).amongAll`).
+  if (key === "LAYOUT") return { ...value, amongAll124: "Among all schools that can be put in order" };
   if (key === "BANNED") {
     return value.map((b: any) => ({ ...b, why: b.why.replace(/\bthe \d+ are\b/, "these are") }));
   }

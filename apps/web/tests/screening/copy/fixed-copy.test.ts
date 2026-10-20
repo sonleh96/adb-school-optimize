@@ -369,7 +369,7 @@ describe("the explainer and the questions", async () => {
   it("explains the two group sizes together, in the groups sentence, before it states either alone", () => {
     const flat = P.HOW_IT_WORKS.flatMap((s) => s.sentences);
     const firstCount = flat.find((t) => new RegExp(`\\b(${FULL.complete}|${FULL.ranked})\\b`).test(t));
-    expect(firstCount).toBe(P.groupsSentence());
+    expect(firstCount).toBe(`Under the paper's main rule, ${P.groupsSentence("additive_u")}`);
     expect(P.scope("additive_u").groups).toBe(
       "96 schools have every input recorded, and three more lack a reading such as air quality and show a range of places, so 99 schools can be put in order."
     );
@@ -408,7 +408,7 @@ describe("the fixed strings that carry a rule of the project", () => {
   });
 
   it("names a missing reading as listed where it would sit if air quality added nothing, never as 0", () => {
-    expect(copy.STRINGS.listOrder).toContain("added nothing");
+    expect(copy.buildScope({}).listOrder).toContain("added nothing");
     expect(copy.TERMS.list_order.line).toContain("added nothing");
   });
 
@@ -422,9 +422,9 @@ describe("the fixed strings that carry a rule of the project", () => {
     for (const t of [
       P.scope("additive_u").scopeComplete,
       P.scope("additive_u").scopeRanked,
-      P.TERMS.cohort_complete.line,
-      P.TERMS.cohort_ranked.line,
-      P.TERMS.rank_range.help,
+      P.termsFor("additive_u").cohort_complete.line,
+      P.termsFor("additive_u").cohort_ranked.line,
+      P.termsFor("additive_u").rank_range.help,
     ]) {
       expect(t.startsWith(P.scope("additive_u").groups)).toBe(true);
     }
@@ -503,13 +503,15 @@ describe("counts belong to the data they came from", () => {
     expect(copy.TERMS.cohort_complete.technical).toBe("Complete-primary cohort");
     expect(copy.TERMS.cohort_ranked.technical).toBe("Condition-eligible cohort");
     expect(copy.TERMS.queue.technical).toBe("Verification queue");
-    const A = copyFor({ counts: SET_A }).TERMS;
+    const A = copyFor({ counts: SET_A }).termsFor("additive_u");
     expect([A.cohort_complete.technical, A.cohort_ranked.technical, A.queue.technical]).toEqual([
       "Complete-primary cohort, 27 schools",
       "Condition-eligible cohort, 33 schools",
       "Verification queue, 14 schools",
     ]);
-    expect(copyFor({ counts: { queue: 1 } }).TERMS.queue.technical).toBe("Verification queue, 1 school");
+    expect(copyFor({ counts: { queue: 1 } }).termsFor("additive_u").queue.technical).toBe(
+      "Verification queue, 1 school"
+    );
   });
 
   it("differs from copy bound to empty data, which counts zero schools", () => {
