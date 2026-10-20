@@ -1,4 +1,7 @@
-"""Screening engine for the circulated method and the urgency-omitted scenario."""
+"""Screening engine for the circulated method and the urgency-omitted scenario.
+
+Pipeline: ``parse_records`` (boundary) -> ``prepare`` (components, anchors, cohorts) -> ``screen`` (one rule).
+"""
 
 from .components import (
     Anchor,
@@ -8,6 +11,16 @@ from .components import (
     PreparedRecord,
     PreparedRecords,
     prepare,
+)
+from .engine import (
+    POINT_RANK_SCOPE,
+    RANK_BOUNDS_SCOPE,
+    ComponentContribution,
+    RunManifest,
+    SchoolResult,
+    ScreeningRun,
+    screen,
+    screen_all,
 )
 from .inputs import (
     INPUT_CONTRACT,
@@ -35,11 +48,14 @@ from .version import PACKAGE_VERSION
 __all__ = [
     "INPUT_CONTRACT",
     "PACKAGE_VERSION",
+    "POINT_RANK_SCOPE",
+    "RANK_BOUNDS_SCOPE",
     "RULES",
     "Anchor",
     "AreaParts",
     "Cohort",
     "Component",
+    "ComponentContribution",
     "ComponentValues",
     "GateFailure",
     "InputContractError",
@@ -50,7 +66,10 @@ __all__ = [
     "Rule",
     "RuleKind",
     "RuleRole",
+    "RunManifest",
     "SchoolRecord",
+    "SchoolResult",
+    "ScreeningRun",
     "Table",
     "UnknownRuleError",
     "assemble_frame",
@@ -58,4 +77,6 @@ __all__ = [
     "parse_records",
     "prepare",
     "records_sha256",
+    "screen",
+    "screen_all",
 ]
