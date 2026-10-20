@@ -199,14 +199,14 @@ export function schoolFromDetail(detail: WireSchoolDetail, view: CopyRuleId): Co
   if (!shown) throw new ParseError(`rules: the school has no result under ${view}`);
   const cohort = COHORT[shown.cohort];
 
+  // A school held back under the rule shown can still be in order under another, so keep every result the API
+  // gave for a rule that does not hold it back.
   const results: ResultsByRule = {};
   const contributions: NonNullable<CopySchool["contributions"]> = {};
-  if (cohort !== "queue") {
-    for (const [id, r] of entries) if (r.cohort !== "verification_queue") results[id] = toResult(id, r);
-    for (const id of ["additive_u", "additive_no_u"] as const) {
-      const r = entries.get(id);
-      if (r && r.cohort !== "verification_queue") contributions[id] = recordedContribution(id, r);
-    }
+  for (const [id, r] of entries) if (r.cohort !== "verification_queue") results[id] = toResult(id, r);
+  for (const id of ["additive_u", "additive_no_u"] as const) {
+    const r = entries.get(id);
+    if (r && r.cohort !== "verification_queue") contributions[id] = recordedContribution(id, r);
   }
 
   // The components do not depend on the rule; urgency is missing from the rules that leave it out.
@@ -265,12 +265,11 @@ export function placedFromResults(first: WireResults, ...others: WireResults[]):
   return first.rows.map((row) => {
     const cohort = COHORT[row.cohort];
     const results: ResultsByRule = {};
-    if (cohort !== "queue") {
-      results[view] = toResult(view, row);
-      for (const [id, rows] of more) {
-        const other = rows.get(row.school.school_key);
-        if (other && other.cohort !== "verification_queue") results[id] = toResult(id, other);
-      }
+    // A school held back under the rule shown can still be in order under another, so each list gives its own.
+    if (cohort !== "queue") results[view] = toResult(view, row);
+    for (const [id, rows] of more) {
+      const other = rows.get(row.school.school_key);
+      if (other && other.cohort !== "verification_queue") results[id] = toResult(id, other);
     }
     return {
       id: row.school.school_key,
@@ -319,6 +318,14 @@ export function countsFromResults(response: WireResults): CountBag {
     }
   }
   return out;
+}
+
+/**
+ * The group sizes of each rule's own run, from the lists of those rules, for the sentences that put one school
+ * under two rules. Each rule is counted from its own manifest, because the groups differ between rules.
+ */
+export function countsByRuleFromResults(...responses: WireResults[]): Partial<Record<CopyRuleId, CountBag>> {
+  return Object.fromEntries(responses.map((r) => [viewRuleOf(r), countsFromResults(r)]));
 }
 
 /* ----------------------------------------------------------------- comparison */

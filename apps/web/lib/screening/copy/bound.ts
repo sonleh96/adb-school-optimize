@@ -39,6 +39,7 @@ import type {
   CopyRuleId,
   CopySchool,
   CountBag,
+  CountsByRule,
   PairwiseRow,
   PlacedSchool,
   Top20Change,
@@ -86,12 +87,14 @@ import { HELP, KEYS, LAYOUT } from "./words";
 export type CopyData = {
   readonly pairwise?: readonly PairwiseRow[];
   readonly top20Changes?: readonly Top20Change[];
+  /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
+  readonly countsByRule?: CountsByRule;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
 );
 
-type WithoutCounts = Omit<PlaceOpts, "counts">;
+type WithoutCounts = Omit<PlaceOpts, "counts" | "countsByRule">;
 
 export function copyFor(data: CopyData = {}) {
   const schools: readonly PlacedSchool[] = data.schools || [];
@@ -101,7 +104,11 @@ export function copyFor(data: CopyData = {}) {
     top20Changes: data.top20Changes || [],
     schools,
   };
-  const withCounts = (opts?: WithoutCounts): PlaceOpts => ({ ...(opts || {}), counts: c });
+  const withCounts = (opts?: WithoutCounts): PlaceOpts => ({
+    ...(opts || {}),
+    counts: c,
+    countsByRule: data.countsByRule,
+  });
   const terms = buildTerms(c);
   const ideas = buildIdeas(c);
   const trust = findPair(bound.pairwise, "additive_u", "additive_no_u")
@@ -117,7 +124,7 @@ export function copyFor(data: CopyData = {}) {
     KEYS,
     GUIDE,
     GLOSSARY_GROUPS,
-    HOW_IT_WORKS: buildHow(c, howExample(bound, c)),
+    HOW_IT_WORKS: buildHow(c, howExample(bound, c, data.countsByRule)),
     FIRST_QUESTIONS: buildQuestions(ideas, trust),
     RULE_IDS,
     term: (key: TermKey) => {
