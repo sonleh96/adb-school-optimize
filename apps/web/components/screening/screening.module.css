@@ -81,6 +81,14 @@
   background: #ece9e2;
 }
 /*
+ * The place numbers are markers in this container, and their z-index (RankLabels.tsx) is relative to it. As a
+ * stacking context of its own, the container is painted as one layer: the panels and card over the map stay on top
+ * of the numbers, and the tooltip, attribution and map controls (z-index 2 and up) stay above them.
+ */
+.map :global(.maplibregl-canvas-container) {
+  isolation: isolate;
+}
+/*
  * The map takes the keyboard like any control, so it shows where focus is. deck.gl writes `outline: none` into the
  * canvas's style attribute, which only an important rule can beat.
  */
