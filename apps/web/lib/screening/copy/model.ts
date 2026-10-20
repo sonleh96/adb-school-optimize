@@ -64,6 +64,9 @@ export type CopyCondition = Readonly<
   }
 >;
 
+/** A stored input the record holds but the copy cannot read: a text where a number belongs, or the reverse. */
+export type UnreadableInput = keyof CopyCondition | "aqi" | "emissions" | "land" | "urgency";
+
 export interface CopyComponents {
   readonly N: number | null;
   readonly A: number | null;
@@ -151,6 +154,8 @@ export interface CopySchool extends PlacedSchool {
    */
   readonly gate_failures: readonly GateKey[];
   readonly contributions?: Partial<Record<"additive_u" | "additive_no_u", RecordedContribution>>;
+  /** The stored inputs that could not be read, in reading order. Absent when every input was read. */
+  readonly unreadable?: readonly UnreadableInput[];
   readonly persistent_candidate_circulated?: boolean;
   /** A flagged school whose lowest frequency is only just above the line (circulated rule only). */
   readonly threshold_adjacent_circulated?: boolean;

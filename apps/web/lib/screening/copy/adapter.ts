@@ -51,6 +51,7 @@ import type {
   RecordedContribution,
   ResultsByRule,
   Top20Change,
+  UnreadableInput,
 } from "./model";
 import { countsFrom } from "./counts";
 import { OTHER_GATES } from "./gates";
@@ -108,34 +109,51 @@ function present<T>(value: T | null | undefined, path: string): T {
 
 type Inputs = SchoolDetailResponse["inputs"];
 
-function numberInput(inputs: Inputs, key: string): number | null {
+/**
+ * One stored input. An entry that is missing is a broken response and fails; a value of the wrong kind spoils that
+ * input of that school only, which is noted in `unreadable` and read as no value.
+ */
+function numberInput(
+  inputs: Inputs,
+  key: string,
+  as: UnreadableInput,
+  unreadable: UnreadableInput[]
+): number | null {
   if (!(key in inputs)) throw new ParseError(`inputs.${key}: expected a number or null, got undefined`);
   const v = inputs[key];
   if (v === null || typeof v === "number") return v;
-  throw new ParseError(`inputs.${key}: expected a number or null, got string ${JSON.stringify(v)}`);
+  unreadable.push(as);
+  return null;
 }
 
-function textInput(inputs: Inputs, key: string): string | null {
+function textInput(
+  inputs: Inputs,
+  key: string,
+  as: UnreadableInput,
+  unreadable: UnreadableInput[]
+): string | null {
   if (!(key in inputs)) throw new ParseError(`inputs.${key}: expected a string or null, got undefined`);
   const v = inputs[key];
   if (v === null || typeof v === "string") return v;
-  throw new ParseError(`inputs.${key}: expected a string or null, got number ${v}`);
+  unreadable.push(as);
+  return null;
 }
 
-function conditionFrom(inputs: Inputs): CopyCondition {
+function conditionFrom(inputs: Inputs, bad: UnreadableInput[]): CopyCondition {
+  const n = (key: string, as: UnreadableInput) => numberInput(inputs, key, as, bad);
   return {
-    teachers: numberInput(inputs, "teachers"),
-    classrooms_total: numberInput(inputs, "total_classrooms"),
-    classrooms_permanent: numberInput(inputs, "permanent_classrooms"),
-    teacher_houses: numberInput(inputs, "teacher_houses"),
-    libraries: numberInput(inputs, "libraries"),
-    workshops: numberInput(inputs, "workshops"),
-    practical_skills: numberInput(inputs, "practical_skills_buildings"),
-    home_economics: numberInput(inputs, "home_economics_buildings"),
-    computer_labs: numberInput(inputs, "computer_labs"),
-    specialized_classrooms: numberInput(inputs, "specialized_classrooms"),
-    power_source: textInput(inputs, "power_source"),
-    water_source: textInput(inputs, "water_source"),
+    teachers: n("teachers", "teachers"),
+    classrooms_total: n("total_classrooms", "classrooms_total"),
+    classrooms_permanent: n("permanent_classrooms", "classrooms_permanent"),
+    teacher_houses: n("teacher_houses", "teacher_houses"),
+    libraries: n("libraries", "libraries"),
+    workshops: n("workshops", "workshops"),
+    practical_skills: n("practical_skills_buildings", "practical_skills"),
+    home_economics: n("home_economics_buildings", "home_economics"),
+    computer_labs: n("computer_labs", "computer_labs"),
+    specialized_classrooms: n("specialized_classrooms", "specialized_classrooms"),
+    power_source: textInput(inputs, "power_source", "power_source", bad),
+    water_source: textInput(inputs, "water_source", "water_source", bad),
   };
 }
 
@@ -237,19 +255,23 @@ function buildSchool(
   // The components do not depend on the rule. Whether urgency is known comes from the stored input, so it does not
   // depend on which lists are loaded: an unknown value is null, and a known one is the rules' own figure when a rule
   // that reads it is loaded (the stored value otherwise). A record without the entry leaves urgency unread.
-  const stored = "urgency_source_scalar" in inputs ? numberInput(inputs, "urgency_source_scalar") : undefined;
+  const unreadable: UnreadableInput[] = [];
+  const condition = conditionFrom(inputs, unreadable);
+  const raw = {
+    Q_raw: numberInput(inputs, "aqi_p95_selected", "aqi", unreadable),
+    E_raw: numberInput(inputs, "emissions_co2e_100yr_10km_tonnes", "emissions", unreadable),
+    L_raw: numberInput(inputs, "water_flooded_vegetation_fraction_500m", "land", unreadable),
+  };
+  const stored =
+    "urgency_source_scalar" in inputs
+      ? numberInput(inputs, "urgency_source_scalar", "urgency", unreadable)
+      : undefined;
   const fromRules = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
   const urgency = stored === null ? null : fromRules !== undefined ? fromRules : stored;
   const { N, A, R, Q, E, L } = shown.components;
   const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
 
   const needParts: NeedParts = shown.need_parts;
-  const raw = {
-    Q_raw: numberInput(inputs, "aqi_p95_selected"),
-    E_raw: numberInput(inputs, "emissions_co2e_100yr_10km_tonnes"),
-    L_raw: numberInput(inputs, "water_flooded_vegetation_fraction_500m"),
-  };
-
   return {
     id: identity.school_key,
     name: identity.source_school_name,
@@ -260,7 +282,7 @@ function buildSchool(
     // The engine also nulls a reading that is recorded but out of range, so a missing reading is read off the
     // components, as the list route reads it, and not off the raw value.
     missing_env: { aqi: Q === null, emissions: E === null, land: L === null },
-    condition: conditionFrom(inputs),
+    condition,
     need_parts: needParts,
     area_parts: areaPartsFrom(shown.area_parts),
     components,
@@ -268,6 +290,7 @@ function buildSchool(
     gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
     results,
     contributions,
+    ...(unreadable.length ? { unreadable } : {}),
     // Only a list that carries the experiment's keys says anything about the flag. Without them the flag is not
     // false for every school, it is unknown, so the record leaves it out.
     ...(circulated && circulated.persistent_candidate !== undefined

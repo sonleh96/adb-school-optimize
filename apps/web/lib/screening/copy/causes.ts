@@ -1,7 +1,7 @@
 /** Why the engine holds a school back for a reason that is not a need part, as a clause a sentence can use. */
 import { FACILITIES, AREA_PARTS } from "./inputs";
 import { capitalise, joinList, plural } from "./format";
-import type { AreaField, CopySchool, OtherGate } from "./model";
+import type { AreaField, CopySchool, OtherGate, UnreadableInput } from "./model";
 
 // The district figures behind district context, as a sentence names them.
 const AREA_FIGURES: Record<AreaField, string> = {
@@ -39,6 +39,28 @@ export function negativeCounts(
     const part = covered[f];
     return !(part && (school.gate_failures as readonly string[]).includes(part));
   });
+}
+
+/** How a sentence names a stored input that could not be read. */
+export const INPUT_NAMES: Record<UnreadableInput, string> = {
+  ...(Object.fromEntries(STOCK_NAMES) as Record<keyof CopySchool["condition"], string>),
+  power_source: "the power source",
+  water_source: "the water source",
+  aqi: "the air-quality reading",
+  emissions: "the nearby emissions figure",
+  land: "the land-cover figure",
+  urgency: "the urgency value",
+};
+
+/** The inputs of `names` that the record holds but the copy could not read, in reading order. */
+export const unreadableIn = (school: CopySchool, names: readonly UnreadableInput[]): UnreadableInput[] =>
+  (school.unreadable ?? []).filter((u) => names.includes(u));
+
+/** The sentence for stored inputs that could not be read, or null when every input was read. */
+export function unreadableSentence(school: CopySchool): string | null {
+  const names = (school.unreadable ?? []).map((u) => INPUT_NAMES[u]);
+  if (names.length === 0) return null;
+  return `${capitalise(joinList(names))} in the record cannot be read, so ${names.length === 1 ? "it is" : "they are"} not used.`;
 }
 
 interface OtherCause {

@@ -204,6 +204,40 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     flush();
   });
 
+  it("words an input the record holds but cannot be read the same way, not as a blank", () => {
+    const cases = [
+      { cohort: "complete", unreadable: ["classrooms_total", "aqi"] },
+      { cohort: "interval", unreadable: ["power_source"] },
+      { cohort: "queue", gate: ["permanent_classroom_deficit"], unreadable: ["classrooms_total"] },
+      {
+        cohort: "queue",
+        gate: ["teacher_housing_deficit", "service_deficit"],
+        unreadable: ["teachers", "water_source"],
+      },
+      { cohort: "queue", gate: ["facility_presence_deficit"], unreadable: ["libraries", "workshops"] },
+      { cohort: "queue", gate: ["urgency_unknown"], unreadable: ["urgency"] },
+    ];
+    for (const [i, c] of cases.entries()) {
+      const x = {
+        ...school({ id: `u${i}`, cohort: c.cohort as never, gate: (c.gate ?? []) as never, blank: ["aqi"] }),
+        unreadable: c.unreadable,
+      };
+      for (const fn of ["missingLabels", "missingSentences", "missingSentence"])
+        sameOutcome(
+          `${fn} ${JSON.stringify(c)}`,
+          run(() => proto[fn](x)),
+          run(() => (port as Api)[fn](x))
+        );
+      for (const key of ["classrooms", "housing", "facilities", "services", "air"])
+        sameOutcome(
+          `missingValueNote ${key} ${JSON.stringify(c)}`,
+          run(() => proto.missingValueNote(x, key)),
+          run(() => (port as Api).missingValueNote(x, key))
+        );
+    }
+    flush();
+  });
+
   it("formats numbers the same way", () => {
     const nums = [
       0,

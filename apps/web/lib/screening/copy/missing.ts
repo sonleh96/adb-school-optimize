@@ -1,11 +1,27 @@
 /** What is missing from a record, and whether each missing value is blank or recorded but unusable. */
 import { isRemotenessOnly } from "./counts";
-import { gateSentence, negativeCounts, otherCause } from "./causes";
+import {
+  INPUT_NAMES,
+  gateSentence,
+  negativeCounts,
+  otherCause,
+  unreadableIn,
+  unreadableSentence,
+} from "./causes";
 import { REMOTENESS_CATEGORIES } from "./definitions";
 import { SMALL, capitalise, isBlank, joinList } from "./format";
 import { OTHER_GATES, isNeedGate, isOtherGate } from "./gates";
 import { FACILITIES } from "./inputs";
-import type { CopyRuleId, CopySchool, GateKey, InputKey, NeedField, NeedKey, OtherGate } from "./model";
+import type {
+  CopyRuleId,
+  CopySchool,
+  GateKey,
+  InputKey,
+  NeedField,
+  NeedKey,
+  OtherGate,
+  UnreadableInput,
+} from "./model";
 import { missingReadings, missingReadingsClause } from "./rank";
 import { NEED_FIELDS, ORDER, isNeedKey, norm } from "./reasons";
 import { ruleReads } from "./rules";
@@ -29,10 +45,27 @@ interface PartCause {
 
 const isBlankLocality = isBlank;
 
+// The stored inputs each need part is built from.
+const INPUTS_OF_PART: Record<NeedKey, readonly UnreadableInput[]> = {
+  classrooms: ["classrooms_total", "classrooms_permanent"],
+  housing: ["teachers", "teacher_houses"],
+  facilities: FACILITIES.map(([f]) => f),
+  services: ["power_source", "water_source"],
+  locality: [],
+};
+
 // Why one need part cannot be used, read from the raw fields.
 // kind is 'blank' (the source cell is empty) or 'unusable' (recorded, but the calculation cannot use it).
 function partCause(school: CopySchool, key: NeedKey): PartCause {
   const k = school.condition;
+  // A value the record holds but the copy could not read is not a blank, and is not worded as one.
+  const bad = unreadableIn(school, INPUTS_OF_PART[key]);
+  if (bad.length)
+    return {
+      kind: "unusable",
+      text: `${joinList(bad.map((b) => INPUT_NAMES[b]))} in the record cannot be read`,
+      label: "Record value cannot be read",
+    };
   switch (key) {
     case "classrooms":
       if (k.classrooms_total == null)
@@ -223,8 +256,14 @@ export function missingValueNote(school: CopySchool, key: "need" | InputKey): st
     const raw = { air: school.raw.Q_raw, emissions: school.raw.E_raw, land: school.raw.L_raw }[
       key as "air" | "emissions" | "land"
     ];
-    const lead =
-      raw == null
+    const reading: Record<"air" | "emissions" | "land", UnreadableInput> = {
+      air: "aqi",
+      emissions: "emissions",
+      land: "land",
+    };
+    const lead = school.unreadable?.includes(reading[key as "air" | "emissions" | "land"])
+      ? `The ${what} in the record cannot be read`
+      : raw == null
         ? `No ${what} is recorded for this school`
         : `The ${what} recorded for this school cannot be used`;
     return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of places instead of one place." : ""}`;
@@ -251,6 +290,8 @@ export function missingLabels(school: CopySchool): string[] {
   const others = otherGates(school).map((g) => otherCause(school, g).label);
   if (isRemotenessOnly(school)) return [TERMS.missing_all_but_remoteness.label, ...others];
   const labels = [...gateParts(school).map((p) => partCause(school, p).label), ...others];
+  if (school.unreadable?.length && !labels.includes("Record value cannot be read"))
+    labels.push("Record value cannot be read");
   return labels.length ? labels : ["Record needs checking"];
 }
 
@@ -264,6 +305,12 @@ export function missingGroupLabel(school: CopySchool): string {
 
 // The same content as missingSentence, one standalone sentence per item, for record lists.
 export function missingSentences(school: CopySchool, ruleId?: CopyRuleId): string[] {
+  const unread = unreadableSentence(school);
+  const rest = sentencesFor(school, ruleId);
+  return unread ? [unread, ...rest] : rest;
+}
+
+function sentencesFor(school: CopySchool, ruleId?: CopyRuleId): string[] {
   // A rule that leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order
   // without them, so "recorded" is said of the inputs the rule reads and any figure it does not read is named.
   const reads = ruleId ? ruleReads(ruleId) : { urgency: true, readings: true };
