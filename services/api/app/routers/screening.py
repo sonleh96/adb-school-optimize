@@ -20,6 +20,7 @@ from ..errors import ApiError
 from ..http_cache import (
     NO_STORE_CACHE_CONTROL,
     SCREENING_DEFAULT_CACHE_CONTROL,
+    SCREENING_IMMUTABLE_CACHE_CONTROL,
     SCREENING_PINNED_CACHE_CONTROL,
     conditional_json,
 )
@@ -119,14 +120,16 @@ def _version(connection, requested: str | None) -> VersionEntry:
     )
 
 
-def _run(connection, version: str, rule_id: str) -> store.StoredRun:
-    run = current_runs(connection, version).get(rule_id)
+def _run(connection, version: str, rule_id: str, package_version: str | None = None) -> store.StoredRun:
+    run = current_runs(connection, version, package_version).get(rule_id)
     if run is None:
         raise ApiError(
-            f"No stored run of rule {rule_id!r} for input version {version!r}.",
+            f"No stored run of rule {rule_id!r} for input version {version!r}"
+            + ("" if package_version is None else f" and package version {package_version!r}")
+            + ".",
             status_code=404,
             code="run_not_found",
-            details={"rule": rule_id, "input_version": version},
+            details={"rule": rule_id, "input_version": version, "package_version": package_version},
         )
     return run
 
@@ -219,7 +222,8 @@ def _json(
     request: Request,
     model: BaseModel,
     *,
-    pinned: bool,
+    input_version: str | None = None,
+    package_version: str | None = None,
     version: store.InputVersion | None = None,
 ) -> Response:
     headers = (
@@ -230,7 +234,12 @@ def _json(
             "X-Screening-Input-Sha256": version.input_sha256,
         }
     )
-    cache_control = SCREENING_PINNED_CACHE_CONTROL if pinned else SCREENING_DEFAULT_CACHE_CONTROL
+    if input_version is not None and package_version is not None:
+        cache_control = SCREENING_IMMUTABLE_CACHE_CONTROL
+    elif input_version is not None:
+        cache_control = SCREENING_PINNED_CACHE_CONTROL
+    else:
+        cache_control = SCREENING_DEFAULT_CACHE_CONTROL
     return conditional_json(request, model.model_dump_json().encode("utf-8"), cache_control, headers)
 
 
@@ -248,7 +257,7 @@ def get_rules(request: Request):
         rules=[_rule_out(rule, versions) for rule in RULES.values()],
         input_versions=[_version_out(e, i == 0) for i, e in enumerate(versions)],
     )
-    return _json(request, body, pinned=False)
+    return _json(request, body)
 
 
 @router.get("/input-versions", response_model=InputVersionsResponse)
@@ -259,7 +268,7 @@ def get_input_versions(request: Request):
         default_input_version=versions[0].version.input_version if versions else None,
         input_versions=[_version_out(e, i == 0) for i, e in enumerate(versions)],
     )
-    return _json(request, body, pinned=False)
+    return _json(request, body)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -272,6 +281,7 @@ def get_results(
     request: Request,
     rule: str = DEFAULT_RULE_ID,
     input_version: str | None = None,
+    package_version: str | None = None,
     placement: Placement = Placement.LOWER,
     province: str | None = None,
     district: str | None = None,
@@ -280,7 +290,7 @@ def get_results(
     filters = _filters(province, district)
     with get_db() as connection:
         version = _version(connection, input_version)
-        run = _run(connection, version.version.input_version, rule)
+        run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
     listed = ordered_list(rule_, rows, placement)
     shown = [item for item in listed if filters.admits(item.row)]
@@ -302,7 +312,9 @@ def get_results(
             for item in shown
         ],
     )
-    return _json(request, body, pinned=input_version is not None, version=version.version)
+    return _json(
+        request, body, input_version=input_version, package_version=package_version, version=version.version
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -311,7 +323,12 @@ def get_results(
 
 
 @router.get("/schools/{school_id}", response_model=SchoolDetailResponse)
-def get_school(request: Request, school_id: uuid.UUID, input_version: str | None = None):
+def get_school(
+    request: Request,
+    school_id: uuid.UUID,
+    input_version: str | None = None,
+    package_version: str | None = None,
+):
     with get_db() as connection:
         version = _version(connection, input_version)
         name = version.version.input_version
@@ -328,7 +345,7 @@ def get_school(request: Request, school_id: uuid.UUID, input_version: str | None
         (record,) = [
             r for r in store.read_inputs(connection, name) if r.school_name == identity.source_school_name
         ]
-        runs = current_runs(connection, name)
+        runs = current_runs(connection, name, package_version)
         per_rule = []
         for rule in RULES.values():
             run = runs.get(rule.rule_id)
@@ -362,7 +379,9 @@ def get_school(request: Request, school_id: uuid.UUID, input_version: str | None
         inputs={f.name: getattr(record, f.name) for f in fields(record)},
         rules=per_rule,
     )
-    return _json(request, body, pinned=input_version is not None, version=version.version)
+    return _json(
+        request, body, input_version=input_version, package_version=package_version, version=version.version
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -383,12 +402,19 @@ def _bounds_out(row: SchoolRow) -> IntervalBoundsOut:
 
 
 @router.get("/compare", response_model=CompareResponse)
-def get_compare(request: Request, a: str, b: str, input_version: str | None = None):
+def get_compare(
+    request: Request,
+    a: str,
+    b: str,
+    input_version: str | None = None,
+    package_version: str | None = None,
+):
     rule_a, rule_b = _rule(a), _rule(b)
     with get_db() as connection:
         version = _version(connection, input_version)
         name = version.version.input_version
-        run_a, run_b = _run(connection, name, a), _run(connection, name, b)
+        run_a = _run(connection, name, a, package_version)
+        run_b = _run(connection, name, b, package_version)
         rows_a, rows_b = read_school_rows(connection, run_a), read_school_rows(connection, run_b)
     comparison = compare_stored(rule_a, rows_a, rule_b, rows_b, version.version.input_sha256)
     by_a = {r.name: r for r in rows_a}
@@ -439,7 +465,9 @@ def get_compare(request: Request, a: str, b: str, input_version: str | None = No
             for n in comparison.interval_schools
         ],
     )
-    return _json(request, body, pinned=input_version is not None, version=version.version)
+    return _json(
+        request, body, input_version=input_version, package_version=package_version, version=version.version
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -464,6 +492,7 @@ def _top_export(
     k: int,
     include_ranges: bool,
     input_version: str | None,
+    package_version: str | None,
     province: str | None,
     district: str | None,
 ):
@@ -471,7 +500,7 @@ def _top_export(
     filters = _filters(province, district)
     with get_db() as connection:
         version = _version(connection, input_version)
-        run = _run(connection, version.version.input_version, rule)
+        run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
     manifest = ManifestOut.from_stored(run.manifest)
     selection = select_top(rows, k, include_ranges, filters)
@@ -493,10 +522,11 @@ def export_top_csv(
     k: int = Query(20, ge=1, le=K_MAX),
     include_ranges: bool = True,
     input_version: str | None = None,
+    package_version: str | None = None,
     province: str | None = None,
     district: str | None = None,
 ):
-    record, table = _top_export(rule, k, include_ranges, input_version, province, district)
+    record, table = _top_export(rule, k, include_ranges, input_version, package_version, province, district)
     return _download(render_csv(record, table), CSV_TYPE, f"rise_png_screening_top{k}_{rule}.csv")
 
 
@@ -506,10 +536,11 @@ def export_top_xlsx(
     k: int = Query(20, ge=1, le=K_MAX),
     include_ranges: bool = True,
     input_version: str | None = None,
+    package_version: str | None = None,
     province: str | None = None,
     district: str | None = None,
 ):
-    record, table = _top_export(rule, k, include_ranges, input_version, province, district)
+    record, table = _top_export(rule, k, include_ranges, input_version, package_version, province, district)
     return _download(
         render_xlsx(record, "Top schools", table), XLSX_TYPE, f"rise_png_screening_top{k}_{rule}.xlsx"
     )
@@ -519,6 +550,7 @@ def export_top_xlsx(
 def export_incomplete_csv(
     rule: str = DEFAULT_RULE_ID,
     input_version: str | None = None,
+    package_version: str | None = None,
     province: str | None = None,
     district: str | None = None,
 ):
@@ -527,7 +559,7 @@ def export_incomplete_csv(
     with get_db() as connection:
         version = _version(connection, input_version)
         name = version.version.input_version
-        run = _run(connection, name, rule)
+        run = _run(connection, name, rule, package_version)
         rows = read_school_rows(connection, run)
         records = {r.school_name: r for r in store.read_inputs(connection, name)}
     manifest = ManifestOut.from_stored(run.manifest)
