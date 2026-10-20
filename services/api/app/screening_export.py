@@ -20,6 +20,7 @@ from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.cell import _writer as openpyxl_cell_writer
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from school_scoring.screening import INPUT_CONTRACT, Component, GateFailure, Provenance, SchoolRecord
 
 from . import screening_store as store
@@ -322,6 +323,11 @@ def _exact_number_text(value: Any) -> str:
 _openpyxl_safe_string = openpyxl_cell_writer.safe_string
 
 
+def _xlsx_text(value: str) -> str:
+    """Characters that XML cannot hold are written as Excel's own escape, ``_x0007_``, which Excel reads back."""
+    return ILLEGAL_CHARACTERS_RE.sub(lambda match: f"_x{ord(match.group()):04X}_", value)
+
+
 def render_xlsx(record: Sequence[tuple[str, str]], data_sheet: str, table: Table) -> bytes:
     """A workbook with the sheet "Method record" first and the data second. Text is always stored as text."""
     workbook = Workbook()
@@ -331,7 +337,9 @@ def render_xlsx(record: Sequence[tuple[str, str]], data_sheet: str, table: Table
     for sheet, rows in ((method, [("key", "value"), *record]), (data, [table.columns, *table.rows])):
         for r, values in enumerate(rows, start=1):
             for c, value in enumerate(values, start=1):
-                cell = sheet.cell(row=r, column=c, value=value)
+                cell = sheet.cell(
+                    row=r, column=c, value=_xlsx_text(value) if isinstance(value, str) else value
+                )
                 if isinstance(value, str):
                     cell.data_type = "s"  # a name that starts with "=" must not become a formula
     method.column_dimensions["A"].width = 26

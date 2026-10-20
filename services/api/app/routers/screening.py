@@ -7,11 +7,14 @@ The old Need/Priority endpoints are untouched and share nothing with these route
 from __future__ import annotations
 
 import datetime as dt
+import unicodedata
 import uuid
 from dataclasses import asdict, fields
+from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response
-from pydantic import BaseModel
+from pydantic import AfterValidator, BaseModel
+from pydantic_core import PydanticCustomError
 from school_scoring.screening import RULES, Rule, TopChange, UnknownRuleError, get_rule
 
 from .. import screening_store as store
@@ -77,6 +80,17 @@ from ..screening_queries import (
     read_school_rows,
 )
 from .exports import RESEARCH_EXPORT_HEADERS
+
+
+def _no_control_characters(value: str) -> str:
+    """Control characters (newlines, NUL, escapes) have no place in an id or a filter, and break spreadsheets."""
+    if any(unicodedata.category(ch) == "Cc" for ch in value):
+        raise PydanticCustomError("control_characters", "must not contain control characters")
+    return value
+
+
+# A text query or path parameter. Rejecting control characters here turns them into a 422 at the boundary.
+Text = Annotated[str, AfterValidator(_no_control_characters)]
 
 router = APIRouter(prefix="/api/v1/screening", tags=["screening"])
 
@@ -224,8 +238,8 @@ def _json(
     request: Request,
     model: BaseModel,
     *,
-    input_version: str | None = None,
-    package_version: str | None = None,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
     version: store.InputVersion | None = None,
 ) -> Response:
     headers = (
@@ -281,12 +295,12 @@ def get_input_versions(request: Request):
 @router.get("/results", response_model=ResultsResponse)
 def get_results(
     request: Request,
-    rule: str = DEFAULT_RULE_ID,
-    input_version: str | None = None,
-    package_version: str | None = None,
+    rule: Text = DEFAULT_RULE_ID,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
     placement: Placement = Placement.LOWER,
-    province: str | None = None,
-    district: str | None = None,
+    province: Text | None = None,
+    district: Text | None = None,
 ):
     rule_ = _rule(rule)
     filters = _filters(province, district)
@@ -384,9 +398,9 @@ def _school_not_found(input_version: str, **details: str) -> ApiError:
 @router.get("/schools/by-key/{school_key}", response_model=SchoolDetailResponse)
 def get_school_by_key(
     request: Request,
-    school_key: str,
-    input_version: str | None = None,
-    package_version: str | None = None,
+    school_key: Text,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
 ):
     """A school by the key that every row carries. It works for schools that are not linked to ``schools``."""
     with get_db() as connection:
@@ -406,8 +420,8 @@ def get_school_by_key(
 def get_schools_by_link(
     request: Request,
     school_id: uuid.UUID,
-    input_version: str | None = None,
-    package_version: str | None = None,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
 ):
     """Every school of the input version linked to this ``schools`` row, because a link is not guaranteed unique."""
     with get_db() as connection:
@@ -445,10 +459,10 @@ def _bounds_out(row: SchoolRow) -> IntervalBoundsOut:
 @router.get("/compare", response_model=CompareResponse)
 def get_compare(
     request: Request,
-    a: str,
-    b: str,
-    input_version: str | None = None,
-    package_version: str | None = None,
+    a: Text,
+    b: Text,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
 ):
     rule_a, rule_b = _rule(a), _rule(b)
     with get_db() as connection:
@@ -559,13 +573,13 @@ def _top_export(
 
 @router.get("/exports/top.csv")
 def export_top_csv(
-    rule: str = DEFAULT_RULE_ID,
+    rule: Text = DEFAULT_RULE_ID,
     k: int = Query(20, ge=1, le=K_MAX),
     include_ranges: bool = True,
-    input_version: str | None = None,
-    package_version: str | None = None,
-    province: str | None = None,
-    district: str | None = None,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
+    province: Text | None = None,
+    district: Text | None = None,
 ):
     record, table = _top_export(rule, k, include_ranges, input_version, package_version, province, district)
     return _download(render_csv(record, table), CSV_TYPE, f"rise_png_screening_top{k}_{rule}.csv")
@@ -573,13 +587,13 @@ def export_top_csv(
 
 @router.get("/exports/top.xlsx")
 def export_top_xlsx(
-    rule: str = DEFAULT_RULE_ID,
+    rule: Text = DEFAULT_RULE_ID,
     k: int = Query(20, ge=1, le=K_MAX),
     include_ranges: bool = True,
-    input_version: str | None = None,
-    package_version: str | None = None,
-    province: str | None = None,
-    district: str | None = None,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
+    province: Text | None = None,
+    district: Text | None = None,
 ):
     record, table = _top_export(rule, k, include_ranges, input_version, package_version, province, district)
     return _download(
@@ -589,11 +603,11 @@ def export_top_xlsx(
 
 @router.get("/exports/incomplete.csv")
 def export_incomplete_csv(
-    rule: str = DEFAULT_RULE_ID,
-    input_version: str | None = None,
-    package_version: str | None = None,
-    province: str | None = None,
-    district: str | None = None,
+    rule: Text = DEFAULT_RULE_ID,
+    input_version: Text | None = None,
+    package_version: Text | None = None,
+    province: Text | None = None,
+    district: Text | None = None,
 ):
     _rule(rule)
     filters = _filters(province, district)
