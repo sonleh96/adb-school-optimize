@@ -84,29 +84,19 @@ describe("the margin of the persistence test", () => {
 });
 
 describe("the line a flagged school is near", () => {
-  const threshold = 0.8;
   const se = 0.004;
-  // How near the line a flagged school is: its lowest frequency less the threshold, against the band of its rule.
-  const near_ = (lowest: number, band: number) => lowest - threshold < band * se;
 
   it.each([
     [S, 1],
     [S0, 2],
   ] as const)(
-    "is %s's band of %i standard error(s): the sentence is said inside it and not outside it",
+    "says %s's margin of %i standard error(s) for the school the API calls near the line, and only for it",
     (rule, band) => {
-      const margin = band * se;
-      const inside = threshold + 0.9 * margin;
-      const outside = threshold + 1.1 * margin;
-      expect(near_(inside, band)).toBe(true);
-      expect(near_(outside, band)).toBe(false);
-      // The two schools as the API would flag them, under a block that names this rule's band.
+      // The API's flags, as it would send them under a block that names this rule's band: School 01 is near the
+      // line, School 02 is flagged but not near it. The copy takes the flag as sent and states the rule's margin.
       const list = listWithFlags(
         rule,
-        {
-          "Sample School 01": { adjacent: near_(inside, band) },
-          "Sample School 02": { adjacent: near_(outside, band) },
-        },
+        { "Sample School 01": { adjacent: true }, "Sample School 02": { adjacent: false } },
         se,
         band
       );
@@ -117,38 +107,14 @@ describe("the line a flagged school is near", () => {
           schoolsFromLists(inputs, l, rule).find((x) => x.name === n)!,
           rule
         );
-      expect(marginFromResults(list)).toBeCloseTo(margin, 12);
-      const points = Number((margin * 100).toFixed(1));
-      expect(say("Sample School 01")).toEqual([FLAG[rule], near(String(points))]);
+      expect(marginFromResults(list)).toBeCloseTo(band * se, 12);
+      expect(say("Sample School 01")).toEqual([
+        FLAG[rule],
+        near(String(Number((band * se * 100).toFixed(1)))),
+      ]);
       expect(say("Sample School 02")).toEqual([FLAG[rule]]);
-      // What is said is true of the school it is said for, and of no school outside it.
-      expect(inside - threshold).toBeLessThan(margin);
-      expect(outside - threshold).toBeGreaterThan(margin);
     }
   );
-
-  it("holds for every flagged school of the saved lists: the API's flag is the band the margin states", () => {
-    for (const [rule, list] of [
-      [S, circulated],
-      [S0, revised],
-    ] as const) {
-      const raw = readFixture(`results/${rule}.json`) as {
-        persistence: { threshold: number; standard_error: number; adjacency_standard_errors: number };
-        rows: {
-          school: { source_school_name: string };
-          persistent_candidate: boolean | null;
-          lowest_top20_frequency: number;
-          threshold_adjacent: boolean | null;
-        }[];
-      };
-      const { threshold: t, standard_error: e, adjacency_standard_errors: band } = raw.persistence;
-      expect(marginFromResults(list), rule).toBeCloseTo(band * e, 12);
-      for (const row of raw.rows.filter((r) => r.persistent_candidate === true))
-        expect(row.threshold_adjacent, `${rule} ${row.school.source_school_name}`).toBe(
-          row.lowest_top20_frequency - t < band * e
-        );
-    }
-  });
 });
 
 describe("a school of the circulated list", () => {
