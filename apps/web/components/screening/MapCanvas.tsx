@@ -15,6 +15,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
+import { clearCentreOffset, fitPadding } from "@/lib/screening/workspace/layout";
 
 import { LAYOUT } from "@/lib/screening/copy";
 import { buildMarkLayers, buildRingLayers } from "./map-layers";
@@ -168,6 +169,16 @@ function sameUrl(a: string, b: string): boolean {
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/**
+ * The padding for a fit, cut to the map's size. The canvas is first brought to its container's size: it follows the
+ * container on its own only a frame later, and while the rail opens it can still hold the old size.
+ */
+function fitFor(map: MapRef, padding: Padding): Padding {
+  map.resize();
+  const { clientWidth, clientHeight } = map.getContainer();
+  return fitPadding(padding, clientWidth, clientHeight);
+}
+
 export default function MapCanvas({
   schools,
   selectedKey,
@@ -213,7 +224,7 @@ export default function MapCanvas({
     const map = mapRef.current;
     const bounds = boundsOf(schools);
     if (!map || !bounds || fitted) return;
-    map.fitBounds(bounds, { padding, maxZoom: 9, duration: 0 });
+    map.fitBounds(bounds, { padding: fitFor(map, padding), maxZoom: 9, duration: 0 });
     setFitted(true);
   }, [schools, padding, fitted]);
 
@@ -238,7 +249,7 @@ export default function MapCanvas({
     const bounds = boundsOf(schools);
     if (framed.current === frame || !map || !bounds) return;
     framed.current = frame;
-    map.fitBounds(bounds, { padding, maxZoom: 9, duration: still() ? 0 : 300 });
+    map.fitBounds(bounds, { padding: fitFor(map, padding), maxZoom: 9, duration: still() ? 0 : 300 });
   }, [frame, schools, padding, still]);
 
   // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
@@ -269,7 +280,11 @@ export default function MapCanvas({
           point.y >= clear.top &&
           point.y <= height - clear.bottom;
         if (!inside) {
-          map.easeTo({ center: [chosen.lon, chosen.lat], padding: clear, duration: instant() ? 0 : 400 });
+          map.easeTo({
+            center: [chosen.lon, chosen.lat],
+            offset: clearCentreOffset(fitPadding(clear, width, height)),
+            duration: instant() ? 0 : 400,
+          });
         }
       });
     });

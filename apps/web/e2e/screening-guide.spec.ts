@@ -19,7 +19,16 @@
  */
 import type { Page } from "@playwright/test";
 
-import { ORDERED, expect, openWorkspace, test, useMockDataset, waitForMap } from "./screening-helpers";
+import {
+  ORDERED,
+  expect,
+  markAt,
+  settledMark,
+  openWorkspace,
+  test,
+  useMockDataset,
+  waitForMap,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 }, firstVisit: true });
 test.describe.configure({ timeout: 90_000 });
@@ -234,6 +243,37 @@ test("a step left on screen stops measuring once its rings have settled", async 
     return count;
   });
   expect(reads).toBeLessThan(5);
+});
+
+test("opening the rail after the map brought a school into view frames the country in the room the map has", async ({
+  page,
+}) => {
+  await ready(page, "?guide=off");
+  // A school whose dot lies outside the clear part the card will leave, so selecting it moves the map to it.
+  const keys = await page
+    .locator(`${ORDERED} button`)
+    .evaluateAll((rows) => rows.map((row) => (row as HTMLElement).dataset.schoolKey!));
+  let outside: string | null = null;
+  for (const key of keys) {
+    const at = await markAt(page, key);
+    if (at && (at.x < 472 || at.x > 1600 - 448)) {
+      outside = key;
+      break;
+    }
+  }
+  expect(outside).not.toBeNull();
+  await page.locator(`[data-school-key="${outside}"]`).click();
+  await expect(page.locator("[data-region=inspector]")).toBeVisible();
+  // The map has moved to the school and stopped there.
+  const settled = await settledMark(page, outside!);
+  expect(settled.x).toBeGreaterThanOrEqual(472);
+  expect(settled.x).toBeLessThanOrEqual(1600 - 448);
+  // The rail makes the list step aside for the card, and the map frames the country again in what is left. That fit
+  // must not also count the room the earlier move asked for (MapLibre warns, and the test's console check fails).
+  await page.getByRole("toolbar").getByRole("button", { name: "Guides" }).click();
+  await expect(page.locator("[data-slot=column]")).toHaveAttribute("inert", "");
+  await expect(page.getByTestId("screening-map")).toHaveAttribute("data-map-moving", "false");
+  await page.waitForTimeout(500);
 });
 
 test("a pasted link to a step reproduces its screen", async ({ page }) => {
