@@ -66,8 +66,6 @@ export interface GuideContext {
   readonly agreeK: number | null;
   /** The school What changed uses as its example between the two main rules. */
   readonly example: CopySchool | null;
-  /** The incomplete records can be filtered by what is missing (a method-details control). */
-  readonly filters: boolean;
 }
 
 /** The state every step starts from: the paper's main rule, the list, nothing selected, nothing compared. */
