@@ -96,7 +96,7 @@ test("names the scope each place is counted in, in the list header, the card and
 }) => {
   await openWorkspace(page);
   await expect(page.locator("[data-region=scope] p").first()).toHaveText(
-    "22 schools can be put in order, 17 with every input the rule reads recorded and 5 that show a range of places. Read more"
+    "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of places. Read more"
   );
 
   // The tooltip names it too. It is checked on the map's first view, where every mark is on screen: choosing
@@ -105,12 +105,12 @@ test("names the scope each place is counted in, in the list header, the card and
   const point = await settledMark(page, keyOf(MAIN_RULE, "Sample School 13"));
   await page.mouse.move(point.x, point.y);
   await expect(page.getByRole("status").filter({ hasText: "Sample School 13" })).toContainText(
-    "5th of the 17 schools with every input the rule reads recorded"
+    "5th of the 17 schools with a record for every input the rule uses"
   );
 
   await orderedRow(page, "Sample School 15").click();
   await expect(page.getByTestId("card-context")).toHaveText(
-    "Among the 17 schools with every input the rule reads recorded."
+    "Among the 17 schools with a record for every input the rule uses."
   );
   await orderedRow(page, "Sample School 17").click();
   await expect(page.getByTestId("card-context")).toContainText(

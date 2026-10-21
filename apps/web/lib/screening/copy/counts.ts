@@ -67,9 +67,9 @@ export interface Reads {
   readonly readings: boolean;
 }
 const READS_ALL: Reads = { urgency: true, readings: true };
-/** "every input recorded" for a rule that reads every input, and "every input the rule reads recorded" otherwise. */
+/** "every input recorded" for a rule that reads every input, and "a record for every input the rule uses" otherwise. */
 export const everyInput = (reads: Reads = READS_ALL): string =>
-  reads.urgency && reads.readings ? "every input recorded" : "every input the rule reads recorded";
+  reads.urgency && reads.readings ? "every input recorded" : "a record for every input the rule uses";
 
 /** "the 36 schools with every input recorded" or, without counts, "the schools with every input recorded". */
 export function theSchools(c: CountBag | undefined, k: string, rest: string): string {

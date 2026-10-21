@@ -62,7 +62,7 @@ test("a complete school's card states one place, its reasons with the school nee
     "Place in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
-    "Among the 17 schools with every input the rule reads recorded."
+    "Among the 17 schools with a record for every input the rule uses."
   );
   // One place only: no other ordinal anywhere in the card.
   const text = await card(page).innerText();
@@ -81,7 +81,7 @@ test("a complete school's card states one place, its reasons with the school nee
   await expect(parts.nth(3)).toHaveText("Missing facility types0.667");
   await expect(parts.nth(4)).toHaveText("Power and water0.600");
   await expect(why.locator("[data-region=inspector-record]")).toHaveText(
-    "All of the inputs this rule reads are recorded."
+    "All of the inputs this rule uses are recorded."
   );
 
   const numbers = card(page).locator("[data-region=inspector-breakdown]");
@@ -328,7 +328,7 @@ test("a mark's tooltip uses the list's name and the copy's place sentence", asyn
   await page.mouse.move(point.x, point.y);
   const tooltip = page.getByRole("status").filter({ hasText: "Sample School 15" });
   await expect(tooltip).toContainText("East One, East Province");
-  await expect(tooltip).toContainText("2nd of the 17 schools with every input the rule reads recorded");
+  await expect(tooltip).toContainText("2nd of the 17 schools with a record for every input the rule uses");
   await expect(tooltip).toContainText("Select to see why");
   // Hovering a mark marks its row too.
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("data-hover", "true");

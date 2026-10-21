@@ -58,7 +58,7 @@ export function persistentNearLine(margin?: number): string {
 /**
  * The lines that say what the groups of schools are, for one rule: its counts and the inputs it reads. A rule that
  * leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order without them, so
- * its group is "every input the rule reads", and the benchmark, which reads no air-quality figure, has no range
+ * its group is "a record for every input the rule uses", and the benchmark, which reads no air-quality figure, has no range
  * schools to mention. They are bound per rule (`scope(ruleId)`) so a screen cannot show the main rule's words
  * under another rule.
  */

@@ -35,7 +35,7 @@ describe("bindCopy", () => {
 
   it("counts each rule's own group when it puts one school under two rules", () => {
     expect(bound.copy.rangeComparisonSentence(s08 as never, "additive_u", "benchmark")).toBe(
-      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the 21 schools with every input the rule reads recorded.`
+      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the 21 schools with a record for every input the rule uses.`
     );
   });
 
@@ -91,16 +91,16 @@ describe("copyFor with counts and several rules' results", () => {
       countsByRule: { additive_u: counts },
     });
     expect(only.rankSentence(s08, "benchmark")).toMatch(
-      /^4th of the schools with every input the rule reads recorded/
+      /^4th of the schools with a record for every input the rule uses/
     );
     expect(only.rankSentence(s08, "additive_u")).toMatch(/^1st of the 16 schools with every input recorded/);
     // With one rule unknown, the two places are not said to count the same group.
     expect(only.rangeComparisonSentence(s08, "additive_u", "benchmark")).toBe(
-      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the schools with every input the rule reads recorded.`
+      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the schools with a record for every input the rule uses.`
     );
     const unknownBoth = copyFor({ schools: placed, counts, countsByRule: {} });
     expect(unknownBoth.rangeComparisonSentence(s08, "additive_u", "benchmark")).toBe(
-      `Under ${S}, Sample School 08 is 1st among the schools with every input recorded. Under ${B}, it is 4th among the schools with every input the rule reads recorded.`
+      `Under ${S}, Sample School 08 is 1st among the schools with every input recorded. Under ${B}, it is 4th among the schools with a record for every input the rule uses.`
     );
     const shared = copyFor({ schools: placed, counts, countsByRule: "shared" });
     expect(shared.rangeComparisonSentence(s08, "additive_u", "benchmark")).toMatch(/^Among the 16 schools/);

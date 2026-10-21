@@ -148,10 +148,10 @@ describe.each(RULES)("bound under %s", (rule) => {
 describe("the definitions of one rule", () => {
   it("count the group of that rule and say what it reads", async () => {
     const { P } = await bind("benchmark");
-    expect(P.termsFor("benchmark").cohort_complete.label).toBe("Every input the rule reads recorded (21)");
+    expect(P.termsFor("benchmark").cohort_complete.label).toBe("A record for every input the rule uses (21)");
     expect(P.termsFor("benchmark").cohort_complete.help).not.toMatch(/compare rules|every rule/);
     const noUrgency = (await bind("additive_no_u")).P.termsFor("additive_no_u");
-    expect(noUrgency.cohort_complete.label).toBe("Every input the rule reads recorded (17)");
+    expect(noUrgency.cohort_complete.label).toBe("A record for every input the rule uses (17)");
     const main = (await bind("additive_u")).P.termsFor("additive_u");
     expect(main.cohort_complete.label).toBe("Every input recorded (16)");
   });

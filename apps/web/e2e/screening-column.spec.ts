@@ -47,7 +47,7 @@ const EXAMPLE_BACK =
 const SCOPE_DETAIL =
   "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
 const SCOPE_DETAIL_MAIN =
-  "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with every input the rule reads recorded, and ranges among all 22 schools that can be put in order.";
+  "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
