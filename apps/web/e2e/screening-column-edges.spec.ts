@@ -13,6 +13,7 @@
  *     -> "a rule left before its list loaded..."
  *  7. A control that removes itself on use drops focus on the page          -> "each column control that removes..."
  *  8. The arrow keys do nothing on the tabs                                   -> "the arrow keys move..."
+ *  9. Data that parses but cannot be worded blanks the page                   -> "data the copy cannot word..."
  */
 import type { Page } from "@playwright/test";
 
@@ -223,4 +224,36 @@ test("the arrow keys move between the tabs and show the one they reach, with one
   await page.keyboard.press("ArrowLeft");
   await expect(queue).toBeFocused();
   await expect(queue).toHaveAttribute("aria-selected", "true");
+});
+
+test("data the copy cannot word shows the failed state with Retry, not a blank page", async ({
+  page,
+  problems,
+}) => {
+  // The comparison parses, but lacks the top-20 figure the copy reads, so binding the copy throws.
+  let broken = true;
+  await page.route(/\/api\/v1\/screening\/compare\?/, async (route) => {
+    const response = await route.fetch();
+    if (!broken) return route.fulfill({ response });
+    const body = await response.json();
+    body.metrics.top_k = body.metrics.top_k.filter((t: { k: number }) => t.k !== 20);
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/screening");
+
+  const alert = page.locator("[role=alert][data-failure]");
+  await expect(alert).toHaveText(`${LAYOUT.loadFailed}${LAYOUT.retry}`);
+  await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
+  // The guide layer can still start: the map draws with no marks.
+  expect(await page.evaluate(() => window.__screeningWorkspace!.ready.then(() => "ready"))).toBe("ready");
+  // A developer finds what could not be read in the console.
+  expect(problems.some((p) => p.startsWith("error: ") && p.includes("metrics.top_k"))).toBe(true);
+  problems.length = 0;
+
+  // Retry starts the workspace again, map included; it is pressed once this map has finished loading.
+  await waitForMap(page);
+  broken = false;
+  await alert.getByRole("button", { name: LAYOUT.retry }).click();
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
+  await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithout}`);
 });

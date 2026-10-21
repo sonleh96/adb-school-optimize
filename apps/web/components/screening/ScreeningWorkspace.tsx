@@ -1,11 +1,21 @@
 "use client";
 
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Component,
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { type CopyRuleId, DEFAULT_RULE, PROPOSED_RULE } from "@/lib/screening/copy";
-import { useAfterPaint } from "@/lib/screening/hooks";
+import { type CopyRuleId, DEFAULT_RULE, LAYOUT, PROPOSED_RULE } from "@/lib/screening/copy";
+import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
 import { reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
-import { toMapSchools } from "@/lib/screening/marks";
+import { type MapSchool, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { scopesMix } from "@/lib/screening/workspace/rows";
 import type { ListView } from "@/lib/screening/workspace/state";
@@ -26,12 +36,73 @@ const PANEL = { column: 16 + 416 + 40, card: 16 + 392 + 40 };
 /** The tabs in screen order, and how far each arrow key moves along them. */
 const VIEWS: readonly ListView[] = ["ranked", "queue"];
 const TAB_STEP: Partial<Record<string, number>> = { ArrowRight: 1, ArrowLeft: -1 };
+const NO_SCHOOLS: readonly MapSchool[] = [];
+/** With no marks there is nothing to frame; the column's width is all the map needs to keep clear. */
+const FAILED_PADDING = { top: 0, right: 0, bottom: 0, left: PANEL.column };
 
 export function ScreeningWorkspace() {
   return (
     <WorkspaceProvider>
-      <Workspace />
+      <UnreadableData>
+        <Workspace />
+      </UnreadableData>
     </WorkspaceProvider>
+  );
+}
+
+/**
+ * Data that parses but cannot be worded, such as a comparison that makes binding the copy throw, would otherwise blank
+ * the page. This shows the failed state instead. Retry drops what was read and starts the workspace again; the state
+ * and the URL stay.
+ */
+class UnreadableData extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError = () => ({ failed: true });
+  render() {
+    return this.state.failed ? (
+      <FailedWorkspace onRetry={() => this.setState({ failed: false })} />
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+/** The failed state on its own: the column with one sentence and Retry, over a map with no marks. */
+function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
+  const store = useWorkspaceStore();
+  const queries = useQueryClient();
+  const loadMap = useAfterPaint(true);
+  return (
+    <div className={styles.root} data-testid="screening-workspace">
+      <div className={styles.stage}>
+        <ScreeningMap
+          load={loadMap}
+          schools={NO_SCHOOLS}
+          selectedKey={null}
+          onSelect={() => {}}
+          padding={FAILED_PADDING}
+          stale={false}
+          onDrawn={store.markReady}
+        />
+        <section className={`${styles.panel} ${styles.column}`} aria-label={COPY.mast.name}>
+          <Masthead />
+          <div className={styles.error} role="alert" data-failure="malformed">
+            <p>{LAYOUT.loadFailed}</p>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => {
+                // Nothing reads the screening data while this shows, so it can all be dropped and read afresh.
+                queries.removeQueries({ queryKey: screeningKeys.all });
+                onRetry();
+              }}
+            >
+              {LAYOUT.retry}
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
