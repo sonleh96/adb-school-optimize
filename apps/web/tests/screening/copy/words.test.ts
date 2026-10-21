@@ -204,3 +204,38 @@ describe("a saved view that names what the data no longer has", () => {
     expect(textProblems(LAYOUT.viewsFull(50))).toEqual([]);
   });
 });
+
+describe("a saved view's stored range placement", () => {
+  it("is said to still apply when it is not the default, in the same one sentence", () => {
+    const text = LAYOUT.viewPartMissing(["rule", "school"], "upper");
+    expect(text).toBe(
+      "Part of this view could not be reopened: the rule and the school are no longer in the data, so the screen shows the paper's main rule and no school selected instead, and the order it saved for the schools that show a range still applies."
+    );
+    expect(textProblems(text)).toEqual([]);
+    expect(text.match(/\./g)).toHaveLength(1);
+  });
+
+  it("says nothing of it for the default placement or none", () => {
+    for (const placement of [undefined, null, "lower"])
+      expect(LAYOUT.viewPartMissing(["school"], placement)).toBe(LAYOUT.viewPartMissing(["school"]));
+    expect(LAYOUT.viewPartMissing(["school"])).not.toMatch(/still applies/);
+  });
+});
+
+describe("the rows of a school card's numbers", () => {
+  it("name a part by what it adds, so a part's own value and its contribution never share a label", () => {
+    expect(LAYOUT.partAdds("Classrooms not of permanent materials")).toBe(
+      "Of that, classrooms not of permanent materials"
+    );
+    expect(LAYOUT.partAdds("Remoteness")).not.toBe(TERMS.need_locality.label);
+    expect(textProblems(LAYOUT.partAdds("Remoteness"), { sentence: false })).toEqual([]);
+  });
+});
+
+describe("the link from the main rule to the rule that puts urgency back", () => {
+  it("says what it opens, and is not the link read from the rule with urgency", () => {
+    expect(LAYOUT.seeWithUrgency).toBe("See what changes with the urgency value");
+    expect(LAYOUT.seeWithUrgency).not.toBe(LAYOUT.seeWithout);
+    expect(textProblems(LAYOUT.seeWithUrgency, { sentence: false })).toEqual([]);
+  });
+});

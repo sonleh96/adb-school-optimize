@@ -402,9 +402,13 @@ function wireCompares(data: Dataset["data"]) {
 
 /* ------------------------------------------------------------------ the checks */
 
-/** The original records, without the one field the API does not carry. */
+/** The original records, without the flags the saved responses do not carry (the flag is unknown there, not false). */
 const withoutFlag = (schools: any[]) =>
-  schools.map((s) => ({ ...s, persistent_candidate_circulated: false }));
+  schools.map((s) => {
+    const rest = { ...s };
+    delete rest.persistence;
+    return rest;
+  });
 
 suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]", () => {
   describe.each(DATASET_DIRS.map(([name]) => name))("%s data", (name) => {

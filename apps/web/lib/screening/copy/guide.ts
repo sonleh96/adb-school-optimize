@@ -217,7 +217,7 @@ export const GUIDE = Object.freeze({
       {
         id: "q5",
         title: "What changes without the urgency value",
-        sub: "What changes if the uncertain urgency value is left out?",
+        sub: "What did leaving the uncertain urgency value out change?",
         steps: [
           {
             key: "agree",
@@ -226,12 +226,12 @@ export const GUIDE = Object.freeze({
                 ? `The same ${k} schools make the top ${k} with or without urgency`
                 : "With or without urgency",
             onScreen: '"What changed", at the top of the list',
-            body: '"What changed", at the top of the list, compares the two rules using the study\'s recorded comparison.',
+            body: "\"What changed\", at the top of the list, compares the circulated paper's rule with urgency and the main rule without it, using the study's recorded comparison.",
           },
           {
             key: "why",
-            title: "Why the urgency value is in question",
-            onScreen: "The two main rules, above the list",
+            title: "Why the urgency value is left out",
+            onScreen: "The main rule and the urgency sensitivity, above the list",
           },
           {
             key: "ranges",
@@ -241,10 +241,10 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "use",
-            title: "Use the proposed revision yourself",
-            onScreen: "The two main rules, above the list",
+            title: "Switch between the two rules yourself",
+            onScreen: "The main rule and the urgency sensitivity, above the list",
             tryIt: (label: string) =>
-              `Choose "${label}" to go back to the paper's main rule. "See the full comparison" opens the method details.`,
+              `Choose "${label}" to put the urgency value back and see the circulated paper's rule. "See the full comparison" opens the method details.`,
           },
         ],
       },

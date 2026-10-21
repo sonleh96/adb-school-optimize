@@ -40,9 +40,12 @@ export const LAYOUT = Object.freeze({
   // Moved from the final design's REQ object in round 4; same text, same shapes.
   methodSwitch: "Show method details",
   otherRulesCount: (n: number) => `Other rules (${n})`,
-  rulePair: "The two main rules",
+  rulePair: "The main rule and the urgency sensitivity",
   howBack: "Back to the map",
   showMe: "Show me on the screen",
+  // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
+  // puts the urgency value back. `seeWithout` is the same link read from the rule with urgency.
+  seeWithUrgency: "See what changes with the urgency value",
   seeWithout: "See what changes without urgency",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
@@ -59,6 +62,9 @@ export const LAYOUT = Object.freeze({
   adds: "What each input adds",
   // A row of that table, named for what it is: the part of the screening score an input gives, not the input's own value.
   addedBy: (label: string) => `Added by ${lowerFirst(label)}`,
+  // A part of school need under the row of what school need adds: what the part adds, not the part's own value, which
+  // keeps the part's plain name (under the need-first rules, where the number is the value).
+  partAdds: (label: string) => `Of that, ${lowerFirst(label)}`,
   needParts: "Parts of school need",
   byProvince: "Province",
   /** The heading of the group of incomplete records whose province is blank. */
@@ -139,13 +145,15 @@ export const LAYOUT = Object.freeze({
     `The list holds ${max} saved views, the most you can keep. Remove a view first to save another.`,
   // Shown when a saved view names something the loaded data no longer has. The keys are the screen's own
   // (rule, compare, school, hover, prov, loc); they are said in plain words, with what the screen shows instead.
-  viewPartMissing: (keys: readonly string[]) => {
+  // `placement` is the view's stored range placement: it needs nothing from the data, so when it is not the default
+  // ("upper", the sensitivity order) the sentence says it still applies.
+  viewPartMissing: (keys: readonly string[], placement?: string | null) => {
     const found = [...new Set(keys.map((k) => (k === "hover" ? "school" : k)))].map((k) => {
       const words = LOST[k];
       if (!words) throw new Error(`No words for a saved view's ${k}`);
       return words;
     });
-    return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead.`;
+    return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead${placement === "upper" ? ", and the order it saved for the schools that show a range still applies" : ""}.`;
   },
   removeView: (name: string) => textOf(removeViewSegments(name)),
   afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",

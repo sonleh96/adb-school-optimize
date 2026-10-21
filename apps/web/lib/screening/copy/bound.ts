@@ -36,6 +36,7 @@ import type {
   CountBag,
   CountsByRuleArg,
   PairwiseRow,
+  PersistenceRule,
   PlacedSchool,
   Top20Change,
   ComparisonData,
@@ -64,6 +65,7 @@ import {
 import { contributions, inputSentence, reasonSentence, topDrivers } from "./reasons";
 import {
   DEFAULT_RULE,
+  PRIMARY_RULE,
   RULE_IDS,
   ruleExplanation,
   ruleLabel,
@@ -94,8 +96,8 @@ export type CopyData = {
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
   readonly countsByRule?: CountsByRuleArg;
-  /** The persistence test's standard error as a fraction (the circulated list's provenance block). */
-  readonly standardError?: number;
+  /** Each persistence test's standard error as a fraction (its own list's provenance block), by rule. */
+  readonly standardErrors?: Partial<Record<PersistenceRule, number>>;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
@@ -136,17 +138,19 @@ export function copyFor(data: CopyData = {}) {
   // The sizes of the groups belong to one rule, and the definitions of the whole method belong to none: the bound
   // TERMS and the ideas are worded without any group size, the explainer from the paper's main rule, and what a
   // screen shows under a rule comes from that rule's own counts (`termsFor`, `scope`).
-  const main = countsOf(withCounts(), DEFAULT_RULE) ?? {};
+  const main = countsOf(withCounts(), PRIMARY_RULE) ?? {};
   const terms = buildTerms(groupFree(c));
   const countsFor = (ruleId: CopyRuleId): CountBag => {
     const own = countsOf(withCounts(), ruleId);
-    if (own === c || !own) return own ?? groupFree(c);
+    if (own === c) return own;
+    if (!own) return { ...groupFree(c), flagged: undefined };
     // Counts taken from the rows of the list bound describe that list, not another rule's.
     const rest =
       own.ranked === c.ranked
         ? groupFree(c)
         : { ...groupFree(c), emissionsNone: undefined, airMissing: undefined };
-    return { ...rest, ...own };
+    // The flag count belongs to the one rule whose test it counts, so no other rule reads it.
+    return { ...rest, flagged: undefined, ...own };
   };
   // Resolves to the same object every time, and tries again after a download that failed.
   const loadLater = retryable(() =>
@@ -182,7 +186,7 @@ export function copyFor(data: CopyData = {}) {
     methodFor: (ruleId: CopyRuleId): Promise<Method> =>
       loadMethod().then((m) => m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId) })),
     /** The terms worded for one rule: its group sizes and the inputs it reads. */
-    termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId)),
+    termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId), ruleId),
     groupsSentence: (ruleId: CopyRuleId) => groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
     urgencyDefinition: () => urgencyDefinition(c),
     urgencyNote: (id: CopyRuleId, opts?: WithoutCounts) => urgencyNote(id, withCounts(opts)),
@@ -222,7 +226,9 @@ export function copyFor(data: CopyData = {}) {
       form: "card" | "row" = "card"
     ) => tieNote(school, ruleId, list, form),
     persistenceNote: (school: CopySchool, ruleId: CopyRuleId) =>
-      persistenceNote(school, ruleId, { standardError: data.standardError }),
+      persistenceNote(school, ruleId, {
+        standardError: (data.standardErrors as Record<string, number | undefined> | undefined)?.[ruleId],
+      }),
     distinctName: (school: PlacedSchool, list: readonly PlacedSchool[] = schools) =>
       distinctName(school, list),
     /**

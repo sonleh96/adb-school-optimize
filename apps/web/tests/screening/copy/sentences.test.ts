@@ -245,7 +245,7 @@ describe("one school that shows a range", () => {
     );
   });
 
-  it("agrees the pronoun in the reassurance about leaving urgency out", () => {
+  it("agrees the pronoun in the reassurance about putting urgency back", () => {
     const rows = [
       {
         left_rule: "additive_u",
@@ -263,10 +263,10 @@ describe("one school that shows a range", () => {
     const complete = (id: string) => school({ id, place: 1 });
     const text = (schools: copy.CopySchool[]) => copy.urgencyReassurance({ pairwise: rows, schools });
     expect(text([complete("a"), range("r")])).toMatch(
-      /For the one school that shows a range, leaving it out can still move its possible places\.$/
+      /For the one school that shows a range, putting it back can still move its possible places\.$/
     );
     expect(text([complete("a"), range("r"), range("q")])).toMatch(
-      /For the two schools that show a range, leaving it out can still move their possible places\.$/
+      /For the two schools that show a range, putting it back can still move their possible places\.$/
     );
   });
 });

@@ -300,6 +300,37 @@ describe("an additive API change", () => {
     expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
   });
 
+  it("reads the revised paper's roles and provenance, and tolerates a rule that carries neither", () => {
+    const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
+    body.rules[0].policy_role = "urgency_sensitivity";
+    body.rules[0].provenance = "circulated_paper";
+    body.rules[1].policy_role = "primary";
+    body.rules[1].provenance = "revised_paper";
+    delete body.rules[2].provenance;
+    body.rules[3].provenance = "a_provenance_added_later";
+    const parsed = parseWith(rulesResponse, body, "Screening rules").rules;
+    expect(parsed.slice(0, 4).map((r) => [r.policy_role, r.provenance])).toEqual([
+      ["urgency_sensitivity", "circulated_paper"],
+      ["primary", "revised_paper"],
+      [expect.any(String), undefined],
+      [expect.any(String), "a_provenance_added_later"],
+    ]);
+  });
+
+  it("keeps each rule's own persistence keys and block, so a rule's flag is not read from another's list", () => {
+    const body = copy(readFixture("results/additive_no_u.json")) as {
+      persistence?: unknown;
+      rows: Array<Record<string, unknown>>;
+    };
+    body.persistence = { standard_error: 0.004 };
+    body.rows[0].persistent_candidate = true;
+    body.rows[0].threshold_adjacent = false;
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.run.rule_id).toBe("additive_no_u");
+    expect(parsed.persistence).toEqual({ standard_error: 0.004 });
+    expect(parsed.rows[0]).toMatchObject({ persistent_candidate: true, threshold_adjacent: false });
+  });
+
   it("reads what the copy needs of a listed row, and names the path of what is missing", () => {
     for (const field of [
       "gate_failures",

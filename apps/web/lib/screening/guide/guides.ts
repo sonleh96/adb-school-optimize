@@ -13,6 +13,7 @@ import {
   type CopySchool,
   DEFAULT_RULE,
   PROPOSED_RULE,
+  SENSITIVITY_RULE,
   type Segments,
 } from "../copy";
 import type { LaterCopy } from "../copy/later";
@@ -421,7 +422,7 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [para(copy.ruleExplanation(PROPOSED_RULE))],
-        tryIt: text(call<string>(sc.tryIt, copy.ruleLabel(DEFAULT_RULE))),
+        tryIt: text(call<string>(sc.tryIt, copy.ruleLabel(SENSITIVITY_RULE))),
         patch: { rule: PROPOSED_RULE, compare: DEFAULT_RULE },
         targets: [[region("rule-switch")]],
         scroll: "top",

@@ -153,8 +153,10 @@ describe("the counts that need every record", () => {
 
   it("let the help card state them", () => {
     const P = copy.bindCopy({ view, inputs, lists }).copy;
-    expect(P.TERMS.persistent_flag.help).toMatch(/schools? (has|have) the flag\./);
-    expect(P.TERMS.persistent_flag.help).not.toContain("Some schools have the flag.");
+    expect(P.termsFor("additive_u").persistent_flag.help).toMatch(/schools? (has|have) the flag\./);
+    expect(P.termsFor("additive_u").persistent_flag.help).not.toContain("Some schools have the flag.");
+    // The unbound help names no count: a count belongs to one rule's test.
+    expect(P.TERMS.persistent_flag.help).not.toMatch(/the flag\./);
   });
 });
 

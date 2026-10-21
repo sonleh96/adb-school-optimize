@@ -245,7 +245,13 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
     case "inspection":
       return { examples: [{ text: plain(STRINGS.caveatPlain) }] };
     case "persistent_flag":
-      return { examples: [{ text: plain(STRINGS.persistentFlag) }] };
+      // Each rule the test ran for has its own words; they are never read as the other's.
+      return {
+        examples: (["additive_no_u", "additive_u"] as const).map((id) => ({
+          label: copy.ruleLabel(id),
+          text: plain(STRINGS.persistentFlag[id]),
+        })),
+      };
     case "rule":
       return { examples: [{ text: plain(STRINGS.defaultRuleNote) }] };
     default:

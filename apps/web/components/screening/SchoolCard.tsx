@@ -360,11 +360,14 @@ function InNumbers({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; 
   const range = scoreRangeOf(own);
 
   const row = (key: InputKey, part: boolean) => {
-    // A part of school need keeps its own name, under the row for school need or under "Parts of school need"; every
-    // other row says it is what the input adds to the score, so it is not taken for the input's own value.
+    // Under "Parts of school need" the number is the part's own value, so the part keeps its own name. Every other
+    // row says it is what the input adds to the score, so it is not taken for the input's own value.
+    const plainName = TERMS[TERM_OF[key]].label;
     const label = NEED_KEYS.includes(key as NeedKey)
-      ? TERMS[TERM_OF[key]].label
-      : LAYOUT.addedBy(TERMS[TERM_OF[key]].label);
+      ? needFirst
+        ? plainName
+        : LAYOUT.partAdds(plainName)
+      : LAYOUT.addedBy(plainName);
     if (key === "urgency" && !copy.ruleUsesUrgency(rule)) {
       return (
         <div key={key} className={`${styles.numRow} ${styles.numNote}`}>
