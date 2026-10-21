@@ -917,8 +917,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   box-shadow: none;
 }
 
-/* Sign out is a quiet text action beside the others: no border, fill or shadow, so Copy link stays the one button. */
-.quietAction {
+/* Sign out is a quiet text action beside the others: no border, fill or shadow, so Copy link stays the one button.
+   Scoped under .root to outrank `.root button`, which would otherwise give it the button ink and font. */
+.root .quietAction {
   height: 34px;
   padding: 0 6px;
   border: 0;
@@ -930,7 +931,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   text-underline-offset: 3px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .quietAction:hover {
+  .root .quietAction:hover {
     color: var(--ink);
     text-decoration: underline;
   }
