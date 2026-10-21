@@ -148,8 +148,9 @@ def read_back(paths: dict[str, Path]) -> tuple[SchoolRecord, ...]:
 # threshold in ``threshold_adjacency.json``.
 # ---------------------------------------------------------------------------------------------
 
-EXPERIMENT = "EXP-99-v0.0.0-20000101"
-EXPERIMENT_NO_U = "EXP-98-v0.0.0-20000101"
+# Invented, but named as the experiments they stand in for: a rule accepts only its own experiment.
+EXPERIMENT = "EXP-21-v0.0.0-20000101"
+EXPERIMENT_NO_U = "EXP-22-v0.0.0-20000101"
 RESULT_FILE = "persistent_investigation_candidates.csv"
 PERSISTENCE_PATH = f"experiments/decision_rules/{EXPERIMENT}/results/{RESULT_FILE}"
 PERSISTENCE_PATH_NO_U = f"experiments/decision_rules/{EXPERIMENT_NO_U}/results/{RESULT_FILE}"
@@ -191,6 +192,7 @@ def write_persistence_files(
     hash_record: str = "listed",
     adjacency: bool | None = None,
     adjacent_count: int | None = None,
+    receipt_urgency: bool | None = None,
 ) -> str:
     """Write a persistence table and its receipt under ``reference_root``. Returns the path relative to the root.
 
@@ -200,7 +202,8 @@ def write_persistence_files(
     ``artifact_hashes.json`` records the table's hash and ``threshold_adjacency.json`` counts the schools within two
     standard errors of the threshold. ``hash_record`` is "listed" (the table's real hash), "unlisted" (a record that
     does not name the table), "none" (no record) or a SHA-256 to record instead. ``adjacency=True`` asks for the adjacency file of the
-    urgency-included experiment too, and ``adjacent_count`` replaces the count it states.
+    urgency-included experiment too, and ``adjacent_count`` replaces the count it states. ``receipt_urgency``
+    overrides whether the receipt says urgency had a weight, to make a receipt that contradicts its experiment.
     """
     experiment = EXPERIMENT_NO_U if urgency_omitted else EXPERIMENT
     relative = PERSISTENCE_PATH_NO_U if urgency_omitted else PERSISTENCE_PATH
@@ -223,7 +226,9 @@ def write_persistence_files(
             }
             for sid, top, need in SETTINGS
         ],
-        "recommended_weights": WEIGHTS_WITHOUT_URGENCY if urgency_omitted else WEIGHTS_WITH_URGENCY,
+        "recommended_weights": WEIGHTS_WITH_URGENCY
+        if (not urgency_omitted if receipt_urgency is None else receipt_urgency)
+        else WEIGHTS_WITHOUT_URGENCY,
         "persistent_investigation_candidates": [
             n for n, f in frequencies.items() if f and all(x >= threshold for x in f)
         ]

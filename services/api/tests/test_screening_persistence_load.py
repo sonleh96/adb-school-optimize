@@ -545,7 +545,10 @@ def test_a_rule_that_cannot_have_persistence_numbers_is_refused_before_the_file_
 def test_an_experiment_that_gave_urgency_a_weight_is_not_stored_for_the_urgency_omitted_rule(
     reference,
 ):  # PE27
-    relative = write_persistence_files(reference, FREQUENCIES)
+    # The folder is the right experiment for the rule; only its receipt says urgency had a weight.
+    relative = write_persistence_files(
+        reference, FREQUENCIES_NO_U, urgency_omitted=True, receipt_urgency=True
+    )
 
     with pytest.raises(
         ScreeningLoadError, match="gave urgency a weight, but rule additive_no_u does not read"
@@ -554,10 +557,42 @@ def test_an_experiment_that_gave_urgency_a_weight_is_not_stored_for_the_urgency_
 
 
 def test_an_experiment_that_left_urgency_out_is_not_stored_for_the_urgency_included_rule(reference):  # PE27
-    relative = write_persistence_files(reference, FREQUENCIES_NO_U, urgency_omitted=True)
+    relative = write_persistence_files(reference, FREQUENCIES, receipt_urgency=False)
 
     with pytest.raises(ScreeningLoadError, match="did not give urgency a weight, but rule additive_u reads"):
         read_persistence_source(reference, relative, "additive_u")
+
+
+def test_each_rule_accepts_only_its_own_experiment(reference):  # PE35
+    first = write_persistence_files(reference, FREQUENCIES)
+    second = write_persistence_files(reference, FREQUENCIES_NO_U, urgency_omitted=True)
+
+    with pytest.raises(
+        ScreeningLoadError, match=r"is from experiment EXP-21.*additive_no_u is backed by EXP-22"
+    ):
+        read_persistence_source(reference, first, "additive_no_u")
+    with pytest.raises(
+        ScreeningLoadError, match=r"is from experiment EXP-22.*additive_u is backed by EXP-21"
+    ):
+        read_persistence_source(reference, second, "additive_u")
+    assert read_persistence_source(reference, first, "additive_u").experiment_id == EXPERIMENT
+    assert read_persistence_source(reference, second, "additive_no_u").experiment_id == EXPERIMENT_NO_U
+
+
+@pytest.mark.parametrize(
+    "other", ["EXP-210-v0.0.0-20000101", "EXP-2-v0.0.0-20000101", "EXP-99-v0.0.0-20000101"]
+)
+def test_an_experiment_whose_id_only_resembles_the_expected_one_is_refused(reference, other):  # PE35
+    relative = write_persistence_files(reference, FREQUENCIES)
+    moved = relative.replace(EXPERIMENT, other)
+    (reference / moved).parent.mkdir(parents=True)
+    for name in ("persistent_investigation_candidates.csv", "run_receipt.json", "artifact_hashes.json"):
+        source = (reference / relative).parent / name
+        if source.exists():
+            (reference / moved).parent.joinpath(name).write_bytes(source.read_bytes())
+
+    with pytest.raises(ScreeningLoadError, match="is backed by EXP-21"):
+        read_persistence_source(reference, moved, "additive_u")
 
 
 def test_a_receipt_that_does_not_say_whether_urgency_had_a_weight_is_refused(reference):  # PE27
@@ -851,7 +886,7 @@ def test_the_command_refuses_a_set_under_the_wrong_rule_and_stores_nothing(
     )
 
     assert result.returncode == 1
-    assert "gave urgency a weight" in result.stderr and "Traceback" not in result.stderr
+    assert "is backed by EXP-22" in result.stderr and "Traceback" not in result.stderr
     assert_nothing_stored(connection)
 
 

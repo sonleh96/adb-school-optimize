@@ -120,6 +120,7 @@ The files and schools are invented.
 | PE32 | A failed 007 leaves the check half changed. | The rule check is dropped and not replaced, or replaced and the file fails. |
 | PE33 | The command takes a malformed pair or half loads. | A repeated rule, an argument without `=`, a pin without its file, or a set under the wrong rule gives a traceback or leaves inputs stored. |
 | PE34 | The hash check fails open. | A file with no recorded hash and no pin loads, or deleting `artifact_hashes.json` from the experiment's folder lets its file load unchecked. |
+| PE35 | A rule carries another experiment's numbers. | EXP-21's file loads for `additive_no_u`, EXP-22's for `additive_u`, or a folder named like the right one (`EXP-210`) loads, whatever the receipt says. |
 
 | Test | Failure mode |
 | --- | --- |
@@ -178,4 +179,6 @@ The files and schools are invented.
 | `test_malformed_persistence_arguments_are_a_usage_error` (5 cases) | PE33 |
 | `test_a_file_with_no_recorded_hash_and_no_pin_is_refused` | PE34 |
 | `test_removing_the_record_of_hashes_does_not_open_the_check` | PE34 |
+| `test_each_rule_accepts_only_its_own_experiment` | PE35 |
+| `test_an_experiment_whose_id_only_resembles_the_expected_one_is_refused` (3 ids) | PE35 |
 | `test_a_file_with_no_recorded_hash_is_read_when_it_is_pinned_and_refused_when_the_pin_is_wrong` | PE28, PE34 |
