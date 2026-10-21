@@ -33,6 +33,7 @@ import {
   test,
   useMockDataset,
   waitForMap,
+  waitForWorkspaceHook,
 } from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
@@ -245,6 +246,7 @@ test("data the copy cannot word shows the failed state with Retry, not a blank p
   await expect(alert).toHaveText(`${LAYOUT.loadFailed}${LAYOUT.retry}`);
   await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
   // The guide layer can still start: the map draws with no marks.
+  await waitForWorkspaceHook(page);
   expect(await page.evaluate(() => window.__screeningWorkspace!.ready.then(() => "ready"))).toBe("ready");
   // A developer finds what could not be read in the console.
   expect(problems.some((p) => p.startsWith("error: ") && p.includes("metrics.top_k"))).toBe(true);

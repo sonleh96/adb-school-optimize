@@ -26,6 +26,7 @@ import {
   tab,
   test,
   waitForMap,
+  waitForWorkspaceHook,
 } from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
@@ -187,6 +188,7 @@ test("the controller ignores invalid values, clears with null, reports each chan
   page,
 }) => {
   await page.goto("/screening");
+  await waitForWorkspaceHook(page);
   const report = await page.evaluate(async () => {
     const ws = window.__screeningWorkspace!;
     await ws.ready;

@@ -21,6 +21,7 @@ import {
   test,
   useMockDataset,
   waitForMap,
+  waitForWorkspaceHook,
 } from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
@@ -54,6 +55,7 @@ test.describe("an empty store and a failed list", () => {
       await expect(page.locator(ORDERED)).toHaveCount(0);
 
       // The guide layer waits on `ready` before it starts; with no marks to draw, the map drawing is enough.
+      await waitForWorkspaceHook(page);
       const ready = await page.evaluate(() =>
         Promise.race([
           window.__screeningWorkspace!.ready.then(() => "ready"),
