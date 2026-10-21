@@ -225,6 +225,10 @@ def read_results(connection: psycopg.Connection, run_id: uuid.UUID) -> tuple[Res
 # The migration refuses any other rule, and a set is never read for a rule it was not stored for.
 PERSISTENCE_RULE_IDS: tuple[str, ...] = ("additive_u", "additive_no_u")
 
+# The one experiment whose numbers each of those rules may carry. A file from any other experiment is refused, so
+# the circulated experiment's numbers can never be stored as the revised rule's, whatever its receipt says.
+PERSISTENCE_EXPERIMENTS: dict[str, str] = {"additive_u": "EXP-21", "additive_no_u": "EXP-22"}
+
 # How many standard errors above the threshold still count as "only just above the line". Each experiment's paper
 # states its own band: the circulated paper one standard error, the revised paper two.
 ADJACENCY_STANDARD_ERRORS: dict[str, int] = {"additive_u": 1, "additive_no_u": 2}

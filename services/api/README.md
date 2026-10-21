@@ -62,6 +62,7 @@ To store the top-20 persistence numbers with the version, name each rule and the
 No other rule can have a set, and the migration refuses one.
 A set describes the one rule it is stored for. The two experiments answer different questions, so a rule never reads the other's numbers.
 
+- Each rule accepts one experiment only, set in code (`PERSISTENCE_EXPERIMENTS`): EXP-21 for `additive_u` and EXP-22 for `additive_no_u`. A file from any other experiment folder is refused, whatever its receipt says.
 - Each file is checked against its own experiment. The experiment's `run_receipt.json` must sit beside it and say whether urgency had a weight in `recommended_weights`, which has to agree with the rule: the circulated experiment is refused for `additive_no_u` and the revised one for `additive_u`.
 - Every file must be vouched for. If the experiment records the file's hash in `artifact_hashes.json` (the revised one does), the file must hash to it, and the record must list the file. The circulated experiment records none, so its file must be pinned with `--persistence-sha256 additive_u=<hash>`. A file with neither a record nor a pin is refused, so deleting the record does not open the check. A pin is checked as well as a recorded hash.
 - The file names schools by name. Each name is joined to the version's schools through `normalize_join_key`. A name that matches no school or several, or two names for one school, refuses the whole load.

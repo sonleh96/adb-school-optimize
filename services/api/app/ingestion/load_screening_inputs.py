@@ -293,6 +293,7 @@ def read_persistence_source(
 ) -> PersistenceSource:
     """Read the experiment's persistence table for ``rule_id`` and check it against itself and its own records.
 
+    The experiment folder must be the one the rule is backed by (``store.PERSISTENCE_EXPERIMENTS``).
     The settings and the number of draws come from ``run_receipt.json`` in the same folder, and that receipt must
     say whether urgency had a weight in the experiment, which has to agree with ``rule_id``.
     The file's flag column must equal the flag derived from its frequencies for every row,
@@ -311,6 +312,12 @@ def read_persistence_source(
     if folder is None:
         raise ScreeningLoadError(
             f"persistence path {relative_path!r} has no EXP-... folder naming the experiment"
+        )
+    expected_experiment = store.PERSISTENCE_EXPERIMENTS[rule_id]
+    if folder != expected_experiment and not folder.startswith(f"{expected_experiment}-"):
+        raise ScreeningLoadError(
+            f"persistence path {relative_path!r} is from experiment {folder}, but rule {rule_id} is backed by "
+            f"{expected_experiment}. Nothing was loaded."
         )
     path = Path(reference_root) / relative
     if not path.is_file():
