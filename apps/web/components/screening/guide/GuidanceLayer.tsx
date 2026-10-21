@@ -16,8 +16,10 @@ import type { BoundCopy } from "@/lib/screening/copy";
 import { seenCount } from "@/lib/screening/guide/machine";
 import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
 
+import { useWorkspaceState } from "../WorkspaceProvider";
 import { reducedMotion } from "./dom";
-import { useGuidanceFrame, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
+import { useActed, useGuidanceFrame, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
+import { GuidanceBoundary } from "./GuidanceBoundary";
 import type { GuideData } from "./types";
 import { useLater } from "./useLater";
 import styles from "./guide.module.css";
@@ -34,18 +36,14 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
   const frame = useGuidanceFrame(data.width);
   const keyboard = useKeyboardRef();
 
-  // The export button arrives with the method details; guide 1 offers its download step once it is on screen.
-  const [hasExport, setHasExport] = useState(false);
-  useEffect(() => {
-    if (data.ready) setHasExport(!!root?.querySelector('[data-region="export-button"]'));
-  }, [root, data.ready]);
   const roles = useMemo(
     () => (data.shown ? rolesOf(data.shown.schools, data.shown.copy) : null),
     [data.shown]
   );
+  const { export: canExport, grouping } = data.features;
   const plan = useMemo(
-    () => (roles ? planOf(roles, { export: hasExport, proposed: data.proposed }) : null),
-    [roles, hasExport, data.proposed]
+    () => (roles ? planOf(roles, { export: canExport, grouping, proposed: data.proposed }) : null),
+    [roles, canExport, grouping, data.proposed]
   );
   useEffect(() => {
     if (plan) store.setCatalog(catalogOf(plan));
@@ -72,6 +70,26 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
   }, [frame.rail, root, keyboard, data.mode]);
 
   const railOpen = state.rail.kind !== "off";
+  // A rail a person closes hands focus to the Guides button that reopens it.
+  const acted = useActed();
+  const wasOpen = useRef(railOpen);
+  useEffect(() => {
+    if (
+      wasOpen.current &&
+      !railOpen &&
+      acted() &&
+      (!document.activeElement || document.activeElement === document.body)
+    )
+      // The map bar's Guides button, or in the narrow layout the menu that holds it; only one of them shows.
+      [
+        ...(root?.querySelectorAll<HTMLElement>('[data-region="guides"], [aria-controls="screening-menu"]') ??
+          []),
+      ]
+        .find((button) => button.getClientRects().length > 0)
+        ?.focus();
+    wasOpen.current = railOpen;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the rail opens or closes.
+  }, [railOpen, root]);
   return (
     <>
       {data.mode !== "narrow" ? <MapBar root={root} data={data} /> : null}
@@ -82,12 +100,26 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
           data-present={(state.present && state.rail.kind === "step" && data.mode !== "narrow") || undefined}
           data-step={state.rail.kind === "step" || undefined}
         >
-          <Rail root={root} data={data} roles={roles} plan={plan} />
+          <GuidanceBoundary copy={data.copy}>
+            <Rail root={root} data={data} roles={roles} plan={plan} />
+          </GuidanceBoundary>
         </div>
       ) : null}
-      {state.page ? <HowPage data={data} /> : null}
-      {state.help || state.card ? <HelpLayer root={root} data={data} roles={roles} /> : null}
-      {state.gloss.open ? <Glossary root={root} data={data} /> : null}
+      {state.page ? (
+        <GuidanceBoundary copy={data.copy}>
+          <HowPage data={data} />
+        </GuidanceBoundary>
+      ) : null}
+      {state.help || state.card ? (
+        <GuidanceBoundary copy={data.copy}>
+          <HelpLayer root={root} data={data} roles={roles} />
+        </GuidanceBoundary>
+      ) : null}
+      {state.gloss.open ? (
+        <GuidanceBoundary copy={data.copy}>
+          <Glossary root={root} data={data} />
+        </GuidanceBoundary>
+      ) : null}
     </>
   );
 }
@@ -105,12 +137,12 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
   // When the bar would touch the actions it steps down a row; when it would then touch the card, the glossary
   // button keeps only its icon. Its name stays in aria-label and title.
   const full = useRef(0);
+  const school = useWorkspaceState().school;
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element || !root) return;
     const check = () => {
-      const tight = element.dataset.tight !== undefined;
-      if (!tight) full.current = element.offsetWidth;
+      if (!element.hasAttribute("data-bar-tight")) full.current = element.offsetWidth;
       const left = element.getBoundingClientRect().left;
       const right = left + full.current + 8;
       const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
@@ -126,15 +158,26 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
       }
     };
     check();
-    const observer = new ResizeObserver(check);
+    // The card and the slot hint come and go with the selection; check again once they have.
+    let frame = requestAnimationFrame(check);
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(check);
+    });
     observer.observe(root);
-    const mutations = new MutationObserver(check);
-    mutations.observe(root, { childList: true, subtree: true });
     return () => {
+      cancelAnimationFrame(frame);
       observer.disconnect();
-      mutations.disconnect();
     };
-  }, [root, data.mode, state.rail.kind]);
+  }, [root, data.mode, data.ready, state.rail.kind, state.gloss.open, school]);
+  // The narrow layout has no map bar: its marks on the root go with it.
+  useEffect(
+    () => () => {
+      root?.removeAttribute("data-bar-stack");
+      root?.removeAttribute("data-bar-tight");
+    },
+    [root]
+  );
 
   const railOpen = state.rail.kind !== "off";
   return (
@@ -255,13 +298,17 @@ export function GuideMenu({
       window.removeEventListener("keydown", key, true);
     };
   }, [open]);
+  // A choice closes the menu; focus goes to what it opened, or back to the menu button.
   const act = (fn: () => void) => () => {
     setOpen(false);
     fn();
+    requestAnimationFrame(() => {
+      if (!document.activeElement || document.activeElement === document.body) button.current?.focus();
+    });
   };
   const { LAYOUT, HELP } = copy;
   return (
-    <span className={styles.menuWrap}>
+    <span className={styles.menuWrap} data-menu-open={open || undefined}>
       <HowLink copy={copy} />
       <button
         ref={button}

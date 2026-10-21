@@ -52,12 +52,5 @@ export function whenPresent(
   return () => cancelAnimationFrame(frame);
 }
 
-/**
- * Whether a person just acted (focus sits on something they pressed), as opposed to the page having loaded with a
- * layer open. A layer opened by a person takes focus; one that was open when the page loaded leaves focus alone.
- */
-export const acted = (): boolean =>
-  typeof document !== "undefined" && !!document.activeElement && document.activeElement !== document.body;
-
 export const reducedMotion = (): boolean =>
   typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;

@@ -48,16 +48,27 @@ export function Rings({
 }) {
   const [rings, setRings] = useState<Ring[]>([]);
   const last = useRef<Ring[]>([]);
-  // Rings that appear for the first time are placed at once; only rings already on screen move.
+  // A new step moves the rings already on screen to its regions in 220 ms after a click; otherwise (a scroll, a
+  // card opening, a key) they follow at once. Rings that appear for the first time are placed at once.
+  const key = JSON.stringify(targets);
+  const stepKey = useRef(key);
   const [moving, setMoving] = useState(false);
+  useEffect(() => {
+    if (stepKey.current === key) return;
+    stepKey.current = key;
+    if (keyboard.current || reducedMotion() || last.current.length === 0) return;
+    setMoving(true);
+    const timer = setTimeout(() => setMoving(false), 260);
+    return () => clearTimeout(timer);
+  }, [key, keyboard]);
 
   useEffect(() => {
+    const groups = JSON.parse(key) as string[][];
     let frame = 0;
     const tick = () => {
       if (!document.hidden) {
-        const next = measure(root, targets);
+        const next = measure(root, groups);
         if (!sameRings(next, last.current)) {
-          setMoving(last.current.length > 0 && !keyboard.current && !reducedMotion());
           last.current = next;
           setRings(next);
         }
@@ -66,7 +77,7 @@ export function Rings({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [root, targets, keyboard]);
+  }, [root, key]);
 
   return (
     <div className={styles.rings} aria-hidden="true" data-testid="guide-rings">

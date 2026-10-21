@@ -127,6 +127,9 @@ function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
   );
 }
 
+/** What the guides can point at: "Download the top list" and the incomplete records' Group by arrive later. */
+const GUIDE_FEATURES = { export: false, grouping: false } as const;
+
 /** The window's size. The server renders for the design's reference size; the browser corrects it before paint. */
 const SERVER_VIEWPORT = "1600x1000";
 function subscribeResize(onChange: () => void) {
@@ -474,6 +477,8 @@ function Workspace() {
       ordered: ordered.map((row) => row.school.school_key),
       ready,
       proposed: !!data.rules?.some((r) => r.id === PROPOSED_RULE),
+      // Set each to true when the workspace shows the region the guide step points at.
+      features: GUIDE_FEATURES,
       mode: layout.mode,
       width: viewport.width,
     }),
@@ -502,7 +507,7 @@ function Workspace() {
         if (event.key === "Escape" && state.school !== null) clearSelection();
       }}
     >
-      <div className={styles.stage} data-slot="stage">
+      <div className={styles.stage} data-slot="stage" inert={guidance.page}>
         <ScreeningMap
           load={loadMap}
           schools={mapSchools}

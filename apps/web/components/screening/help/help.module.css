@@ -20,8 +20,11 @@
 .helpOn :global([data-xp]):focus-visible {
   background-color: var(--navy-wash);
   box-shadow: 0 0 0 3px var(--navy-wash);
-  outline: none;
   text-decoration-color: var(--navy);
+}
+.helpOn :global([data-xp]):focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
 }
 .helpOn :global([data-xp][data-xp-block]) {
   text-decoration: none;

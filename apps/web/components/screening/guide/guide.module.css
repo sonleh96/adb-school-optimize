@@ -450,6 +450,24 @@
   display: none;
 }
 
+/* A layer that failed says so in its own place, with Retry. */
+.boundary {
+  padding: 20px 24px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+.boundary button {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+}
+
 /* ---------- rings: where the step points ---------- */
 .rings {
   position: fixed;

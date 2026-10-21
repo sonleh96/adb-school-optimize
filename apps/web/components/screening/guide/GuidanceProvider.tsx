@@ -34,6 +34,8 @@ interface Context {
   store: LayerStore;
   /** Whether the last action came from the keyboard: keyboard actions never animate. */
   keyboard: { current: boolean };
+  /** When a person last pressed a key or the pointer, so a layer they opened can take focus. */
+  acted: { current: number };
 }
 
 const GuidanceContext = createContext<Context | null>(null);
@@ -44,8 +46,12 @@ const typing = (target: EventTarget | null) =>
   (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 
 export function GuidanceProvider({ children }: { children: ReactNode }) {
-  const [value] = useState<Context>(() => ({ store: createLayerStore(), keyboard: { current: false } }));
-  const { store, keyboard } = value;
+  const [value] = useState<Context>(() => ({
+    store: createLayerStore(),
+    keyboard: { current: false },
+    acted: { current: -Infinity },
+  }));
+  const { store, keyboard, acted } = value;
 
   useLayoutEffect(() => {
     let storage: Storage | null = null;
@@ -65,10 +71,14 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const onPointer = () => {
       keyboard.current = false;
+      acted.current = performance.now();
     };
     const onKey = (event: KeyboardEvent) => {
       if (!["Shift", "Control", "Alt", "Meta"].includes(event.key)) keyboard.current = true;
+      acted.current = performance.now();
       if (event.metaKey || event.ctrlKey || event.altKey) return;
+      // An open menu handles its own Escape first.
+      if (event.target instanceof Element && event.target.closest("[data-menu-open]")) return;
       const { state } = store.snapshot();
       const take = () => {
         event.preventDefault();
@@ -104,7 +114,7 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pointerdown", onPointer, true);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [store, keyboard]);
+  }, [store, keyboard, acted]);
 
   return <GuidanceContext.Provider value={value}>{children}</GuidanceContext.Provider>;
 }
@@ -117,6 +127,16 @@ function useContextValue(): Context {
 
 export const useLayerStore = (): LayerStore => useContextValue().store;
 export const useKeyboardRef = (): { current: boolean } => useContextValue().keyboard;
+
+/**
+ * Whether the person acted in the last moment, as opposed to the page having loaded with a layer open. A layer a
+ * person opened takes focus; one open when the page loaded leaves focus alone. Focus cannot tell the two apart: the
+ * button that was pressed has often left the page by then.
+ */
+export function useActed(): () => boolean {
+  const { acted } = useContextValue();
+  return () => performance.now() - acted.current < 1500;
+}
 
 export function useLayers(): LayerSnapshot {
   const store = useLayerStore();

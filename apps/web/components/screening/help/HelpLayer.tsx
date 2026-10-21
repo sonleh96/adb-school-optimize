@@ -12,7 +12,7 @@
 import { X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { CopySchool } from "@/lib/screening/copy";
+import { type CopySchool, DEFAULT_RULE } from "@/lib/screening/copy";
 import { type CardModel, cardModel } from "@/lib/screening/guide/cards";
 import { type CardId, isCardId } from "@/lib/screening/guide/machine";
 import { type MarkContext, marksIn } from "@/lib/screening/guide/marks";
@@ -41,9 +41,12 @@ function clearMarks(root: HTMLElement) {
   }
 }
 
+/** A mark that takes focus itself, or sits inside a control that does (a row): it gets no tab stop of its own. */
 const focusable = (element: Element) =>
-  element.matches("button, a[href], input, select, textarea") ||
-  (element.hasAttribute("tabindex") && !element.hasAttribute("data-xp-tab"));
+  !!element.closest("button, a[href], input, select, textarea") ||
+  (Number(element.getAttribute("tabindex")) >= 0 &&
+    element.hasAttribute("tabindex") &&
+    !element.hasAttribute("data-xp-tab"));
 
 export default function HelpLayer({
   root,
@@ -62,7 +65,7 @@ export default function HelpLayer({
   const keyboard = useKeyboardRef();
   const [count, setCount] = useState(0);
   const [said, setSaid] = useState("");
-  const rule = data.shown?.rule ?? "additive_u";
+  const rule = data.shown?.rule ?? DEFAULT_RULE;
   const markCtx = useMemo((): MarkContext => ({ rule, school: wsState.school }), [rule, wsState.school]);
 
   // Marks follow the screen: every change to the workspace's markup re-marks it on the next frame.
@@ -149,8 +152,12 @@ export default function HelpLayer({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       const target = event.target as Element | null;
-      if (target?.hasAttribute("data-xp-tab") || (target?.hasAttribute("data-xp") && event.key === "Enter"))
-        open(event, target);
+      if (!target || target.closest("[data-guidance]")) return;
+      if (target.hasAttribute("data-xp-tab") || (target.hasAttribute("data-xp") && event.key === "Enter"))
+        return open(event, target);
+      // A row whose place is marked explains the mark on Enter, as a click on the mark does.
+      const inner = target.matches("button") ? target.querySelectorAll("[data-xp]") : [];
+      if (inner.length === 1 && event.key === "Enter") open(event, inner[0]);
     };
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKey, true);

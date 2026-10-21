@@ -32,8 +32,8 @@ import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "../Sentence";
 import { useWorkspace, useWorkspaceState } from "../WorkspaceProvider";
-import { acted, scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
-import { useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
+import { scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
+import { useActed, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
 import { Rings } from "./Rings";
 import type { GuideData } from "./types";
 import { useLater } from "./useLater";
@@ -82,10 +82,11 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
   const { GUIDE } = later;
   const returning = memory.seen;
   const title = useRef<HTMLHeadingElement>(null);
-  const keyboard = useKeyboardRef();
+  const acted = useActed();
   useEffect(() => {
     if (acted()) title.current?.focus({ preventScroll: true });
-  }, [keyboard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- when the start list opens.
+  }, []);
   const guides = plan ? guidesOf({ later, plan }) : [];
   return (
     <>
@@ -181,6 +182,7 @@ function Stepper({
   const ws = useWorkspace();
   const wsState = useWorkspaceState();
   const keyboard = useKeyboardRef();
+  const acted = useActed();
   const compare = useScreeningCompare(data.proposed ? MAIN_PAIR : null);
 
   const ctx = useMemo((): GuideContext | null => {
@@ -286,7 +288,7 @@ function Stepper({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- announced once per step, not on each retitle.
   }, [stepId, Boolean(stepName)]);
   useLayoutEffect(() => {
-    if (acted() && !keyboard.current && rail?.step === 1) title.current?.focus({ preventScroll: true });
+    if (acted() && rail?.step === 1) title.current?.focus({ preventScroll: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a guide's first step, once.
   }, [rail?.guide]);
 

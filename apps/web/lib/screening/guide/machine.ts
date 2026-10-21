@@ -191,7 +191,7 @@ export function reduce(model: Model, event: LayerEvent, catalog: Catalog | null)
     case "card":
       return {
         ...model,
-        state: { ...state, card: event.id, gloss: event.id ? { ...state.gloss, open: false } : state.gloss },
+        state: { ...state, card: event.id, gloss: event.id ? CLOSED_GLOSSARY : state.gloss },
       };
     case "gloss": {
       const gloss: Glossary = event.open
