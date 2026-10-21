@@ -3,6 +3,7 @@
 import { ChevronRight } from "lucide-react";
 
 import type { BoundCopy, CopyRuleId, CopySchool, InputKey } from "@/lib/screening/copy";
+import { joinList } from "@/lib/screening/copy/format";
 import type { Method } from "@/lib/screening/copy/method";
 import { type ComparedSchool, type MoveEdges, topStatus } from "@/lib/screening/method/compare";
 import { moveHex } from "@/lib/screening/method/moves";
@@ -81,6 +82,12 @@ function Missing({ copy, school, input }: { copy: BoundCopy; school: CopySchool;
   );
 }
 
+/**
+ * The row for a largest-factor rule's extra share, named by the factor or factors that attain the largest value.
+ * Interim words until the method copy names this row.
+ */
+const largestLabel = (names: string) => (names ? `Largest factor: ${names}` : "Largest factor");
+
 /** A share as the rule states it: its fraction from the rules when they name the same share, else the number. */
 function shareOf(rule: Rule | undefined, component: string, weight: number): string {
   const stated = rule?.weights.find((w) => w.component === component && Math.abs(w.value - weight) < 1e-12);
@@ -112,7 +119,11 @@ function Breakdown({
 }) {
   const { TERMS, LAYOUT } = copy;
   const byComponent = new Map(result.contributions.map((c) => [c.component, c]));
-  const weights = result.contributions.map((c) => c.weight ?? 0).filter((w) => w > 0);
+  // A largest-factor rule records 60% of the weighted sum in its contributions and the other 40% here.
+  const largest = result.maximum_term;
+  const weights = [...result.contributions.map((c) => c.weight ?? 0), largest?.share ?? 0].filter(
+    (w) => w > 0
+  );
   const max = Math.max(...weights, 0.0001);
   const px = (w: number) => (w / max) * BAR;
   const drivers = new Set(copy.topDrivers(school, rule).map((d) => d.key as string));
@@ -156,7 +167,7 @@ function Breakdown({
           const isNeed = c === "N" && result.need_part_contributions !== null;
           return (
             <div key={c} className={styles.group} role="rowgroup">
-              <div className={styles.tr} role="row">
+              <div className={styles.tr} role="row" data-row="input">
                 <span role="cell" className={styles.dotCell}>
                   {drivers.has(KEY[c]) ? (
                     <i className={styles.dot} title={method.insp.topReason}>
@@ -209,7 +220,7 @@ function Breakdown({
                     const part = school.need_parts?.[field] ?? null;
                     const adds = result.need_part_contributions?.[field] ?? null;
                     return (
-                      <div key={field} className={`${styles.tr} ${styles.part}`} role="row">
+                      <div key={field} className={`${styles.tr} ${styles.part}`} role="row" data-row="part">
                         <span role="cell" className={styles.dotCell}>
                           {drivers.has(key) ? (
                             <i className={styles.dot} title={method.insp.topReason}>
@@ -236,6 +247,32 @@ function Breakdown({
             </div>
           );
         })}
+        {largest ? (
+          <div className={styles.tr} role="row" data-row="largest">
+            <span role="cell" className={styles.dotCell} />
+            <span role="rowheader" className={styles.label}>
+              {largestLabel(
+                largest.attained_by.length
+                  ? joinList(largest.attained_by.map((f) => TERMS[TERM[f]].label))
+                  : ""
+              )}
+              <span className={styles.times}>
+                {method.insp.times(
+                  shareText({ component: "max", value: largest.share, fraction: String(largest.share) })
+                )}
+              </span>
+            </span>
+            <span role="cell">
+              <Bar track={px(largest.share)} fill={px(largest.contribution)} />
+            </span>
+            <span role="cell" className={styles.num}>
+              {f3(largest.value)}
+            </span>
+            <span role="cell" className={`${styles.num} ${styles.strong}`}>
+              {f3(largest.contribution)}
+            </span>
+          </div>
+        ) : null}
         {usesUrgency ? null : (
           <div className={styles.tr} role="row">
             <span role="cell" />
@@ -244,7 +281,7 @@ function Breakdown({
             </span>
           </div>
         )}
-        <div className={`${styles.tr} ${styles.total}`} role="row">
+        <div className={`${styles.tr} ${styles.total}`} role="row" data-row="total">
           <span role="cell" />
           <span role="rowheader" className={styles.label}>
             <span data-term="score">{TERMS.score.label}</span>

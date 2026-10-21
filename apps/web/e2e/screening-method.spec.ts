@@ -30,6 +30,8 @@
  * 20. The filter by what is missing does nothing, miscounts its choices, or a link does not reproduce it
  *                                                                                                -> "the incomplete records filter..."
  * 21. Guide 4's Try it asks for the filter by what is missing while it is off screen             -> "guide 4's group step..."
+ * 22. A card's rows do not add up to the total it shows: a largest-factor rule's extra share left out of the method
+ *     card, or any rule's rows in either card                                                   -> "every rule's rows..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -517,6 +519,64 @@ test("guide 4's group step stays in the plain layer and offers no Try it, since 
   expect(search(page)).not.toContain("analyst");
   await expect(page.getByRole("group", { name: "Show only schools missing this detail" })).toHaveCount(0);
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
+});
+
+const ALL_RULES = [
+  "additive_u",
+  "additive_no_u",
+  "need_first_u",
+  "need_first_no_u",
+  "bottleneck_u",
+  "bottleneck_no_u",
+  "benchmark",
+] as const;
+
+test("every rule's rows add up to the total in the method card and the plain card", async ({ page }) => {
+  const numbers = (texts: string[]) => texts.map((t) => Number(t.trim()));
+  // Each shown figure is rounded to three places, so the rows may miss the shown total by half a thousandth each.
+  const near = (rows: number[], total: number, label: string) => {
+    const sum = rows.reduce((a, b) => a + b, 0);
+    expect(rows.length, label).toBeGreaterThan(1);
+    expect(Math.abs(sum - total), `${label}: rows ${sum.toFixed(4)}, total ${total}`).toBeLessThanOrEqual(
+      0.0005 * (rows.length + 1) + 1e-9
+    );
+  };
+  for (const rule of ALL_RULES) {
+    const first = (json(`results/${rule}.json`).rows as typeof ROWS).find((r) => r.cohort === "complete")!;
+    const school = first.school.school_key;
+
+    await page.goto(`/screening?analyst=1&rule=${rule}&school=${school}`);
+    await waitForMap(page);
+    const method = card(page).locator("[data-region=inspector-breakdown]").first();
+    await expect(method.locator("[data-row=total]")).toBeVisible();
+    const adds = numbers(
+      await method
+        .locator("[data-row=input], [data-row=largest]")
+        .locator("[role=cell]:last-child")
+        .allTextContents()
+    );
+    const total = Number(await method.locator("[data-row=total] [role=cell]:last-child").textContent());
+    near(adds, total, `method card, ${rule}`);
+    if (rule.startsWith("bottleneck")) await expect(method.locator("[data-row=largest]")).toHaveCount(1);
+
+    await page.goto(`/screening?rule=${rule}&school=${school}`);
+    await waitForMap(page);
+    const plain = card(page).locator("[data-region=inspector-breakdown]");
+    await expect(plain).toBeVisible();
+    const rows = numbers(
+      await plain.locator("[class*=numRow]:not([class*=numPart]) [class*=numValue]").allTextContents()
+    );
+    const shown = Number(await plain.locator("[class*=numTotal] b").textContent());
+    // Under a need-first rule the plain card lists school need's five parts, each on its own 0 to 1 scale, under
+    // "Parts of school need"; school need is their average. Every other plain card lists what each input adds.
+    if (rule.startsWith("need_first"))
+      near(
+        rows.map((v) => v / rows.length),
+        shown,
+        `plain card, ${rule}`
+      );
+    else near(rows, shown, `plain card, ${rule}`);
+  }
 });
 
 test.describe("the narrow layout", () => {
