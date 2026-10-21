@@ -104,7 +104,9 @@ function Workspace() {
   };
   const changeRule = (rule: CopyRuleId) => {
     if (rule === data.requested) return;
-    store.setState({ rule, compare: data.requested });
+    // What changed compares with the list the user last saw. A rule pressed and left before its list came in was
+    // never on screen, so it is not the one compared with.
+    store.setState({ rule, compare: shown?.rule ?? data.requested });
   };
   const seeWithout = () => {
     store.setState({ rule: PROPOSED_RULE, compare: DEFAULT_RULE, view: "ranked" });

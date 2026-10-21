@@ -9,6 +9,8 @@
  *     -> "the statement keeps the main rules' figures..."
  *  5. The statement or the rule line of the previous rule shows beside the rule just pressed
  *     -> "while the rule just pressed loads..."
+ *  6. A rule pressed and left before its list loaded becomes the one What changed compares with
+ *     -> "a rule left before its list loaded..."
  */
 import type { Page } from "@playwright/test";
 
@@ -131,4 +133,27 @@ test("while the rule just pressed loads, neither the statement nor a rule line s
   await expect(page.locator(ORDERED)).toHaveAttribute("aria-busy", "false");
   await expect(lead(page)).toHaveText(REASSURANCE);
   await expect(ruleLine(page)).toContainText("leaves urgency out");
+});
+
+test("a rule left before its list loaded is not the one What changed compares with", async ({
+  page,
+  problems,
+}) => {
+  const release = await holdList(page, "additive_no_u");
+  await openWorkspace(page);
+
+  await mainRule(page, RULE.proposed).click();
+  await mainRule(page, RULE.main).click();
+  // The list on screen never changed, so there is nothing to compare.
+  expect(search(page)).toBe("");
+
+  release();
+  await expect(page.locator(ORDERED)).toHaveAttribute("aria-busy", "false");
+  await expect(changed(page)).toHaveCount(0);
+  await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithout}`);
+  // Switching back hands the held read from one hook to another, and the query library cancels it on the way and
+  // asks again. The browser reports the cancelled read as a failed request; nothing else may fail.
+  const cancelled = `requestfailed: ${APP_ORIGIN}/api/v1/screening/results?rule=additive_no_u`;
+  expect(problems.filter((p) => p !== cancelled)).toEqual([]);
+  problems.length = 0;
 });
