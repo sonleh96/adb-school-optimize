@@ -11,7 +11,7 @@ import { MapLibreOverlay, type MapLibreOverlayProps } from "@deck.gl/maplibre";
 import type { PickingInfo } from "@deck.gl/core";
 import { Map as MapView, NavigationControl, useControl, type MapRef } from "@vis.gl/react-maplibre";
 import { setWorkerUrl, type Map as MapLibreMap, type StyleSpecification } from "maplibre-gl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
@@ -241,28 +241,40 @@ export default function MapCanvas({
   }, [frame, schools, padding, still]);
 
   // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
-  // While the map is still moving to an earlier choice, where a mark sits now says nothing about where it will
-  // settle, so a newly chosen school is gone to whatever its position mid-pan. A change of the clear part alone
-  // (the list stepping aside) leaves the reframing to finish.
-  const chosen = useRef<SchoolKey | null>(null);
+  // It runs when the selected school changes, and only then: a map the user has panned since stays where they left
+  // it when the rows, the clear part or the last input change. Opening the card can restack the key, and the clear
+  // part is measured after that render, so the check waits two frames and reads the latest padding. While the map is
+  // still moving to an earlier choice, where a mark sits says nothing about where it will settle, so the new school
+  // is gone to whatever its position mid-pan.
+  const latest = useRef({ padding, still, selected });
+  useLayoutEffect(() => {
+    latest.current = { padding, still, selected };
+  });
+  const selectedId = selected?.key ?? null;
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selected) return;
-    const fresh = chosen.current !== selected.key;
-    chosen.current = selected.key;
-    const point = map.project([selected.lon, selected.lat]);
-    const { width, height } = map.getContainer().getBoundingClientRect();
-    const inside =
-      !(fresh && map.isMoving()) &&
-      point.x >= padding.left &&
-      point.x <= width - padding.right &&
-      point.y >= padding.top &&
-      point.y <= height - padding.bottom;
-    if (!inside) {
-      map.easeTo({ center: [selected.lon, selected.lat], padding, duration: still() ? 0 : 400 });
-    }
+    const chosen = latest.current.selected;
+    if (!map || !chosen || chosen.key !== selectedId) return;
+    const midPan = map.isMoving();
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const { padding: clear, still: instant } = latest.current;
+        const point = map.project([chosen.lon, chosen.lat]);
+        const { width, height } = map.getContainer().getBoundingClientRect();
+        const inside =
+          !midPan &&
+          point.x >= clear.left &&
+          point.x <= width - clear.right &&
+          point.y >= clear.top &&
+          point.y <= height - clear.bottom;
+        if (!inside) {
+          map.easeTo({ center: [chosen.lon, chosen.lat], padding: clear, duration: instant() ? 0 : 400 });
+        }
+      });
+    });
+    return () => cancelAnimationFrame(frame);
     // Panning on a click would be redundant: the mark is already inside, so this only runs for list picks.
-  }, [selected, padding, still]);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!TEST_HOOKS) return;
