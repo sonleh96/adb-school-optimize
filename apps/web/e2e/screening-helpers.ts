@@ -42,7 +42,24 @@ export const numberedPlaces = (rule: string) =>
  * browser driver note that console-noise.ts describes. A test that provokes some on purpose empties `problems`
  * after asserting what it expects.
  */
-export const test = base.extend<{ problems: string[] }>({
+export const test = base.extend<{ problems: string[]; firstVisit: boolean; returningVisitor: void }>({
+  /**
+   * The guide rail opens on a first visit. Tests of the workspace itself run as a returning visitor, so the rail
+   * stays closed unless a test opens it; the guidance tests set `firstVisit` to start from empty storage.
+   */
+  firstVisit: [false, { option: true }],
+  returningVisitor: [
+    async ({ context, firstVisit }, use) => {
+      if (!firstVisit)
+        await context.addInitScript(() => {
+          const key = "rise-screening-guides-v1";
+          if (!window.localStorage.getItem(key))
+            window.localStorage.setItem(key, JSON.stringify({ seen: true, done: [], last: null }));
+        });
+      await use();
+    },
+    { auto: true },
+  ],
   problems: [
     async ({ page }, use) => {
       const problems: string[] = [];
@@ -88,7 +105,11 @@ export const RULE = {
 
 export async function openWorkspace(page: Page, search = "") {
   await page.goto(`/screening${search}`);
-  await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
+  // Not the column's heading: a link that opens a card the list steps aside for hides the column. The controller's
+  // readiness holds in every layout: its hook is published after hydration, and `ready` resolves once the map has
+  // drawn, with or without marks.
+  await waitForWorkspaceHook(page);
+  await page.evaluate(() => window.__screeningWorkspace!.ready);
   await waitForMap(page);
   if (!search) await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 }
