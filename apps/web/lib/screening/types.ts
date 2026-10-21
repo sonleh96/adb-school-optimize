@@ -258,18 +258,22 @@ export const resultsResponse = obj({
    * Where the persistence flag came from, in the list of each rule the stochastic test ran for, from that rule's own
    * experiment; null when the rule has none. Only the standard error and the number of standard errors the rule's
    * band spans are read: together they are the margin inside which a school counts as only just above the line. The
-   * draws, the threshold and the settings are read for the method details' words. The block adds a margin or a
-   * count to a sentence, so a change to it reads as absent instead of blanking the list.
+   * draws, the threshold and the settings are read for the method details' words, each on its own: one that is not
+   * the shape the page expects reads as absent and costs only its own words. The block adds a margin or a count to a
+   * sentence, so a change to it reads as absent instead of blanking the list.
    */
   persistence: tolerant(
     nullable(
       obj({
         standard_error: num,
         adjacency_standard_errors: optional(int),
-        /** How the test was drawn: the number of draws, the line a school must reach, and the settings drawn in. */
-        draws: optional(int),
-        threshold: optional(num),
-        settings: optional(list(obj({ top_level_concentration: num, school_need_concentration: num }))),
+        /**
+         * How the test was drawn: the number of draws, the line a school must reach, and the settings drawn in. Each
+         * only adds to a sentence, so one of another shape reads as absent by itself and leaves the margin standing.
+         */
+        draws: tolerant(int),
+        threshold: tolerant(num),
+        settings: tolerant(list(obj({ top_level_concentration: num, school_need_concentration: num }))),
       })
     )
   ),

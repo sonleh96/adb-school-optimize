@@ -24,11 +24,12 @@ import * as copy from "@/lib/screening/copy";
 import {
   marginFromResults,
   schoolFromDetail,
+  testFromResults,
   schoolsFromLists,
   standardErrorFromResults,
 } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
-import { schoolDetailResponse } from "@/lib/screening/types";
+import { resultsResponse, schoolDetailResponse } from "@/lib/screening/types";
 
 import { copy as clone, readFixture } from "../fixtures";
 import { KEYS, RULES, fixtureInputs, fixtureResults, listWithFlags, textProblems } from "./helpers";
@@ -80,6 +81,63 @@ describe("the margin of the persistence test", () => {
     // School 06 is adjacent under both; the revised test's band is two standard errors, so twice the margin.
     expect(say("Sample School 06", S)[1]).toBe(NEAR_WITH);
     expect(say("Sample School 06", S0)).toEqual([FLAG[S0], near("1.1")]);
+  });
+});
+
+describe("a persistence block with a field of another shape", () => {
+  // The margin is the one thing the near-line sentence needs; the fields that only word the method details must not
+  // take it away when they change shape. Each malformed field drops itself and nothing else.
+  const margin = 2 * 0.005656854249492379;
+  const withBlock = (change: (block: Record<string, unknown>) => void) => {
+    const body = clone(readFixture(`results/${S0}.json`)) as { persistence: Record<string, unknown> };
+    change(body.persistence);
+    return parseWith(resultsResponse, body, "results");
+  };
+
+  const set =
+    (key: string, value: unknown) =>
+    (block: Record<string, unknown>): void => {
+      block[key] = value;
+    };
+  it.each([
+    ["a fractional number of draws", set("draws", 4999.5), "draws"],
+    ["a threshold given as text", set("threshold", "0.8"), "threshold"],
+    [
+      "a setting whose concentration is text",
+      set("settings", [{ top_level_concentration: "20", school_need_concentration: 15 }]),
+      "settings",
+    ],
+    ["a setting that lacks a concentration", set("settings", [{ top_level_concentration: 20 }]), "settings"],
+    ["settings that are not a list", set("settings", "three"), "settings"],
+  ] as const)("keeps the margin when it has %s, and loses only that field", (_name, change, field) => {
+    const list = withBlock(change);
+    expect(marginFromResults(list)).toBeCloseTo(margin, 12);
+    expect(list.persistence).not.toHaveProperty(field);
+    // The near-line sentence still says its margin.
+    const l = lists.map((x) => (x.run.rule_id === S0 ? list : x));
+    const b = copy.bindCopy({ view: S0, inputs, lists: l }).copy;
+    const school = schoolsFromLists(inputs, l, S0).find((x) => x.name === "Sample School 06")!;
+    expect(b.persistenceNote(school, S0)).toEqual([FLAG[S0], near("1.1")]);
+    // The test is stated only when every field it needs is whole, so the method words say none.
+    expect(testFromResults(list)).toBeUndefined();
+  });
+
+  it("reads the other fields of a block whose one field changed shape, and a setting with extra keys whole", () => {
+    const list = withBlock((b) => {
+      b.draws = 2.5;
+      b.settings = [
+        { top_level_concentration: 20, school_need_concentration: 15, label: "extra", more: { a: 1 } },
+      ];
+    });
+    expect(list.persistence).toMatchObject({ threshold: 0.8, settings: [{ top_level_concentration: 20 }] });
+    expect(list.persistence).not.toHaveProperty("draws");
+    expect(marginFromResults(list)).toBeCloseTo(margin, 12);
+  });
+
+  it("still loses the whole block when the margin itself is not a number, so no margin is stated", () => {
+    const list = withBlock(set("standard_error", "small"));
+    expect(list.persistence).toBeUndefined();
+    expect(marginFromResults(list)).toBeUndefined();
   });
 });
 
