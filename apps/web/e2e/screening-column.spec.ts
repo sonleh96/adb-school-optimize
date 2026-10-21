@@ -47,7 +47,7 @@ const changed = (page: import("@playwright/test").Page) => page.locator("[data-r
 const search = (page: import("@playwright/test").Page) => new URL(page.url()).search;
 
 test("a pasted link reproduces the screen, and the URL follows every change", async ({ page }) => {
-  await openWorkspace(page, "?rule=additive_no_u&compare=additive_u&scope=1&guide=q1");
+  await openWorkspace(page, "?rule=additive_no_u&compare=additive_u&scope=1&guide=start");
 
   await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
@@ -61,11 +61,11 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
-  expect(search(page)).toBe("?rule=additive_no_u&scope=1&guide=q1");
+  expect(search(page)).toBe("?rule=additive_no_u&scope=1&guide=start");
 
   await tab(page, /Incomplete records/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
-  expect(search(page)).toBe("?rule=additive_no_u&view=queue&scope=1&guide=q1");
+  expect(search(page)).toBe("?rule=additive_no_u&view=queue&scope=1&guide=start");
 
   // The same link, opened again, is the same screen.
   await page.reload();

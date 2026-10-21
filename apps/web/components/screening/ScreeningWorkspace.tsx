@@ -23,6 +23,9 @@ import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
+import { GuidanceLayer, GuideMenu, HowLink } from "./guide/GuidanceLayer";
+import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
+import type { GuideData } from "./guide/types";
 import { Legend } from "./Legend";
 import type { TipContent } from "./MapTooltip";
 import { RuleArea, focusRuleControl } from "./RuleArea";
@@ -42,9 +45,12 @@ const NO_SCHOOLS: readonly MapSchool[] = [];
 export function ScreeningWorkspace() {
   return (
     <WorkspaceProvider>
-      <UnreadableData>
-        <Workspace />
-      </UnreadableData>
+      <GuidanceProvider>
+        <RailBoot />
+        <UnreadableData>
+          <Workspace />
+        </UnreadableData>
+      </GuidanceProvider>
     </WorkspaceProvider>
   );
 }
@@ -121,6 +127,12 @@ function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
     </div>
   );
 }
+
+/**
+ * What the guides can point at beside the list and the card: the incomplete records' Group by (`queue-missing`) is
+ * here; "Download the top list" (`export-button`) and the filter by what is missing arrive with the method details.
+ */
+const GUIDE_FEATURES = { export: false, grouping: true, filters: false } as const;
 
 /** The window's size. The server renders for the design's reference size; the browser corrects it before paint. */
 const SERVER_VIEWPORT = "1600x1000";
@@ -253,6 +265,12 @@ function CopyLink({
 
 function Workspace() {
   const root = useRef<HTMLDivElement>(null);
+  // The guidance layers read regions under the root, so they need the element itself, not a ref.
+  const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
+  const rootRef = useCallback((element: HTMLDivElement | null) => {
+    root.current = element;
+    setRootElement(element);
+  }, []);
   const list = useRef<HTMLDivElement>(null);
   const [layer, setLayer] = useState<HTMLDivElement | null>(null);
   const [toast, setToast] = useState<{ message: string; at: number } | null>(null);
@@ -298,7 +316,13 @@ function Workspace() {
 
   const viewport = useViewport();
   const cardOpen = selectedSchool !== null;
-  const layout = layoutOf({ width: viewport.width, height: viewport.height, cardOpen });
+  const guidance = useGuidanceFrame(viewport.width);
+  const layout = layoutOf({
+    width: viewport.width,
+    height: viewport.height,
+    cardOpen,
+    rail: guidance.rail ?? 0,
+  });
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
@@ -455,22 +479,45 @@ function Workspace() {
     <CopyLink copy={copy} disabled={!ready} onCopied={notify} compact={compact} />
   );
 
+  const guideData = useMemo(
+    (): GuideData => ({
+      copy,
+      shown,
+      ordered: ordered.map((row) => row.school.school_key),
+      ready,
+      proposed: !!data.rules?.some((r) => r.id === PROPOSED_RULE),
+      // Set each to true when the workspace shows the region the guide step points at.
+      features: GUIDE_FEATURES,
+      mode: layout.mode,
+      width: viewport.width,
+    }),
+    [copy, shown, ordered, ready, data.rules, layout.mode, viewport.width]
+  );
+
   return (
     <div
-      ref={root}
+      ref={rootRef}
       className={styles.root}
       data-testid="screening-workspace"
       data-layout={layout.mode}
       data-has-insp={cardOpen || undefined}
       data-card-docked={layout.docked || undefined}
       data-instant={keyboard || undefined}
+      data-gloss={guidance.glossary || undefined}
+      data-rail={(guidance.rail ?? 0) > 0 || undefined}
       aria-label={copy.LAYOUT.workspaceAria}
-      style={layout.band ? ({ "--band": `${layout.band}px` } as React.CSSProperties) : undefined}
+      style={
+        {
+          // Until the guidance store has read the URL, the boot script's width (in the stylesheet) stands.
+          ...(guidance.rail === null ? {} : { "--rail-w": `${guidance.rail}px` }),
+          ...(layout.band ? { "--band": `${layout.band}px` } : {}),
+        } as React.CSSProperties
+      }
       onKeyDown={(event) => {
         if (event.key === "Escape" && state.school !== null) clearSelection();
       }}
     >
-      <div className={styles.stage}>
+      <div className={styles.stage} data-slot="stage" inert={guidance.page}>
         <ScreeningMap
           load={loadMap}
           schools={mapSchools}
@@ -489,10 +536,20 @@ function Workspace() {
           attribution={copy.LAYOUT.attribution}
         />
 
-        <Masthead copy={copy} className={styles.topBar} actions={copyLink(true)} />
-        <div className={styles.actions}>{copyLink(false)}</div>
+        <Masthead
+          copy={copy}
+          className={styles.topBar}
+          actions={
+            <GuideMenu copy={copy} ready={ready}>
+              {copyLink(true)}
+            </GuideMenu>
+          }
+        />
+        <div className={styles.actions} data-region="actions">
+          {copyLink(false)}
+        </div>
 
-        {!cardOpen && ready ? (
+        {!cardOpen && ready && !guidance.glossary && !guidance.page ? (
           <p className={`${styles.panel} ${styles.slotHint}`} id="slot-hint" data-region="slot-hint">
             <MousePointerClick size={14} aria-hidden />
             <span>{state.view === "queue" ? copy.LAYOUT.rowHintQueue : copy.LAYOUT.workspaceHint}</span>
@@ -500,12 +557,13 @@ function Workspace() {
         ) : null}
 
         <section
+          data-slot="column"
           className={`${styles.panel} ${styles.column}`}
           aria-label={copy.LAYOUT.productName}
           inert={layout.docked}
           data-aside={layout.docked || undefined}
         >
-          <Masthead copy={copy} />
+          <Masthead copy={copy} actions={<HowLink copy={copy} />} />
 
           {firstLoad ? (
             <p className={styles.state} role="status">
@@ -624,7 +682,9 @@ function Workspace() {
                           <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
                           {/* The lead says none when there is no incomplete record; then there is nothing to group or
                               put in order. */}
-                          <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
+                          <p className={styles.queueLead} data-term="queue">
+                            {shown.copy.IDEAS.queue.short}
+                          </p>
                           {incomplete.length > 0 ? (
                             <>
                               <div className={styles.groupBy} data-region="queue-missing">
@@ -711,6 +771,7 @@ function Workspace() {
           />
         ) : null}
       </div>
+      <GuidanceLayer root={rootElement} data={guideData} />
       <div ref={setLayer} className={styles.layer} />
       <p className={styles.toast} role="status" aria-live="polite" data-on={toast ? "" : undefined}>
         {toast?.message}

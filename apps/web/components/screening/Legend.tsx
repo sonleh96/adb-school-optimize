@@ -55,7 +55,7 @@ export function Legend({
       data-stale={stale || undefined}
     >
       <div className={styles.legendTop}>
-        <p className={styles.legendTitle} data-testid="legend-rule">
+        <p className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
           {title}
         </p>
         {collapsed ? (
@@ -90,17 +90,17 @@ export function Legend({
           <ul className={styles.keys}>
             <li data-region="legend-point">
               <Mark kind="dot" />
-              <b>{TERMS.mark_dot.label}</b>
+              <b data-term="mark_dot">{TERMS.mark_dot.label}</b>
               <span>{TERMS.mark_dot.line}</span>
             </li>
             <li data-region="legend-range">
               <Mark kind="range" />
-              <b>{TERMS.mark_range.label}</b>
+              <b data-term="mark_range">{TERMS.mark_range.label}</b>
               <span>{TERMS.mark_range.line}</span>
             </li>
             <li data-region="legend-queue">
               <Mark kind="ring" />
-              <b>{TERMS.mark_ring.label}</b>
+              <b data-term="mark_ring">{TERMS.mark_ring.label}</b>
               <span>{TERMS.mark_ring.line}</span>
             </li>
           </ul>
