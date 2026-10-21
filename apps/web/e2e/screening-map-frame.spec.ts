@@ -8,7 +8,9 @@
  *     out of view                                                        -> "a second pick made mid-pan..."
  *  4. With a list of over 700 schools the dots stop drawing, the key's bands do not come from the data, or the
  *     console reports a problem (R12)                                    -> "a list of over 700 schools..."
- *  5. The place numbers paint over the column when the map moves them beneath it -> "the column covers a place number..."
+ *  5. Opening the guide rail narrows the map without framing it again, or a school's pan overrides that framing, so
+ *     schools, the selected one among them, sit under the rail, the column or the card -> "with the rail and a pick..."
+ *  6. The place numbers paint over the column when the map moves them beneath it -> "the column covers a place number..."
  */
 import type { Page, Route } from "@playwright/test";
 
@@ -170,6 +172,92 @@ test.describe("at 1600 by 1000", () => {
     expect(point.y).toBeLessThan(clear.bottom);
   });
 });
+
+/* ---------- the guide rail and a pick, in either order ---------- */
+
+/** The schools whose marks sit outside the part of the map that no panel, the key or the caveat covers. */
+async function outsideClear(page: Page, keys: readonly string[]) {
+  return page.evaluate((keys) => {
+    const box = (selector: string) => {
+      const el = document.querySelector(selector);
+      if (!el || getComputedStyle(el).visibility === "hidden") return null;
+      const r = el.getBoundingClientRect();
+      return r.width && r.height ? r : null;
+    };
+    const map = box("[data-testid=screening-map]")!;
+    const column = box("section[data-slot=column]:not([data-aside])");
+    const card = box("[data-slot=school-card]");
+    const key = box("[data-slot=legend]");
+    const caveat = box("[data-region=caveat]");
+    const clear = {
+      left: Math.max(map.left, column?.right ?? -Infinity),
+      right: Math.min(map.right, card?.left ?? Infinity),
+      top: map.top,
+      bottom: Math.min(map.bottom, key?.top ?? Infinity, caveat?.top ?? Infinity),
+    };
+    return keys.flatMap((key) => {
+      const p = window.__screeningMapTest?.project(key as never);
+      if (!p) return [`${key} is not on the map`];
+      const inside = p.x > clear.left && p.x < clear.right && p.y > clear.top && p.y < clear.bottom;
+      return inside ? [] : [`${key} at (${Math.round(p.x)}, ${Math.round(p.y)})`];
+    });
+  }, keys);
+}
+
+const MAPPED = rowsOf("additive_u")
+  .filter((r) => r.school.latitude !== null && r.school.longitude !== null)
+  .map((r) => r.school.school_key);
+
+/** The ordered school whose mark lies furthest right on the first view: the card will open over that side. */
+async function rightmost(page: Page) {
+  let best: { name: string; key: string; x: number } | null = null;
+  for (const row of rowsOf("additive_u").filter((r) => r.cohort !== "verification_queue")) {
+    const at = await markAt(page, row.school.school_key);
+    if (at && (!best || at.x > best.x))
+      best = { name: row.school.source_school_name, key: row.school.school_key, x: at.x };
+  }
+  return best!;
+}
+
+const openRail = (page: Page) => page.getByRole("toolbar").getByRole("button", { name: "Guides" }).click();
+
+for (const size of [
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+]) {
+  test.describe(`with the rail and a pick at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    for (const order of ["rail then pick", "pick then rail"] as const) {
+      test(`with the rail and a pick at ${size.width} by ${size.height}, ${order}, every school and the selected one sit in the clear part of the map`, async ({
+        page,
+      }) => {
+        await page.goto("/screening");
+        await waitForMap(page);
+        await settled(page);
+        const school = await rightmost(page);
+        const pick = () => orderedRow(page, school.name).first().click();
+        if (order === "rail then pick") {
+          await openRail(page);
+          await expect(page.getByTestId("guide-rail")).toBeVisible();
+          await settled(page);
+          await pick();
+        } else {
+          await pick();
+          await settledMark(page, school.key);
+          await settled(page);
+          await openRail(page);
+          await expect(page.getByTestId("guide-rail")).toBeVisible();
+        }
+        await expect(page.locator("[data-slot=school-card]")).toBeVisible();
+        await settledMark(page, school.key);
+        await settled(page);
+        expect(await outsideClear(page, [school.key])).toEqual([]);
+        expect(await outsideClear(page, MAPPED)).toEqual([]);
+      });
+    }
+  });
+}
 
 /* ---------- the place numbers stay under the panels ---------- */
 
