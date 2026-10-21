@@ -64,6 +64,8 @@ export interface WorkspaceState {
   readonly k: FullRows;
   /** The export sheet is open. */
   readonly panel: "export" | null;
+  /** The export sheet shows its Saved views for meetings tab. Only while the sheet is open. */
+  readonly pack: boolean;
   readonly n: TopLength;
   /** The method details' filters: they hide rows and dim marks, and never renumber a place. */
   readonly prov: string | null;
@@ -96,6 +98,7 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   mode: "screen",
   k: 20,
   panel: null,
+  pack: false,
   n: 20,
   prov: null,
   loc: null,
@@ -220,6 +223,7 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
   parts: flag,
   hide: hideKey,
   panel: { parse: oneOf("export"), write: (value) => value },
+  pack: flag,
   n: lengthKey<TopLength>(20, 10, 20, 30),
   school: schoolKey,
   hover: schoolKey,
@@ -267,6 +271,8 @@ function normalise(state: WorkspaceState, known: Known): WorkspaceState {
     }
   } else if (next.pop === "pickA" || next.pop === "pickB") next = { ...next, pop: null };
   if (!next.analyst && next.pop !== null && next.pop !== "rules") next = { ...next, pop: null };
+  // The saved views tab belongs to the sheet: closing the sheet closes the tab, so the next one opens on the top list.
+  if (next.pack && next.panel === null) next = { ...next, pack: false };
   // The method details' own keys hold nothing on a plain screen: a pasted plain link that carries them, and turning
   // the method details off, both leave them at their defaults, so no filter a plain user cannot see stays in force.
   if (!next.analyst && METHOD_ONLY.some((key) => !same(key, next[key], DEFAULT_STATE[key])))

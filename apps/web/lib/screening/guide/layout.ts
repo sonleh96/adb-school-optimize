@@ -24,7 +24,7 @@ export function railWidth(width: number, open: boolean, presenting: boolean): nu
  */
 export function railBootScript(): string {
   const ids = JSON.stringify(GUIDE_IDS);
-  return `(function(){try{var w=innerWidth;if(w<${BREAKPOINTS.compact})return;var p=new URLSearchParams(location.search),g=p.get("guide"),step=${ids}.indexOf(g)>=0,seen=false;try{var m=JSON.parse(localStorage.getItem(${JSON.stringify(MEMORY_KEY)})||"null");seen=!!m&&m.seen===true}catch(e){}var open=g==="off"?false:g==="start"||step?true:!seen;if(!open)return;var wide=w>=${WIDE_RAIL_FROM},r=step&&p.get("present")==="1"?(wide?400:360):(wide?312:288);document.documentElement.style.setProperty("--boot-rail",r+"px")}catch(e){}})();`;
+  return `(function(){try{var w=innerWidth;if(w<${BREAKPOINTS.compact})return;var p=new URLSearchParams(location.search),g=p.get("guide"),step=${ids}.indexOf(g)>=0||g==="views"&&/^[0-9a-z]{1,12}$/.test(p.get("gview")||""),seen=false;try{var m=JSON.parse(localStorage.getItem(${JSON.stringify(MEMORY_KEY)})||"null");seen=!!m&&m.seen===true}catch(e){}var open=g==="off"?false:g==="start"||g==="views"||step?true:!seen;if(!open)return;var wide=w>=${WIDE_RAIL_FROM},r=step&&p.get("present")==="1"?(wide?400:360):(wide?312:288);document.documentElement.style.setProperty("--boot-rail",r+"px")}catch(e){}})();`;
 }
 
 /** Presentation mode needs the room of a desktop window. */

@@ -4,8 +4,8 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 
-import { type BoundCopy, type CopyRuleId, type ListedSchool, isName } from "@/lib/screening/copy";
-import { capitalise } from "@/lib/screening/copy/format";
+import { type BoundCopy, type CopyRuleId, type CopySchool, isName } from "@/lib/screening/copy";
+import { sourceValue } from "./source";
 import type { Method } from "@/lib/screening/copy/method";
 import { recordText, saveFile, useTopList } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
@@ -14,6 +14,8 @@ import type { RuleId } from "@/lib/screening/types";
 import type { TopLength } from "@/lib/screening/workspace/state";
 
 import { RuleSymbol } from "../RuleArea";
+import { usePackSheet } from "../views/PackSheet";
+import { SheetTabs } from "../views/SheetTabs";
 import base from "../screening.module.css";
 import styles from "./export.module.css";
 
@@ -34,21 +36,15 @@ export interface ExportSheetProps {
    */
   filters: { prov: string | null; loc: string | null };
   /** The schools of the list on screen, so a name shows in the one display form (R17). */
-  schools: ReadonlyMap<string, ListedSchool>;
+  schools: ReadonlyMap<string, CopySchool>;
   layer: HTMLElement | null;
   instant: boolean;
+  /** The Saved views for meetings tab shows, not the top list. */
+  pack: boolean;
+  onTab: (pack: boolean) => void;
   onLength: (n: TopLength) => void;
   onClose: () => void;
   onNotify: (message: string) => void;
-}
-
-/**
- * The source for a record row, whose label already says "Source". The copy's source line names itself ("Source: the
- * research paper ..."), so its own lead is left out here and the label is said once.
- */
-function sourceValue({ TERMS, STRINGS }: BoundCopy): string {
-  const lead = `${TERMS.source.label}: `;
-  return capitalise(STRINGS.source.startsWith(lead) ? STRINGS.source.slice(lead.length) : STRINGS.source);
 }
 
 /**
@@ -60,7 +56,8 @@ export function ExportSheet(props: ExportSheetProps) {
   const { copy, method, rule, n, schools, layer, onNotify } = props;
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
   const plain = method === null;
-  const read = useTopList(rule as RuleId, n, plain ? null : props.filters.prov, true);
+  const read = useTopList(rule as RuleId, n, plain ? null : props.filters.prov, !props.pack);
+  const pack = usePackSheet({ copy, method, schools, enabled: props.pack, onNotify });
   const closeButton = useRef<HTMLButtonElement>(null);
   const file = read.data ?? null;
   const list = file?.list ?? null;
@@ -403,7 +400,7 @@ export function ExportSheet(props: ExportSheetProps) {
         >
           <div className={styles.scroll}>
             <div className={styles.top}>
-              <span className={base.eyebrow}>{TERMS.shortlist.label}</span>
+              <SheetTabs copy={copy} pack={props.pack} onTab={props.onTab} />
               <Dialog.Close asChild>
                 <button
                   ref={closeButton}
@@ -417,37 +414,47 @@ export function ExportSheet(props: ExportSheetProps) {
               </Dialog.Close>
             </div>
             <Dialog.Title className={styles.title}>
-              {plain
-                ? LAYOUT.listTitle(n, copy.ruleName(rule))
-                : method.segments
-                    .sheetTitle(n, copy.ruleShortName(rule))
-                    .map((part, index) =>
-                      isName(part) ? <em key={index}>{part.name}</em> : <span key={index}>{part}</span>
-                    )}
+              {props.pack
+                ? pack.title
+                : plain
+                  ? LAYOUT.listTitle(n, copy.ruleName(rule))
+                  : method.segments
+                      .sheetTitle(n, copy.ruleShortName(rule))
+                      .map((part, index) =>
+                        isName(part) ? <em key={index}>{part.name}</em> : <span key={index}>{part}</span>
+                      )}
             </Dialog.Title>
             <Dialog.Description id="screening-export-lede" className={styles.lede}>
-              {plain
-                ? `${TERMS.shortlist.line} ${TERMS.shortlist.help}`
-                : `${method.sheet.lede(n, copy.ruleName(rule), hasRanges)}${
-                    props.comparedWith ? method.sheet.ledeCompare(copy.ruleName(props.comparedWith)) : ""
-                  }`}
+              {props.pack
+                ? pack.lede
+                : plain
+                  ? `${TERMS.shortlist.line} ${TERMS.shortlist.help}`
+                  : `${method.sheet.lede(n, copy.ruleName(rule), hasRanges)}${
+                      props.comparedWith ? method.sheet.ledeCompare(copy.ruleName(props.comparedWith)) : ""
+                    }`}
             </Dialog.Description>
-            {body}
+            {props.pack ? pack.body : body}
           </div>
           <div className={styles.foot}>
-            <button
-              type="button"
-              className={styles.quietButton}
-              disabled={!file}
-              onClick={() => void copyRecord()}
-            >
-              {LAYOUT.copyRecord}
-            </button>
-            {plain ? null : <span className={styles.hint}>{TERMS.manifest.line}</span>}
-            <span className={styles.spacer} />
-            <button type="button" className={styles.primary} disabled={!file} onClick={download}>
-              {TERMS.export.label}
-            </button>
+            {props.pack ? (
+              pack.foot
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={styles.quietButton}
+                  disabled={!file}
+                  onClick={() => void copyRecord()}
+                >
+                  {LAYOUT.copyRecord}
+                </button>
+                {plain ? null : <span className={styles.hint}>{TERMS.manifest.line}</span>}
+                <span className={styles.spacer} />
+                <button type="button" className={styles.primary} disabled={!file} onClick={download}>
+                  {TERMS.export.label}
+                </button>
+              </>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

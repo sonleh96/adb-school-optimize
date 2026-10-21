@@ -17,7 +17,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { INITIAL_STATE, EMPTY_MEMORY } from "@/lib/screening/guide/machine";
+import { INITIAL_STATE, EMPTY_MEMORY, isStepping } from "@/lib/screening/guide/machine";
 import { railBootScript, railWidth } from "@/lib/screening/guide/layout";
 import { type LayerSnapshot, type LayerStore, createLayerStore } from "@/lib/screening/guide/store";
 
@@ -43,6 +43,7 @@ const SERVER_SNAPSHOT: LayerSnapshot = {
   state: INITIAL_STATE,
   memory: EMPTY_MEMORY,
   catalog: null,
+  views: null,
   attached: false,
 };
 
@@ -102,7 +103,7 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
       if (typing(event.target)) return;
       // Page Down and Page Up step a guide, unless How this works or the glossary is open: they scroll those.
       const reading = state.page !== null || state.gloss.open;
-      if ((event.key === "PageDown" || event.key === "PageUp") && state.rail.kind === "step" && !reading) {
+      if ((event.key === "PageDown" || event.key === "PageUp") && isStepping(state.rail) && !reading) {
         take();
         store.dispatch({ type: event.key === "PageDown" ? "pageDown" : "pageUp" });
         return;
@@ -174,7 +175,7 @@ export function useGuidanceFrame(width: number): GuidanceFrame {
   const railOpen = state.rail.kind !== "off";
   const { attached } = useLayers();
   return {
-    rail: attached ? railWidth(width, railOpen, state.present && state.rail.kind === "step") : null,
+    rail: attached ? railWidth(width, railOpen, state.present && isStepping(state.rail)) : null,
     railOpen,
     page: state.page !== null,
     glossary: state.gloss.open,

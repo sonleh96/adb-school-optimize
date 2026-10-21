@@ -12,6 +12,8 @@
  *     plain screen, from a pasted link or after the method details are turned off: a filter nobody can see.
  * 10. A guide step reads as moved on the moment it lands: a method key's starting value is not the value the state
  *     then holds, so the rail offers to go back to a step the screen is already on.
+ * 11. The export sheet's Saved views tab (`pack`) stays chosen with the sheet closed, so the next "Download the top
+ *     list" opens on the saved views, or a link to the tab without the sheet carries a key that shows nothing.
  */
 import { describe, expect, it } from "vitest";
 
@@ -172,5 +174,15 @@ describe("a guide step's starting state (10)", () => {
     const left = STEP_KEYS.filter((key) => key !== "rule" && BASE[key] !== landed[key]);
     expect(left).toEqual([]);
     expect(landed).toEqual(DEFAULT_STATE);
+  });
+});
+
+describe("the export sheet's saved views tab", () => {
+  it("holds only while the sheet is open, from a link or a change (11)", () => {
+    expect(stateFromSearch("?panel=export&pack=1", loaded)).toMatchObject({ panel: "export", pack: true });
+    expect(stateFromSearch("?pack=1", loaded).pack).toBe(false);
+    const open = applyPatch(DEFAULT_STATE, { panel: "export", pack: true }, loaded);
+    expect(applyPatch(open, { panel: null }, loaded).pack).toBe(false);
+    expect(searchWithState("", open)).toBe("?panel=export&pack=1");
   });
 });

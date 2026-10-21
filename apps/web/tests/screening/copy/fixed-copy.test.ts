@@ -117,6 +117,8 @@ describe("every fixed string follows the writing rules", () => {
       tipNotComputed: ["Need first"],
       savedToast: [3],
       removeView: ["Top of the list"],
+      viewsFull: [50],
+      viewPartMissing: [["rule", "school", "hover"]],
     };
     const LAYOUT_SENTENCES = new Set([
       "workspaceHint",
@@ -133,6 +135,9 @@ describe("every fixed string follows the writing rules", () => {
       "loadFailed",
       "availableAfterLoad",
       "fileNotByRemoteness",
+      "noViews",
+      "viewsFull",
+      "viewPartMissing",
       "mapKeyboard",
       "basemapUnavailable",
       "refreshFailed",

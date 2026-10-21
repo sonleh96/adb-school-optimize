@@ -14,6 +14,12 @@
  * 10. Malformed local storage breaks the page instead of reading as a first visit.
  * 11. The card and the glossary drawer show together, or leaving help mode leaves its card open.
  * 12. "Show this step again" does not ask the screen to be set again from the guide's own school.
+ * 13. Saved views do not step like a guide's steps: Next, Back, Page Down and Page Up do not move one view, they run
+ *     into the guides, or the last view does not close the rail as the last guide does.
+ * 14. Presentation mode beside the saved views does not start at view 1 presenting, or a saved view cannot present.
+ * 15. A link to a saved view names its place in the sender's list, so a colleague's list opens another screen; a link
+ *     to a view the reader does not have shows someone else's view instead of the start.
+ * 16. Opening a saved view forgets where an unfinished guide was left.
  */
 import { describe, expect, it } from "vitest";
 
@@ -26,6 +32,7 @@ import {
   parseMemory,
   reduce,
   revalidate,
+  revalidateViews,
   searchWithLayers,
   seenCount,
   stateFromSearch,
@@ -216,5 +223,83 @@ describe("help mode and the glossary", () => {
     const card = run(drawer, { type: "card", id: "rule:benchmark" });
     expect(card.state.gloss.open).toBe(false);
     expect(run(card, { type: "help", on: false }).state).toMatchObject({ help: false, card: null });
+  });
+});
+
+describe("saved views for meetings", () => {
+  // Each view is named by what it is, not by its place, so a link names the same view in any list.
+  const IDS = ["top1", "urg2", "rng3", "que4"];
+  const runViews = (model: Model, ...events: LayerEvent[]) =>
+    events.reduce((m, e) => reduce(m, e, CATALOG, IDS), model);
+  const onView = (id: string, present = false): Model => ({
+    state: { ...INITIAL_STATE, rail: { kind: "view", id }, present },
+    memory: { seen: true, done: ["q1"], last: { guide: "q2", step: 2 } },
+  });
+
+  it("steps one view at a time on Next and Page Down, and closes after the last one", () => {
+    expect(runViews(onView("urg2"), { type: "next" }).state.rail).toEqual({ kind: "view", id: "rng3" });
+    expect(runViews(onView("rng3"), { type: "pageDown" }).state.rail).toEqual({ kind: "view", id: "que4" });
+    const after = runViews(onView("que4", true), { type: "pageDown" });
+    expect(after.state).toMatchObject({ rail: { kind: "off" }, present: false });
+  });
+
+  it("steps back on Back and Page Up, and never crosses into the guides, presenting or not", () => {
+    expect(runViews(onView("rng3"), { type: "back" }).state.rail).toEqual({ kind: "view", id: "urg2" });
+    expect(runViews(onView("top1", true), { type: "pageUp" }).state.rail).toEqual({
+      kind: "view",
+      id: "top1",
+    });
+    expect(runViews(onView("top1", true), { type: "back" }).state.rail).toEqual({ kind: "view", id: "top1" });
+  });
+
+  it("starts Presentation mode at the first view presenting, and lets a view present like a step", () => {
+    const fromStart = runViews(
+      { ...start, state: { ...INITIAL_STATE, rail: { kind: "start" } } },
+      { type: "openView", id: "top1", present: true }
+    );
+    expect(fromStart.state).toMatchObject({ rail: { kind: "view", id: "top1" }, present: true });
+    expect(fromStart.state.apply.seq).toBe(1);
+    expect(runViews(onView("urg2"), { type: "present", on: true }).state.present).toBe(true);
+    expect(runViews(onView("urg2", true), { type: "allGuides" }).state).toMatchObject({
+      rail: { kind: "start" },
+      present: false,
+    });
+  });
+
+  it("asks the screen to be set again on each view, and on Show this step again", () => {
+    const next = runViews(onView("top1"), { type: "next" });
+    expect(next.state.apply.seq).toBe(1);
+    expect(runViews(next, { type: "restore" }).state.apply.seq).toBe(2);
+  });
+
+  it("keeps where an unfinished guide was left, and counts no guide as seen", () => {
+    const after = runViews(onView("top1"), { type: "next" }, { type: "skip" });
+    expect(after.memory).toEqual({ seen: true, done: ["q1"], last: { guide: "q2", step: 2 } });
+  });
+
+  it("does not open a view the list does not hold, and waits for the views to be known before stepping", () => {
+    expect(runViews(onView("urg2"), { type: "openView", id: "zzz9" }).state.rail).toEqual({
+      kind: "view",
+      id: "urg2",
+    });
+    expect(reduce(onView("urg2"), { type: "next" }, CATALOG, null).state.rail).toEqual({
+      kind: "view",
+      id: "urg2",
+    });
+  });
+
+  it("reads and writes a link that names the view, and opens the start for a view the reader does not have", () => {
+    const state = stateFromSearch("?guide=views&gview=rng3&present=1", EMPTY_MEMORY);
+    expect(state).toMatchObject({ rail: { kind: "view", id: "rng3" }, present: true });
+    expect(searchWithLayers("?rule=x", state)).toBe("?rule=x&guide=views&gview=rng3&present=1");
+    expect(revalidateViews(state, IDS)).toBe(state);
+    // Another person's list: the link's own screen stays, and the rail shows the start rather than another view.
+    expect(revalidateViews(state, ["top1", "abc5"])).toMatchObject({
+      rail: { kind: "start" },
+      present: false,
+    });
+    // A link that names no view, or not in the form a view's name takes, is the start.
+    expect(stateFromSearch("?guide=views&gstep=3", EMPTY_MEMORY).rail).toEqual({ kind: "start" });
+    expect(stateFromSearch("?guide=views&gview=%3Cb%3E", EMPTY_MEMORY).rail).toEqual({ kind: "start" });
   });
 });
