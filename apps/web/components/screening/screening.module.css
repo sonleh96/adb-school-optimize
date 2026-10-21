@@ -913,6 +913,25 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   box-shadow: none;
 }
 
+/* Sign out is a quiet text action beside the others: no border, fill or shadow, so Copy link stays the one button. */
+.quietAction {
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .quietAction:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+}
+
 /* ---------- the empty card slot says how to fill it ---------- */
 .slotHint {
   position: absolute;

@@ -161,6 +161,7 @@ describe("the workspace's words for the map, a stale list and an ended session",
     ])
       expect(textProblems(t), t).toEqual([]);
     expect(textProblems(LAYOUT.signIn, { sentence: false })).toEqual([]);
+    expect(textProblems(LAYOUT.signOut, { sentence: false })).toEqual([]);
     expect(existsSync(path.resolve(__dirname, "../../../components/screening/copy.ts"))).toBe(false);
   });
 });
