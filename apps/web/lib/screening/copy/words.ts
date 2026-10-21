@@ -1,5 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
+import { lowerFirst } from "./format";
 import { RULE_IDS } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
@@ -47,6 +48,8 @@ export const LAYOUT = Object.freeze({
   recordSays: "What the record says",
   numbers: "In numbers",
   adds: "What each input adds",
+  // A row of that table, named for what it is: the part of the screening score an input gives, not the input's own value.
+  addedBy: (label: string) => `Added by ${lowerFirst(label)}`,
   needParts: "Parts of school need",
   byProvince: "Province",
   /** The heading of the group of incomplete records whose province is blank. */

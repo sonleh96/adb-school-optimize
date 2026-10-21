@@ -80,6 +80,11 @@ test("a complete school's card states one place, its reasons with the school nee
 
   const numbers = card(page).locator("[data-region=inspector-breakdown]");
   await expect(numbers).toContainText("Screening score0.683");
+  // School need's own value and its share of the score never share a label: "School need" names the value in the
+  // need box, and the table names the share for what it is.
+  await expect(card(page).getByText("School need", { exact: true })).toHaveCount(1);
+  await expect(numbers.locator("[class*=numHead]")).toContainText("Added by school need");
+  await expect(numbers.locator("[class*=numLabel]").filter({ hasText: /^School need$/ })).toHaveCount(0);
   await expect(numbers.locator("[data-region=score-note]")).toHaveText(
     "Each input runs from 0 to 1; higher means more reason to look."
   );

@@ -39,6 +39,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.valueRange": [["0.487", "0.537"]],
   "LAYOUT.underRule": [["Place in the list", "the combined-factors rule with urgency (S)"]],
   "LAYOUT.groupMany": [[2], [5]],
+  "LAYOUT.addedBy": [["School need"], ["Air quality"]],
   "LAYOUT.tooltipMissing": [["classroom count blank, power source blank"]],
   "LAYOUT.tipNotComputed": [["Need first"]],
   "LAYOUT.savedToast": [[3]],
