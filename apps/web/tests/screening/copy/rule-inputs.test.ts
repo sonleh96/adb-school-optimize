@@ -92,7 +92,7 @@ describe("a school with a missing reading, under the benchmark", () => {
   it("does not have all of its inputs recorded, and still names the reading that is missing", () => {
     expect(P.missingSentences(s17, "benchmark")).toEqual([
       "All of the inputs this rule uses are recorded.",
-      "Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not read it.",
+      "Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not use it.",
     ]);
     expect(P.missingSentence(s17, "benchmark")).not.toMatch(/all of its inputs/i);
   });
