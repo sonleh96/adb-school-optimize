@@ -296,7 +296,15 @@ def _json(
     package_version: Text | None = None,
     version: store.InputVersion | None = None,
     immutable_when_pinned: bool = False,
+    depends_on_links: bool = False,
 ) -> Response:
+    """A JSON response with the headers every screening route sends.
+
+    Naming the input version and the package version asks for one stored run, which never changes, so the response is
+    cached as immutable. A route whose body is built from the links to ``schools`` is the exception
+    (``depends_on_links``): a later load that links more schools, or a reload of ``schools``, changes it, so it is never
+    immutable, and a named input version gets the pinned lifetime like any other read of that version.
+    """
     headers = (
         {}
         if version is None
@@ -305,7 +313,11 @@ def _json(
             "X-Screening-Input-Sha256": version.input_sha256,
         }
     )
-    if input_version is not None and (package_version is not None or immutable_when_pinned):
+    if (
+        input_version is not None
+        and not depends_on_links
+        and (package_version is not None or immutable_when_pinned)
+    ):
         cache_control = SCREENING_IMMUTABLE_CACHE_CONTROL
     elif input_version is not None:
         cache_control = SCREENING_PINNED_CACHE_CONTROL
@@ -566,8 +578,14 @@ def get_schools_by_link(
     body = LinkedSchoolsResponse(
         school_id=school_id, input_version=name, input_sha256=version.version.input_sha256, schools=details
     )
+    # Which schools this id links to is not part of a stored run: it follows ``schools``, which a reload changes.
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 

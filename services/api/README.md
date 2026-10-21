@@ -105,7 +105,7 @@ Reading the list:
 - `display_order` is the row's place in the full unfiltered display, counting interval and queued schools. It is not a rank: it differs from the point rank wherever an interval school sits above a complete one, and it must not be quoted as a rank.
 - The default input version is the newest one. For each rule the current run is the one with the highest engine package version, not the latest stored. Every read accepts `package_version` to pin a run.
 - Cache policy: no `input_version` gives `private, max-age=60`; an `input_version` alone gives `max-age=300`; an `input_version` with a `package_version` names one stored run and is sent as `immutable`. `/inputs` holds nothing that depends on `schools`, so naming the `input_version` alone makes it `immutable`. Every JSON response has a weak `ETag` and answers `If-None-Match` with 304.
-- The links to the `schools` table (`school_id`, coordinates) are the one part of a stored run that a later `load_screening_inputs` run may change. Do not keep an immutable response across such a run.
+- The links to the `schools` table (`school_id`, coordinates) are the one part of a stored run that a later `load_screening_inputs` run may change. Do not keep an immutable response across such a run. `GET /schools/{school_id}` is built from those links alone, so it is never sent as `immutable`: with an `input_version` it gets the `max-age=300` lifetime, with or without a `package_version`. The other routes carry the identity of each school (`school_id`, coordinates) and are still sent as `immutable` when both versions are named; that is a known gap, not a promise.
 
 Exports:
 

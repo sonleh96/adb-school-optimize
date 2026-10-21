@@ -42,6 +42,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, one input version shows the flag of another, or one rule shows the flag of the other rule's experiment. |
 | API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but `additive_u` and `additive_no_u`, or inside the school's inputs. |
 | API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or results response omits the source file hash, the experiment, the draws, the settings, the threshold or the rule's own limitation, gives one rule the other's limitation, or `/rules` does not say which experiment backs each rule. |
+| API38 | The route by link is cached as immutable. | `GET /schools/{school_id}` with an input version and a package version is sent as `immutable`, so a client keeps it across a reload of `schools` that changes which schools the id links to. |
 | API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
 
 ## Test map
@@ -133,6 +134,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record` | API17, API34 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
 | `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
+| `test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change` | API38 |
 | `test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error` | API36 |
 | `test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors` | API36 |
 | `test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only` | API36, API34 |
