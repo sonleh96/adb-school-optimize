@@ -80,15 +80,41 @@ export function ExportSheet(props: ExportSheetProps) {
         ? copy.ordinal(row.best)
         : LAYOUT.placeRange(copy.ordinal(row.best), copy.ordinal(row.worst));
 
+  // The file is the API's in both layers: its method record is what lets someone rebuild the list. What the plain
+  // sheet names and copies is in plain words; the method sheet keeps the API's name and the technical record.
+  const title = LAYOUT.listTitle(n, copy.ruleName(rule));
+  const plainRecord = () =>
+    [
+      title,
+      ...(
+        [
+          [TERMS.rule.label, copy.ruleLabel(rule)],
+          [TERMS.rule_roles.label, copy.ruleRoleLine(rule)],
+          [LAYOUT.shares, copy.ruleExplanation(rule)],
+          [bare(TERMS.urgency.label), copy.urgencyNote(rule)],
+          [TERMS.rank.label, copy.groupsSentence(rule)],
+          [bare(TERMS.queue.label), STRINGS.queueIntro],
+          [TERMS.tie_rule.label, TERMS.tie_rule.line],
+          [TERMS.source.label, STRINGS.source],
+        ] as const
+      ).map(([label, value]) => `${label}: ${value}`),
+      STRINGS.caveat,
+    ].join("\n");
+  // The plain file name is the sheet's own title, without the characters a file name cannot hold. A pattern of its
+  // own is a copy request.
+  const plainName = `${title
+    .replace(/[\\/:*?"<>|]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()}.csv`;
   const download = () => {
     if (!file) return;
-    saveFile(file.text, file.name ?? `${rule}.csv`, file.type);
+    saveFile(file.text, plain ? plainName : (file.name ?? `${rule}.csv`), file.type);
     onNotify(LAYOUT.afterDownloadList);
   };
   const copyRecord = async () => {
     if (!file) return;
     try {
-      await navigator.clipboard.writeText(recordText(file.file));
+      await navigator.clipboard.writeText(plain ? plainRecord() : recordText(file.file));
       onNotify(LAYOUT.recordCopied);
     } catch {
       onNotify(LAYOUT.copyNotDone);

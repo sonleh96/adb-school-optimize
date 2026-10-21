@@ -12,6 +12,7 @@
  *                                                                                              -> "with no schools...", "a failed read..."
  *  8. The file ignores the province filter on screen and the sheet says no filter is set; a filter the file cannot
  *     follow (remoteness) goes unmentioned                                                    -> "the method sheet follows..."
+ *  9. The plain sheet copies or names its file in method words (a rule id, a hash, a formula)  -> "the plain sheet copies..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -62,7 +63,9 @@ test("the sheet previews the API's file and downloads that file byte for byte", 
     page.waitForEvent("download"),
     sheet(page).getByRole("button", { name: "Download the top list" }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_u.csv");
+  // The plain sheet names the file in plain words; the bytes are still the API's file.
+  expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  expect(download.suggestedFilename()).not.toMatch(/additive_u|rise_png|_/);
   const saved = readFileSync((await download.path())!);
   expect(saved.equals(file("exports/top_additive_u_20.csv"))).toBe(true);
   await expect(page.getByRole("status").filter({ hasText: "Downloaded the top list" })).toHaveText(
@@ -83,9 +86,9 @@ test("the length changes the list, the file and the link", async ({ page }) => {
   expect(search(page)).toBe("?panel=export&n=10");
 });
 
-test("Copy the method record copies the file's own record", async ({ page, context }) => {
+test("Copy the method record in the method sheet copies the file's own record", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await openWithSheet(page, "?panel=export");
+  await openWithSheet(page, "?panel=export&analyst=1");
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Method record copied" })).toBeVisible();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
@@ -241,4 +244,28 @@ test("the method sheet follows the province on screen, and says when a filter is
   const filters = sheet(page).locator("[data-region=export-filters]");
   await expect(filters).not.toContainText("None.");
   await expect(filters.locator("[data-filter-not-applied]")).toContainText("Remote");
+});
+
+test("the plain sheet copies its record in plain words, and the method sheet keeps the API's record and name", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await openWithSheet(page, "?panel=export");
+  await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
+  const plain = await page.evaluate(() => navigator.clipboard.readText());
+  expect(plain).toContain("Combined factors, with urgency");
+  for (const word of ["additive_u", "sha256", "formula", "run_id", "S = 0.60N"])
+    expect(plain, `plain record carries "${word}"`).not.toContain(word);
+
+  await page.goto("/screening?analyst=1&panel=export");
+  await waitForMap(page);
+  await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
+  await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("rule_id: additive_u");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    sheet(page).getByRole("button", { name: "Download the top list" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_u.csv");
 });
