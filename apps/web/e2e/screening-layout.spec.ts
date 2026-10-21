@@ -11,6 +11,8 @@
  *     does nothing                                               -> "a card that steps the list aside takes focus..."
  *  7. At 200 percent zoom the open key runs under the top bar, hiding its title and the toggle that closes it
  *     -> "the open key stays inside the map band..."
+ *  8. On a phone a rule's label in the switch wraps to a third line, pushing the list down, or spills out of its
+ *     button or the switch                                       -> "on a phone each label in the rule switch..."
  */
 import type { Page } from "@playwright/test";
 
@@ -105,6 +107,48 @@ for (const size of SIZES) {
       await waitForMap(page);
       await expect(page.locator("[data-slot=school-card] [data-region=inspector-why]")).toBeVisible();
       await expectSound(page, size.minMap);
+    });
+  });
+}
+
+for (const size of [
+  { width: 360, height: 740 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test(`on a phone each label in the rule switch takes at most two lines and stays inside its button, at ${size.width} by ${size.height}`, async ({
+      page,
+    }) => {
+      await page.goto("/screening");
+      await waitForMap(page);
+      const buttons = page.locator("[data-region=rule-switch] button");
+      await expect(buttons).toHaveCount(2);
+      const report = await page.evaluate(() => {
+        const group = document.querySelector("[data-region=rule-switch]")!;
+        const outer = group.getBoundingClientRect();
+        return [...group.querySelectorAll("button")].map((button) => {
+          const label = button.querySelector("[class*=ruleButtonLabel]")!;
+          const box = button.getBoundingClientRect();
+          const text = label.getBoundingClientRect();
+          return {
+            label: label.textContent,
+            lines: Math.round(text.height / parseFloat(getComputedStyle(label).lineHeight)),
+            spills: button.scrollWidth > button.clientWidth || label.scrollWidth > label.clientWidth,
+            outside:
+              text.right > box.right + 0.5 ||
+              text.bottom > box.bottom + 0.5 ||
+              box.left < outer.left - 0.5 ||
+              box.right > outer.right + 0.5,
+          };
+        });
+      });
+      for (const button of report) {
+        expect(button.lines, `${button.label} lines`).toBeLessThanOrEqual(2);
+        expect(button.spills, `${button.label} spills`).toBe(false);
+        expect(button.outside, `${button.label} leaves its button or the switch`).toBe(false);
+      }
     });
   });
 }
