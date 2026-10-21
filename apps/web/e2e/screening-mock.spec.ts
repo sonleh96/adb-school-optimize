@@ -14,9 +14,9 @@
  */
 import { expect, test } from "@playwright/test";
 
-import { type MockDataset, useMockDataset } from "./screening-helpers";
+import { APP_ORIGIN, MOCK_ORIGIN, type MockDataset, useMockDataset } from "./screening-helpers";
 
-const MOCK = "http://127.0.0.1:4100/api/v1/screening";
+const MOCK = `${MOCK_ORIGIN}/api/v1/screening`;
 const rowCount = async (response: { json: () => Promise<{ rows: unknown[] }> }) =>
   (await response.json()).rows.length;
 
@@ -94,7 +94,7 @@ test.describe("the mock API's datasets", () => {
     try {
       await useMockDataset(first, "one");
       await useMockDataset(second, "ties-and-ranges");
-      const url = "http://127.0.0.1:3105/api/v1/screening/results?rule=additive_u";
+      const url = `${APP_ORIGIN}/api/v1/screening/results?rule=additive_u`;
       expect(await rowCount(await first.request.get(url))).toBe(1);
       expect(await rowCount(await second.request.get(url))).toBe(27);
     } finally {

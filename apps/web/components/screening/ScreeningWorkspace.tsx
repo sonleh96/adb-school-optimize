@@ -1,60 +1,147 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  Component,
+  type KeyboardEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { listView } from "@/lib/screening/errors";
-import { useAfterPaint, useScreeningResults, useScreeningRules } from "@/lib/screening/hooks";
-import { type ListTab, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
-import { toMapSchools } from "@/lib/screening/marks";
-import { RuleId, type SchoolKey } from "@/lib/screening/types";
+import { type CopyRuleId, DEFAULT_RULE, LAYOUT, PROPOSED_RULE } from "@/lib/screening/copy";
+import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
+import { reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
+import { type MapSchool, toMapSchools } from "@/lib/screening/marks";
+import type { SchoolKey } from "@/lib/screening/types";
+import { scopesMix } from "@/lib/screening/workspace/rows";
+import type { ListView } from "@/lib/screening/workspace/state";
 
 import { COPY } from "./copy";
 import { Legend } from "./Legend";
-import { RuleSwitch } from "./RuleSwitch";
+import { RuleArea, focusRuleControl } from "./RuleArea";
 import { SchoolCard } from "./SchoolCard";
 import { IncompleteList, OrderedList } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
+import { useScreeningData } from "./useScreeningData";
+import { WhatChanged } from "./WhatChanged";
+import { WorkspaceProvider, useWorkspaceState, useWorkspaceStore } from "./WorkspaceProvider";
 import styles from "./screening.module.css";
-
-/**
- * The rule the API lists first. Its list is asked for at the same time as the rules, so the first list does not
- * wait a round trip for them. If the API's default turns out to be another rule, the rules say so and that one
- * is asked for instead.
- */
-const EXPECTED_DEFAULT_RULE = RuleId.parse("additive_u", "expected default rule");
 
 /** Space the floating panels take on the map, so marks are framed and panned clear of them. */
 const PANEL = { column: 16 + 416 + 40, card: 16 + 392 + 40 };
+/** The tabs in screen order, and how far each arrow key moves along them. */
+const VIEWS: readonly ListView[] = ["ranked", "queue"];
+const TAB_STEP: Partial<Record<string, number>> = { ArrowRight: 1, ArrowLeft: -1 };
+const NO_SCHOOLS: readonly MapSchool[] = [];
+/** With no marks there is nothing to frame; the column's width is all the map needs to keep clear. */
+const FAILED_PADDING = { top: 0, right: 0, bottom: 0, left: PANEL.column };
 
 export function ScreeningWorkspace() {
-  const root = useRef<HTMLDivElement>(null);
-  const rules = useScreeningRules();
-  const [chosenRule, setChosenRule] = useState<RuleId | null>(null);
-  // The rule asked for. What is on screen is named by the data it came from, below, never by this.
-  const requestedRule = chosenRule ?? rules.data?.default_rule_id ?? EXPECTED_DEFAULT_RULE;
-  const results = useScreeningResults({ rule: requestedRule });
-
-  const data = results.data;
-  const view = listView(
-    { hasData: Boolean(rules.data), isPlaceholderData: false, error: rules.error },
-    { hasData: Boolean(data), isPlaceholderData: results.isPlaceholderData, error: results.error },
-    chosenRule === null
+  return (
+    <WorkspaceProvider>
+      <UnreadableData>
+        <Workspace />
+      </UnreadableData>
+    </WorkspaceProvider>
   );
-  // While a new rule loads, the previous rule's rows stay on screen. Everything that shows them says so together.
-  const stale = view.kind === "ready" && view.stale;
+}
+
+/**
+ * Data that parses but cannot be worded, such as a comparison that makes binding the copy throw, would otherwise blank
+ * the page. This shows the failed state instead. Retry drops what was read and starts the workspace again; the state
+ * and the URL stay.
+ */
+class UnreadableData extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError = () => ({ failed: true });
+  render() {
+    return this.state.failed ? (
+      <FailedWorkspace onRetry={() => this.setState({ failed: false })} />
+    ) : (
+      this.props.children
+    );
+  }
+}
+
+/** The failed state on its own: the column with one sentence and Retry, over a map with no marks. */
+function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
+  const store = useWorkspaceStore();
+  const queries = useQueryClient();
+  const loadMap = useAfterPaint(true);
+  return (
+    <div className={styles.root} data-testid="screening-workspace">
+      <div className={styles.stage}>
+        <ScreeningMap
+          load={loadMap}
+          schools={NO_SCHOOLS}
+          selectedKey={null}
+          onSelect={() => {}}
+          padding={FAILED_PADDING}
+          stale={false}
+          onDrawn={store.markReady}
+        />
+        <section className={`${styles.panel} ${styles.column}`} aria-label={COPY.mast.name}>
+          <Masthead />
+          <div className={styles.error} role="alert" data-failure="malformed">
+            <p>{LAYOUT.loadFailed}</p>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => {
+                // Nothing reads the screening data while this shows, so it can all be dropped and read afresh.
+                queries.removeQueries({ queryKey: screeningKeys.all });
+                onRetry();
+              }}
+            >
+              {LAYOUT.retry}
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function Masthead() {
+  return (
+    <header className={styles.masthead}>
+      <svg className={styles.logo} viewBox="0 0 108 108" role="img" aria-label={COPY.mast.logo}>
+        <rect width="108" height="108" fill="#0a2e73" />
+        <text x="54" y="68" fill="#fff" fontSize="48" textAnchor="middle">
+          ADB
+        </text>
+      </svg>
+      <h1 className={styles.mastName}>{COPY.mast.name}</h1>
+      <p className={styles.mastSub}>{COPY.mast.sub}</p>
+    </header>
+  );
+}
+
+function Workspace() {
+  const root = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const [layer, setLayer] = useState<HTMLDivElement | null>(null);
+  const store = useWorkspaceStore();
+  const state = useWorkspaceState();
+  const data = useScreeningData();
+  const { view, stale, shown } = data;
+  const copy = shown?.copy ?? data.idleCopy;
+  const ready = view.kind === "ready" && shown !== null;
+
   // The map's script is fetched once the list (or its failure) has been painted.
   const loadMap = useAfterPaint(view.kind !== "loading");
-  const shownRuleLabel = data?.manifest.rule_label ?? "";
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const rows = useMemo(() => shown?.response.rows ?? [], [shown]);
   const { ordered, incomplete } = useMemo(() => splitRows(rows), [rows]);
-  const schools = useMemo(() => toMapSchools(rows), [rows]);
-
-  const [pickedKey, setPickedKey] = useState<SchoolKey | null>(null);
-  const [tab, setTab] = useState<ListTab>("ordered");
+  const schools = useMemo(() => new Map((shown?.schools ?? []).map((s) => [s.id, s])), [shown]);
+  const mapSchools = useMemo(() => toMapSchools(rows), [rows]);
 
   // One selection serves the list, the map and the card. A school the current rows do not hold is no selection.
-  const selectedKey = reconcileSelection(pickedKey, rows);
+  const selectedKey = reconcileSelection(state.school, rows);
   const selectedRow = useMemo(
     () => (selectedKey ? (rows.find((row) => row.school.school_key === selectedKey) ?? null) : null),
     [rows, selectedKey]
@@ -62,158 +149,282 @@ export function ScreeningWorkspace() {
 
   // The list follows the selection: a school picked on the map, or one that another rule moves between the
   // ordered list and the incomplete records, is shown on the tab that holds it.
-  const selectedTab = selectedRow ? tabOf(selectedRow) : null;
+  const selectedTab: ListView | null = selectedRow
+    ? tabOf(selectedRow) === "incomplete"
+      ? "queue"
+      : "ranked"
+    : null;
   useEffect(() => {
-    if (selectedTab) setTab(selectedTab);
-  }, [selectedTab, selectedKey]);
+    if (selectedTab && selectedTab !== store.snapshot().view) store.setState({ view: selectedTab });
+  }, [store, selectedTab, selectedKey]);
+
+  const select = useCallback((key: SchoolKey | null) => store.setState({ school: key }), [store]);
 
   // Closing the card or pressing Escape hands focus back to the school's row, so a keyboard user is not dropped.
   const clearSelection = useCallback(() => {
     const key = selectedKey;
-    setPickedKey(null);
+    store.setState({ school: null });
     if (!key) return;
     requestAnimationFrame(() => {
       root.current?.querySelector<HTMLElement>(`[data-school-key="${CSS.escape(key)}"]`)?.focus();
     });
-  }, [selectedKey]);
+  }, [store, selectedKey]);
+
+  const showTab = (next: ListView) => {
+    // A school the other tab does not hold stops being the selection.
+    const keep = selectedTab === null || selectedTab === next;
+    store.setState({ view: next, ...(keep ? {} : { school: null }) });
+    list.current?.scrollTo({ top: 0 });
+  };
+  const changeRule = (rule: CopyRuleId) => {
+    if (rule === data.requested) return;
+    // What changed compares with the list the user last saw. A rule pressed and left before its list came in was
+    // never on screen, so it is not the one compared with.
+    store.setState({ rule, compare: shown?.rule ?? data.requested });
+  };
+  const seeWithout = () => {
+    store.setState({ rule: PROPOSED_RULE, compare: DEFAULT_RULE, view: "ranked" });
+    list.current?.scrollTo({ top: 0 });
+  };
+  const backToMain = () => store.setState({ rule: null, compare: null });
+  // What changed's own controls remove it, so focus goes to the rule's control in the switch.
+  const hideComparison = () => {
+    store.setState({ compare: null });
+    focusRuleControl(root.current);
+  };
+  const backFromComparison = () => {
+    backToMain();
+    focusRuleControl(root.current);
+  };
 
   const padding = useMemo(
     () => ({ top: 80, bottom: 120, left: PANEL.column, right: selectedRow ? PANEL.card : 64 }),
     [selectedRow]
   );
 
-  const retry = () => {
-    void rules.refetch();
-    void results.refetch();
+  const comparing = data.comparison !== null && state.view === "ranked";
+  const mixed = scopesMix(ordered);
+  const scopeOpen = state.scope || mixed;
+  const counts = shown?.copy.counts;
+  const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
+  // A tab with nothing in it cannot be chosen. The one showing stays enabled even when empty, as after a pasted link or
+  // a rule switch that emptied it, so it can always be left.
+  const tabOpen = (id: ListView) => ready && (tabCounts[id] !== 0 || state.view === id);
+  // The ARIA tabs pattern: the shown tab is the one tab stop. The arrow keys, Home and End move between the tabs that
+  // can be chosen and show the one they reach.
+  const onTabKey = (event: KeyboardEvent<HTMLElement>) => {
+    const open = VIEWS.filter(tabOpen);
+    const at = open.indexOf(state.view);
+    if (at === -1) return;
+    const step = TAB_STEP[event.key];
+    const next =
+      step !== undefined
+        ? open[(at + step + open.length) % open.length]
+        : event.key === "Home"
+          ? open[0]
+          : event.key === "End"
+            ? open[open.length - 1]
+            : undefined;
+    if (next === undefined) return;
+    event.preventDefault();
+    if (next !== state.view) showTab(next);
+    root.current?.querySelector<HTMLElement>(`#screening-tab-${next}`)?.focus();
   };
+  const tab = (id: ListView, label: string, region?: string) => (
+    <button
+      type="button"
+      role="tab"
+      id={`screening-tab-${id}`}
+      className={styles.tab}
+      aria-selected={state.view === id}
+      aria-controls="screening-list"
+      tabIndex={state.view === id ? 0 : -1}
+      data-region={region}
+      disabled={!tabOpen(id)}
+      onClick={() => showTab(id)}
+    >
+      {label}
+      {ready && tabCounts[id] !== undefined ? (
+        <span className={styles.tabCount}>({copy.formatCount(tabCounts[id])})</span>
+      ) : null}
+    </button>
+  );
 
   return (
     <div
       ref={root}
       className={styles.root}
       data-testid="screening-workspace"
+      data-has-insp={selectedRow ? "" : undefined}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && pickedKey !== null) clearSelection();
+        if (event.key === "Escape" && state.school !== null) clearSelection();
       }}
     >
-      {/* Slot: the guide rail (questions, saved views). It takes no room until it has content. */}
-      <aside
-        className={styles.rail}
-        data-slot="guide-rail"
-        data-empty="true"
-        aria-label={COPY.guideLabel}
-        hidden
-      />
-
       <div className={styles.stage}>
         <ScreeningMap
           load={loadMap}
-          schools={schools}
+          schools={mapSchools}
           selectedKey={selectedKey}
-          onSelect={setPickedKey}
+          onSelect={select}
           padding={padding}
           stale={stale}
+          onDrawn={store.markReady}
         />
 
-        <section className={`${styles.panel} ${styles.column}`} aria-label={COPY.title}>
-          <header className={styles.masthead}>
-            <h1 className={styles.title}>{COPY.title}</h1>
-          </header>
+        <section className={`${styles.panel} ${styles.column}`} aria-label={COPY.mast.name}>
+          <Masthead />
 
-          {rules.data ? (
-            <RuleSwitch rules={rules.data.rules} active={requestedRule} onChange={setChosenRule} />
-          ) : null}
+          {data.rules ? (
+            <RuleArea
+              copy={copy}
+              rules={data.rules}
+              requested={data.requested}
+              shown={shown?.rule ?? null}
+              statement={comparing ? null : data.statement}
+              comparing={comparing}
+              disabled={!ready}
+              layer={layer}
+              onRule={changeRule}
+              onSeeWithout={seeWithout}
+              onBack={backToMain}
+            />
+          ) : (
+            <div className={styles.ruleSkeleton} aria-hidden />
+          )}
 
-          <div className={styles.tabs} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              className={styles.tab}
-              aria-selected={tab === "ordered"}
-              onClick={() => setTab("ordered")}
-            >
-              {COPY.tabOrdered}
-              {data ? <span>{ordered.length}</span> : null}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              className={styles.tab}
-              aria-selected={tab === "incomplete"}
-              onClick={() => setTab("incomplete")}
-            >
-              {COPY.tabIncomplete}
-              {data ? <span>{incomplete.length}</span> : null}
-            </button>
+          <div className={styles.tabs} role="tablist" onKeyDown={onTabKey}>
+            {tab("ranked", copy.LAYOUT.orderedTab)}
+            {tab("queue", copy.LAYOUT.incompleteTab, "queue-tab")}
           </div>
 
-          {view.kind === "failed" ? (
-            <div className={styles.error} role="alert" data-failure={view.failure}>
-              <p>{COPY.failure[view.failure]}</p>
-              {view.failure === "session" ? (
-                <a className={styles.linkButton} href="/sign-in?next=%2Fscreening">
-                  {COPY.signIn}
-                </a>
-              ) : (
-                <button type="button" className={styles.linkButton} onClick={retry}>
-                  {COPY.retry}
-                </button>
-              )}
-            </div>
-          ) : view.kind === "loading" || !data ? (
-            <p className={styles.state} role="status">
-              {COPY.loading}
-            </p>
-          ) : (
-            <>
-              {view.refreshFailed ? (
-                <p className={styles.listIntro} role="status" data-testid="refresh-failed">
-                  {COPY.refreshFailed}{" "}
-                  <button type="button" className={styles.linkButton} onClick={retry}>
+          <div
+            ref={list}
+            id="screening-list"
+            className={`${styles.listScroll} ${stale ? styles.stale : ""}`}
+            role="tabpanel"
+            aria-labelledby={`screening-tab-${state.view}`}
+          >
+            {view.kind === "failed" ? (
+              <div className={styles.error} role="alert" data-failure={view.failure}>
+                <p>{COPY.failure[view.failure]}</p>
+                {view.failure === "session" ? (
+                  <a className={styles.linkButton} href="/sign-in?next=%2Fscreening">
+                    {COPY.signIn}
+                  </a>
+                ) : (
+                  <button type="button" className={styles.linkButton} onClick={data.retry}>
                     {COPY.retry}
                   </button>
-                </p>
-              ) : null}
-              {tab === "ordered" ? (
-                <>
-                  <p className={styles.listIntro}>
-                    {COPY.listIntro}
-                    <span className={styles.scopeLine} data-testid="list-scopes">
-                      {COPY.listScopes(data.manifest.point_rank_scope, data.manifest.rank_bounds_scope)}
-                    </span>
+                )}
+              </div>
+            ) : !ready || !shown ? (
+              <p className={styles.state} role="status">
+                {COPY.loading}
+              </p>
+            ) : (
+              <>
+                {view.kind === "ready" && view.refreshFailed ? (
+                  <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
+                    {COPY.refreshFailed}{" "}
+                    <button type="button" className={styles.linkButton} onClick={data.retry}>
+                      {COPY.retry}
+                    </button>
                   </p>
-                  <OrderedList
-                    rows={ordered}
-                    selected={selectedKey}
-                    onSelect={setPickedKey}
-                    busy={stale}
-                    label={COPY.tabOrdered}
-                  />
-                </>
-              ) : (
-                <>
-                  <p className={styles.listIntro}>{COPY.incompleteIntro}</p>
-                  <IncompleteList
-                    rows={incomplete}
-                    selected={selectedKey}
-                    onSelect={setPickedKey}
-                    busy={stale}
-                    label={COPY.tabIncomplete}
-                  />
-                </>
-              )}
-            </>
-          )}
+                ) : null}
+                {state.view === "ranked" ? (
+                  <>
+                    {comparing && data.comparison && data.comparison.status !== "loading" ? (
+                      <WhatChanged
+                        copy={shown.copy}
+                        from={data.comparison.from}
+                        to={data.comparison.to}
+                        schools={shown.schools}
+                        failed={data.comparison.status === "failed" || data.comparison.status === "retrying"}
+                        retrying={data.comparison.status === "retrying"}
+                        onRetry={data.comparison.retry}
+                        onHide={hideComparison}
+                        onBack={backFromComparison}
+                      />
+                    ) : null}
+                    <header className={styles.listHead} data-region="scope">
+                      <p className={styles.scopeLine}>
+                        {shown.copy.scope(shown.rule).scopeShort}
+                        {mixed ? null : (
+                          <>
+                            {" "}
+                            <button
+                              type="button"
+                              className={styles.moreLink}
+                              aria-expanded={scopeOpen}
+                              aria-controls="screening-scope-detail"
+                              onClick={() => store.setState({ scope: !state.scope })}
+                            >
+                              {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
+                            </button>
+                          </>
+                        )}
+                      </p>
+                      {scopeOpen ? (
+                        <p className={styles.scopeDetail} id="screening-scope-detail">
+                          {shown.copy.scope(shown.rule).scopeDetail}
+                        </p>
+                      ) : null}
+                    </header>
+                    <OrderedList
+                      rows={ordered}
+                      schools={schools}
+                      copy={shown.copy}
+                      rule={shown.rule}
+                      upper={state.place === "upper"}
+                      selected={selectedKey}
+                      hovered={state.hover}
+                      onSelect={select}
+                      busy={stale}
+                      label={shown.copy.LAYOUT.orderedTab}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <header className={styles.listHead}>
+                      <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
+                      {/* With no incomplete record, the lead would say some schools are here, and the order
+                          sentence would describe nothing. */}
+                      {incomplete.length > 0 ? (
+                        <>
+                          <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
+                          <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
+                        </>
+                      ) : null}
+                    </header>
+                    <IncompleteList
+                      rows={incomplete}
+                      schools={schools}
+                      copy={shown.copy}
+                      selected={selectedKey}
+                      hovered={state.hover}
+                      onSelect={select}
+                      busy={stale}
+                      label={shown.copy.LAYOUT.incompleteTab}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </section>
 
-        <Legend ruleLabel={shownRuleLabel} stale={stale} />
+        <Legend ruleLabel={shown?.response.manifest.rule_label ?? ""} stale={stale} />
 
         {selectedRow ? (
-          <SchoolCard row={selectedRow} ruleLabel={shownRuleLabel} stale={stale} onClose={clearSelection} />
+          <SchoolCard
+            row={selectedRow}
+            ruleLabel={shown?.response.manifest.rule_label ?? ""}
+            stale={stale}
+            onClose={clearSelection}
+          />
         ) : null}
-
-        {/* Slots: Explain this screen and the glossary (map bar), export actions, saved views. */}
       </div>
+      <div ref={setLayer} className={styles.layer} />
     </div>
   );
 }
