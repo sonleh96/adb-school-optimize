@@ -5,6 +5,8 @@
  *  2. A background refresh fails and the good rows already on screen are replaced by an error.
  *  3. Rows of the previous rule are shown as if they belonged to the new one, with no sign they are stale.
  *  4. Nothing loaded yet and no error: the page must say it is loading, not show an empty list.
+ *  5. A list asked for before the rules named the default fails, and the page shows that failure although the rules
+ *     may still name another rule; or the guess hides a real failure once the rules have answered or failed.
  */
 import { describe, expect, it } from "vitest";
 
@@ -71,6 +73,33 @@ describe("listView", () => {
     expect(listView({ ...none, error: new ApiRequestError("gone", 404) }, none)).toEqual({
       kind: "failed",
       failure: "not_found",
+    });
+  });
+
+  describe("a list asked for before the rules named the default", () => {
+    const failedList = { ...none, error: new ApiRequestError("down", 503) };
+
+    it("keeps loading while the rules are still out, since they may name another rule", () => {
+      expect(listView(none, failedList, true)).toEqual({ kind: "loading" });
+    });
+
+    it("shows the list's failure once the rules have answered", () => {
+      expect(listView(loaded, failedList, true)).toEqual({ kind: "failed", failure: "server" });
+    });
+
+    it("shows a failure once the rules have failed too", () => {
+      const failedRules = { ...none, error: new ApiRequestError("expired", 401) };
+      // The list's failure is the one named, as for a list asked for by name.
+      expect(listView(failedRules, failedList, true)).toEqual({ kind: "failed", failure: "server" });
+      expect(listView(failedRules, none, true)).toEqual({ kind: "failed", failure: "session" });
+    });
+
+    it("is ready once both have arrived, whatever was guessed", () => {
+      expect(listView(loaded, loaded, true)).toEqual({ kind: "ready", stale: false, refreshFailed: null });
+    });
+
+    it("is a failure at once for a list asked for by name", () => {
+      expect(listView(none, failedList, false)).toEqual({ kind: "failed", failure: "server" });
     });
   });
 });
