@@ -27,8 +27,8 @@ from ..http_cache import (
     conditional_json,
 )
 from ..models.screening import (
+    PERSISTENCE_LIMITATIONS,
     AreaPartsOut,
-    CirculatedResultsResponse,
     CommonRankOut,
     CompareResponse,
     ComponentsOut,
@@ -50,6 +50,7 @@ from ..models.screening import (
     NeedPartsOut,
     PairwiseMetricsOut,
     PersistenceOut,
+    PersistenceResultsResponse,
     PersistenceSettingOut,
     Placement,
     PointRankOut,
@@ -70,6 +71,7 @@ from ..models.screening import (
     TopChangeOut,
     TopKOut,
     WeightOut,
+    persistence_adjacent_rule,
 )
 from ..screening_export import (
     incomplete_table,
@@ -231,11 +233,14 @@ def _persistence_out(found: store.PersistenceSet | None) -> PersistenceOut | Non
         threshold=found.threshold,
         settings=[PersistenceSettingOut(**asdict(s)) for s in found.settings],
         standard_error=found.standard_error,
+        adjacency_standard_errors=found.adjacency_standard_errors,
+        threshold_adjacent_rule=persistence_adjacent_rule(found.adjacency_standard_errors),
+        limitation=PERSISTENCE_LIMITATIONS[found.rule_id],
     )
 
 
 def _version_out(
-    entry: VersionEntry, is_default: bool, persistence: dict[str, store.PersistenceSet]
+    entry: VersionEntry, is_default: bool, persistence: dict[str, dict[str, store.PersistenceSet]]
 ) -> InputVersionOut:
     v = entry.version
     return InputVersionOut(
@@ -246,11 +251,15 @@ def _version_out(
         created_at=v.created_at,
         is_default=is_default,
         rules_available=list(entry.rules_available),
-        persistence=_persistence_out(persistence.get(v.input_version)),
+        persistence=[
+            _persistence_out(found) for _, found in sorted(persistence.get(v.input_version, {}).items())
+        ],
     )
 
 
-def _rule_out(rule: Rule, versions: list[VersionEntry]) -> RuleOut:
+def _rule_out(
+    rule: Rule, versions: list[VersionEntry], persistence: dict[str, dict[str, store.PersistenceSet]]
+) -> RuleOut:
     return RuleOut(
         rule_id=rule.rule_id,
         label=rule.label,
@@ -271,6 +280,11 @@ def _rule_out(rule: Rule, versions: list[VersionEntry]) -> RuleOut:
         available_input_versions=[
             e.version.input_version for e in versions if rule.rule_id in e.rules_available
         ],
+        persistence_by_input_version={
+            version: sets[rule.rule_id].experiment_id
+            for version, sets in persistence.items()
+            if rule.rule_id in sets
+        },
     )
 
 
@@ -312,7 +326,7 @@ def get_rules(request: Request):
         persistence = store.read_persistence_sets(connection)
     body = RulesResponse(
         default_rule_id=DEFAULT_RULE_ID,
-        rules=[_rule_out(rule, versions) for rule in RULES.values()],
+        rules=[_rule_out(rule, versions, persistence) for rule in RULES.values()],
         input_versions=[_version_out(e, i == 0, persistence) for i, e in enumerate(versions)],
     )
     return _json(request, body)
@@ -351,8 +365,10 @@ def get_results(
         version = _version(connection, input_version)
         run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
-        circulated = rule == store.PERSISTENCE_RULE_ID
-        persistence = store.read_persistence(connection, run.input_version) if circulated else None
+        has_persistence = rule in store.PERSISTENCE_RULE_IDS
+        persistence = (
+            store.read_persistence(connection, run.input_version, rule).get(rule) if has_persistence else None
+        )
     listed = ordered_list(rule_, rows, placement)
     shown = [item for item in listed if filters.admits(item.row)]
 
@@ -363,7 +379,7 @@ def get_results(
             school=_identity_out(item.row.identity),
             **dict(_result_out(item.row.result, rule_.uses_urgency)),
         )
-        if not circulated:
+        if not has_persistence:
             return ListedRowOut(**fields_)
         return ListedRowWithPersistenceOut(**fields_, **_persistence_flags(persistence, item.row.name))
 
@@ -378,10 +394,10 @@ def get_results(
         rows=[listed_row(item) for item in shown],
     )
     body = (
-        CirculatedResultsResponse(
+        PersistenceResultsResponse(
             **parts, persistence=_persistence_out(None if persistence is None else persistence.set)
         )
-        if circulated
+        if has_persistence
         else ResultsResponse(**parts)
     )
     return _json(
@@ -428,7 +444,7 @@ def get_inputs(request: Request, input_version: Text | None = None):
 
 
 def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict:
-    """What the experiment says about one school: all null when there are no numbers or the school was not in it."""
+    """What a rule's experiment says about one school: all null when there are no numbers or the school was not in it."""
     if persistence is None:
         return {"persistent_candidate": None, "lowest_top20_frequency": None, "threshold_adjacent": None}
     return {
@@ -439,12 +455,14 @@ def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict
 
 
 def _rule_result_out(
-    persistence: store.Persistence | None, name: str, **fields
+    persistence: dict[str, store.Persistence], name: str, **fields
 ) -> SchoolRuleResultOut | SchoolRuleResultWithPersistenceOut:
-    """One rule's entry for one school. Only the circulated rule's entry carries the persistence flag."""
-    if fields["rule"].rule_id != store.PERSISTENCE_RULE_ID:
+    """One rule's entry for one school. Only the entry of a rule that can have persistence numbers carries the flag,
+    and it carries that rule's own."""
+    rule_id = fields["rule"].rule_id
+    if rule_id not in store.PERSISTENCE_RULE_IDS:
         return SchoolRuleResultOut(**fields)
-    return SchoolRuleResultWithPersistenceOut(**fields, **_persistence_flags(persistence, name))
+    return SchoolRuleResultWithPersistenceOut(**fields, **_persistence_flags(persistence.get(rule_id), name))
 
 
 def _school_details(
@@ -702,6 +720,7 @@ def _top_export(
         version = _version(connection, input_version)
         run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
+        persistence = store.read_persistence(connection, run.input_version, rule).get(rule)
     manifest = ManifestOut.from_stored(run.manifest)
     selection = select_top(rows, k, include_ranges, filters)
     record = method_record(
@@ -712,6 +731,7 @@ def _top_export(
         filters=filters,
         generated_at=dt.datetime.now(dt.timezone.utc),
         top=selection,
+        persistence=None if persistence is None else persistence.set,
     )
     return record, top_table(selection, manifest, version.version.input_version)
 

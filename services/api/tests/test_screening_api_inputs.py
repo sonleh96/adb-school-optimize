@@ -1,4 +1,4 @@
-"""The bulk inputs route, the machine-readable scopes and the persistence flag, against a real database and the real app."""
+"""The bulk inputs route, the machine-readable scopes and the persistence flags, against a real database and the real app."""
 
 from __future__ import annotations
 
@@ -26,7 +26,10 @@ from screening_db_helpers import load
 
 API = "/api/v1/screening"
 CIRCULATED = "additive_u"
-OTHER_RULES = [r for r in RULES if r != CIRCULATED]
+REVISED = "additive_no_u"
+# The two rules that can have persistence numbers, and every other rule, which never carries them.
+PERSISTENCE_RULES = [CIRCULATED, REVISED]
+OTHER_RULES = [r for r in RULES if r not in PERSISTENCE_RULES]
 IMMUTABLE = "private, max-age=31536000, immutable"
 DEFAULT = "private, max-age=60, stale-while-revalidate=120"
 
@@ -38,6 +41,29 @@ EXPERIMENT_ROWS = {
     "Interval No Air": (0.1, 0.2, 0.3),  # an interval school can be in the experiment
 }
 EXPECTED_FLAGS = {AWK[7]: True, AWK[8]: True, AWK[5]: False, "Interval No Air": False}
+# The urgency-omitted experiment's numbers: different schools are persistent, so one rule's flag is never the other's.
+EXPERIMENT_ROWS_NO_U = {
+    AWK[7]: (0.85, 0.9, 1.0),  # persistent
+    AWK[8]: (
+        0.9,
+        0.79,
+        0.9,
+    ),  # one setting below: not persistent here, persistent under the circulated experiment
+    AWK[5]: (0.95, 0.95, 0.95),  # persistent here, not under the circulated experiment
+    "Interval No Air": (0.1, 0.2, 0.3),
+}
+EXPECTED_FLAGS_NO_U = {AWK[7]: True, AWK[8]: False, AWK[5]: True, "Interval No Air": False}
+EXPECTED_FLAGS_BY_RULE = {CIRCULATED: EXPECTED_FLAGS, REVISED: EXPECTED_FLAGS_NO_U}
+
+
+def both_sets(reference, circulated=EXPERIMENT_ROWS, revised=EXPERIMENT_ROWS_NO_U):
+    """The two experiments' files, invented, read for their own rules."""
+    return [
+        read_persistence_source(reference, write_persistence_files(reference, circulated), CIRCULATED),
+        read_persistence_source(
+            reference, write_persistence_files(reference, revised, urgency_omitted=True), REVISED
+        ),
+    ]
 
 
 def fetch(api, path: str, **params):
@@ -48,9 +74,7 @@ def fetch(api, path: str, **params):
 
 @pytest.fixture
 def loaded(api, connection, tmp_path):
-    reference = tmp_path / "reference"
-    relative = write_persistence_files(reference, EXPERIMENT_ROWS)
-    return load_synthetic(connection, persistence=read_persistence_source(reference, relative))
+    return load_synthetic(connection, persistence=both_sets(tmp_path / "reference"))
 
 
 @pytest.fixture
@@ -289,20 +313,35 @@ def test_the_codes_follow_the_engine_for_the_stored_runs(api, loaded):  # API32
 
 
 # ---------------------------------------------------------------------------------------------
-# The persistence flag. It belongs to the circulated rule and to no other.
+# The persistence flags. Each belongs to the rule its experiment was run for, and to no other.
 # ---------------------------------------------------------------------------------------------
 
 
-def test_the_circulated_list_flags_the_schools_of_the_experiment_and_leaves_the_rest_null(
-    api, loaded
+@pytest.mark.parametrize("rule_id", PERSISTENCE_RULES)
+def test_each_list_flags_the_schools_of_its_own_experiment_and_leaves_the_rest_null(
+    api, loaded, rule_id
 ):  # API33
-    body = fetch(api, f"{API}/results", rule=CIRCULATED)
+    body = fetch(api, f"{API}/results", rule=rule_id)
 
     flags = {r["school"]["source_school_name"]: r["persistent_candidate"] for r in body["rows"]}
+    expected = EXPECTED_FLAGS_BY_RULE[rule_id]
     assert len(flags) == len(loaded.records)
-    assert {n: f for n, f in flags.items() if f is not None} == EXPECTED_FLAGS
-    assert [n for n, f in flags.items() if f is None and n in EXPECTED_FLAGS] == []
-    assert sum(f is None for f in flags.values()) == len(loaded.records) - len(EXPECTED_FLAGS)
+    assert {n: f for n, f in flags.items() if f is not None} == expected
+    assert [n for n, f in flags.items() if f is None and n in expected] == []
+    assert sum(f is None for f in flags.values()) == len(loaded.records) - len(expected)
+
+
+def test_the_two_rules_disagree_where_their_experiments_do(api, loaded):  # API33
+    flags = {
+        rule_id: {
+            r["school"]["source_school_name"]: r["persistent_candidate"]
+            for r in fetch(api, f"{API}/results", rule=rule_id)["rows"]
+        }
+        for rule_id in PERSISTENCE_RULES
+    }
+
+    assert flags[CIRCULATED][AWK[8]] is True and flags[REVISED][AWK[8]] is False
+    assert flags[CIRCULATED][AWK[5]] is False and flags[REVISED][AWK[5]] is True
 
 
 def test_no_other_rule_carries_the_flag_or_the_provenance_at_all(api, loaded):  # API34
@@ -313,43 +352,76 @@ def test_no_other_rule_carries_the_flag_or_the_provenance_at_all(api, loaded):  
         text = json.dumps(body)
         assert "persistent" not in text and "limitation" not in text, rule_id
 
-    # Nor does a comparison of the circulated rule with another.
-    compare = fetch(api, f"{API}/compare", a=CIRCULATED, b="additive_no_u")
+    # Nor does a comparison of the two rules that have numbers.
+    compare = fetch(api, f"{API}/compare", a=CIRCULATED, b=REVISED)
     assert "persistent" not in json.dumps(compare)
 
 
-def test_the_school_detail_flags_only_the_circulated_rules_entry(api, loaded):  # API34
-    detail = fetch(api, f"{API}/schools/by-key/{quote(school_key(loaded.input_version, AWK[7]), safe='')}")
+def test_the_school_detail_flags_the_entry_of_each_rule_with_that_rules_own_numbers(api, loaded):  # API34
+    detail = fetch(api, f"{API}/schools/by-key/{quote(school_key(loaded.input_version, AWK[8]), safe='')}")
     absent = fetch(api, f"{API}/schools/by-key/{quote(school_key(loaded.input_version, AWK[0]), safe='')}")
 
     flagged = {e["rule"]["rule_id"]: e for e in detail["rules"] if "persistent_candidate" in e}
-    assert list(flagged) == [CIRCULATED] and flagged[CIRCULATED]["persistent_candidate"] is True
+    assert sorted(flagged) == sorted(PERSISTENCE_RULES)
+    assert flagged[CIRCULATED]["persistent_candidate"] is True
+    assert flagged[REVISED]["persistent_candidate"] is False
+    assert (flagged[CIRCULATED]["lowest_top20_frequency"], flagged[REVISED]["lowest_top20_frequency"]) == (
+        0.8,
+        0.79,
+    )
     assert "persistent_candidate" not in json.dumps(
-        [e for e in detail["rules"] if e["rule"]["rule_id"] != CIRCULATED]
+        [e for e in detail["rules"] if e["rule"]["rule_id"] in OTHER_RULES]
     )
-    assert (
-        next(e for e in absent["rules"] if e["rule"]["rule_id"] == CIRCULATED)["persistent_candidate"] is None
-    )
+    for entry in absent["rules"]:
+        if entry["rule"]["rule_id"] in PERSISTENCE_RULES:
+            assert entry["persistent_candidate"] is None
     assert "persistent_candidate" not in json.dumps(detail["inputs"]) + json.dumps(detail["school"])
 
 
-def test_the_provenance_travels_with_the_flag_and_names_the_rule_and_the_limit(api, loaded):  # API35
-    results = fetch(api, f"{API}/results", rule=CIRCULATED)["persistence"]
+def test_each_rules_provenance_names_its_experiment_and_its_own_limit(api, loaded):  # API35
+    by_rule = {r: fetch(api, f"{API}/results", rule=r)["persistence"] for r in PERSISTENCE_RULES}
     rules = fetch(api, f"{API}/rules")["input_versions"][0]["persistence"]
     listing = fetch(api, f"{API}/input-versions")["input_versions"][0]["persistence"]
 
-    assert results == rules == listing
-    assert results["rule_id"] == CIRCULATED and results["draws"] == 5000 and results["threshold"] == 0.8
-    assert results["experiment_id"].startswith("EXP-") and len(results["source_sha256"]) == 64
-    assert [s["setting_id"] for s in results["settings"]] == [
-        "concentration_20_15",
-        "concentration_40_35",
-        "concentration_100_80",
-    ]
-    assert (
-        "included urgency" in results["limitation"]
-        and "not a result of the proposed rule" in results["limitation"]
+    assert rules == listing
+    assert [p["rule_id"] for p in rules] == sorted(PERSISTENCE_RULES)  # ordered by rule id
+    assert {p["rule_id"]: p for p in rules} == by_rule
+    for rule_id, provenance in by_rule.items():
+        assert (
+            provenance["rule_id"] == rule_id
+            and provenance["draws"] == 5000
+            and provenance["threshold"] == 0.8
+        )
+        assert provenance["experiment_id"].startswith("EXP-") and len(provenance["source_sha256"]) == 64
+        assert [s["setting_id"] for s in provenance["settings"]] == [
+            "concentration_20_15",
+            "concentration_40_35",
+            "concentration_100_80",
+        ]
+    assert by_rule[CIRCULATED]["experiment_id"] != by_rule[REVISED]["experiment_id"]
+    assert by_rule[CIRCULATED]["source_sha256"] != by_rule[REVISED]["source_sha256"]
+    assert by_rule[CIRCULATED]["limitation"] == (
+        "This count belongs to the circulated paper's urgency-included experiment. "
+        "It must not be relabelled as an urgency-omitted result."
     )
+    assert by_rule[REVISED]["limitation"] == (
+        "This is the revised paper's six-component run. "
+        "It is a revised sensitivity result, not an isolated estimate of urgency's effect."
+    )
+
+
+def test_the_rules_list_says_which_experiment_backs_each_rule(api, loaded):  # API35
+    body = fetch(api, f"{API}/rules")
+    experiments = {p["rule_id"]: p["experiment_id"] for p in body["input_versions"][0]["persistence"]}
+
+    for rule in body["rules"]:
+        if rule["rule_id"] in PERSISTENCE_RULES:
+            assert rule["persistence_by_input_version"] == {
+                loaded.input_version: experiments[rule["rule_id"]]
+            }
+        else:
+            assert rule["persistence_by_input_version"] == {}, rule["rule_id"]
+    assert len(set(experiments.values())) == 2
 
 
 # With 5,000 draws the standard error at 0.80 is sqrt(0.8 * 0.2 / 5000) = 0.005657.
@@ -361,30 +433,46 @@ MARGIN_ROWS = {
     AWK[4]: (0.9, 0.7999, 0.95),  # just below the line in one setting: not persistent, so not adjacent
     "Interval No Air": (0.8, 0.8, 0.8),  # exactly on the line: persistent and adjacent
 }
+# The revised paper's band is two standard errors, 0.011314.
+MARGIN_ROWS_NO_U = {
+    AWK[0]: (0.8014, 0.9, 0.95),  # adjacent
+    AWK[1]: (0.9, 0.8056, 0.95),  # adjacent
+    AWK[2]: (0.95, 0.8113, 0.9),  # 0.0113 above: just inside two standard errors
+    AWK[3]: (0.99, 0.8114, 0.97),  # 0.0114 above: just outside
+    AWK[4]: (0.9, 0.7999, 0.95),  # not persistent, so not adjacent
+    "Interval No Air": (0.8, 0.8, 0.8),  # on the line: adjacent
+}
 
 
 @pytest.fixture
 def loaded_with_margins(api, connection, tmp_path):
-    reference = tmp_path / "reference"
-    relative = write_persistence_files(reference, MARGIN_ROWS)
-    return load_synthetic(connection, persistence=read_persistence_source(reference, relative))
+    return load_synthetic(
+        connection, persistence=both_sets(tmp_path / "reference", MARGIN_ROWS, MARGIN_ROWS_NO_U)
+    )
 
 
-def test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_standard_error_above(
-    api, loaded_with_margins
-):  # API36
-    rows = fetch(api, f"{API}/results", rule=CIRCULATED)["rows"]
+def margins(api, rule_id: str, rows: dict) -> dict:
+    body = fetch(api, f"{API}/results", rule=rule_id)
     seen = {
         r["school"]["source_school_name"]: (
             r["persistent_candidate"],
             r["lowest_top20_frequency"],
             r["threshold_adjacent"],
         )
-        for r in rows
-        if r["school"]["source_school_name"] in MARGIN_ROWS
+        for r in body["rows"]
+        if r["school"]["source_school_name"] in rows
     }
+    outside = [r for r in body["rows"] if r["school"]["source_school_name"] not in rows]
+    assert {
+        (r["persistent_candidate"], r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in outside
+    } == {(None, None, None)}
+    return seen
 
-    assert seen == {
+
+def test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error(
+    api, loaded_with_margins
+):  # API36
+    assert margins(api, CIRCULATED, MARGIN_ROWS) == {
         AWK[0]: (True, 0.8014, True),
         AWK[1]: (True, 0.8056, True),
         AWK[2]: (True, 0.8057, False),
@@ -392,69 +480,104 @@ def test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_stan
         AWK[4]: (False, 0.7999, False),
         "Interval No Air": (True, 0.8, True),
     }
-    outside = [r for r in rows if r["school"]["source_school_name"] not in MARGIN_ROWS]
-    assert {
-        (r["persistent_candidate"], r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in outside
-    } == {(None, None, None)}
 
 
-def test_the_detail_carries_the_same_margin_fields_on_the_circulated_rules_entry_only(
+def test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors(
+    api, loaded_with_margins
+):  # API36
+    assert margins(api, REVISED, MARGIN_ROWS_NO_U) == {
+        AWK[0]: (True, 0.8014, True),
+        AWK[1]: (True, 0.8056, True),
+        AWK[2]: (True, 0.8113, True),
+        AWK[3]: (True, 0.8114, False),
+        AWK[4]: (False, 0.7999, False),
+        "Interval No Air": (True, 0.8, True),
+    }
+
+
+def test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only(
     api, loaded_with_margins
 ):  # API36, API34
-    key = quote(school_key(loaded_with_margins.input_version, AWK[1]), safe="")
+    key = quote(school_key(loaded_with_margins.input_version, AWK[2]), safe="")
     detail = fetch(api, f"{API}/schools/by-key/{key}")
 
     entries = {e["rule"]["rule_id"]: e for e in detail["rules"]}
     assert (entries[CIRCULATED]["lowest_top20_frequency"], entries[CIRCULATED]["threshold_adjacent"]) == (
-        0.8056,
+        0.8057,
+        False,
+    )
+    assert (entries[REVISED]["lowest_top20_frequency"], entries[REVISED]["threshold_adjacent"]) == (
+        0.8113,
         True,
     )
     for rule_id in OTHER_RULES:
         assert not {"lowest_top20_frequency", "threshold_adjacent"} & entries[rule_id].keys(), rule_id
 
 
-def test_the_provenance_states_the_margin_it_is_judged_by(api, loaded_with_margins):  # API36, API35
-    provenance = fetch(api, f"{API}/results", rule=CIRCULATED)["persistence"]
+def test_the_provenance_states_the_margin_each_rule_is_judged_by(api, loaded_with_margins):  # API36, API35
+    circulated = fetch(api, f"{API}/results", rule=CIRCULATED)["persistence"]
+    revised = fetch(api, f"{API}/results", rule=REVISED)["persistence"]
 
-    assert provenance["standard_error"] == pytest.approx((0.8 * 0.2 / 5000) ** 0.5, abs=1e-15)
-    assert "sqrt(threshold * (1 - threshold) / draws)" in provenance["threshold_adjacent_rule"]
-    assert "less than one standard error above the threshold" in provenance["threshold_adjacent_rule"]
-    assert fetch(api, f"{API}/rules")["input_versions"][0]["persistence"] == provenance
+    for provenance in (circulated, revised):
+        assert provenance["standard_error"] == pytest.approx((0.8 * 0.2 / 5000) ** 0.5, abs=1e-15)
+        assert "sqrt(threshold * (1 - threshold) / draws)" in provenance["threshold_adjacent_rule"]
+    assert circulated["adjacency_standard_errors"] == 1
+    assert "less than one standard error above the threshold" in circulated["threshold_adjacent_rule"]
+    assert revised["adjacency_standard_errors"] == 2
+    assert "less than two standard errors above the threshold" in revised["threshold_adjacent_rule"]
 
 
 def test_a_version_without_the_numbers_has_null_flags_and_no_provenance(
     api, loaded_without_persistence
 ):  # API33, API35
-    body = fetch(api, f"{API}/results", rule=CIRCULATED)
+    for rule_id in PERSISTENCE_RULES:
+        body = fetch(api, f"{API}/results", rule=rule_id)
 
-    assert body["persistence"] is None
-    assert {r["persistent_candidate"] for r in body["rows"]} == {None}
-    assert {(r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in body["rows"]} == {(None, None)}
-    assert fetch(api, f"{API}/rules")["input_versions"][0]["persistence"] is None
+        assert body["persistence"] is None, rule_id
+        assert {r["persistent_candidate"] for r in body["rows"]} == {None}
+        assert {(r["lowest_top20_frequency"], r["threshold_adjacent"]) for r in body["rows"]} == {
+            (None, None)
+        }
+    rules = fetch(api, f"{API}/rules")
+    assert rules["input_versions"][0]["persistence"] == []
+    assert all(r["persistence_by_input_version"] == {} for r in rules["rules"])
+
+
+def test_a_version_with_one_set_serves_only_that_rules_provenance(api, connection, tmp_path):  # API35
+    reference = tmp_path / "reference"
+    circulated_only = both_sets(reference)[:1]
+    load_synthetic(connection, persistence=circulated_only)
+
+    body = fetch(api, f"{API}/rules")
+
+    assert [p["rule_id"] for p in body["input_versions"][0]["persistence"]] == [CIRCULATED]
+    assert fetch(api, f"{API}/results", rule=CIRCULATED)["persistence"]["rule_id"] == CIRCULATED
+    revised = fetch(api, f"{API}/results", rule=REVISED)
+    assert revised["persistence"] is None and {r["persistent_candidate"] for r in revised["rows"]} == {None}
 
 
 def test_another_versions_numbers_are_not_lent_to_a_version_without_them(api, connection, tmp_path):  # API33
-    reference = tmp_path / "reference"
-    relative = write_persistence_files(reference, EXPERIMENT_ROWS)
-    load_synthetic(connection, version="with", persistence=read_persistence_source(reference, relative))
+    load_synthetic(connection, version="with", persistence=both_sets(tmp_path / "reference"))
     load(connection, api_records(), "without")  # loaded last, so it is the default
 
-    default = fetch(api, f"{API}/results", rule=CIRCULATED)
-    pinned = fetch(api, f"{API}/results", rule=CIRCULATED, input_version="with")
+    for rule_id in PERSISTENCE_RULES:
+        default = fetch(api, f"{API}/results", rule=rule_id)
+        pinned = fetch(api, f"{API}/results", rule=rule_id, input_version="with")
 
-    assert default["run"]["input_version"] == "without" and default["persistence"] is None
-    assert {r["persistent_candidate"] for r in default["rows"]} == {None}
-    assert pinned["persistence"] is not None
-    assert {r["school"]["source_school_name"]: r["persistent_candidate"] for r in pinned["rows"]}[
-        AWK[7]
-    ] is True
+        assert default["run"]["input_version"] == "without" and default["persistence"] is None
+        assert {r["persistent_candidate"] for r in default["rows"]} == {None}
+        assert pinned["persistence"] is not None
+        assert {r["school"]["source_school_name"]: r["persistent_candidate"] for r in pinned["rows"]}[
+            AWK[7]
+        ] is True
 
 
-def test_the_flag_does_not_move_a_rank_or_a_score(api, loaded, connection):  # API12
-    with_flag = fetch(api, f"{API}/results", rule=CIRCULATED)
+@pytest.mark.parametrize("rule_id", PERSISTENCE_RULES)
+def test_the_flag_does_not_move_a_rank_or_a_score(api, loaded, rule_id):  # API12
+    with_flag = fetch(api, f"{API}/results", rule=rule_id)
 
     stripped = [{k: v for k, v in row.items() if k != "persistent_candidate"} for row in with_flag["rows"]]
-    engine = screen_all(prepare(loaded.records))[CIRCULATED]
+    engine = screen_all(prepare(loaded.records))[rule_id]
     by_name = {r.school_name: r for r in engine.results}
     for row in stripped:
         expected = by_name[row["school"]["source_school_name"]]

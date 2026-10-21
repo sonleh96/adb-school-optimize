@@ -39,10 +39,10 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API30 | A newer engine's stored fields break reading. | A run or result stored with a field the API does not know gives a 500 instead of being read, or the unknown field is passed on to clients. |
 | API31 | The bulk inputs differ from the per-school detail. | For some school or field, `/inputs` gives a value, a name, a key or an order that `/schools/by-key` and the stored version do not; a float is rounded, a negative zero or an unknown becomes zero, a name loses its spaces. |
 | API32 | A scope code is missing, wrong, or taken from the label. | A rank, a manifest, a detail entry or a comparison (ranks, entrants, exits, common cohort, interval bounds) lacks its code, a point rank carries the bounds' code, or the label no longer equals the engine's label for the count the same response states. |
-| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, or one input version shows the flag of another. |
-| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but the circulated one, or inside the school's inputs. |
-| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or circulated-results response omits the source file hash, the experiment, the draws, the settings, the threshold or the sentence that the numbers describe the urgency-included rule only. |
-| API36 | The margin of a persistent school is wrong or left to the reader. | A school less than one standard error above the threshold is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition. |
+| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, one input version shows the flag of another, or one rule shows the flag of the other rule's experiment. |
+| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but `additive_u` and `additive_no_u`, or inside the school's inputs. |
+| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or results response omits the source file hash, the experiment, the draws, the settings, the threshold or the rule's own limitation, gives one rule the other's limitation, or `/rules` does not say which experiment backs each rule. |
+| API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
 
 ## Test map
 
@@ -117,15 +117,21 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree` | API32 |
 | `test_a_label_and_a_code_that_disagree_are_caught_by_the_check` | API32 |
 | `test_the_codes_follow_the_engine_for_the_stored_runs` | API32 |
-| `test_the_circulated_list_flags_the_schools_of_the_experiment_and_leaves_the_rest_null` | API33 |
+| `test_each_list_flags_the_schools_of_its_own_experiment_and_leaves_the_rest_null` (2 rules) | API33 |
+| `test_the_two_rules_disagree_where_their_experiments_do` | API33 |
 | `test_no_other_rule_carries_the_flag_or_the_provenance_at_all` | API34 |
-| `test_the_school_detail_flags_only_the_circulated_rules_entry` | API34 |
-| `test_the_provenance_travels_with_the_flag_and_names_the_rule_and_the_limit` | API35 |
+| `test_the_school_detail_flags_the_entry_of_each_rule_with_that_rules_own_numbers` | API34 |
+| `test_each_rules_provenance_names_its_experiment_and_its_own_limit` | API35 |
+| `test_the_rules_list_says_which_experiment_backs_each_rule` | API35 |
 | `test_a_version_without_the_numbers_has_null_flags_and_no_provenance` | API33, API35 |
+| `test_a_version_with_one_set_serves_only_that_rules_provenance` | API35 |
 | `test_another_versions_numbers_are_not_lent_to_a_version_without_them` | API33 |
-| `test_the_flag_does_not_move_a_rank_or_a_score` | API12 |
+| `test_the_flag_does_not_move_a_rank_or_a_score` (2 rules) | API12 |
+| `test_the_record_names_the_experiment_behind_a_rules_persistence_and_its_own_limit` | API17, API35 |
+| `test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record` | API17, API34 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
 | `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
-| `test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_standard_error_above` | API36 |
-| `test_the_detail_carries_the_same_margin_fields_on_the_circulated_rules_entry_only` | API36, API34 |
-| `test_the_provenance_states_the_margin_it_is_judged_by` | API36, API35 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error` | API36 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors` | API36 |
+| `test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only` | API36, API34 |
+| `test_the_provenance_states_the_margin_each_rule_is_judged_by` | API36, API35 |

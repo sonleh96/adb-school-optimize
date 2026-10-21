@@ -34,7 +34,7 @@ from school_scoring.screening import (
 )
 
 from . import screening_store as store
-from .models.screening import AnchorOut, ManifestOut, WeightOut
+from .models.screening import PERSISTENCE_LIMITATIONS, AnchorOut, ManifestOut, WeightOut
 from .screening_lists import Filters, TopSelection
 from .screening_queries import SchoolRow
 
@@ -173,6 +173,7 @@ def method_record(
     generated_at: dt.datetime,
     top: TopSelection | None = None,
     queue_count: int | None = None,
+    persistence: store.PersistenceSet | None = None,
 ) -> list[tuple[str, str]]:
     """The facts a reader needs to interpret an export and rebuild its list, as ordered key/value pairs."""
     sort_keys = ", ".join(manifest.sort_columns)
@@ -227,6 +228,20 @@ def method_record(
                 "Schools with a gate failure under this rule, or whose rule reads urgency and urgency is unknown.",
             ),
             ("rows_listed", f"queue={queue_count}"),
+        ]
+    if persistence is not None:
+        record += [
+            ("persistence_experiment", persistence.experiment_id),
+            # Not named ``..._sha256``: a client counts the record's ``..._sha256`` lines as the source files of the list,
+            # and the persistence table is evidence for a flag, not an input of the ranking.
+            ("persistence_source_hash", persistence.source_sha256),
+            (
+                "persistence_test",
+                f"Lower top-20 frequency at least {number_text(persistence.threshold)} in each of "
+                f"{len(persistence.settings)} settings, {persistence.draws} draws each. "
+                "A frequency is a share of draws under declared scenarios, not a probability that a school needs help.",
+            ),
+            ("persistence_limitation", PERSISTENCE_LIMITATIONS[persistence.rule_id]),
         ]
     record += [
         ("generated_at", generated_at.astimezone(dt.timezone.utc).strftime(TIME_FORMAT)),

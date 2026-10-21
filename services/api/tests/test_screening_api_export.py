@@ -10,12 +10,13 @@ import zipfile
 
 import openpyxl
 import pytest
+from app.ingestion.load_screening_inputs import read_persistence_source
 from app.screening_export import GATE_FAILURE_DETAILS
 from school_scoring.screening import PACKAGE_VERSION, RULES, GateFailure
 from school_scoring.screening.rules import TIE_RULE
 from screening_api_helpers import load_synthetic, parse_csv_export
 from screening_db_factories import AWKWARD_NAMES as AWK
-from screening_db_factories import record
+from screening_db_factories import record, write_persistence_files
 
 RULE_IDS = list(RULES)
 CSV = "/api/v1/screening/exports/top.csv"
@@ -341,6 +342,58 @@ def test_the_caveat_for_an_urgency_rule_says_urgency_is_unresolved_not_omitted(a
         method["point_rank_scope"] == "complete under this rule (9)"
         and method["rank_bounds_scope"] == "eligible (11)"
     )
+
+
+def test_the_record_names_the_experiment_behind_a_rules_persistence_and_its_own_limit(
+    api, connection, tmp_path
+):  # API17, API35
+    reference = tmp_path / "reference"
+    sets = [
+        read_persistence_source(
+            reference, write_persistence_files(reference, {AWK[7]: (1.0, 1.0, 1.0)}), "additive_u"
+        ),
+        read_persistence_source(
+            reference,
+            write_persistence_files(reference, {AWK[7]: (0.9, 0.9, 0.9)}, urgency_omitted=True),
+            "additive_no_u",
+        ),
+    ]
+    load_synthetic(connection, persistence=sets)
+
+    circulated, _ = top(api, rule="additive_u")
+    revised, _ = top(api, rule="additive_no_u")
+
+    for method, source in ((circulated, sets[0]), (revised, sets[1])):
+        assert method["persistence_experiment"] == source.experiment_id
+        assert method["persistence_source_hash"] == source.source_sha256
+        assert "at least 0.8 in each of 3 settings, 5000 draws each" in method["persistence_test"]
+    assert circulated["persistence_experiment"] != revised["persistence_experiment"]
+    assert "urgency-included experiment" in circulated["persistence_limitation"]
+    assert "not an isolated estimate of urgency's effect" in revised["persistence_limitation"]
+    keys = list(revised)
+    assert keys[keys.index("persistence_experiment") : keys.index("generated_at")] == [
+        "persistence_experiment",
+        "persistence_source_hash",
+        "persistence_test",
+        "persistence_limitation",
+    ]
+
+
+def test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record(
+    api, connection, tmp_path
+):  # API17, API34
+    reference = tmp_path / "reference"
+    sets = [
+        read_persistence_source(
+            reference, write_persistence_files(reference, {AWK[7]: (1.0, 1.0, 1.0)}), "additive_u"
+        )
+    ]
+    load_synthetic(connection, persistence=sets)
+
+    for rule_id in RULE_IDS:
+        method, _ = top(api, rule=rule_id)
+        has = [key for key in method if key.startswith("persistence_")]
+        assert bool(has) == (rule_id == "additive_u"), rule_id
 
 
 @pytest.mark.parametrize("rule_id", RULE_IDS)
