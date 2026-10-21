@@ -3,7 +3,8 @@
  *  1. Storage that holds junk (not JSON, another shape, wrong types) breaks the screen or shows junk views, instead of
  *     reading as nothing kept, so the seeds show.
  *  2. One bad item throws away the good ones; a list of nothing but junk reads as "the person removed every view".
- *  3. A kept name is longer than the name field allows, is blank, or is cut inside a character.
+ *  3. A kept name is longer than the name field allows, is blank, or is cut inside a character; or it loses the
+ *     joiner that spells a word (Persian) or an emoji sequence.
  *  4. A bare list, a shape this screen never writes, is read as views instead of junk.
  *  5. A seed is offered twice.
  *  6. A seed whose subject the data lacks is offered; or removing a view removes another one, because the list skips
@@ -100,6 +101,18 @@ describe("reading what storage holds", () => {
     expect(cleanName("\u202eBoard\u202c meeting")).toBe("Board meeting");
     expect(cleanName("\u2067اجتماع المجلس\u2069")).toBe("اجتماع المجلس");
     expect(parseEntries(JSON.stringify({ v: 1, views: [{ name: "\u200b\u200b", q: "" }] }))).toBeNull();
+  });
+
+  it("keeps the joiners a name is written with, and still strips what hides or reorders it (13)", () => {
+    // Persian writes its word-internal ZWNJ; an emoji sequence is joined by ZWJ.
+    expect(cleanName("می\u200cخواهم")).toBe("می\u200cخواهم");
+    const family = "\u{1F469}\u200D\u{1F469}\u200D\u{1F467}";
+    expect(cleanName(`Visit ${family}`)).toBe(`Visit ${family}`);
+    expect(cleanName("Board\u202e meeting\u200b\ufeff")).toBe("Board meeting");
+    // A name of only zero-width characters is blank, joiners included, and is refused whole.
+    expect(cleanName("\u200c\u200d\u2060")).toBe("");
+    expect(cleanName(" \u200c ")).toBe("");
+    expect(parseEntries(JSON.stringify({ v: 1, views: [{ name: "\u200c\u200d", q: "" }] }))).toBeNull();
   });
 
   it("reads at most the cap from storage, however much it holds, and refuses a save past it (12)", () => {
