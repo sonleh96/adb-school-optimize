@@ -15,6 +15,7 @@ import type { RuleChoice } from "../useScreeningData";
 import base from "../screening.module.css";
 import method from "../method/method.module.css";
 import styles from "./compare.module.css";
+import { ChartTable } from "./ChartTable";
 import { SlopeChart } from "./SlopeChart";
 
 type Slot = "a" | "b";
@@ -307,6 +308,17 @@ export function CompareColumn(props: CompareColumnProps) {
                 hovered={props.hovered}
                 onSelect={props.onSelect}
                 onHover={props.onHover}
+              />
+              <ChartTable
+                copy={copy}
+                words={words}
+                a={a}
+                b={b}
+                data={data}
+                names={names}
+                label={words.compare.slopeAria}
+                selected={props.selected}
+                onSelect={props.onSelect}
               />
             </section>
             {data.ranges.length > 0 ? (

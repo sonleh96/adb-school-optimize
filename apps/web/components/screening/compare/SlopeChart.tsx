@@ -207,8 +207,9 @@ export function SlopeChart({
           width={width}
           height={frame.height}
           viewBox={`0 0 ${width} ${frame.height}`}
-          role="img"
-          aria-label={label}
+          // The table beside the chart says what it shows, for a screen reader and a keyboard.
+          aria-hidden="true"
+          data-label={label}
         >
           <defs>
             <clipPath id="screening-slope-lines">
