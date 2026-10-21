@@ -163,7 +163,7 @@ export function ViewStepper({
             <div
               className={styles.stepBody}
               data-testid="guide-step-body"
-              // What the stored state named that the data no longer holds. The sentence that says so is a copy request.
+              // What the stored state named that the data no longer holds.
               data-dropped={step.dropped.join(" ") || undefined}
             >
               {step.body.map((p, i) => (
@@ -172,6 +172,11 @@ export function ViewStepper({
                 </p>
               ))}
             </div>
+            {step.dropped.length > 0 ? (
+              <p className={styles.drift} data-region="view-dropped">
+                {LAYOUT.viewPartMissing(step.dropped)}
+              </p>
+            ) : null}
             <p className={styles.onScreen}>
               <SquareDashed size={14} aria-hidden />
               <span>
