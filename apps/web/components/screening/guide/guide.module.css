@@ -714,8 +714,10 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     background:
-      linear-gradient(var(--rail-bg) 30%, rgba(245, 243, 238, 0)) top / 100% 36px no-repeat local,
-      linear-gradient(rgba(245, 243, 238, 0), var(--rail-bg) 70%) bottom / 100% 36px no-repeat local,
+      linear-gradient(var(--rail-bg) 30%, color-mix(in srgb, var(--rail-bg) 0%, transparent)) top / 100% 36px
+        no-repeat local,
+      linear-gradient(color-mix(in srgb, var(--rail-bg) 0%, transparent), var(--rail-bg) 70%) bottom / 100%
+        36px no-repeat local,
       linear-gradient(rgba(21, 24, 29, 0.12), rgba(21, 24, 29, 0)) top / 100% 10px no-repeat scroll,
       linear-gradient(rgba(21, 24, 29, 0), rgba(21, 24, 29, 0.12)) bottom / 100% 10px no-repeat scroll;
   }
