@@ -1218,6 +1218,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
+/* The heading takes focus when the card replaces the list; a keyboard user sees where focus went. */
+.cardName:focus {
+  outline: none;
+}
+.cardName:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
 .cardMeta {
   margin: 4px 0 0;
   font-size: 13px;

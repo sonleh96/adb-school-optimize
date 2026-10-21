@@ -7,6 +7,8 @@
  *  3. A keyboard action animates                                 -> "keyboard actions never animate"
  *  4. The narrow layout hides the map, keeps the list beside the card, or opens no key -> "the narrow layout..."
  *  5. Escape closes the card before a popover over it            -> "Escape closes the innermost layer first"
+ *  6. A card that steps the list aside leaves focus on the hidden row, so the keyboard user is dropped and Escape
+ *     does nothing                                               -> "a card that steps the list aside takes focus..."
  */
 import type { Page } from "@playwright/test";
 
@@ -179,3 +181,31 @@ test.describe("the narrow layout", () => {
     await expect(page.locator("section[class*=column]")).toBeVisible();
   });
 });
+
+for (const size of [
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+  { width: 768, height: 1024 },
+]) {
+  test.describe(`a card opened from the keyboard at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test(`a card that steps the list aside takes focus, and Escape closes it back to its row at ${size.width} by ${size.height}`, async ({
+      page,
+    }) => {
+      await page.goto("/screening");
+      await waitForMap(page);
+      const row = orderedRow(page, "Sample School 13");
+      const card = page.locator("[data-slot=school-card]");
+      await row.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("screening-workspace")).toHaveAttribute("data-card-docked", "true");
+      // The row went with the list, so focus is in the card, on its heading.
+      await expect(card.getByRole("heading", { level: 2 })).toBeFocused();
+
+      await page.keyboard.press("Escape");
+      await expect(card).toHaveCount(0);
+      await expect(row).toBeFocused();
+    });
+  });
+}
