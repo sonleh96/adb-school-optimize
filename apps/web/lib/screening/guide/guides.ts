@@ -66,6 +66,8 @@ export interface GuideContext {
   readonly agreeK: number | null;
   /** The school What changed uses as its example between the two main rules. */
   readonly example: CopySchool | null;
+  /** The incomplete records can be filtered by what is missing (a method-details control). */
+  readonly filters: boolean;
 }
 
 /** The state every step starts from: the paper's main rule, the list, nothing selected, nothing compared. */
@@ -348,8 +350,14 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [term("missing_all_but_remoteness"), term("missing_classrooms")],
+        // Its Try it is about the filter by what is missing, which arrives with the method details.
+        tryIt: ctx.filters ? base.tryIt : null,
         patch: { view: "queue", qgroup: "evidence" },
-        targets: [[region("queue-group")], [`${region("queue-list")} > li:first-child`]],
+        // Group by in the column (the card names its own chips `queue-missing` too), then the first group.
+        targets: [
+          [`[data-slot="column"] ${region("queue-missing")}`],
+          [`${region("queue-list")} > li:first-child`],
+        ],
         scroll: "top",
       };
     }

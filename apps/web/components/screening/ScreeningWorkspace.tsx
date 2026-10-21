@@ -128,8 +128,11 @@ function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** What the guides can point at: "Download the top list" and the incomplete records' Group by arrive later. */
-const GUIDE_FEATURES = { export: false, grouping: false } as const;
+/**
+ * What the guides can point at beside the list and the card: the incomplete records' Group by (`queue-missing`) is
+ * here; "Download the top list" (`export-button`) and the filter by what is missing arrive with the method details.
+ */
+const GUIDE_FEATURES = { export: false, grouping: true, filters: false } as const;
 
 /** The window's size. The server renders for the design's reference size; the browser corrects it before paint. */
 const SERVER_VIEWPORT = "1600x1000";
