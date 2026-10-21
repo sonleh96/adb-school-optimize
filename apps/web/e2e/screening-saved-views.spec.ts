@@ -35,6 +35,8 @@
  * 22. A pasted link to a saved view opens whatever sits at that place in the reader's own list  -> "a link to a view ..."
  * 23. The pack's record describes lists of another length than its file, or one rule's groups for all
  *                                                                                               -> "the pack's record ..."
+ * 24. Closing the sheet leaves the tab's reads running for nothing, or a cancelled read logs to the console
+ *                                                                                               -> "closing the sheet ..."
  */
 import { readFileSync } from "node:fs";
 
@@ -494,10 +496,62 @@ test("with no saved views the rail and the sheet's tab say so, and restoring bri
   await expect(section(page).locator("[data-region=no-views]")).toHaveCount(0);
 });
 
-test("a guide step never lands on the saved views tab", async ({ page }) => {
+test("a guide step never lands on the saved views tab", async ({ page, problems }) => {
+  // The tab may start reading its rules' files before the step closes the sheet, depending on timing. The reads are
+  // held until the step has closed it, so every run takes the same path: closing the sheet cancels them.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const reads: string[] = [];
+  const cancelled: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (request.failure()?.errorText === "net::ERR_ABORTED") cancelled.push(request.url());
+  });
+  await page.route(/\/exports\/top\.csv/, async (route) => {
+    reads.push(route.request().url());
+    await held;
+    // A read the page has already cancelled cannot be continued.
+    await route.continue().catch(() => undefined);
+  });
+
   await open(page, "?panel=export&pack=1&guide=q1&gstep=1");
   await expect(page.getByTestId("guide-step-title")).toBeVisible();
   await expect.poll(() => workspace(page)).toMatchObject({ panel: null, pack: false });
+  release();
+
+  // Every read the tab started was cancelled with the sheet, quietly: nothing else failed and nothing was logged.
+  await expect.poll(() => cancelled.length).toBe(reads.length);
+  expect(cancelled.sort()).toEqual(reads.sort());
+  expect(problems.filter((p) => !reads.some((url) => p === `requestfailed: ${url}`))).toEqual([]);
+  problems.length = 0;
+});
+
+test("closing the sheet while the tab reads its files cancels the reads, and logs nothing", async ({
+  page,
+  problems,
+}) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  const reads: string[] = [];
+  const cancelled: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (request.failure()?.errorText === "net::ERR_ABORTED") cancelled.push(request.url());
+  });
+  await page.route(/\/exports\/top\.csv/, async (route) => {
+    reads.push(route.request().url());
+    await held;
+    await route.continue().catch(() => undefined);
+  });
+  await open(page, "?guide=off&panel=export&pack=1");
+  await expect.poll(() => reads.length).toBeGreaterThan(0);
+
+  await page.keyboard.press("Escape");
+  await expect(sheet(page)).toHaveCount(0);
+  await expect.poll(() => cancelled.length).toBe(reads.length);
+  release();
+  expect(cancelled.sort()).toEqual(reads.sort());
+  // The cancelled reads are the only failures; no console message comes with them.
+  expect(problems.filter((p) => !reads.some((url) => p === `requestfailed: ${url}`))).toEqual([]);
+  problems.length = 0;
 });
 
 test("worst-case names stay inside the sheet's list", async ({ page, context }) => {
