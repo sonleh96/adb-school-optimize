@@ -20,7 +20,7 @@ For the current architecture, the recommended backend pattern is:
 
 - Create a Supabase project
 - Enable the PostGIS extension in the database
-- Apply the files in [infra/sql](/Users/sonle/Documents/work/ADB/adb-school-optimize/infra/sql) in order
+- Apply the files in [infra/sql](../../infra/sql) in order
 
 ### 2. Decide how FastAPI will access Supabase
 
