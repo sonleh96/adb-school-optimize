@@ -99,6 +99,24 @@
   height: 34px;
   padding: 0;
 }
+/* A part of the method details or the export that did not load: the copy's words and Retry, where it would be. */
+.failure button + button {
+  margin-left: 8px;
+}
+.sheetFailure {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 31;
+  width: min(620px, 100%);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--hair);
+}
+
 /* The workspace sets every button's colour to inherit; this one keeps its own. */
 .open.open:not(:disabled) {
   color: #fff;
