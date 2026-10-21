@@ -1,22 +1,11 @@
-# school_scoring Package
+# school_scoring package
 
-Reusable scoring engine for school prioritization.
-
-Source methodology:
-- [score_calculations.ipynb](/Users/sonle/Documents/work/ADB/adb-school-optimize/score_calculations.ipynb)
-- [codex_school_scoring_module_instructions.md](/Users/sonle/Documents/work/ADB/adb-school-optimize/build_instructions/codex_school_scoring_module_instructions.md)
-
-Expected responsibilities:
-- validate school-level input data
-- preprocess and impute as configured
-- compute all score components and final ranks
-- support default and user-supplied weight sets
-- return deterministic results plus explainability outputs
+The screening engine for RISE-PNG.
+It takes prepared school records, ranks them under seven rules, and compares the lists.
 
 ## Screening engine
 
 `school_scoring.screening` implements the circulated research method and the urgency-omitted scenario.
-It sits beside the older Need and Priority model and does not change it.
 
 ```python
 from school_scoring.screening import parse_records, prepare, screen
