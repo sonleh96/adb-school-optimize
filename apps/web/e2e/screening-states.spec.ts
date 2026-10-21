@@ -179,6 +179,27 @@ test.describe("tells a session that ended, a missing list, a failing service and
     problems.length = 0;
   });
 
+  test("a provenance block of another shape leaves the list whole and says so once in the console", async ({
+    page,
+    problems,
+  }) => {
+    await page.route(RESULTS("additive_u"), async (route) => {
+      const response = await route.fetch();
+      const body = await response.json();
+      body.persistence = { standard_error: "n/a" };
+      await route.fulfill({ response, json: body });
+    });
+    await openWorkspace(page);
+
+    // The list is whole, and the console names the field, so a changed API is seen without a broken page.
+    const warnings = problems.filter(
+      (p) => p.startsWith("warning: ") && p.includes("persistence.standard_error")
+    );
+    expect(warnings).toHaveLength(1);
+    expect(problems.filter((p) => !warnings.includes(p))).toEqual([]);
+    problems.length = 0;
+  });
+
   test("an answer that is not JSON is worded as unreadable and logged", async ({ page, problems }) => {
     await page.route(RESULTS("additive_u"), (route) =>
       route.fulfill({ status: 200, contentType: "text/html", body: "<html>sign in</html>" })
