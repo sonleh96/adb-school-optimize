@@ -87,7 +87,7 @@ Unknown rule, input version or school gives 404 in the API's `{"error": {code, m
 | --- | --- |
 | `GET /rules` | The seven rules: id, label, provenance, policy role, score kind, formula, weights as fractions and floats, whether urgency enters, the input versions that have a run, and the experiment behind the persistence numbers of each input version. The input versions carry the persistence provenance of each rule that has a set. |
 | `GET /input-versions` | Stored versions, newest first, with the default marked. |
-| `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the circulated `additive_u`. |
+| `GET /results?rule=&input_version=&package_version=&placement=lower\|upper&province=&district=` | Every school in the paper's order with the run manifest. `rule` defaults to the revised paper's main rule, `additive_no_u`; the circulated `additive_u` is asked for by name. |
 | `GET /inputs?input_version=` | The stored inputs of every school of a version, in the order supplied: `school_key`, `source_school_name` and `inputs` in the shape of the school detail's `inputs`. For a client that shows a list and needs raw readings without one request per school. |
 | `GET /schools/by-key/{school_key}?input_version=` | One school under all seven rules, with its stored raw inputs. Every school has a `school_key`, linked to `schools` or not. |
 | `GET /schools/{school_id}?input_version=` | Every school of the version linked to that `schools` row (normally one), each as above. |
