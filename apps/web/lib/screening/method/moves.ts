@@ -12,6 +12,12 @@ export const MOVE_HEX = [
   "#a9481a",
 ] as const;
 
+/**
+ * A school with a single place under the rule shown that the two rules do not both put in order has no move: one
+ * neutral colour, apart from the move colours, which the key names.
+ */
+export const OUTSIDE_HEX = "#d6d3cb";
+
 /** The colour of a move of `d` places (below zero is up the list). */
 export function moveHex(d: number, edges: MoveEdges): string {
   return MOVE_HEX[3 + moveStep(d, edges)];
