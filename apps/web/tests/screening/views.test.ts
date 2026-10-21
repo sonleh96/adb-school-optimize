@@ -82,6 +82,13 @@ describe("reading what storage holds", () => {
     expect(parseEntries(JSON.stringify(bare))).toBeNull();
   });
 
+  it("drops invisible characters before the blank check, and keeps a right-to-left name whole (11)", () => {
+    expect(cleanName("\u200b\u200c\u200d\u2060\ufeff")).toBe("");
+    expect(cleanName("\u202eBoard\u202c meeting")).toBe("Board meeting");
+    expect(cleanName("\u2067اجتماع المجلس\u2069")).toBe("اجتماع المجلس");
+    expect(parseEntries(JSON.stringify({ v: 1, views: [{ name: "\u200b\u200b", q: "" }] }))).toBeNull();
+  });
+
   it("offers a seed once (5)", () => {
     const text = JSON.stringify({ v: 1, views: [{ seed: "queue" }, { seed: "top" }, { seed: "queue" }] });
     expect(parseEntries(text)).toEqual([{ seed: "queue" }, { seed: "top" }]);
