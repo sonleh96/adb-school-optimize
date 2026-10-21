@@ -1,16 +1,9 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
 
 import { QueryProvider } from "@/components/QueryProvider";
 
 import "./globals.css";
-
-// The sign-in page's headings and button. The screening workspace loads its own typefaces in its layout.
-const displayFont = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-display",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={displayFont.variable}>
+      <body>
         <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
