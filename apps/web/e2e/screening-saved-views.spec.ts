@@ -25,6 +25,16 @@
  *     nothing                                                                                    -> "with no saved views ..."
  * 15. A saved view is promised to keep the map position, which a link cannot                     -> "the note under the heading ..."
  * 16. The method tab's heading and its Shows column name the tab, not what each view opens on    -> "with the method details on ..."
+ * 17. Any screen still promises that a view keeps the map position                             -> "no screen promises ..."
+ * 18. A view whose school or rule is gone still points at a school card, and nothing marks what it dropped
+ *                                                                                               -> "a view whose school ..."
+ * 19. Two tabs overwrite each other's views, and one tab's rail never hears of the other's      -> "two tabs ..."
+ * 20. A name of nothing but invisible characters is saved                                       -> "a name of only ..."
+ * 21. Thousands of stored views make the rail take seconds to draw, and saving goes on past any cap
+ *                                                                                               -> "thousands of stored ..."
+ * 22. A pasted link to a saved view opens whatever sits at that place in the reader's own list  -> "a link to a view ..."
+ * 23. The pack's record describes lists of another length than its file, or one rule's groups for all
+ *                                                                                               -> "the pack's record ..."
  */
 import { readFileSync } from "node:fs";
 
@@ -514,4 +524,12 @@ test.describe("in the narrow layout", () => {
       expect(await spills(page, "[data-region=export-sheet]")).toEqual([]);
       expect(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth)).toBe(true);
     });
+});
+
+test("a name of only invisible characters is not saved", async ({ page }) => {
+  await startList(page);
+  await section(page).getByRole("textbox", { name: "Name this view" }).fill("\u200b\u200c\u2060");
+  await section(page).getByRole("button", { name: "Save this view" }).click();
+  await expect(section(page).getByRole("textbox", { name: "Name this view" })).toBeFocused();
+  await expect(viewButtons(page)).toHaveCount(4);
 });

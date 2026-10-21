@@ -44,9 +44,16 @@ export const isStarting = (entries: readonly Entry[] | null): boolean =>
   (entries.length === SEED_KEYS.length &&
     entries.every((entry, i) => "seed" in entry && entry.seed === SEED_KEYS[i]));
 
-/** A typed name as it is kept: spaces trimmed and collapsed, at most `NAME_MAX` characters (not UTF-16 units). */
+/**
+ * A typed name as it is kept: format characters removed (zero-width characters and bidirectional controls, which
+ * make a name invisible or reorder the text after it), spaces trimmed and collapsed, at most `NAME_MAX` characters
+ * (not UTF-16 units). A right-to-left name keeps its letters; the screen sets each name in its own direction.
+ */
 export function cleanName(raw: string): string {
-  const name = raw.replace(/\s+/g, " ").trim();
+  const name = raw
+    .replace(/\p{Cf}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return Array.from(name).slice(0, NAME_MAX).join("").trim();
 }
 
