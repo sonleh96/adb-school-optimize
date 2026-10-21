@@ -114,9 +114,12 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
       const left = element.getBoundingClientRect().left;
       const right = left + full.current + 8;
       const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
-      const card = root.querySelector('[data-region="inspector"]')?.getBoundingClientRect();
-      const stack = data.mode === "compact" || (!!actions && actions.width > 0 && right > actions.left);
-      const squeeze = stack && !!card && card.width > 0 && right > card.left;
+      // A row down, the bar meets the card, or the hint that holds the card's place.
+      const below = ['[data-region="inspector"]', '[data-region="slot-hint"]']
+        .map((selector) => root.querySelector(selector)?.getBoundingClientRect())
+        .filter((box): box is DOMRect => !!box && box.width > 0);
+      const stack = !!actions && actions.width > 0 && right > actions.left;
+      const squeeze = stack && below.some((box) => right > box.left);
       for (const node of [element, root]) {
         node.toggleAttribute("data-bar-stack", stack);
         node.toggleAttribute("data-bar-tight", squeeze || data.mode === "compact");

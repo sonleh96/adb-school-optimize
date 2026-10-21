@@ -340,6 +340,14 @@ function Stepper({
           <div className={styles.railHead}>
             <div className={styles.headRow}>
               <span className={styles.guideName}>{guide.title}</span>
+              {/* In a short narrow window the foot keeps only Back and Next, so Skip sits up here. */}
+              <button
+                type="button"
+                className={`${styles.link} ${styles.headSkip}`}
+                onClick={() => store.dispatch({ type: "skip" })}
+              >
+                {last ? GUIDE.finishClose : GUIDE.skip}
+              </button>
               <button
                 type="button"
                 className={styles.link}
