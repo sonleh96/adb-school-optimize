@@ -34,6 +34,7 @@ describe("the URL", () => {
       loaded
     );
     expect(state).toEqual({
+      ...DEFAULT_STATE,
       rule: "additive_no_u",
       compare: "additive_u",
       school: "k2",

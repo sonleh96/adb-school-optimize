@@ -14,6 +14,7 @@ import { setWorkerUrl, type Map as MapLibreMap, type StyleSpecification } from "
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
+import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
 import type { SchoolKey } from "@/lib/screening/types";
 import { clearCentreOffset, fitPadding } from "@/lib/screening/workspace/layout";
 
@@ -74,6 +75,8 @@ export interface MapCanvasProps {
   /** The map's accessible name and the basemap's credit, from the copy. */
   label: string;
   attribution: string;
+  /** The method details' changes to the marks: layers off, schools outside the filters faint, compare colours. */
+  paint?: MarkPaint;
 }
 
 declare global {
@@ -194,6 +197,7 @@ export default function MapCanvas({
   instant,
   label,
   attribution,
+  paint = NO_PAINT,
 }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -207,7 +211,10 @@ export default function MapCanvas({
   const byKey = useMemo(() => new Map(schools.map((s) => [s.key, s])), [schools]);
   const selected = selectedKey ? (byKey.get(selectedKey) ?? null) : null;
 
-  const markLayers = useMemo(() => buildMarkLayers(schools, stale, emphasis), [schools, stale, emphasis]);
+  const markLayers = useMemo(
+    () => buildMarkLayers(schools, stale, emphasis, paint),
+    [schools, stale, emphasis, paint]
+  );
   // The pointer wins over the workspace's hover; while another rule's rows show, nothing is hovered.
   const hoveredKey = stale ? null : (pointer ?? hoverKey);
   const hovered = hoveredKey ? (byKey.get(hoveredKey) ?? null) : null;
@@ -383,7 +390,12 @@ export default function MapCanvas({
           onClick={onClick}
           onAfterRender={afterRender}
         />
-        <RankLabels schools={schools} stale={stale} />
+        <RankLabels
+          schools={
+            paint.moves || paint.hidden.includes("numerals") || paint.hidden.includes("ranked") ? [] : schools
+          }
+          stale={stale}
+        />
         <NavigationControl position="top-left" showCompass={false} />
       </MapView>
       {basemapFailed ? (

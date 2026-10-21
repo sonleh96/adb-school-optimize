@@ -1,6 +1,8 @@
 import { ScatterplotLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 
+import type { MarkPaint } from "@/lib/screening/method/paint";
+import type { MapLayer } from "@/lib/screening/workspace/state";
 import {
   INCOMPLETE_RING_HEX,
   MARK_PAPER_HEX,
@@ -68,75 +70,104 @@ const ON_TOP = { parameters: { depthWriteEnabled: false, depthCompare: "always" 
 export function buildMarkLayers(
   schools: readonly MapSchool[],
   stale: boolean,
-  emphasis: "all" | "incomplete" = "all"
+  emphasis: "all" | "incomplete" = "all",
+  paint?: MarkPaint
 ): Layer[] {
   const pickable = !stale;
   const opacity = stale ? 0.4 : 1;
   const placedOpacity = stale ? 0.4 : emphasis === "incomplete" ? 0.3 : 1;
-  const incomplete = schools.filter((s) => s.mark.kind === "incomplete");
-  const ranges = schools.filter((s) => s.mark.kind === "range");
-  const dots = schools.filter(isDot).sort((a, b) => b.mark.rank - a.mark.rank);
+  const hidden = paint?.hidden ?? [];
+  // The method details fade the schools outside the filters, and in compare mode colour each dot by its move.
+  // A faded school is drawn in its own layers with a lower layer opacity, not with a per-mark colour, so every
+  // accessor keeps its kind and the map compiles no second GPU pipeline (see the note above).
+  const faint = paint?.faint ?? null;
+  const moves = paint?.moves ?? null;
+  const moveOf = (s: MapSchool) => moves?.get(s.key) ?? null;
+  const shown = (kind: MapLayer, keep: (s: MapSchool) => boolean) =>
+    hidden.includes(kind) ? [] : schools.filter(keep);
+  const groups: [string, (s: MapSchool) => boolean, number][] = faint
+    ? [
+        ["", (s) => !faint.has(s.key), 1],
+        ["-faint", (s) => faint.has(s.key), 0.18],
+      ]
+    : [["", () => true, 1]];
 
-  return [
-    new ScatterplotLayer<MapSchool>({
-      ...ON_TOP,
-      id: "incomplete",
-      data: incomplete,
-      pickable,
-      opacity,
-      getPosition: position,
-      radiusUnits: "pixels",
-      getRadius: () => INCOMPLETE_RADIUS,
-      filled: true,
-      getFillColor: () => INCOMPLETE_FILL,
-      stroked: true,
-      lineWidthUnits: "pixels",
-      getLineWidth: 1.5,
-      getLineColor: INCOMPLETE_INK,
-    }),
-    new ScatterplotLayer<MapSchool>({
-      ...ON_TOP,
-      id: "range",
-      data: ranges,
-      pickable,
-      opacity: placedOpacity,
-      getPosition: position,
-      radiusUnits: "pixels",
-      getRadius: () => RANGE_RADIUS,
-      filled: true,
-      getFillColor: () => PAPER,
-      stroked: true,
-      lineWidthUnits: "pixels",
-      getLineWidth: 2,
-      getLineColor: RING_INK,
-    }),
-    new ScatterplotLayer<MapSchool>({
-      ...ON_TOP,
-      id: "range-centre",
-      data: ranges,
-      opacity: placedOpacity,
-      getPosition: position,
-      radiusUnits: "pixels",
-      getRadius: () => 2,
-      getFillColor: () => RING_INK,
-    }),
-    new ScatterplotLayer<Dot>({
-      ...ON_TOP,
-      id: "dots",
-      data: dots,
-      pickable,
-      opacity: placedOpacity,
-      getPosition: position,
-      radiusUnits: "pixels",
-      getRadius: (s) => RAMP_RADIUS[s.mark.step],
-      filled: true,
-      getFillColor: (s) => RAMP[s.mark.step],
-      stroked: true,
-      lineWidthUnits: "pixels",
-      getLineWidth: 1.5,
-      getLineColor: PAPER,
-    }),
-  ];
+  return groups.flatMap(([suffix, inGroup, fade]) => {
+    const incomplete = shown("queue", (s) => s.mark.kind === "incomplete" && inGroup(s));
+    const ranges = shown("range", (s) => s.mark.kind === "range" && inGroup(s));
+    const dots = (shown("ranked", (s) => isDot(s) && inGroup(s)) as Dot[]).sort((a, b) =>
+      moves
+        ? Number(moveOf(a)?.top ?? false) - Number(moveOf(b)?.top ?? false) || b.mark.rank - a.mark.rank
+        : b.mark.rank - a.mark.rank
+    );
+    return [
+      new ScatterplotLayer<MapSchool>({
+        ...ON_TOP,
+        id: `incomplete${suffix}`,
+        data: incomplete,
+        pickable,
+        opacity: opacity * fade,
+        getPosition: position,
+        radiusUnits: "pixels",
+        getRadius: () => INCOMPLETE_RADIUS,
+        filled: true,
+        getFillColor: () => INCOMPLETE_FILL,
+        stroked: true,
+        lineWidthUnits: "pixels",
+        getLineWidth: 1.5,
+        getLineColor: INCOMPLETE_INK,
+      }),
+      new ScatterplotLayer<MapSchool>({
+        ...ON_TOP,
+        id: `range${suffix}`,
+        data: ranges,
+        pickable,
+        opacity: placedOpacity * fade,
+        getPosition: position,
+        radiusUnits: "pixels",
+        getRadius: () => RANGE_RADIUS,
+        filled: true,
+        getFillColor: () => PAPER,
+        stroked: true,
+        lineWidthUnits: "pixels",
+        getLineWidth: 2,
+        getLineColor: RING_INK,
+      }),
+      new ScatterplotLayer<MapSchool>({
+        ...ON_TOP,
+        id: `range-centre${suffix}`,
+        data: ranges,
+        opacity: placedOpacity * fade,
+        getPosition: position,
+        radiusUnits: "pixels",
+        getRadius: () => 2,
+        getFillColor: () => RING_INK,
+      }),
+      new ScatterplotLayer<Dot>({
+        ...ON_TOP,
+        id: `dots${suffix}`,
+        data: dots,
+        pickable,
+        opacity: placedOpacity * fade,
+        getPosition: position,
+        radiusUnits: "pixels",
+        getRadius: (s) => {
+          const move = moveOf(s);
+          return move ? (move.top ? 6.5 : 4) : RAMP_RADIUS[s.mark.step];
+        },
+        filled: true,
+        getFillColor: (s) => {
+          const move = moveOf(s);
+          return move ? rgba(move.hex) : RAMP[s.mark.step];
+        },
+        stroked: true,
+        lineWidthUnits: "pixels",
+        getLineWidth: 1.5,
+        getLineColor: PAPER,
+        updateTriggers: { getRadius: [moves], getFillColor: [moves] },
+      }),
+    ];
+  });
 }
 
 /** The selection ring, and a lighter ring under the pointer. They change on every hover, so they stay apart. */

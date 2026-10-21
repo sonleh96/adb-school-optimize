@@ -13,7 +13,7 @@ import {
   schoolFromDetail,
 } from "@/lib/screening/copy";
 import { useScreeningSchool } from "@/lib/screening/hooks";
-import type { SchoolKey } from "@/lib/screening/types";
+import type { SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
 import { scoreRangeOf } from "@/lib/screening/workspace/score";
 import { whyBlocks } from "@/lib/screening/workspace/why";
 
@@ -89,6 +89,8 @@ interface CardProps {
   stale: boolean;
   onStep: (delta: 1 | -1) => void;
   onClose: () => void;
+  /** The method details' layer of the card, which replaces the place and everything under it once the record loads. */
+  methodLayer?: ((input: { record: CopySchool; detail: SchoolDetailResponse }) => ReactNode) | null;
 }
 
 /**
@@ -97,7 +99,7 @@ interface CardProps {
  * the paper's persistence flag when the school has it.
  */
 export function SchoolCard(props: CardProps) {
-  const { copy, rule, listed, schools, position, docked, stale, onStep, onClose } = props;
+  const { copy, rule, listed, schools, position, docked, stale, onStep, onClose, methodLayer } = props;
   const detail = useScreeningSchool(listed.id as SchoolKey);
   const record = useMemo((): CopySchool | null => {
     if (!detail.data) return null;
@@ -205,35 +207,51 @@ export function SchoolCard(props: CardProps) {
           </h2>
           <p className={styles.cardMeta}>{copy.locationLine(listed)}</p>
         </header>
-        <div className={styles.hero} data-region="inspector-place" data-form={heroForm}>
-          <div className={styles.heroFigure} data-testid="card-place">
-            <PlaceText text={headline} />
-          </div>
-          <div className={styles.heroLabel}>
-            <b>{heroLabel}</b>
-            <span data-testid="card-context">
-              {copy.placeContext(school, rule, { shortlist: 20 })}
-              {tie ? (
-                <>
-                  {" "}
-                  <Sentence segments={tie} />
-                </>
-              ) : null}
-            </span>
-          </div>
-        </div>
-        {record === null ? (
-          <CardPending
-            failed={detail.isError || (detail.isSuccess && record === null)}
-            copy={copy}
-            retry={detail.refetch}
-          />
-        ) : queued ? (
-          <IncompleteRecord copy={copy} rule={rule} school={record} />
+        {methodLayer ? (
+          // The method layer states the place in its own form, so it waits for the record instead of showing the
+          // plain place first and replacing it.
+          record && detail.data ? (
+            methodLayer({ record, detail: detail.data })
+          ) : (
+            <CardPending
+              failed={detail.isError || (detail.isSuccess && record === null)}
+              copy={copy}
+              retry={detail.refetch}
+            />
+          )
         ) : (
           <>
-            <WhyItSitsHere copy={copy} rule={rule} school={record} />
-            <InNumbers copy={copy} rule={rule} school={record} />
+            <div className={styles.hero} data-region="inspector-place" data-form={heroForm}>
+              <div className={styles.heroFigure} data-testid="card-place">
+                <PlaceText text={headline} />
+              </div>
+              <div className={styles.heroLabel}>
+                <b>{heroLabel}</b>
+                <span data-testid="card-context">
+                  {copy.placeContext(school, rule, { shortlist: 20 })}
+                  {tie ? (
+                    <>
+                      {" "}
+                      <Sentence segments={tie} />
+                    </>
+                  ) : null}
+                </span>
+              </div>
+            </div>
+            {record === null ? (
+              <CardPending
+                failed={detail.isError || (detail.isSuccess && record === null)}
+                copy={copy}
+                retry={detail.refetch}
+              />
+            ) : queued ? (
+              <IncompleteRecord copy={copy} rule={rule} school={record} />
+            ) : (
+              <>
+                <WhyItSitsHere copy={copy} rule={rule} school={record} />
+                <InNumbers copy={copy} rule={rule} school={record} />
+              </>
+            )}
           </>
         )}
       </div>

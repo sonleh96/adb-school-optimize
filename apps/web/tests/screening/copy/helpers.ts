@@ -18,6 +18,7 @@ import type {
 import { parseWith } from "@/lib/screening/schema";
 
 import { readFixture } from "../fixtures";
+import { FN_ARGS } from "./parity-support";
 import {
   type CompareResponse,
   type InputsResponse,
@@ -108,7 +109,7 @@ export class Corpus {
 }
 
 /** The fixed copy of a bound or unbound system, through the writing guards. */
-const ANALYST_STRINGS = new Set(["caveat", "caveatAnalyst", "persistentFlagMethod"]);
+const ANALYST_STRINGS = new Set(["caveat", "caveatAnalyst"]);
 const LABEL_STRINGS = new Set(["notRecorded", "noReading", "notPlaced", "cannotWorkOut", "noResult"]);
 
 export type FixedCopy = Pick<ReturnType<typeof copyFor>, "TERMS" | "STRINGS" | "IDEAS" | "LAYOUT"> &
@@ -314,3 +315,20 @@ export function school(spec: SchoolSpec): CopySchool {
 }
 
 export const placed = (s: CopySchool): PlacedSchool => s;
+
+/**
+ * Every string a method namespace says: its literals, and what each function says for the sample arguments the
+ * parity suite uses (so a new function without samples is noticed there). `path` is the namespace's name.
+ */
+export function methodStrings(method: unknown, path = "METHOD"): string[] {
+  if (typeof method === "string") return [method];
+  if (typeof method === "function") {
+    const samples = FN_ARGS[path];
+    if (!samples) throw new Error(`${path}: no sample arguments for this function`);
+    return samples.flatMap((args) => methodStrings((method as (...a: unknown[]) => unknown)(...args), path));
+  }
+  if (Array.isArray(method)) return method.flatMap((m, i) => methodStrings(m, `${path}[${i}]`));
+  if (method && typeof method === "object" && !(method instanceof RegExp))
+    return Object.entries(method).flatMap(([k, v]) => methodStrings(v, `${path}.${k}`));
+  return [];
+}

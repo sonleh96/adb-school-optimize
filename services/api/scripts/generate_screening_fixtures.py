@@ -12,6 +12,8 @@ at the end.
 
 Every dataset has its own directory under the output folder, and ``index.json`` in it lists every captured
 request with its file and, when it is not 200, its status. The default dataset sits in the folder itself.
+A capture that is not JSON (the top list's CSV) is saved as the API's bytes, and its entry also lists the headers
+that describe the file (``FILE_HEADERS``), so the mock can answer with them.
 ``apps/web/scripts/mock-api.mjs`` serves those and nothing else, so a web test can only see responses the API
 really produced.
 
@@ -30,6 +32,7 @@ import tempfile
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from itertools import combinations
 from pathlib import Path
 from urllib.parse import quote
 
@@ -82,6 +85,19 @@ PINNED = "uuids (run ids, school ids) and timestamps"
 UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 TIMESTAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|\+00:00)")
 FIXED_TIMESTAMP = "2026-01-01T00:00:00Z"
+
+# The headers that say what a downloaded file is, kept with a capture that is not JSON. Transport headers (length,
+# compression, the request id) are the mock's own business.
+FILE_HEADERS = (
+    "content-type",
+    "content-disposition",
+    "cache-control",
+    "x-rise-png-decision-use",
+    "x-content-type-options",
+    "referrer-policy",
+)
+# The lengths of the top list the export sheet offers.
+TOP_LENGTHS = (10, 20, 30)
 
 PLACES = (
     ("North Province", "North One", -5.6, 145.2),
@@ -152,6 +168,12 @@ class Dataset:
     without_coordinates: tuple[str, ...] = ()
     # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
     claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
+    # The top lists saved as CSV, as (rule, length). The export sheet previews and downloads these.
+    top_lists: tuple[tuple[str, int], ...] = ((CIRCULATED_RULE, 20),)
+    # Every pair of rules compared, not only the circulated rule against each other: compare mode can pick any two.
+    every_pair: bool = False
+    # Top lists cut by a province, as (rule, length, province, file suffix): the export follows the screen's filter.
+    filtered_top_lists: tuple[tuple[str, int, str, str], ...] = ()
 
 
 def main_records() -> tuple[SchoolRecord, ...]:
@@ -353,6 +375,9 @@ def datasets() -> tuple[Dataset, ...]:
                 "Sample School 17": (0.1, 0.1, 0.2),
             },
             without_coordinates=WITHOUT_COORDINATES,
+            top_lists=tuple((rule_id, k) for rule_id in RULES for k in TOP_LENGTHS),
+            every_pair=True,
+            filtered_top_lists=((CIRCULATED_RULE, 20, "South Province", "south"),),
         ),
         Dataset(
             name="worst-names",
@@ -433,6 +458,9 @@ class Capture:
         self.client = client
         self.entries: list[dict] = []
         self.bodies: dict[str, str] = {}
+        # Files added after the first fixtures were written. They come last when uuids are numbered (see ``pin``),
+        # so adding them renumbers nothing in the files that were already there.
+        self.late: set[str] = set()
 
     def get(self, path: str, file: str, status: int = 200, **params: str) -> dict:
         """``path`` is written as the API defines it; a school key goes in percent-encoded by the caller."""
@@ -454,20 +482,66 @@ class Capture:
         self.get(path, file, status=status, **params)
         return status
 
+    def get_file(self, path: str, file: str, **params: str) -> None:
+        """A download: the body is kept as the API's text, and the headers that describe the file with it.
+        An answer that is not 200 is the API's JSON refusal, kept as any other refusal is."""
+        response = self.client.get(path, params=params)
+        if response.status_code != 200:
+            refusal = file.rsplit(".", 1)[0] + ".json"
+            self.late.add(refusal)
+            self.get(path, refusal, status=response.status_code, **params)
+            return
+        self.late.add(file)
+        self.entries.append(
+            {
+                "path": path,
+                "query": dict(sorted(params.items())),
+                "file": file,
+                "headers": {
+                    name: response.headers[name] for name in FILE_HEADERS if name in response.headers
+                },
+            }
+        )
+        self.bodies[file] = response.content.decode("utf-8")
+
 
 def school_detail_file(cap: Capture, name: str) -> None:
     encoded = quote(school_key(VERSION, name), safe="")
     cap.get(f"{API}/schools/by-key/{encoded}", f"schools/{encoded}.json")
 
 
-def capture_comparisons(cap: Capture) -> None:
+def capture_comparisons(cap: Capture, every_pair: bool = False) -> None:
     """The circulated rule against each of the others: What changed reads one of these after any switch from it.
-    Where the data cannot be compared (one school, no data at all), the API's own refusal is what the mock answers."""
+    Where the data cannot be compared (one school, no data at all), the API's own refusal is what the mock answers.
+
+    With ``every_pair``, the other pairs too, for compare mode. The web app asks for a pair in the rules' own order
+    (the earlier rule as ``a``) whichever way round the screen shows it, so that order is the one saved."""
     for rule_id in RULES:
         if rule_id != CIRCULATED_RULE:
             cap.get_as_answered(
                 f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
             )
+    if not every_pair:
+        return
+    for a, b in combinations(RULES, 2):
+        if CIRCULATED_RULE not in (a, b):
+            file = f"compare/{a}__{b}.json"
+            cap.late.add(file)
+            cap.get_as_answered(f"{API}/compare", file, a=a, b=b)
+
+
+def capture_top_lists(cap: Capture, ds: Dataset) -> None:
+    """The top list's CSV, with its method record, for each (rule, length) the dataset names."""
+    for rule_id, k in ds.top_lists:
+        cap.get_file(f"{API}/exports/top.csv", f"exports/top_{rule_id}_{k}.csv", rule=rule_id, k=str(k))
+    for rule_id, k, province, suffix in ds.filtered_top_lists:
+        cap.get_file(
+            f"{API}/exports/top.csv",
+            f"exports/top_{rule_id}_{k}_{suffix}.csv",
+            rule=rule_id,
+            k=str(k),
+            province=province,
+        )
 
 
 def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
@@ -478,6 +552,7 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
         cap.get(f"{API}/results", "results/additive_u.json", status=404, rule="additive_u")
         cap.get(f"{API}/inputs", "inputs.json", status=404)
         capture_comparisons(cap)
+        capture_top_lists(cap, ds)
         return cap, []
     rows_by_rule = {}
     for rule_id in RULES:
@@ -491,7 +566,8 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     # School detail for every school, so a test can open any card. The order is the list's, so a rerun is identical.
     for row in default_rows:
         school_detail_file(cap, row["school"]["source_school_name"])
-    capture_comparisons(cap)
+    capture_comparisons(cap, ds.every_pair)
+    capture_top_lists(cap, ds)
     return cap, default_rows
 
 
@@ -501,10 +577,11 @@ def check_claims(ds: Dataset, rows: list[dict]) -> None:
         raise SystemExit(f"dataset {ds.name!r} no longer has: " + "; ".join(broken))
 
 
-def pin(bodies: dict[str, str]) -> dict[str, str]:
-    """Replace uuids and timestamps by fixed values, in the order the files are written, so a rerun is identical."""
+def pin(bodies: dict[str, str], late: set[str] | frozenset[str] = frozenset()) -> dict[str, str]:
+    """Replace uuids and timestamps by fixed values, in the order the files are written, so a rerun is identical.
+    The ``late`` files are numbered after the others, so adding one never renumbers a file that was already saved."""
     mapping: dict[str, str] = {}
-    for file in sorted(bodies):
+    for file in sorted(bodies, key=lambda f: (f in late, f)):
         for found in UUID.findall(bodies[file]):
             mapping.setdefault(
                 found, str(uuid.uuid5(uuid.NAMESPACE_URL, f"rise-screening-fixture/{len(mapping)}"))
@@ -517,9 +594,13 @@ def pin(bodies: dict[str, str]) -> dict[str, str]:
 
 
 def write(out: Path, ds: Dataset, cap: Capture) -> None:
-    for file, body in pin(cap.bodies).items():
+    for file, body in pin(cap.bodies, cap.late).items():
         path = out / file
         path.parent.mkdir(parents=True, exist_ok=True)
+        if not file.endswith(".json"):
+            # A download is saved byte for byte (its byte order mark and line ends included), as a browser gets it.
+            path.write_bytes(body.encode("utf-8"))
+            continue
         # Parse and write back with sorted keys: the content is the API's, the bytes are stable.
         path.write_text(
             json.dumps(json.loads(body), sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n",

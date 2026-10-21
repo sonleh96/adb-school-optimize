@@ -216,7 +216,7 @@ export type MockDataset = "default" | "worst-names" | "ties-and-ranges" | "one" 
 export async function useMockDataset(
   context: BrowserContext,
   dataset: MockDataset,
-  fail: Partial<Record<"rules" | "results" | "inputs" | "schools" | "compare", number>> = {}
+  fail: Partial<Record<"rules" | "results" | "inputs" | "schools" | "compare" | "exports", number>> = {}
 ) {
   const failures = Object.entries(fail)
     .map(([route, status]) => `${route}:${status}`)

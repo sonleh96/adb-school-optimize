@@ -87,6 +87,34 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return response.json() as Promise<T>;
 }
 
+/**
+ * A file the API writes (a CSV export), as its text and the headers that describe it. Same rules as `apiFetch`: the
+ * API's own routes only, with the user's token. A file is never cached, so each read is the API's current answer.
+ */
+export async function apiFetchFile(
+  path: string,
+  init?: RequestInit
+): Promise<{ text: string; type: string | null; disposition: string | null }> {
+  assertApiPath(path);
+  const accessToken = await getApiAccessToken();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}), ...(init?.headers ?? {}) },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const message = await response.text();
+    throw new ApiRequestError(message || `Request failed: ${response.status}`, response.status);
+  }
+  // The text keeps the file's byte order mark, so the download is the API's file byte for byte.
+  const bytes = await response.arrayBuffer();
+  return {
+    text: new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes),
+    type: response.headers.get("Content-Type"),
+    disposition: response.headers.get("Content-Disposition"),
+  };
+}
+
 export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
