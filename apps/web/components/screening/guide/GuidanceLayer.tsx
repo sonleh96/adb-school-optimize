@@ -12,7 +12,7 @@ import dynamic from "next/dynamic";
 import { BookOpen, ListChecks, Menu as MenuIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import type { BoundCopy } from "@/lib/screening/copy";
+import { type BoundCopy, LAYOUT } from "@/lib/screening/copy";
 import { seenCount } from "@/lib/screening/guide/machine";
 import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
 
@@ -24,11 +24,25 @@ import type { GuideData } from "./types";
 import { useLater } from "./useLater";
 import styles from "./guide.module.css";
 
-const Busy = () => <div aria-busy="true" />;
-const Rail = dynamic(() => import("./Rail"), { ssr: false, loading: Busy });
-const HowPage = dynamic(() => import("../how/HowPage"), { ssr: false, loading: Busy });
+// While a layer's code downloads it says what is loading, in the copy system's words.
+const Busy = ({ text }: { text: string }) => (
+  <div aria-busy="true">
+    <p role="status">{text}</p>
+  </div>
+);
+const Rail = dynamic(() => import("./Rail"), {
+  ssr: false,
+  loading: () => <Busy text={LAYOUT.loadingGuide} />,
+});
+const HowPage = dynamic(() => import("../how/HowPage"), {
+  ssr: false,
+  loading: () => <Busy text={LAYOUT.loadingHow} />,
+});
 const HelpLayer = dynamic(() => import("../help/HelpLayer"), { ssr: false });
-const Glossary = dynamic(() => import("../help/Glossary"), { ssr: false });
+const Glossary = dynamic(() => import("../help/Glossary"), {
+  ssr: false,
+  loading: () => <Busy text={LAYOUT.loadingGlossary} />,
+});
 
 export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: GuideData }) {
   const store = useLayerStore();

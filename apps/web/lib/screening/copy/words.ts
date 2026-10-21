@@ -1,6 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { lowerFirst } from "./format";
+import { lowerFirst, plural } from "./format";
 import { RULE_IDS } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
@@ -59,7 +59,10 @@ export const LAYOUT = Object.freeze({
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
   rulesInPack: "Rules the saved views use",
   sharedRecord: "Shared by every list in the pack",
-  fingerprints: (n: number) => `${n} source files. The downloaded file names each one with its fingerprint.`,
+  fingerprints: (n: number) =>
+    n === 1
+      ? "1 source file. The downloaded file names it with its fingerprint."
+      : `${n} source files. The downloaded file names each one with its fingerprint.`,
   downloadPack: "Download the pack",
   copyRecord: "Copy the method record",
   shares: "How the rule adds up",
@@ -95,7 +98,7 @@ export const LAYOUT = Object.freeze({
   underRule: (label: string, ruleName: string) => `${label} under ${ruleName}`,
   emptyFiltered: "No school that can be put in order matches these filters.",
   emptyIncompleteFiltered: "No school with an incomplete record matches these filters.",
-  groupMany: (n: number) => `${n} kinds of detail missing`,
+  groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
   mapLoading: "Loading the map",
@@ -131,6 +134,10 @@ export const LAYOUT = Object.freeze({
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
   sessionEnded: "Your session has ended.",
   signIn: "Sign in again",
+  // The guide, How this works and the glossary while their copy loads. A failed load says loadFailed, with Retry.
+  loadingGuide: "Loading the guide",
+  loadingHow: "Loading How this works",
+  loadingGlossary: "Loading the glossary",
 });
 
 // Keyboard hints. Plain views show them only in presentation mode.
@@ -164,6 +171,7 @@ export const HELP = Object.freeze({
   showWhere: "Show where",
   close: "Close",
   rules: `The ${countWord(RULE_IDS.length)} rules`,
-  liveOn: (n: number) => `Explaining this screen. ${n} items can be explained. Press Escape to leave.`,
+  liveOn: (n: number) =>
+    `Explaining this screen. ${n} ${plural(n, "item", "items")} can be explained. Press Escape to leave.`,
   liveOff: "Stopped explaining.",
 });
