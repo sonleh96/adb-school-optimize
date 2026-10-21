@@ -297,8 +297,9 @@ def read_persistence_source(
     say whether urgency had a weight in the experiment, which has to agree with ``rule_id``.
     The file's flag column must equal the flag derived from its frequencies for every row,
     and the number of flagged rows must equal the receipt's count.
-    If the experiment records the file's hash in ``artifact_hashes.json``, the file must hash to it.
-    If ``expected_sha256`` is given, the file must hash to that too: it pins a file whose experiment records no hash.
+    The file must be vouched for: either its experiment records its hash in ``artifact_hashes.json`` and the file
+    hashes to it, or ``expected_sha256`` pins it (a file whose experiment records no hash). Neither is a refusal.
+    If both exist, the file must match both.
     If the experiment counted the schools near the threshold in ``threshold_adjacency.json``, the count must agree.
     """
     if rule_id not in store.PERSISTENCE_RULE_IDS:
@@ -321,6 +322,12 @@ def read_persistence_source(
             f"persistence file hashes to {sha256}, not the expected {expected_sha256}. Nothing was loaded."
         )
     recorded = _recorded_sha256(path, relative)
+    if recorded is None and expected_sha256 is None:
+        raise ScreeningLoadError(
+            f"persistence file {relative.name} has no recorded hash and no pin: its experiment keeps no "
+            f"{ARTIFACT_HASHES_FILE} beside it, so give its SHA-256 with --persistence-sha256 {rule_id}=<hash>. "
+            "Nothing was loaded."
+        )
     if recorded is not None and sha256 != recorded:
         raise ScreeningLoadError(
             f"persistence file hashes to {sha256}, but its experiment records {recorded} in {ARTIFACT_HASHES_FILE}. "

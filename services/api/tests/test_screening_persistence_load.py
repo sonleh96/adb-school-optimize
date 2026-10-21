@@ -5,6 +5,7 @@ The files are invented: the schools, frequencies and experiment id are made up h
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -325,12 +326,15 @@ def test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused(referen
 
 @pytest.mark.parametrize("bad", ["", "abc", "1.5", "-0.1", "nan"])
 def test_a_frequency_that_is_not_a_number_from_zero_to_one_is_refused(reference, bad):  # PE11
-    relative = write_persistence_files(reference, FREQUENCIES)
+    relative = write_persistence_files(reference, FREQUENCIES, hash_record="none")
     path = reference / relative
     path.write_text(path.read_text(encoding="utf-8").replace("0.99", bad, 1), encoding="utf-8")
+    pin = hashlib.sha256(
+        path.read_bytes()
+    ).hexdigest()  # pinned after the edit, so only the value is at fault
 
     with pytest.raises(ScreeningLoadError, match=r"not a number|outside 0 to 1"):
-        read_persistence_source(reference, relative, "additive_u")
+        read_persistence_source(reference, relative, "additive_u", pin)
 
 
 def test_a_path_without_an_experiment_folder_is_refused(reference):  # PE13
@@ -605,11 +609,33 @@ def test_a_pin_is_checked_as_well_as_the_recorded_hash(reference):  # PE28
     assert read_persistence_source(reference, relative, "additive_no_u", actual).source_sha256 == actual
 
 
-def test_an_experiment_with_no_recorded_hash_is_read_on_its_receipt_alone_or_with_a_pin(reference):  # PE28
-    relative = write_persistence_files(reference, FREQUENCIES)
+def test_a_file_with_no_recorded_hash_and_no_pin_is_refused(reference):  # PE34
+    # The check must not fail open: a removed record, or a file never pinned, is not a file anyone vouched for.
+    relative = write_persistence_files(reference, FREQUENCIES, hash_record="none")
     assert not (reference / relative).parent.joinpath("artifact_hashes.json").exists()
 
-    assert read_persistence_source(reference, relative, "additive_u").experiment_id == EXPERIMENT
+    with pytest.raises(ScreeningLoadError, match="no recorded hash and no pin"):
+        read_persistence_source(reference, relative, "additive_u")
+
+
+def test_removing_the_record_of_hashes_does_not_open_the_check(reference):  # PE34
+    relative = write_persistence_files(reference, FREQUENCIES_NO_U, urgency_omitted=True)
+    assert read_persistence_source(reference, relative, "additive_no_u").experiment_id == EXPERIMENT_NO_U
+    (reference / relative).parent.joinpath("artifact_hashes.json").unlink()
+
+    with pytest.raises(ScreeningLoadError, match="no recorded hash and no pin"):
+        read_persistence_source(reference, relative, "additive_no_u")
+
+
+def test_a_file_with_no_recorded_hash_is_read_when_it_is_pinned_and_refused_when_the_pin_is_wrong(
+    reference,
+):  # PE28
+    relative = write_persistence_files(reference, FREQUENCIES, hash_record="none")
+    actual = hashlib.sha256((reference / relative).read_bytes()).hexdigest()
+
+    assert read_persistence_source(reference, relative, "additive_u", actual).experiment_id == EXPERIMENT
+    with pytest.raises(ScreeningLoadError, match="not the expected " + "c" * 64):
+        read_persistence_source(reference, relative, "additive_u", "c" * 64)
 
 
 def test_a_count_near_the_threshold_that_disagrees_with_the_table_is_refused(reference):  # PE29
