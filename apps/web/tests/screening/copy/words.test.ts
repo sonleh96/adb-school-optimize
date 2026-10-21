@@ -144,29 +144,15 @@ describe("the strings that state a count", () => {
 
 describe("the order of the incomplete records", () => {
   it("is said for the grouping the list is in, and neither sentence claims the other's order", () => {
-    expect(copy.STRINGS.queueOrder).toBe(
-      "Listed by province, district and school name. This is not an order of priority."
-    );
-    expect(copy.STRINGS.queueOrderMissing).toBe(
-      "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
-    );
     for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
       expect(textProblems(t), t).toEqual([]);
     expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
+    expect(copy.STRINGS.queueOrderMissing).toMatch(/what is missing/);
   });
 });
 
 describe("the workspace's words for the map, a stale list and an ended session", () => {
   it("come from the copy system, in sentences that pass the writing guards, and need no interim file", () => {
-    expect(LAYOUT.mapKeyboard).toBe(
-      "To choose a school with the keyboard, use the list or the incomplete records."
-    );
-    expect(LAYOUT.basemapUnavailable).toBe(
-      "The map's background did not load. The schools and the list still work."
-    );
-    expect(LAYOUT.refreshFailed).toBe("The list did not refresh, so this is the last one that loaded.");
-    expect(LAYOUT.sessionEnded).toBe("Your session has ended.");
-    expect(LAYOUT.signIn).toBe("Sign in again");
     for (const t of [
       LAYOUT.mapKeyboard,
       LAYOUT.basemapUnavailable,

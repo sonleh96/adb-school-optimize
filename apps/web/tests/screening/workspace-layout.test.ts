@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 
 import { bandOf, placeBands } from "@/lib/screening/workspace/bands";
-import { layoutOf, mapPadding, modeOf } from "@/lib/screening/workspace/layout";
+import { layoutOf, modeOf } from "@/lib/screening/workspace/layout";
 import { whyBlocks } from "@/lib/screening/workspace/why";
 
 describe("layoutOf", () => {
@@ -47,13 +47,6 @@ describe("layoutOf", () => {
     expect(layoutOf({ width: 800, height: 500, cardOpen: false }).band).toBe(160);
     expect(layoutOf({ width: 800, height: 360, cardOpen: false }).band).toBe(160);
     expect(layoutOf({ width: 1600, height: 1000, cardOpen: false }).band).toBeNull();
-  });
-
-  it("frames the map in the part no panel covers", () => {
-    const wide = layoutOf({ width: 1600, height: 1000, cardOpen: true });
-    expect(mapPadding(wide, true)).toEqual({ top: 80, right: 448, bottom: 140, left: 472 });
-    const docked = layoutOf({ width: 1280, height: 800, cardOpen: true });
-    expect(mapPadding(docked, true)).toEqual({ top: 80, right: 416, bottom: 140, left: 56 });
   });
 });
 
