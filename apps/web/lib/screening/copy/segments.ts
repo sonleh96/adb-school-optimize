@@ -9,13 +9,13 @@
  *
  * Marked names are the names of schools (the display form, with a district or record id added when two schools
  * would otherwise read the same) and the names a person gives a saved view. A rule's name is not a school name and
- * is plain text.
+ * is plain text, except in a heading that sets it in italics, where it is marked as a "rule".
  *
  * Build segments with `seg`, a template tag: strings and numbers become text, a `NameSegment` stays a name, and an
  * array of segments is spliced in. Adjacent text is merged, so two builds of the same sentence compare equal.
  */
 
-export type NameKind = "school" | "saved-view";
+export type NameKind = "school" | "saved-view" | "rule";
 
 /** One name inside a sentence. `name` is exactly the characters in the plain text. */
 export interface NameSegment {

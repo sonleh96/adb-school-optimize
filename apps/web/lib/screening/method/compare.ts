@@ -10,13 +10,6 @@ import type { CompareResponse, RuleId, SchoolKey } from "../types";
 /** The edges that sort a move into its bin: 1 to 4 places, 5 to 14, 15 or more. The legend's labels use the same. */
 export type MoveEdges = readonly [number, number];
 
-/**
- * The copy's edges (METHOD's `MOVE_EDGES`, which words the key's bins). The copy module loads on demand and is
- * reached only through `methodFor`, which does not return them, so they are restated here; a unit test keeps the
- * two equal.
- */
-export const MOVE_EDGES: MoveEdges = Object.freeze([4, 14] as const);
-
 export interface ComparedSchool {
   readonly key: SchoolKey;
   readonly name: string;

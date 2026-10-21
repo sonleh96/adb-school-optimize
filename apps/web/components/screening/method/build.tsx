@@ -11,7 +11,7 @@ import type { ReactNode, RefObject } from "react";
 import type { CopyRuleId, CopySchool, ListedSchool } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { LABELLED_PLACES } from "@/lib/screening/marks";
-import { type Compared, MOVE_EDGES, compareFor } from "@/lib/screening/method/compare";
+import { type Compared, type MoveEdges, compareFor } from "@/lib/screening/method/compare";
 import { type Filters, admits, filterOptions, filtering } from "@/lib/screening/method/filters";
 import { moveHex } from "@/lib/screening/method/moves";
 import type { MarkPaint, Move } from "@/lib/screening/method/paint";
@@ -61,6 +61,8 @@ export function paintFor(input: {
   rows: readonly ListedRow[];
   filters: Filters;
   compared: Compared | null;
+  /** The edges that sort a move into its bin, from the method words. */
+  edges: MoveEdges;
 }): MarkPaint {
   const { filters, compared } = input;
   const faint = filtering(filters)
@@ -70,7 +72,7 @@ export function paintFor(input: {
     ? new Map(
         compared.rows.map((r) => [
           r.key,
-          { hex: moveHex(r.d, MOVE_EDGES), top: r.a <= compared.k || r.b <= compared.k },
+          { hex: moveHex(r.d, input.edges), top: r.a <= compared.k || r.b <= compared.k },
         ])
       )
     : null;
@@ -268,7 +270,7 @@ export function buildMounts(input: BuildInput): Built {
               b: rule,
               k: compared.k,
               n: compared.n,
-              edges: MOVE_EDGES,
+              edges: method.compare.moveEdges,
               row: compared.rows.find((r) => r.key === record.id) ?? null,
             }
           : null

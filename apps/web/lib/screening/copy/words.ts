@@ -101,6 +101,9 @@ export const LAYOUT = Object.freeze({
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
+  // A comparison of two rules, and the top-list file the export sheet reads.
+  loadingComparison: "Loading the comparison",
+  loadingTopList: "Loading the top list",
   mapLoading: "Loading the map",
   tooltipMissing: (labels: string) => `Missing: ${labels}`,
   tipNotComputed: (shortName: string) => `Not computed for this school under ${shortName}`,
@@ -126,6 +129,8 @@ export const LAYOUT = Object.freeze({
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
   retry: "Retry",
+  // The heading of the school column in the export table.
+  schoolHead: "School",
   retrying: "Trying again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
