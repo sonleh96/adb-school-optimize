@@ -15,7 +15,6 @@ import { Sentence } from "../Sentence";
 import { useActed, useLayerStore, useLayers } from "../guide/GuidanceProvider";
 import type { GuideData } from "../guide/types";
 import { useLater } from "../guide/useLater";
-import { useReturnFocus } from "../guide/useReturnFocus";
 import styles from "./how.module.css";
 
 /** Which guide shows each section on the screen. */
@@ -73,7 +72,6 @@ export default function HowPage({ data }: { data: GuideData }) {
   const title = useRef<HTMLHeadingElement>(null);
   const [current, setCurrent] = useState<string | null>(null);
   const acted = useActed();
-  useReturnFocus();
   const { copy } = data;
 
   const ready = later.status === "ready";

@@ -357,6 +357,40 @@ test("a failed download of the guide copy says so, and Retry loads it", async ({
   problems.splice(0, problems.length, ...problems.filter((p) => !/requestfailed|ERR_FAILED/.test(p)));
 });
 
+test("a failed download of a layer's own code says so, and Retry loads it again", async ({
+  page,
+  problems,
+}) => {
+  // The rail's own code fails, however often it is asked for, until the person presses Retry; Retry must ask for it
+  // again rather than show the same failure.
+  let allowed = false;
+  let failures = 0;
+  await page.route(/\/_next\/static\/chunks\/.*\.js$/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (!allowed && body.includes("guide-step-title")) {
+      failures += 1;
+      return route.abort();
+    }
+    return route.fulfill({ response, body });
+  });
+  await page.goto("/screening");
+  await waitForMap(page);
+  await expect(rail(page).getByRole("alert")).toContainText("Some of the information did not load");
+  allowed = true;
+  await rail(page).getByRole("button", { name: "Retry" }).click();
+  await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeVisible();
+  expect(failures).toBeGreaterThan(0);
+  // The aborted chunk, and React's report of the error the boundary caught, are what this test provokes.
+  problems.splice(
+    0,
+    problems.length,
+    ...problems.filter(
+      (p) => !/requestfailed|ERR_FAILED|ChunkLoadError|Failed to load chunk|Loading chunk/i.test(p)
+    )
+  );
+});
+
 test("with no schools the guides cannot be started", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");
   await page.goto("/screening");

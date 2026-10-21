@@ -8,7 +8,6 @@
  * Which guides the data can teach is decided here, from the loaded data (R13), so the Guides button can say how
  * many a returning user has seen without loading the guides.
  */
-import dynamic from "next/dynamic";
 import { BookOpen, ListChecks, Menu as MenuIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -19,7 +18,7 @@ import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
 import { useWorkspaceState } from "../WorkspaceProvider";
 import { reducedMotion } from "./dom";
 import { useActed, useGuidanceFrame, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
-import { GuidanceBoundary } from "./GuidanceBoundary";
+import { LazyLayer } from "./GuidanceBoundary";
 import type { GuideData } from "./types";
 import { useLater } from "./useLater";
 import styles from "./guide.module.css";
@@ -30,19 +29,11 @@ const Busy = ({ text }: { text: string }) => (
     <p role="status">{text}</p>
   </div>
 );
-const Rail = dynamic(() => import("./Rail"), {
-  ssr: false,
-  loading: () => <Busy text={LAYOUT.loadingGuide} />,
-});
-const HowPage = dynamic(() => import("../how/HowPage"), {
-  ssr: false,
-  loading: () => <Busy text={LAYOUT.loadingHow} />,
-});
-const HelpLayer = dynamic(() => import("../help/HelpLayer"), { ssr: false });
-const Glossary = dynamic(() => import("../help/Glossary"), {
-  ssr: false,
-  loading: () => <Busy text={LAYOUT.loadingGlossary} />,
-});
+// Each layer's code is its own chunk, fetched the first time the layer opens (and again on Retry).
+const loadRail = () => import("./Rail");
+const loadHowPage = () => import("../how/HowPage");
+const loadHelpLayer = () => import("../help/HelpLayer");
+const loadGlossary = () => import("../help/Glossary");
 
 export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: GuideData }) {
   const store = useLayerStore();
@@ -84,6 +75,22 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
     });
   }, [frame.rail, root, keyboard, data.mode]);
 
+  // How this works makes the workspace under it inert, which takes focus off the button that opened it. Remember
+  // that button in the same commit, before the browser moves focus, and give focus back to it when the page closes.
+  const pageTrigger = useRef<HTMLElement | null>(null);
+  const pageOpen = state.page !== null;
+  useLayoutEffect(() => {
+    if (pageOpen) {
+      pageTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      return;
+    }
+    const trigger = pageTrigger.current;
+    pageTrigger.current = null;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (trigger?.isConnected && (lost || !!document.activeElement?.closest('[data-region="how-page"]')))
+      trigger.focus({ preventScroll: true });
+  }, [pageOpen]);
+
   const railOpen = state.rail.kind !== "off";
   // A rail a person closes hands focus to the Guides button that reopens it.
   const acted = useActed();
@@ -115,25 +122,32 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
           data-present={(state.present && state.rail.kind === "step" && data.mode !== "narrow") || undefined}
           data-step={state.rail.kind === "step" || undefined}
         >
-          <GuidanceBoundary copy={data.copy}>
-            <Rail root={root} data={data} roles={roles} plan={plan} />
-          </GuidanceBoundary>
+          <LazyLayer
+            load={loadRail}
+            loading={<Busy text={LAYOUT.loadingGuide} />}
+            copy={data.copy}
+            props={{ root, data, roles, plan }}
+          />
         </div>
       ) : null}
       {state.page ? (
-        <GuidanceBoundary copy={data.copy}>
-          <HowPage data={data} />
-        </GuidanceBoundary>
+        <LazyLayer
+          load={loadHowPage}
+          loading={<Busy text={LAYOUT.loadingHow} />}
+          copy={data.copy}
+          props={{ data }}
+        />
       ) : null}
       {state.help || state.card ? (
-        <GuidanceBoundary copy={data.copy}>
-          <HelpLayer root={root} data={data} roles={roles} />
-        </GuidanceBoundary>
+        <LazyLayer load={loadHelpLayer} loading={null} copy={data.copy} props={{ root, data, roles }} />
       ) : null}
       {state.gloss.open ? (
-        <GuidanceBoundary copy={data.copy}>
-          <Glossary root={root} data={data} />
-        </GuidanceBoundary>
+        <LazyLayer
+          load={loadGlossary}
+          loading={<Busy text={LAYOUT.loadingGlossary} />}
+          copy={data.copy}
+          props={{ root, data }}
+        />
       ) : null}
     </>
   );
