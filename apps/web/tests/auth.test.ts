@@ -41,11 +41,31 @@ describe("safeNextPath", () => {
     expect(safeNextPath(undefined)).toBe("/");
   });
 
+  // Each decoding can reveal a host, so a value still changing after the five decodings the check allows is refused
+  // rather than accepted in its encoded form.
+  const encodedTimes = (text: string, times: number) => {
+    let encoded = text;
+    for (let i = 0; i < times; i += 1) encoded = encodeURIComponent(encoded);
+    return encoded;
+  };
+  it.each([
+    [
+      "five encodings of a backslash, which reach the backslash on the fifth decoding",
+      "/%252525255Cevil.com",
+    ],
+    ["six encodings of a backslash", `/${encodedTimes("\\evil.com", 6)}`],
+    ["eight encodings of a backslash", `/${encodedTimes("\\evil.com", 8)}`],
+  ])("refuses %s", (_name, value) => {
+    expect(safeNextPath(value)).toBe("/");
+  });
+
   it.each([
     "/",
     "/screening",
     "/screening?rule=additive_no_u&guide=off",
+    "/screening?rule=additive_no_u&k=20",
     "/screening?next=%2Fscreening",
+    "/screening%3Frule%3Dadditive_no_u",
     "/screening#top",
     "/a//b",
     "/sign-in?error=allowlist",
