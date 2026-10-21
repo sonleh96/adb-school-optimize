@@ -9,6 +9,7 @@ import {
   KEYS,
   type Known,
   type StateKey,
+  type TopLength,
   type WorkspaceState,
   searchWithState,
   shownRule,
@@ -44,6 +45,12 @@ export function droppedKeys(q: string, known: Known): StateKey[] {
     return typeof parse(value, known) === "symbol" && typeof parse(value, loose) !== "symbol";
   });
 }
+
+/**
+ * How many schools each rule's list in the pack holds, whatever length the top list tab was left at. The record
+ * states it, and each rule's own record in the file says the same.
+ */
+export const PACK_LENGTH: TopLength = 20;
 
 /** The link that reopens a view: the page's address with the view's state and nothing else. */
 export const linkOf = (page: string, state: WorkspaceState): string => `${page}${searchWithState("", state)}`;

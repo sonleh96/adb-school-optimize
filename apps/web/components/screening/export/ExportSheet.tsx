@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 
 import { type BoundCopy, type CopyRuleId, type CopySchool, isName } from "@/lib/screening/copy";
-import { capitalise } from "@/lib/screening/copy/format";
+import { sourceValue } from "./source";
 import type { Method } from "@/lib/screening/copy/method";
 import { recordText, saveFile, useTopList } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
@@ -48,15 +48,6 @@ export interface ExportSheetProps {
 }
 
 /**
- * The source for a record row, whose label already says "Source". The copy's source line names itself ("Source: the
- * research paper ..."), so its own lead is left out here and the label is said once.
- */
-function sourceValue({ TERMS, STRINGS }: BoundCopy): string {
-  const lead = `${TERMS.source.label}: `;
-  return capitalise(STRINGS.source.startsWith(lead) ? STRINGS.source.slice(lead.length) : STRINGS.source);
-}
-
-/**
  * Download the top list: the first 10, 20 or 30 of the list under the rule on screen, previewed from the file the API
  * writes, with its method record, and downloaded as that same file. The plain sheet says it all in the copy system's
  * words; with the method details on it keeps the formula, the shares, the ids and the fingerprints.
@@ -66,7 +57,7 @@ export function ExportSheet(props: ExportSheetProps) {
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
   const plain = method === null;
   const read = useTopList(rule as RuleId, n, plain ? null : props.filters.prov, !props.pack);
-  const pack = usePackSheet({ copy, method, schools, n, enabled: props.pack, onNotify });
+  const pack = usePackSheet({ copy, method, schools, enabled: props.pack, onNotify });
   const closeButton = useRef<HTMLButtonElement>(null);
   const file = read.data ?? null;
   const list = file?.list ?? null;
