@@ -110,10 +110,18 @@ export function SchoolCard(props: CardProps) {
   }, [detail.data, rule]);
   const school: CopySchool | ListedSchool = record ?? listed;
   const scroll = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   // A new school starts at the top of the card.
   useEffect(() => {
     scroll.current?.scrollTo({ top: 0 });
   }, [listed.id]);
+  // When the list steps aside for the card, the row that had focus goes with it, so the card takes focus: on its
+  // heading, so the school's name is read first. Focus already in the card (its previous or next) stays where it is.
+  useEffect(() => {
+    if (!docked || card.current?.contains(document.activeElement)) return;
+    heading.current?.focus({ preventScroll: true });
+  }, [docked, listed.id]);
 
   const { LAYOUT, STRINGS, TERMS, HELP } = copy;
   const queued = listed.cohort === "queue";
@@ -137,6 +145,7 @@ export function SchoolCard(props: CardProps) {
 
   return (
     <aside
+      ref={card}
       className={`${styles.panel} ${styles.card}`}
       data-slot="school-card"
       data-region="inspector"
@@ -189,7 +198,9 @@ export function SchoolCard(props: CardProps) {
       </div>
       <div ref={scroll} className={styles.cardScroll}>
         <header className={styles.cardHead}>
-          <h2 className={styles.cardName}>{name}</h2>
+          <h2 ref={heading} className={styles.cardName} tabIndex={-1}>
+            {name}
+          </h2>
           <p className={styles.cardMeta}>{copy.locationLine(listed)}</p>
         </header>
         <div className={styles.hero} data-region="inspector-place" data-form={heroForm}>
