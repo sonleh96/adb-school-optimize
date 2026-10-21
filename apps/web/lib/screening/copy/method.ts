@@ -59,13 +59,26 @@ const sheetTitle = (n: number, name: string): Segments => seg`First ${n}, ${name
  * The persistence test in the research team's terms, for a rule it was run for. The draws, the threshold and the
  * settings come from the data (`test`); without them the words say the same without a number.
  */
+// A concentration as the data gives it, with no rounding: 17.5 stays 17.5.
+const plainNumber = (n: number): string => String(Number(n.toPrecision(12)));
+// A test the words can state: a positive whole number of draws, a threshold above 0 and up to 1, and settings whose
+// concentrations are all above 0. Anything else is missing, and the words state no number.
+const usable = (test?: PersistenceTest): test is PersistenceTest =>
+  !!test &&
+  Number.isInteger(test.draws) &&
+  test.draws > 0 &&
+  test.threshold > 0 &&
+  test.threshold <= 1 &&
+  test.settings.length > 0 &&
+  test.settings.every((s) => s.topLevel > 0 && s.schoolNeed > 0);
+
 function persistentMethod(ruleId: PersistenceRule, test?: PersistenceTest): string {
   let how =
     "at least the paper's threshold share of the Dirichlet weight draws in each concentration setting";
-  if (test && test.settings.length > 0) {
+  if (usable(test)) {
     const n = test.settings.length;
     const pairs = joinList(
-      test.settings.map((s) => `${formatCount(s.topLevel)}/${formatCount(s.schoolNeed)}`)
+      test.settings.map((s) => `${plainNumber(s.topLevel)}/${plainNumber(s.schoolNeed)}`)
     );
     const where =
       n === 1

@@ -21,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import * as copy from "@/lib/screening/copy";
 import { bindCopy, copyFor } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
-import { METHOD } from "@/lib/screening/copy/method";
+import { METHOD, buildMethod } from "@/lib/screening/copy/method";
 import { parseWith } from "@/lib/screening/schema";
 import { resultsResponse } from "@/lib/screening/types";
 
@@ -496,6 +496,46 @@ describe("the fixed strings that carry a rule of the project", () => {
     expect(
       (await bare.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u").replace("top-20", "")
     ).not.toMatch(/\d/);
+  });
+
+  it("states a test only when its numbers are usable, and prints a concentration as the data gives it", () => {
+    const test = (over: object) => ({
+      draws: 3000,
+      threshold: 0.75,
+      settings: [{ topLevel: 17.5, schoolNeed: 12.5 }],
+      ...over,
+    });
+    const say = (t: object) =>
+      buildMethod({ tests: { additive_no_u: t as never } }).insp.persistent("additive_no_u");
+    // Not rounded: 17.5 and 12.5 are not 18 and 13.
+    expect(say(test({}))).toContain(
+      "at least 75% of 3,000 Dirichlet weight draws in the concentration setting (17.5/12.5)"
+    );
+    expect(
+      say(
+        test({
+          settings: [
+            { topLevel: 20.25, schoolNeed: 15 },
+            { topLevel: 1000, schoolNeed: 80.5 },
+          ],
+        })
+      )
+    ).toContain("in each of the two concentration settings (20.25/15 and 1000/80.5)");
+    // A count of draws that is not a positive whole number, a threshold off the 0 to 1 scale, or a setting at or below
+    // 0 is missing, and the words state no number rather than "80% of 0 draws".
+    const none = say({ draws: undefined, threshold: undefined, settings: [] });
+    for (const bad of [
+      { draws: 0 },
+      { draws: -5 },
+      { draws: 2.5 },
+      { threshold: 0 },
+      { threshold: 1.2 },
+      { settings: [] },
+      { settings: [{ topLevel: 0, schoolNeed: 15 }] },
+      { settings: [{ topLevel: 20, schoolNeed: -1 }] },
+    ])
+      expect(say(test(bad)), JSON.stringify(bad)).toBe(none);
+    expect(none.replace("top-20", "")).not.toMatch(/\d/);
   });
 
   it("names the method card's extra-share row by the factor or factors that attain the largest value", () => {
