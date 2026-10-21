@@ -12,8 +12,12 @@ export interface GuideData {
   readonly ordered: readonly string[];
   /** The list, its statement and its comparison have loaded: the guides can run. */
   readonly ready: boolean;
-  /** The API offers the circulated rule with urgency, so guide 5 can compare the main rule with it. */
-  readonly urgencyRule: boolean;
+  /**
+   * The API offers the circulated rule with urgency, so guide 5 can compare the main rule with it; null until the
+   * rules have loaded. The list is asked for beside the rules and can arrive first, so a guide plan built before then
+   * would drop guide 5, and a link to it.
+   */
+  readonly urgencyRule: boolean | null;
   /**
    * What the workspace shows that some guide steps point at: "Download the top list" (`export-button`) and the
    * incomplete records' Group by control (`queue-group`). A step is offered only when its region exists.
