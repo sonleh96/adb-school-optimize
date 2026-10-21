@@ -26,7 +26,15 @@ import { describe, expect, it } from "vitest";
 import { copyFor } from "@/lib/screening/copy";
 import { rolesOf } from "@/lib/screening/guide/roles";
 import type { RuleId } from "@/lib/screening/types";
-import { linkOf, linksText, packFileName, packText, rulesUsed, stateOf } from "@/lib/screening/views/pack";
+import {
+  droppedKeys,
+  linkOf,
+  linksText,
+  packFileName,
+  packText,
+  rulesUsed,
+  stateOf,
+} from "@/lib/screening/views/pack";
 import { seedsOf } from "@/lib/screening/views/seeds";
 import { createViewsStore } from "@/lib/screening/views/store";
 import {
@@ -294,5 +302,18 @@ describe("two tabs on the same storage", () => {
     a.write(() => a.store.save("Board", ""));
     expect(heard).toBe(1);
     expect(b.store.entries()!.some((e) => "name" in e && e.name === "Board")).toBe(true);
+  });
+});
+
+describe("what a view names that the data no longer holds", () => {
+  const known: Known = {
+    ruleIds: new Set(["additive_u", "additive_no_u"]),
+    defaultRule: "additive_u" as RuleId,
+    schoolKeys: new Set(["k1"]),
+  };
+  it("names the keys the data dropped, and nothing for defaults, good values or keys it does not know (14)", () => {
+    expect(droppedKeys("school=nope&rule=ghost&place=upper", known)).toEqual(["rule", "school"]);
+    expect(droppedKeys("rule=additive_u&school=k1&view=queue&junk=1", known)).toEqual([]);
+    expect(droppedKeys("compare=ghost", known)).toEqual(["compare"]);
   });
 });

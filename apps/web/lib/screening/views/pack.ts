@@ -6,7 +6,9 @@
 import type { RecordLine } from "../method/top-csv";
 import type { RuleId } from "../types";
 import {
+  KEYS,
   type Known,
+  type StateKey,
   type WorkspaceState,
   searchWithState,
   shownRule,
@@ -23,6 +25,25 @@ export interface PackItem {
 /** The view's state as the workspace reads its link, so a junk key or an unknown school never reaches a link. */
 export const stateOf = (view: Pick<SavedView, "q">, known: Known): WorkspaceState =>
   stateFromSearch(view.q, known);
+
+/** The keys whose values the loaded data decides: a rule it has a run for, a school, a province or remoteness class. */
+const DATA_KEYS = new Set<StateKey>(["rule", "compare", "school", "hover", "prov", "loc"]);
+
+/**
+ * The keys a view's stored state names that the loaded data no longer holds (a school since removed, a rule the API
+ * has no run for), in the workspace's key order. Reading the view drops them silently; this says which.
+ */
+export function droppedKeys(q: string, known: Known): StateKey[] {
+  const params = new URLSearchParams(q);
+  const loose: Known = { ...known, ruleIds: null, schoolKeys: null, provinces: null, localities: null };
+  return (Object.keys(KEYS) as StateKey[]).filter((key) => {
+    const value = params.get(key);
+    if (value === null || !DATA_KEYS.has(key)) return false;
+    // A value the key can hold at all, that this data does not hold. Junk text is not "dropped by the data".
+    const parse = KEYS[key].parse as (value: unknown, known: Known) => unknown;
+    return typeof parse(value, known) === "symbol" && typeof parse(value, loose) !== "symbol";
+  });
+}
 
 /** The link that reopens a view: the page's address with the view's state and nothing else. */
 export const linkOf = (page: string, state: WorkspaceState): string => `${page}${searchWithState("", state)}`;

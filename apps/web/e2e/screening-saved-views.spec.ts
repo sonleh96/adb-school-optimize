@@ -569,3 +569,27 @@ test("two tabs keep each other's views, and each tab's rail shows the other's at
   await a.close();
   await b.close();
 });
+
+test("a view whose school and rule are gone points at no card, and marks what it dropped", async ({
+  page,
+  context,
+}) => {
+  await store(
+    context,
+    JSON.stringify({ v: 1, views: [{ name: "Gone", q: "school=nope&rule=ghost&place=upper" }] })
+  );
+  await startList(page);
+  await viewButtons(page).first().click();
+  await expect(counter(page)).toHaveText("Saved view 1 of 1");
+  await expect
+    .poll(() => workspace(page))
+    .toMatchObject({ school: null, rule: "additive_u", place: "upper" });
+  const onScreen = rail(page).locator("p", { hasText: "On screen" });
+  await expect(onScreen).not.toContainText("school card");
+  await expect(page.getByTestId("guide-step-body")).toHaveAttribute("data-dropped", "rule school");
+  await open(page, "?guide=off&panel=export&pack=1");
+  await expect(sheet(page).locator("[data-region=pack-table] li").first()).toHaveAttribute(
+    "data-dropped",
+    "rule school"
+  );
+});
