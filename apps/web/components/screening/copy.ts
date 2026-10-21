@@ -6,6 +6,8 @@ import type { Failure } from "@/lib/screening/errors";
  * from the API in its own words, and the functions below only put them in a sentence.
  */
 export const COPY = {
+  /** The masthead, as the design's prototype words it. Awaiting the copy module (requested). */
+  mast: { name: "RISE-PNG", sub: "Screening of secondary schools", logo: "ADB" },
   title: "School screening",
   ruleEyebrow: "Rule",
   otherRules: "Other rules",

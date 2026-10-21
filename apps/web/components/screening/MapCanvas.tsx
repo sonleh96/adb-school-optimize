@@ -55,6 +55,8 @@ export interface MapCanvasProps {
   padding: Padding;
   /** The marks belong to the previous rule while the new one loads: they fade and cannot be picked. */
   stale: boolean;
+  /** Called after every frame; the first one drew the schools' marks, or the map alone when there are none. */
+  onDrawn?: () => void;
 }
 
 interface Hover {
@@ -156,7 +158,14 @@ function sameUrl(a: string, b: string): boolean {
 
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-export default function MapCanvas({ schools, selectedKey, onSelect, padding, stale }: MapCanvasProps) {
+export default function MapCanvas({
+  schools,
+  selectedKey,
+  onSelect,
+  padding,
+  stale,
+  onDrawn,
+}: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const loaded = useRef(false);
@@ -232,6 +241,10 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding, sta
     setHover(info.object ? { school: info.object, x: info.x, y: info.y } : null);
   }, []);
 
+  // deck.gl calls this after every frame. The map is created only once the list, or its failure, is on screen, so
+  // its first frame holds every mark the list has: none, for an empty or failed list. The controller waits for it.
+  const afterRender = useCallback(() => onDrawn?.(), [onDrawn]);
+
   const onClick = useCallback(
     (info: PickingInfo<MapSchool>) => {
       if (info.object) onSelect(info.object.key);
@@ -279,7 +292,13 @@ export default function MapCanvas({ schools, selectedKey, onSelect, padding, sta
           setReady(true);
         }}
       >
-        <Overlay layers={layers} pickingRadius={4} onHover={onHover} onClick={onClick} />
+        <Overlay
+          layers={layers}
+          pickingRadius={4}
+          onHover={onHover}
+          onClick={onClick}
+          onAfterRender={afterRender}
+        />
         <RankLabels schools={schools} stale={stale} />
         <NavigationControl position="top-left" showCompass={false} />
       </MapView>
