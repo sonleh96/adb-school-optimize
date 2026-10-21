@@ -485,11 +485,12 @@
 
 /* ---------- narrow: the help card is a sheet from the bottom edge, the glossary a full-height sheet ---------- */
 @media (max-width: 1023px) {
+  /* Above the key, which sits on the band's foot: HelpBar measures the key and sets `bottom`. Until it has, the bar
+     sits at the band's foot. */
   .bar {
     left: 8px;
     right: 8px;
-    bottom: auto;
-    top: calc(56px + var(--band) - 52px);
+    bottom: calc(100% - 56px - var(--band) + 8px);
   }
   :global([data-card-docked]) .bar {
     left: 8px;
