@@ -23,7 +23,8 @@
   --sans: var(--font-screening-sans), system-ui, sans-serif;
   --mono: var(--font-screening-mono), ui-monospace, monospace;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --rail-w: 0px;
+  /* The guide rail's width: the page's boot script decides it before the first paint, the guidance store after. */
+  --rail-w: var(--boot-rail, 0px);
   --col-w: 416px;
   --card-w: 392px;
   --gap: 16px;

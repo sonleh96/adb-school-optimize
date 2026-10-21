@@ -63,6 +63,28 @@ test("a first visit opens the rail at its start, with the guides the data can te
   await expect(page.getByRole("toolbar").getByRole("button", { name: "Guides" })).toBeEnabled();
 });
 
+/** Holds the page's scripts back, so the server's HTML is on screen before the page runs, as on a slow laptop. */
+const slowScripts = (page: Page) =>
+  page.route(/\/_next\/static\/chunks\/.*\.js$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+
+test("a first visit paints with the rail's place already kept, so nothing moves sideways when the page runs", async ({
+  page,
+}) => {
+  await slowScripts(page);
+  await page.goto("/screening", { waitUntil: "domcontentloaded" });
+  // Before any of the page's scripts have run, the server's HTML already leaves the rail's width free.
+  const left = await page
+    .locator("[data-slot=stage]")
+    .evaluate((stage) => stage.getBoundingClientRect().left);
+  expect(left).toBe(312);
+  expect(await page.evaluate(() => typeof window.__screeningGuide)).toBe("undefined");
+  await waitForMap(page);
+  expect((await page.locator("[data-slot=stage]").boundingBox())!.x).toBe(312);
+});
+
 test("a returning visitor starts with the rail closed and sees what they have seen", async ({
   page,
   context,

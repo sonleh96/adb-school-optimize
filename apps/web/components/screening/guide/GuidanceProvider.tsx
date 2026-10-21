@@ -18,7 +18,7 @@ import {
 } from "react";
 
 import { INITIAL_STATE, EMPTY_MEMORY } from "@/lib/screening/guide/machine";
-import { railWidth } from "@/lib/screening/guide/layout";
+import { railBootScript, railWidth } from "@/lib/screening/guide/layout";
 import { type LayerSnapshot, type LayerStore, createLayerStore } from "@/lib/screening/guide/store";
 
 const TEST_HOOKS = process.env.NEXT_PUBLIC_SCREENING_TEST_HOOKS === "true";
@@ -39,7 +39,12 @@ interface Context {
 }
 
 const GuidanceContext = createContext<Context | null>(null);
-const SERVER_SNAPSHOT: LayerSnapshot = { state: INITIAL_STATE, memory: EMPTY_MEMORY, catalog: null };
+const SERVER_SNAPSHOT: LayerSnapshot = {
+  state: INITIAL_STATE,
+  memory: EMPTY_MEMORY,
+  catalog: null,
+  attached: false,
+};
 
 const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
@@ -61,6 +66,8 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
       storage = null;
     }
     store.attach(window.location, window.history, storage);
+    // The store now decides the rail's width; the boot script's guess has done its job.
+    document.documentElement.style.removeProperty("--boot-rail");
     if (!TEST_HOOKS) return;
     window.__screeningGuide = { snapshot: store.snapshot, dispatch: store.dispatch };
     return () => {
@@ -143,9 +150,18 @@ export function useLayers(): LayerSnapshot {
   return useSyncExternalStore(store.subscribe, store.snapshot, () => SERVER_SNAPSHOT);
 }
 
+/**
+ * Sets the rail's width before the first paint (see `railBootScript`). Render it before the workspace's markup, so
+ * it runs before that markup is painted.
+ */
+export function RailBoot() {
+  return <script dangerouslySetInnerHTML={{ __html: railBootScript() }} suppressHydrationWarning />;
+}
+
 /** What the workspace's layout needs from the layers: the rail's width and which surfaces cover the map. */
 export interface GuidanceFrame {
-  readonly rail: number;
+  /** Null until the store has read the URL and the memory: the boot script's width stands until then. */
+  readonly rail: number | null;
   readonly railOpen: boolean;
   readonly page: boolean;
   readonly glossary: boolean;
@@ -154,8 +170,9 @@ export interface GuidanceFrame {
 export function useGuidanceFrame(width: number): GuidanceFrame {
   const { state } = useLayers();
   const railOpen = state.rail.kind !== "off";
+  const { attached } = useLayers();
   return {
-    rail: railWidth(width, railOpen, state.present && state.rail.kind === "step"),
+    rail: attached ? railWidth(width, railOpen, state.present && state.rail.kind === "step") : null,
     railOpen,
     page: state.page !== null,
     glossary: state.gloss.open,
