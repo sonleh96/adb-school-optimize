@@ -542,6 +542,8 @@ test.describe("the narrow layout", () => {
     await menu.getByRole("button", { name: "Download the top list" }).click();
     const sheet = page.locator("[data-region=export-sheet]");
     await expect(sheet).toBeVisible();
+    // The sheet's list arrives before it closes: an Escape mid-read would cancel the request the test watches.
+    await expect(sheet.locator("[data-region=export-table] tbody tr").first()).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(sheet).toHaveCount(0);
     await expect(menuButton).toBeFocused();
