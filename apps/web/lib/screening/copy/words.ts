@@ -1,6 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { lowerFirst, plural } from "./format";
+import { lowerFirst, plural, slug } from "./format";
 import { RULE_IDS } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
@@ -57,6 +57,11 @@ export const LAYOUT = Object.freeze({
   savedViews: "Saved views for meetings",
   notComputedGroup: (name: string, n: number) => `Not computed under ${name} (${n})`,
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
+  // The plain download's name: the list's length and the rule's plain label, with no rule letters.
+  topListFileName: (n: number, ruleLabel: string) => `rise-png-top-${n}-${slug(ruleLabel)}.csv`,
+  // In the export sheet, when a remoteness filter is on screen: the API cannot cut the file by remoteness.
+  fileNotByRemoteness:
+    "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here.",
   rulesInPack: "Rules the saved views use",
   sharedRecord: "Shared by every list in the saved views",
   fingerprints: (n: number) =>

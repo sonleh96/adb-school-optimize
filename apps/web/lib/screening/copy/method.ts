@@ -96,6 +96,16 @@ export function buildMethod(ctx: MethodContext = {}) {
       group: "Group",
       filterAria: "Show only schools missing this detail",
       groupAria: "Group the list",
+      // The eyebrow of the chips that show only the schools lacking one part of school need.
+      missingEyebrow: "Missing detail",
+      // The parts' names for those chips: a chip shows records that lack the part however it is lacking (blank, 0,
+      // negative, off the scale), so it names the part and not one cause.
+      parts: Object.freeze({
+        permanent_classroom_deficit: "Classroom count",
+        teacher_housing_deficit: "Teacher or house count",
+        facility_presence_deficit: "Facility counts",
+        service_deficit: "Power or water source",
+      }),
       // The method-only start of the line under the list head, when a filter hides some of the schools.
       showing: (shown: number, total: number) => `Showing ${shown} of ${total}.`,
     }),
@@ -129,6 +139,14 @@ export function buildMethod(ctx: MethodContext = {}) {
       legendUp: "up",
       legendDown: "down",
       legendSize: (k: number, a: string, b: string) => `Larger dot: top ${k} under ${a} or ${b}`,
+      // The one neutral colour of a school the two rules do not both put in order.
+      legendOutside: "Not in the comparison",
+      // The headings of the chart's accessible table.
+      table: Object.freeze({
+        school: "School",
+        place: (rule: string) => `Place under ${rule}`,
+        move: "Places moved",
+      }),
       tipMove: (a: string, ra: string, b: string, rb: string, words: string) =>
         `${a}: <b>${ra}</b> → ${b}: <b>${rb}</b><br><span class="tip-x">${words}</span>`,
       tipRange: (

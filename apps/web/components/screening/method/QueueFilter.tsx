@@ -8,13 +8,6 @@ import { MISSING_DETAILS, type MissingDetail } from "@/lib/screening/workspace/s
 
 import styles from "./method.module.css";
 
-const TERM = {
-  permanent_classroom_deficit: "missing_classrooms",
-  teacher_housing_deficit: "missing_housing",
-  facility_presence_deficit: "missing_facilities",
-  service_deficit: "missing_services",
-} as const satisfies Record<MissingDetail, string>;
-
 /**
  * The method details' filter of the incomplete records by the part of school need they lack: All, then each part
  * some record lacks, with how many do. `rows` are the incomplete records the other filters leave; the counts are
@@ -40,14 +33,14 @@ export function QueueFilter({
     .filter(([detail, n]) => n > 0 || detail === miss);
   return (
     <div className={styles.missRow}>
-      <span className={styles.missLabel}>{method.sheet.missingH}</span>
+      <span className={styles.missLabel}>{method.queue.missingEyebrow}</span>
       <div className={styles.missChips} role="group" aria-label={method.queue.filterAria}>
         <button type="button" aria-pressed={miss === null} onClick={() => onMiss(null)}>
           {method.queue.all} <em>{copy.formatCount(rows.length)}</em>
         </button>
         {details.map(([detail, n]) => (
           <button key={detail} type="button" aria-pressed={miss === detail} onClick={() => onMiss(detail)}>
-            {copy.TERMS[TERM[detail]].label} <em>{copy.formatCount(n)}</em>
+            {method.queue.parts[detail]} <em>{copy.formatCount(n)}</em>
           </button>
         ))}
       </div>

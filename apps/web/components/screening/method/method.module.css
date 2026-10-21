@@ -605,6 +605,12 @@
   line-height: 10px;
   color: var(--ink-3);
 }
+.outsideKey {
+  display: block;
+  width: 14px;
+  height: 8px;
+  flex: none;
+}
 .sizeKey {
   display: inline-flex;
   align-items: center;

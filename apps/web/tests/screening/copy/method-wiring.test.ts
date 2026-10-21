@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from "vitest";
 
+import * as copy from "@/lib/screening/copy";
 import { LAYOUT, copyFor, textOf } from "@/lib/screening/copy";
 import { METHOD, buildMethod } from "@/lib/screening/copy/method";
 
@@ -56,5 +57,59 @@ describe("the words for a comparison and the top-list file that are loading, and
     expect(new Set(loading).size).toBe(loading.length);
     for (const t of [LAYOUT.loadingComparison, LAYOUT.loadingTopList, LAYOUT.schoolHead])
       expect(textProblems(t, { sentence: false }), t).toEqual([]);
+  });
+});
+
+describe("the words the export sheet, the compare map and chart, and the missing-detail chips read", () => {
+  it("say that the file is not cut by remoteness, in one plain sentence", () => {
+    expect(LAYOUT.fileNotByRemoteness).toBe(
+      "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here."
+    );
+    expect(textProblems(LAYOUT.fileNotByRemoteness), LAYOUT.fileNotByRemoteness).toEqual([]);
+  });
+
+  it("name the plain download from the rule's plain label and the length, with no rule letters", () => {
+    expect(LAYOUT.topListFileName(20, "Combined factors, with urgency")).toBe(
+      "rise-png-top-20-combined-factors-with-urgency.csv"
+    );
+    expect(LAYOUT.topListFileName(10, "Need first, no urgency")).toBe(
+      "rise-png-top-10-need-first-no-urgency.csv"
+    );
+    // Accents go, a letter in brackets (a rule's letter) goes, and nothing a file name cannot hold stays.
+    expect(LAYOUT.topListFileName(30, 'Équipe / mix (S0): "a" b')).toBe("rise-png-top-30-equipe-mix-a-b.csv");
+    for (const rule of copy.RULE_IDS)
+      for (const n of [10, 20, 30])
+        expect(LAYOUT.topListFileName(n, copy.ruleLabel(rule)), `${rule} ${n}`).toMatch(
+          /^rise-png-top-\d+(?:-[a-z]{2,})+\.csv$/
+        );
+  });
+
+  it("key the colour of a school outside the comparison, and head the chart's accessible table", async () => {
+    const m = await copyFor({}).methodFor("additive_u");
+    expect(m.compare.legendOutside).toBe("Not in the comparison");
+    expect(m.compare.table.school).toBe("School");
+    expect(m.compare.table.place("Combined")).toBe("Place under Combined");
+    expect(m.compare.table.move).toBe("Places moved");
+    for (const t of [
+      m.compare.legendOutside,
+      m.compare.table.school,
+      m.compare.table.place("Combined"),
+      m.compare.table.move,
+    ])
+      expect(textProblems(t, { sentence: false }), t).toEqual([]);
+  });
+
+  it("head the chips for the parts a record can lack with words that hold whatever the cause", async () => {
+    const m = await copyFor({}).methodFor("additive_u");
+    expect(m.queue.missingEyebrow).toBe("Missing detail");
+    expect(m.queue.parts).toEqual({
+      permanent_classroom_deficit: "Classroom count",
+      teacher_housing_deficit: "Teacher or house count",
+      facility_presence_deficit: "Facility counts",
+      service_deficit: "Power or water source",
+    });
+    // A chip filters records that lack the part blank, at 0, negative or off the scale, so it names the part, not one cause.
+    for (const text of Object.values(m.queue.parts))
+      expect(text).not.toMatch(/blank|recorded as 0|negative|off the scale/i);
   });
 });

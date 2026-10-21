@@ -100,12 +100,8 @@ export function ExportSheet(props: ExportSheetProps) {
       ).map(([label, value]) => `${label}: ${value}`),
       STRINGS.caveat,
     ].join("\n");
-  // The plain file name is the sheet's own title, without the characters a file name cannot hold. A pattern of its
-  // own is a copy request.
-  const plainName = `${title
-    .replace(/[\\/:*?"<>|]+/g, "")
-    .replace(/\s+/g, " ")
-    .trim()}.csv`;
+  // The plain download is named from the list's length and the rule's plain label; the method sheet keeps the API's.
+  const plainName = LAYOUT.topListFileName(n, copy.ruleLabel(rule));
   const download = () => {
     if (!file) return;
     saveFile(file.text, plain ? plainName : (file.name ?? `${rule}.csv`), file.type);
@@ -346,8 +342,8 @@ export function ExportSheet(props: ExportSheetProps) {
                     <span className={styles.filter}>{method.filter.chipProvince(props.filters.prov)}</span>
                   ) : null}
                   {props.filters.loc !== null ? (
-                    // The file cannot follow this filter. The sentence that says so is a copy request; until it lands
-                    // the filter shows here marked as not applied, and never as "None".
+                    // The file cannot follow this filter, so it shows here marked as not applied, and the sentence
+                    // below says so; it is never shown as "None".
                     <span className={styles.filter} data-filter-not-applied="">
                       {method.filter.chipLocality(props.filters.loc)}
                     </span>
@@ -356,6 +352,11 @@ export function ExportSheet(props: ExportSheetProps) {
               )}
             </dd>
           </dl>
+          {props.filters.loc !== null ? (
+            <p className={styles.note} data-region="export-filter-note">
+              {LAYOUT.fileNotByRemoteness}
+            </p>
+          ) : null}
           {pointTable}
         </section>
         <section className={styles.sec}>

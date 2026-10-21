@@ -215,6 +215,13 @@ test("compare mode reproduces a pasted pair, says the agreement in What changed'
     "Combined factors, with urgency"
   );
   await expect(page.locator("[data-region=slope-chart] svg path[stroke]")).toHaveCount(16);
+  // The chart's accessible table is headed in the copy's words.
+  await expect(page.locator("table[aria-label]").first().locator("thead th")).toHaveText([
+    "School",
+    /^Place under /,
+    /^Place under /,
+    "Places moved",
+  ]);
 
   await page.getByRole("button", { name: "Top 10" }).click();
   const overlap = json("compare/additive_u__additive_no_u.json").metrics.top_k.find(
@@ -457,10 +464,10 @@ test("help mode explains the method details' rules, lines and controls, and a ma
 });
 
 const MISSING = {
-  permanent_classroom_deficit: "Classroom count blank, or recorded as 0",
-  teacher_housing_deficit: "Teacher or house count blank, or recorded as 0",
-  facility_presence_deficit: "Facility counts blank",
-  service_deficit: "Power or water source blank",
+  permanent_classroom_deficit: "Classroom count",
+  teacher_housing_deficit: "Teacher or house count",
+  facility_presence_deficit: "Facility counts",
+  service_deficit: "Power or water source",
 } as const;
 
 test("the incomplete records filter by what is missing, count each choice and reproduce it from a link", async ({
@@ -482,6 +489,7 @@ test("the incomplete records filter by what is missing, count each choice and re
   const rows = page.locator("ol[aria-label='Incomplete records'] button[data-school-key]");
   await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(queued.length);
+  await expect(page.locator("[class*=missLabel]")).toHaveText("Missing detail");
   const chip = chips.getByRole("button", { name: new RegExp(`^${MISSING[detail]}`) });
   await expect(chip).toContainText(String(n));
   await chip.click();
@@ -497,19 +505,17 @@ test("the incomplete records filter by what is missing, count each choice and re
   expect(search(page)).toBe("?analyst=1&view=queue");
 });
 
-test("guide 4's group step turns the method details on and offers its Try it on the filter by what is missing", async ({
+test("guide 4's group step stays in the plain layer and offers no Try it, since filtering is a method-details control", async ({
   page,
 }) => {
   await openWorkspace(page, "?guide=q4&gstep=2");
   const rail = page.getByTestId("guide-rail");
-  await expect(rail.getByText("Try it")).toBeVisible();
-  await expect(rail).toContainText("Choose a kind of missing detail to show only those schools.");
-  await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "true");
-  await expect(
-    page
-      .locator("[data-region=queue-missing]")
-      .getByRole("group", { name: "Show only schools missing this detail" })
-  ).toBeVisible();
+  await expect(page.getByTestId("guide-step-title")).toHaveText("Group them by what is missing");
+  await expect(rail.getByText("Try it")).toHaveCount(0);
+  await expect(rail).not.toContainText("Choose a kind of missing detail");
+  await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "false");
+  expect(search(page)).not.toContain("analyst");
+  await expect(page.getByRole("group", { name: "Show only schools missing this detail" })).toHaveCount(0);
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
 });
 
