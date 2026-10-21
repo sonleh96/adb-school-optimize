@@ -14,9 +14,11 @@ const whyTitle = (who: Segments, place: string | null): Segments =>
 const rangeTitle = (who: Segments, place: string | null): Segments =>
   place ? seg`${who} could be ${place}` : seg`${who} has no place under this rule`;
 const rangeTryIt = (names: Segments, n: number): Segments =>
-  Number.isInteger(n) && n > 0
-    ? seg`The ${countWord(n)} are ${names}. Select any of them.`
-    : seg`They are ${names}. Select any of them.`;
+  n === 1
+    ? seg`It is ${names}. Select it.`
+    : Number.isInteger(n) && n > 0
+      ? seg`The ${countWord(n)} are ${names}. Select any of them.`
+      : seg`They are ${names}. Select any of them.`;
 const orderBody = (who: Segments, a: Segments, aPlace: string, b: Segments, bPlace: string): Segments =>
   seg`So ${who} sits between ${a}, ${aPlace}, and ${b}, ${bPlace}.`;
 const mapBody = (who: Segments): Segments =>
@@ -48,7 +50,7 @@ export const GUIDE = Object.freeze({
   howTitle: LAYOUT.howTitle,
   explore: "Explore on my own",
   close: "Close guides",
-  firstNote: "Guides stay one click away, at the top of the map.",
+  firstNote: "Guides stay one click away, in the bar on the map.",
   returningNote: "Each guide puts the screen in the right state, then hands it back.",
   onScreen: "On screen",
   tryIt: "Try it",
@@ -91,15 +93,22 @@ export const GUIDE = Object.freeze({
   }),
   // Show only in presentation mode; see KEYS.
   pageHint: KEYS.pageHint,
+  // The card is named for what it is, not for where it sits: in the narrow layout it replaces the list below the map.
   pointToCard: (n: number) =>
-    n > 0
-      ? `The card on the right lists the ${SMALL[n] || n} things that add most to its screening score, in the school's own record.`
-      : "The card on the right shows what adds to its screening score.",
+    n === 1
+      ? "The school card lists the one thing that adds most to its screening score, in the school's own record."
+      : n > 0
+        ? `The school card lists the ${SMALL[n] || n} things that add most to its screening score, in the school's own record.`
+        : "The school card shows what adds to its screening score.",
   pointToMissing:
-    "The card on the right names each missing detail, and whether it is blank or recorded as 0 and needing a check.",
+    "The school card names each missing detail, and whether it is blank or recorded as 0 and needing a check.",
   // The card numbers the reasons inside school need.
   needNumbered: (n: number, all: number) =>
-    `${n === all ? `All ${SMALL[n]}` : `${capitalise(SMALL[n])} of the ${SMALL[all]}`} reasons are parts of school need, so the card numbers them inside it, above the parts that add less.`,
+    all === 1
+      ? "The one reason is a part of school need, so the card numbers it inside school need, above the parts that add less."
+      : n === 1
+        ? `One of the ${SMALL[all]} reasons is a part of school need, so the card numbers it inside school need, above the parts that add less.`
+        : `${n === all ? `All ${SMALL[n]}` : `${capitalise(SMALL[n])} of the ${SMALL[all]}`} reasons are parts of school need, so the card numbers them inside it, above the parts that add less.`,
   tasks: Object.freeze(
     [
       {
@@ -119,7 +128,7 @@ export const GUIDE = Object.freeze({
           {
             key: "download",
             title: "Take the top list with you",
-            onScreen: "Download the top list, top right",
+            onScreen: "The button that downloads the top list",
             tryIt: "Open Download the top list to see the first 20 schools and the method record.",
           },
         ],
@@ -132,7 +141,7 @@ export const GUIDE = Object.freeze({
           {
             key: "why",
             title: (name: string, place: string | null) => textOf(whyTitle([name], place)),
-            onScreen: "The school card, on the right",
+            onScreen: "The school card",
             tryIt: "Select any other school in the list or on the map. This step follows your choice.",
           },
           {
@@ -157,8 +166,8 @@ export const GUIDE = Object.freeze({
           {
             key: "range",
             title: (name: string, place: string | null) => textOf(rangeTitle([name], place)),
-            onScreen: "The school card, on the right",
-            body: "The card on the right gives its highest and lowest places in the list, and whether it is in the top 20 either way.",
+            onScreen: "The school card",
+            body: "The school card gives its highest and lowest places in the list, and whether it is in the top 20 either way.",
             tryIt: (names: string, n: number) => textOf(rangeTryIt([names], n)),
           },
           {
@@ -183,7 +192,12 @@ export const GUIDE = Object.freeze({
         steps: [
           {
             key: "list",
-            title: (count: number) => `${count} schools cannot be put in order yet`,
+            title: (count: number) =>
+              count === 1
+                ? "One school cannot be put in order yet"
+                : count === 0
+                  ? "Every school can be put in order"
+                  : `${count} schools cannot be put in order yet`,
             onScreen: "The Incomplete records tab and its list",
           },
           {
@@ -195,7 +209,7 @@ export const GUIDE = Object.freeze({
           {
             key: "school",
             title: (name: string) => textOf(schoolTitle([name])),
-            onScreen: "The school card, on the right",
+            onScreen: "The school card",
             tryIt: "Select any other school in the list. This step follows your choice.",
           },
         ],

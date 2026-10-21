@@ -153,7 +153,11 @@ export default function Glossary({ root, data }: { root: HTMLElement | null; dat
             </button>
           </div>
         ) : later.status === "loading" ? (
-          <div aria-busy="true" />
+          <div aria-busy="true">
+            <p className={styles.empty} role="status">
+              {copy.LAYOUT.loadingGlossary}
+            </p>
+          </div>
         ) : found.length === 0 ? (
           <p className={styles.empty}>{HELP.none}</p>
         ) : (

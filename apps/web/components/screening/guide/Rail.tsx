@@ -61,7 +61,12 @@ export default function Rail({ root, data, roles, plan }: RailProps) {
       </div>
     );
   }
-  if (later.status === "loading") return <div className={styles.railBody} aria-busy="true" />;
+  if (later.status === "loading")
+    return (
+      <div className={styles.railBody} aria-busy="true">
+        <p role="status">{data.copy.LAYOUT.loadingGuide}</p>
+      </div>
+    );
   return (
     <aside className={styles.railInner} aria-label={later.copy.GUIDE.railAria}>
       {state.rail.kind === "step" ? (
@@ -409,7 +414,9 @@ function Stepper({
                 ) : null}
               </>
             ) : (
-              <div aria-busy="true" />
+              <div aria-busy="true">
+                <p role="status">{data.copy.LAYOUT.loadingGuide}</p>
+              </div>
             )}
           </div>
           <div className={styles.railFoot}>

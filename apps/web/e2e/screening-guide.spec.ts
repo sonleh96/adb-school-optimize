@@ -395,3 +395,34 @@ test.describe("in the narrow layout", () => {
     await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q2", step: 1 });
   });
 });
+
+test("while the guide copy downloads, the rail, the page and the glossary say what is loading", async ({
+  page,
+}) => {
+  // Hold the guide copy's chunk until the test lets it go.
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/_next\/static\/chunks\/.*\.js$/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (body.includes("What do you want to find out?")) await held;
+    return route.fulfill({ response, body });
+  });
+  await page.goto("/screening");
+  await waitForMap(page);
+  await expect(rail(page).getByRole("status")).toHaveText("Loading the guide");
+  await expect(rail(page).locator("[aria-busy=true]")).toHaveCount(1);
+
+  await page.getByRole("toolbar").getByRole("button", { name: "Glossary of terms" }).click();
+  await expect(page.getByRole("complementary", { name: "Glossary of terms" }).getByRole("status")).toHaveText(
+    "Loading the glossary"
+  );
+
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "How this works" }).first().click();
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Loading How this works");
+
+  release();
+  await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeVisible();
+  await expect(page.getByRole("main", { name: "How this works" }).locator("section h2")).toHaveCount(6);
+});

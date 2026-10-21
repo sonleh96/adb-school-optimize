@@ -113,7 +113,9 @@ export default function HowPage({ data }: { data: GuideData }) {
           </button>
         </div>
       ) : later.status === "loading" ? (
-        <div className={styles.state} aria-busy="true" />
+        <div className={styles.state} aria-busy="true">
+          <p role="status">{copy.LAYOUT.loadingHow}</p>
+        </div>
       ) : (
         <div className={styles.wrap}>
           <nav className={styles.nav} aria-label={later.copy.GUIDE.sectionsAria}>
