@@ -30,7 +30,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
 | API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
 | API23 | Control characters cause a server error. | A control character in a query or path parameter reaches the database or an export and gives a 500, or text stored with such a character makes the XLSX writer raise. |
-| API24 | A CSV name is read as a formula, or the exact name is lost. | A name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return has no guarded `display_name` column, or `source_school_name` is changed to guard it, or the XLSX turns a carriage return into a line feed. |
+| API24 | A CSV text cell is read as a formula, or the exact name is lost. | A text cell of the CSV that starts with `=`, `+`, `-`, `@`, a tab or a carriage return (the school name, province, district or locality) has no apostrophe in front, a number is given one, the method record does not say so, the XLSX changes its exact name, or the XLSX turns a carriage return into a line feed. |
 | API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
 | API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
 | API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
@@ -67,7 +67,9 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_queue_depends_on_the_rule_and_on_the_filters` | API16, API4 |
 | `test_every_gate_failure_has_a_plain_description` | API16 |
 | `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
-| `test_display_name_guards_formula_like_names_while_the_source_name_stays_exact` | API24 |
+| `test_the_csv_guards_every_text_cell_that_starts_with_a_formula_character` | API24 |
+| `test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_not` (6 characters) | API24 |
+| `test_a_negative_number_in_the_csv_is_not_guarded` | API24 |
 | `test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line` | API29 |
 | `test_urgency_has_no_column_and_no_missing_input_under_an_urgency_omitted_rule` | API27 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |

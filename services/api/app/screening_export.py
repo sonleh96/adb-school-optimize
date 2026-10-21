@@ -155,7 +155,18 @@ FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 DISPLAY_NAME_NOTE = (
     "display_name is source_school_name with an apostrophe in front when the name starts with =, +, -, @, "
     "a tab or a carriage return, so that a spreadsheet application does not read it as a formula. "
-    "source_school_name is always exact: use it to join and to rebuild the list."
+    "In the XLSX source_school_name is exact: use it to join and to rebuild the list. "
+    "In the CSV it is guarded like every text cell (see csv_text_guard): join on school_key instead."
+)
+
+CSV_TEXT_GUARD_NOTE = (
+    "In the CSV every text cell that starts with =, +, -, @, a tab or a carriage return has an apostrophe in front, "
+    "so that a spreadsheet application does not read it as a formula. "
+    "That covers source_school_name, province, district and locality as well as display_name. "
+    "Numbers are not changed, and a negative number stays a number. "
+    "To recover a value, remove one leading apostrophe when the character after it is one of those; "
+    "a value that was stored with an apostrophe there already is ambiguous, so join on school_key. "
+    "The XLSX stores every text cell as text and is not changed."
 )
 
 
@@ -204,6 +215,7 @@ def method_record(
         ("filters", filters.describe()),
         ("filters_effect", "Filters only hide rows. Ranks, bounds and anchors are those of the full run."),
         ("display_name", DISPLAY_NAME_NOTE),
+        ("csv_text_guard", CSV_TEXT_GUARD_NOTE),
     ]
     if top is not None:
         record += [
@@ -397,16 +409,22 @@ def incomplete_table(
 
 
 def _csv_cell(value: Cell) -> str | int:
+    """A cell as the CSV writes it. A text cell that a spreadsheet could read as a formula gets an apostrophe in front."""
     if value is None:
         return ""
-    return number_text(value) if isinstance(value, float) else value
+    if isinstance(value, float):
+        return number_text(value)
+    if isinstance(value, str) and value.startswith(FORMULA_STARTS):
+        return "'" + value
+    return value
 
 
 def render_csv(record: Sequence[tuple[str, str]], table: Table) -> bytes:
     """A UTF-8 file with a byte order mark, so that Excel reads accents correctly.
 
     The method record comes first, one quoted cell per line, ``"# key: value"``, so that Excel keeps each line in one column.
-    Then comes the header row and the data rows, every float as ``number_text`` writes it.
+    Then comes the header row and the data rows, every float as ``number_text`` writes it and every text cell that
+    starts with a formula character guarded by an apostrophe (see ``CSV_TEXT_GUARD_NOTE``).
     """
     buffer = io.StringIO()
     record_writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_ALL)
