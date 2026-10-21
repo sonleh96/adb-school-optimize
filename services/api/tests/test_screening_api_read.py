@@ -680,11 +680,14 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
 
     pinned = api.get(path, params={"rule": "additive_u", "package_version": "0.9.0"}).json()
     assert pinned["run"]["package_version"] == "0.9.0" and pinned["run"]["run_id"] == older
-    original = api.get(path, params={"rule": "additive_u", "package_version": "0.1.0"}).json()
-    assert original["run"]["package_version"] == "0.1.0" and original["run"]["run_id"] not in (newer, older)
+    original = api.get(path, params={"rule": "additive_u", "package_version": PACKAGE_VERSION}).json()
+    assert original["run"]["package_version"] == PACKAGE_VERSION and original["run"]["run_id"] not in (
+        newer,
+        older,
+    )
 
     # Other rules have one run, which stays current; a pin to a version without a run is unknown.
-    assert api.get(path, params={"rule": "benchmark"}).json()["run"]["package_version"] == "0.1.0"
+    assert api.get(path, params={"rule": "benchmark"}).json()["run"]["package_version"] == PACKAGE_VERSION
     missing = api.get(path, params={"rule": "benchmark", "package_version": "0.9.0"})
     assert missing.status_code == 404 and missing.json()["error"]["code"] == "run_not_found"
     assert missing.json()["error"]["details"]["package_version"] == "0.9.0"

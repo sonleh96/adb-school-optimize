@@ -42,6 +42,8 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, one input version shows the flag of another, or one rule shows the flag of the other rule's experiment. |
 | API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but `additive_u` and `additive_no_u`, or inside the school's inputs. |
 | API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or results response omits the source file hash, the experiment, the draws, the settings, the threshold or the rule's own limitation, gives one rule the other's limitation, or `/rules` does not say which experiment backs each rule. |
+| API40 | A run stored by an earlier engine breaks or lies. | The API answers 500 for a run whose provenance it no longer knows, or serves a stored role that contradicts `/rules` (two primary rules), instead of a 409 that names the run. |
+| API41 | Loading again does not repair a database an earlier engine loaded. | After a loader rerun the API still serves the old run, or the engine's package version is not above the one that stored it. |
 | API39 | A compared entrant or exit has the wrong scope code. | `rank_scope_code` of a top-20 entrant or exit in `/compare` is `complete_under_rule` or `eligible` instead of `common_complete_cohort`, and no test notices because the data has too few schools for the top 20 to change. |
 | API38 | The route by link is cached as immutable. | `GET /schools/{school_id}` with an input version and a package version is sent as `immutable`, so a client keeps it across a reload of `schools` that changes which schools the id links to. |
 | API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
@@ -137,6 +139,13 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
 | `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
 | `test_every_entrant_and_exit_of_a_comparison_carries_the_common_cohort_scope_code` | API39 |
+| `test_the_engine_is_newer_than_the_one_that_stored_the_old_runs` | API40 |
+| `test_a_stale_run_answers_409_and_names_itself_never_500` (6 rules) | API40 |
+| `test_every_route_that_reads_a_run_refuses_a_stale_one_clearly` | API40 |
+| `test_a_run_whose_rule_metadata_is_unchanged_is_still_served` | API40 |
+| `test_loading_the_version_again_stores_the_current_runs_and_the_api_serves_them` | API41 |
+| `test_the_old_run_can_still_be_pinned_and_is_refused_by_name` | API41 |
+| `test_no_route_that_carries_the_links_is_cached_as_immutable` | API38 |
 | `test_a_wrong_scope_code_on_an_entrant_or_an_exit_is_caught_by_the_check` | API39 |
 | `test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change` | API38 |
 | `test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error` | API36 |
