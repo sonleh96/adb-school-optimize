@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 import type { BoundCopy, CopyRuleId, CopySchool, InputKey } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { type ComparedSchool, type MoveEdges, topStatus } from "@/lib/screening/method/compare";
-import { moveHex } from "@/lib/screening/method/paint";
+import { moveHex } from "@/lib/screening/method/moves";
 import { shareText } from "@/lib/screening/method/shares";
 import type { DetailResult, Rule, SchoolDetailResponse } from "@/lib/screening/types";
 

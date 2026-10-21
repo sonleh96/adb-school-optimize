@@ -1,6 +1,6 @@
 "use client";
 
-import styles from "./method.module.css";
+import styles from "./actions.module.css";
 
 /**
  * "Show method details": one switch for the method layer over the same screen. Its knob slides 160 ms on a click and
