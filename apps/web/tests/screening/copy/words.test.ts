@@ -6,6 +6,9 @@
  *  3. A count is typed instead of taken from the data: the strings that state a count are checked with two sizes.
  *  4. "Legend" and "Key" both name the same thing on screen.
  */
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
@@ -136,5 +139,28 @@ describe("the strings that state a count", () => {
       "No dot is numbered, because no school has every input recorded."
     );
     expect(copy.TERMS.mark_dot.help).toBe("Numbered dots are the first 10 under the chosen rule.");
+  });
+});
+
+describe("the order of the incomplete records", () => {
+  it("is said for the grouping the list is in, and neither sentence claims the other's order", () => {
+    for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
+      expect(textProblems(t), t).toEqual([]);
+    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
+    expect(copy.STRINGS.queueOrderMissing).toMatch(/what is missing/);
+  });
+});
+
+describe("the workspace's words for the map, a stale list and an ended session", () => {
+  it("come from the copy system, in sentences that pass the writing guards, and need no interim file", () => {
+    for (const t of [
+      LAYOUT.mapKeyboard,
+      LAYOUT.basemapUnavailable,
+      LAYOUT.refreshFailed,
+      LAYOUT.sessionEnded,
+    ])
+      expect(textProblems(t), t).toEqual([]);
+    expect(textProblems(LAYOUT.signIn, { sentence: false })).toEqual([]);
+    expect(existsSync(path.resolve(__dirname, "../../../components/screening/copy.ts"))).toBe(false);
   });
 });

@@ -44,6 +44,13 @@ export function radiusOf(school: MapSchool): number {
 
 const position = (school: MapSchool): [number, number] => [school.lon, school.lat];
 
+/**
+ * The map draws its own layers into a depth buffer, and deck.gl's layers sit among them. Without these settings a
+ * dot on the coast loses the half that hangs over the sea, because the water polygons were drawn nearer. Every layer
+ * has the same settings, so they still share one GPU pipeline.
+ */
+const ON_TOP = { parameters: { depthWriteEnabled: false, depthCompare: "always" as const } };
+
 /*
  * Every layer here gives its radius and its fill colour as a function, even where all marks share one value.
  * deck.gl feeds a constant to the GPU differently from a per-mark value, and each way is a separate GPU pipeline,
@@ -55,17 +62,24 @@ const position = (school: MapSchool): [number, number] => [school.lon, school.la
 /**
  * The marks, bottom to top. A better place is never covered by a worse one: dots go worst first.
  * The numbers on the first ten dots are not drawn here (see RankLabels).
- * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked.
+ * While another rule's rows are still showing (`stale`) the marks fade and cannot be picked. While the incomplete
+ * records are the list on screen, the schools with a place step back so the empty rings carry the map.
  */
-export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): Layer[] {
+export function buildMarkLayers(
+  schools: readonly MapSchool[],
+  stale: boolean,
+  emphasis: "all" | "incomplete" = "all"
+): Layer[] {
   const pickable = !stale;
   const opacity = stale ? 0.4 : 1;
+  const placedOpacity = stale ? 0.4 : emphasis === "incomplete" ? 0.3 : 1;
   const incomplete = schools.filter((s) => s.mark.kind === "incomplete");
   const ranges = schools.filter((s) => s.mark.kind === "range");
   const dots = schools.filter(isDot).sort((a, b) => b.mark.rank - a.mark.rank);
 
   return [
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "incomplete",
       data: incomplete,
       pickable,
@@ -81,10 +95,11 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       getLineColor: INCOMPLETE_INK,
     }),
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "range",
       data: ranges,
       pickable,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: () => RANGE_RADIUS,
@@ -96,19 +111,21 @@ export function buildMarkLayers(schools: readonly MapSchool[], stale: boolean): 
       getLineColor: RING_INK,
     }),
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id: "range-centre",
       data: ranges,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: () => 2,
       getFillColor: () => RING_INK,
     }),
     new ScatterplotLayer<Dot>({
+      ...ON_TOP,
       id: "dots",
       data: dots,
       pickable,
-      opacity,
+      opacity: placedOpacity,
       getPosition: position,
       radiusUnits: "pixels",
       getRadius: (s) => RAMP_RADIUS[s.mark.step],
@@ -127,6 +144,7 @@ export function buildRingLayers(selected: MapSchool | null, hovered: MapSchool |
   const layers: Layer[] = [];
   const ring = (id: string, school: MapSchool | null, width: number, alpha: number, gap: number) =>
     new ScatterplotLayer<MapSchool>({
+      ...ON_TOP,
       id,
       data: school ? [school] : [],
       getPosition: position,

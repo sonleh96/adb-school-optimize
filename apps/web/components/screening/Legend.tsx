@@ -1,42 +1,111 @@
-import { RAMP_HEX } from "@/lib/screening/marks";
+"use client";
 
-import { COPY } from "./copy";
+import { ChevronUp } from "lucide-react";
+import { useId, useState } from "react";
+
+import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
+import { RAMP_HEX } from "@/lib/screening/marks";
+import type { Band } from "@/lib/screening/workspace/bands";
+
 import styles from "./screening.module.css";
 
+/** The three marks, drawn as the map draws them. */
+function Mark({ kind }: { kind: "dot" | "range" | "ring" }) {
+  return <span className={styles.keyMark} data-mark={kind} aria-hidden />;
+}
+
 /**
- * Names the rule the marks on the map belong to, taken from the rows on screen (never from the rule just asked
- * for), and is dimmed and busy while another rule's rows are still showing.
+ * The map's key in words: which rule the places belong to, the place bands from the data, and what each mark means.
+ * Narrow windows show its title and a Key disclosure; it opens over the map. The words are the copy's.
  */
-export function Legend({ ruleLabel, stale }: { ruleLabel: string; stale: boolean }) {
+export function Legend({
+  copy,
+  rule,
+  bands,
+  collapsed,
+  stacked,
+  stale,
+}: {
+  copy: BoundCopy;
+  rule: CopyRuleId | null;
+  bands: readonly Band[];
+  collapsed: boolean;
+  stacked: boolean;
+  stale: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const body = useId();
+  const { LAYOUT, TERMS } = copy;
+  const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(rule)) : TERMS.rank.label;
+  const showBody = !collapsed || open;
+  const label = (band: Band) =>
+    band.lo === band.hi
+      ? copy.ordinal(band.lo)
+      : LAYOUT.placeRange(copy.ordinal(band.lo), copy.ordinal(band.hi));
+
   return (
     <section
-      className={`${styles.panel} ${styles.legend} ${stale ? styles.stale : ""}`}
+      className={`${styles.panel} ${styles.legend}`}
       data-slot="legend"
-      aria-label={COPY.legendLabel}
+      data-region="legend"
+      data-collapsed={collapsed || undefined}
+      data-stacked={stacked || undefined}
+      aria-label={LAYOUT.legendAria}
       aria-busy={stale}
+      data-stale={stale || undefined}
     >
-      <div className={styles.legendTitle} data-testid="legend-rule">
-        <b>{COPY.legend.place}</b>
-        {ruleLabel ? ` · ${ruleLabel}` : ""}
+      <div className={styles.legendTop}>
+        <p className={styles.legendTitle} data-testid="legend-rule">
+          {title}
+        </p>
+        {collapsed ? (
+          <button
+            type="button"
+            className={styles.keyToggle}
+            aria-expanded={open}
+            aria-controls={body}
+            aria-label={open ? LAYOUT.keyHide : LAYOUT.keyShow}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {LAYOUT.keyLabel}
+            <ChevronUp size={12} aria-hidden data-open={open || undefined} />
+          </button>
+        ) : null}
       </div>
-      <div className={styles.ramp}>
-        {COPY.legend.steps.map((step, index) => (
-          <span key={step}>
-            <i style={{ background: RAMP_HEX[index] }} />
-            {step}
-          </span>
-        ))}
-      </div>
-      <div className={styles.legendRow}>
-        <span className={styles.key}>
-          <span className={styles.markRange} aria-hidden />
-          {COPY.legend.range}
-        </span>
-        <span className={styles.key}>
-          <span className={styles.markIncomplete} aria-hidden />
-          {COPY.legend.incomplete}
-        </span>
-      </div>
+      {showBody ? (
+        <div id={body} className={styles.legendBody}>
+          {bands.length > 0 ? (
+            <ol
+              className={styles.ramp}
+              style={{ gridTemplateColumns: `repeat(${bands.length}, minmax(0, 88px))` }}
+            >
+              {bands.map((band, index) => (
+                <li key={band.lo}>
+                  <i style={{ background: RAMP_HEX[index] }} />
+                  <span>{label(band)}</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+          <ul className={styles.keys}>
+            <li data-region="legend-point">
+              <Mark kind="dot" />
+              <b>{TERMS.mark_dot.label}</b>
+              <span>{TERMS.mark_dot.line}</span>
+            </li>
+            <li data-region="legend-range">
+              <Mark kind="range" />
+              <b>{TERMS.mark_range.label}</b>
+              <span>{TERMS.mark_range.line}</span>
+            </li>
+            <li data-region="legend-queue">
+              <Mark kind="ring" />
+              <b>{TERMS.mark_ring.label}</b>
+              <span>{TERMS.mark_ring.line}</span>
+            </li>
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

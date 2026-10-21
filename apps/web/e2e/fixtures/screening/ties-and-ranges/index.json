@@ -91,18 +91,88 @@
    "query": {}
   },
   {
+   "file": "schools/020057fe892117b24964dbf61cccfb17.json",
+   "path": "/api/v1/screening/schools/by-key/020057fe892117b24964dbf61cccfb17",
+   "query": {}
+  },
+  {
+   "file": "schools/9c3a1ed8aff40104f176e4000cd0a427.json",
+   "path": "/api/v1/screening/schools/by-key/9c3a1ed8aff40104f176e4000cd0a427",
+   "query": {}
+  },
+  {
+   "file": "schools/9912564221b35bbcede2029d37047ca8.json",
+   "path": "/api/v1/screening/schools/by-key/9912564221b35bbcede2029d37047ca8",
+   "query": {}
+  },
+  {
+   "file": "schools/792bd48e8250d61490b9151c064f168c.json",
+   "path": "/api/v1/screening/schools/by-key/792bd48e8250d61490b9151c064f168c",
+   "query": {}
+  },
+  {
+   "file": "schools/ad709936ae5f15c96af94c4041dcc66c.json",
+   "path": "/api/v1/screening/schools/by-key/ad709936ae5f15c96af94c4041dcc66c",
+   "query": {}
+  },
+  {
+   "file": "schools/cd7a2861802c536f7fcebf2b1516822d.json",
+   "path": "/api/v1/screening/schools/by-key/cd7a2861802c536f7fcebf2b1516822d",
+   "query": {}
+  },
+  {
+   "file": "schools/e260012fbec34a7d3e72951b0bc2abcc.json",
+   "path": "/api/v1/screening/schools/by-key/e260012fbec34a7d3e72951b0bc2abcc",
+   "query": {}
+  },
+  {
+   "file": "schools/1ce57e38fddd43b3918eecd7f5b461c7.json",
+   "path": "/api/v1/screening/schools/by-key/1ce57e38fddd43b3918eecd7f5b461c7",
+   "query": {}
+  },
+  {
+   "file": "schools/93e3844e14f8cc6255b2b33dea8b75d9.json",
+   "path": "/api/v1/screening/schools/by-key/93e3844e14f8cc6255b2b33dea8b75d9",
+   "query": {}
+  },
+  {
    "file": "schools/40fc7c9c96b4a4cc7d666445ff45f0f6.json",
    "path": "/api/v1/screening/schools/by-key/40fc7c9c96b4a4cc7d666445ff45f0f6",
    "query": {}
   },
   {
-   "file": "schools/e89b8832c719da6c9aabc906048db300.json",
-   "path": "/api/v1/screening/schools/by-key/e89b8832c719da6c9aabc906048db300",
+   "file": "schools/3b500719c594976567ecb55dc94575aa.json",
+   "path": "/api/v1/screening/schools/by-key/3b500719c594976567ecb55dc94575aa",
    "query": {}
   },
   {
-   "file": "schools/020057fe892117b24964dbf61cccfb17.json",
-   "path": "/api/v1/screening/schools/by-key/020057fe892117b24964dbf61cccfb17",
+   "file": "schools/040d4c5f19737e353c6f900451925974.json",
+   "path": "/api/v1/screening/schools/by-key/040d4c5f19737e353c6f900451925974",
+   "query": {}
+  },
+  {
+   "file": "schools/f3c3016c7c4d7a86908fd7be913895ac.json",
+   "path": "/api/v1/screening/schools/by-key/f3c3016c7c4d7a86908fd7be913895ac",
+   "query": {}
+  },
+  {
+   "file": "schools/b7a83ab827ddcf6b6bc4d53e20d81e8a.json",
+   "path": "/api/v1/screening/schools/by-key/b7a83ab827ddcf6b6bc4d53e20d81e8a",
+   "query": {}
+  },
+  {
+   "file": "schools/aa6e3a49aa1d291f695008cd605df893.json",
+   "path": "/api/v1/screening/schools/by-key/aa6e3a49aa1d291f695008cd605df893",
+   "query": {}
+  },
+  {
+   "file": "schools/f456fd5ee2123550b7e7a89a683860e1.json",
+   "path": "/api/v1/screening/schools/by-key/f456fd5ee2123550b7e7a89a683860e1",
+   "query": {}
+  },
+  {
+   "file": "schools/416fa2db6a904d882c4d2dabc3ab19c0.json",
+   "path": "/api/v1/screening/schools/by-key/416fa2db6a904d882c4d2dabc3ab19c0",
    "query": {}
   },
   {
@@ -111,8 +181,43 @@
    "query": {}
   },
   {
+   "file": "schools/e89b8832c719da6c9aabc906048db300.json",
+   "path": "/api/v1/screening/schools/by-key/e89b8832c719da6c9aabc906048db300",
+   "query": {}
+  },
+  {
+   "file": "schools/eb0860a90f0a483961ef0fbb1f92e260.json",
+   "path": "/api/v1/screening/schools/by-key/eb0860a90f0a483961ef0fbb1f92e260",
+   "query": {}
+  },
+  {
+   "file": "schools/e065606c904dc7ff95bd5bd8d87952c6.json",
+   "path": "/api/v1/screening/schools/by-key/e065606c904dc7ff95bd5bd8d87952c6",
+   "query": {}
+  },
+  {
    "file": "schools/08dcec9bffebc5d2f1995a8c5e041898.json",
    "path": "/api/v1/screening/schools/by-key/08dcec9bffebc5d2f1995a8c5e041898",
+   "query": {}
+  },
+  {
+   "file": "schools/118d481c3d66031d77a4af148cc6a207.json",
+   "path": "/api/v1/screening/schools/by-key/118d481c3d66031d77a4af148cc6a207",
+   "query": {}
+  },
+  {
+   "file": "schools/068a84fa2e63b1d3e3067238e63ccd1f.json",
+   "path": "/api/v1/screening/schools/by-key/068a84fa2e63b1d3e3067238e63ccd1f",
+   "query": {}
+  },
+  {
+   "file": "schools/bbf5acec52b6dfb29a327a3953960286.json",
+   "path": "/api/v1/screening/schools/by-key/bbf5acec52b6dfb29a327a3953960286",
+   "query": {}
+  },
+  {
+   "file": "schools/d8b39337181643ec46f464c86067fa44.json",
+   "path": "/api/v1/screening/schools/by-key/d8b39337181643ec46f464c86067fa44",
    "query": {}
   },
   {
@@ -121,6 +226,46 @@
    "query": {
     "a": "additive_u",
     "b": "additive_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
    }
   }
  ]

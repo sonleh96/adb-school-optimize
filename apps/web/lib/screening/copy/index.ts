@@ -27,6 +27,7 @@ export {
 export {
   missingGroupLabel,
   missingLabels,
+  rangeRowWhy,
   missingSentence,
   missingSentences,
   missingValueKind,

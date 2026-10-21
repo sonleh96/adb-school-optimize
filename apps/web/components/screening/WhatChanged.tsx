@@ -12,6 +12,7 @@ import {
 
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
+import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
 
 const isUrgencyPair = (a: CopyRuleId, b: CopyRuleId) =>
@@ -56,7 +57,12 @@ export function WhatChanged({
   }, [failed]);
 
   const pair = isUrgencyPair(from, to);
-  const lead = failed ? null : pair ? copy.urgencyReassurance() : copy.comparisonSentence(from, to);
+  // The lead names schools only for another pair; names are set apart either way (R18).
+  const lead = failed
+    ? null
+    : pair
+      ? [copy.urgencyReassurance()]
+      : copy.segments.comparisonSentence(from, to);
   const example = !failed && pair ? exampleSchool(schools, from, to) : null;
   return (
     <section className={styles.changed} data-region="what-changed" aria-label={LAYOUT.whatChanged}>
@@ -66,7 +72,7 @@ export function WhatChanged({
           {LAYOUT.hideComparison}
         </button>
       </div>
-      {failed ? (
+      {lead === null ? (
         <p className={styles.changedLead} role="alert" data-region="changed-failed">
           {LAYOUT.loadFailed}{" "}
           <button
@@ -82,13 +88,13 @@ export function WhatChanged({
         </p>
       ) : (
         <p className={styles.changedLead} data-region="changed-lead">
-          {lead}
+          <Sentence segments={lead} />
         </p>
       )}
       {example ? (
         <p className={styles.changedExample} data-region="changed-example">
           <span className={styles.exampleKey}>{LAYOUT.example}</span>
-          {copy.rangeComparisonSentence(example, from, to)}
+          <Sentence segments={copy.segments.rangeComparisonSentence(example, from, to)} />
         </p>
       ) : null}
       {failed ? null : <p className={styles.changedSource}>{STRINGS.comparisonSource}</p>}

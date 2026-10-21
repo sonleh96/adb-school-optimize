@@ -193,3 +193,36 @@ describe.each(["", "ties-and-ranges/", "worst-names/", "one/"])("the API's datas
     }
   });
 });
+
+describe("a range row's one line of why", () => {
+  const byName = (name: string) => schools.find((s) => s.name === name) as copy.CopySchool;
+  const without = (s: copy.CopySchool, readings: ("aqi" | "emissions" | "land")[]): copy.CopySchool => ({
+    ...s,
+    missing_env: {
+      aqi: readings.includes("aqi"),
+      emissions: readings.includes("emissions"),
+      land: readings.includes("land"),
+    },
+  });
+
+  it("keeps the full note for the one reading a saved range school lacks", () => {
+    const s = byName("Sample School 17");
+    expect(copy.rangeRowWhy(s)).toBe(copy.missingValueNote(s, "air"));
+  });
+
+  it("names every reading a range school lacks when it lacks more than one", () => {
+    const s = without(byName("Sample School 17"), ["aqi", "land"]);
+    expect(copy.rangeRowWhy(s)).toBe(
+      "Its air-quality reading and land-cover figure are missing, so the school shows a range of places."
+    );
+    const all = without(byName("Sample School 17"), ["aqi", "emissions", "land"]);
+    expect(copy.rangeRowWhy(all)).toBe(
+      "Its air-quality reading, nearby emissions figure and land-cover figure are missing, so the school shows a range of places."
+    );
+    expect(textProblems(copy.rangeRowWhy(all) as string)).toEqual([]);
+  });
+
+  it("has nothing to say for a school that lacks no reading", () => {
+    expect(copy.rangeRowWhy(byName("Sample School 08"))).toBeNull();
+  });
+});

@@ -295,6 +295,20 @@ export function missingLabels(school: CopySchool): string[] {
   return labels.length ? labels : ["Record needs checking"];
 }
 
+/**
+ * Why a range school shows a range, in one line for a row: the reading it lacks, or every reading when it lacks
+ * more than one. Null when no reading is missing. One reading keeps the full note the card gives it.
+ */
+export function rangeRowWhy(school: CopySchool): string | null {
+  const keys = (["air", "emissions", "land"] as const).filter(
+    (k) => missingValueKind(school, k) === "unresolved"
+  );
+  if (keys.length === 0) return null;
+  if (keys.length === 1) return missingValueNote(school, keys[0]);
+  const names = keys.map((k) => (UNRESOLVED_WHAT[k] as string).replace(/^an? /, ""));
+  return `Its ${joinList(names)} are missing, so the school shows a range of places.`;
+}
+
 // The heading of a school in the list of incomplete records grouped by what is missing: the one cause when there is
 // one, and a count when several details are missing. A school can sit under only one heading.
 export function missingGroupLabel(school: CopySchool): string {

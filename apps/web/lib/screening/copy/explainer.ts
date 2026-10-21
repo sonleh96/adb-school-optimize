@@ -29,6 +29,7 @@ import { nameSegment, seg, textOf, type Segments } from "./segments";
 // Six sections for the How this works page, each a title and its sentences in order.
 // example: an optional data-driven example sentence for the last section (copyFor supplies one).
 export function buildHow(c: CountBag = {}, example: string | null = null) {
+  const noRange = known(c, "range") && c.range === 0;
   return Object.freeze(
     [
       {
@@ -52,9 +53,12 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
           // The counts here are the paper's main rule's; another rule can put a different number of schools in a group.
           `Under the paper's main rule, ${lowerFirst(groupsSentence(c))}`,
           GROUPS_MEANING,
-          known(c, "queue") && c.queue === 1
-            ? "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
-            : `The other${known(c, "queue") && c.queue > 1 ? ` ${formatCount(c.queue)}` : "s"} have incomplete records and no place in the list yet, and each one shows what is missing.`,
+          // With none held back there is no "other" to describe.
+          known(c, "queue") && c.queue === 0
+            ? null
+            : known(c, "queue") && c.queue === 1
+              ? "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
+              : `The other${known(c, "queue") && c.queue > 1 ? ` ${formatCount(c.queue)}` : "s"} have incomplete records and no place in the list yet, and each one shows what is missing.`,
           "The tool never fills in a missing detail or counts it as 0.",
         ],
       },
@@ -107,18 +111,27 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
         key: "limits",
         title: "What the results cannot tell you",
         sentences: [
-          `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score, the study's main order.`,
-          "Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
-          known(c, "complete") && known(c, "ranked")
-            ? `Under the paper's main rule, places among the ${formatCount(c.complete)} and possible places among all ${formatCount(c.ranked)} answer different questions.`
-            : "Places among the schools with every input recorded and possible places among all schools that can be put in order answer different questions.",
+          // With no school showing a range there is nothing to list by its range.
+          noRange
+            ? null
+            : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score, the study's main order.`,
+          noRange
+            ? null
+            : "Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
+          noRange
+            ? null
+            : known(c, "complete") && known(c, "ranked")
+              ? `Under the paper's main rule, places among the ${formatCount(c.complete)} and possible places among all ${formatCount(c.ranked)} answer different questions.`
+              : "Places among the schools with every input recorded and possible places among all schools that can be put in order answer different questions.",
           example ||
             "Agreement among the schools with every input recorded does not carry over to all schools that can be put in order, because the schools that show a range can still move.",
           "Having no place in the list yet says nothing about a school's need.",
           "The results come from checks the project ran on its own calculations; no one outside the project has reproduced them yet, and planners have not yet tested the screen.",
         ],
       },
-    ].map((x) => Object.freeze({ ...x, sentences: Object.freeze(x.sentences) }))
+    ].map((x) =>
+      Object.freeze({ ...x, sentences: Object.freeze(x.sentences.filter((t): t is string => t !== null)) })
+    )
   );
 }
 export const HOW_IT_WORKS = buildHow();

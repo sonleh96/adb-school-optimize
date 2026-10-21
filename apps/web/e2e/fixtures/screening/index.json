@@ -91,13 +91,53 @@
    "query": {}
   },
   {
-   "file": "schools/299ec8fe96b5bb7a121b9d6ff0aaddf9.json",
-   "path": "/api/v1/screening/schools/by-key/299ec8fe96b5bb7a121b9d6ff0aaddf9",
+   "file": "schools/f3f18d0d5561abaff277738730ba3f7d.json",
+   "path": "/api/v1/screening/schools/by-key/f3f18d0d5561abaff277738730ba3f7d",
    "query": {}
   },
   {
-   "file": "schools/52f5775bbd7f52d844925499e8c3aa83.json",
-   "path": "/api/v1/screening/schools/by-key/52f5775bbd7f52d844925499e8c3aa83",
+   "file": "schools/f43b8c426ef8c16d0c02fa0b66cea21e.json",
+   "path": "/api/v1/screening/schools/by-key/f43b8c426ef8c16d0c02fa0b66cea21e",
+   "query": {}
+  },
+  {
+   "file": "schools/24e96dd3ce3e2cd7a556a4e831b76895.json",
+   "path": "/api/v1/screening/schools/by-key/24e96dd3ce3e2cd7a556a4e831b76895",
+   "query": {}
+  },
+  {
+   "file": "schools/b0e591749f1d685f0d8c06a70b6bf565.json",
+   "path": "/api/v1/screening/schools/by-key/b0e591749f1d685f0d8c06a70b6bf565",
+   "query": {}
+  },
+  {
+   "file": "schools/4eab09bc1da00ea467b7c56918aeb12d.json",
+   "path": "/api/v1/screening/schools/by-key/4eab09bc1da00ea467b7c56918aeb12d",
+   "query": {}
+  },
+  {
+   "file": "schools/40a9cb22a2b52bb08dca8f6a0a04cc59.json",
+   "path": "/api/v1/screening/schools/by-key/40a9cb22a2b52bb08dca8f6a0a04cc59",
+   "query": {}
+  },
+  {
+   "file": "schools/922a4dbe744ffc84db8dd29c3885cbdd.json",
+   "path": "/api/v1/screening/schools/by-key/922a4dbe744ffc84db8dd29c3885cbdd",
+   "query": {}
+  },
+  {
+   "file": "schools/05802263d65f56dbc0a4986392d3b856.json",
+   "path": "/api/v1/screening/schools/by-key/05802263d65f56dbc0a4986392d3b856",
+   "query": {}
+  },
+  {
+   "file": "schools/573210c70830ee57034d5981a41a7462.json",
+   "path": "/api/v1/screening/schools/by-key/573210c70830ee57034d5981a41a7462",
+   "query": {}
+  },
+  {
+   "file": "schools/47edc08ba610de29e27c14d2a9ab7372.json",
+   "path": "/api/v1/screening/schools/by-key/47edc08ba610de29e27c14d2a9ab7372",
    "query": {}
   },
   {
@@ -106,11 +146,116 @@
    "query": {}
   },
   {
+   "file": "schools/156f675a7d8baee1770ba83a0466844c.json",
+   "path": "/api/v1/screening/schools/by-key/156f675a7d8baee1770ba83a0466844c",
+   "query": {}
+  },
+  {
+   "file": "schools/b6060cfbcad4b4fc803a5b67fbd99b05.json",
+   "path": "/api/v1/screening/schools/by-key/b6060cfbcad4b4fc803a5b67fbd99b05",
+   "query": {}
+  },
+  {
+   "file": "schools/299ec8fe96b5bb7a121b9d6ff0aaddf9.json",
+   "path": "/api/v1/screening/schools/by-key/299ec8fe96b5bb7a121b9d6ff0aaddf9",
+   "query": {}
+  },
+  {
+   "file": "schools/117eaebf0a8de28d6176e827fc49aa6d.json",
+   "path": "/api/v1/screening/schools/by-key/117eaebf0a8de28d6176e827fc49aa6d",
+   "query": {}
+  },
+  {
+   "file": "schools/6658bc7f7d9b68d371cd462945f10531.json",
+   "path": "/api/v1/screening/schools/by-key/6658bc7f7d9b68d371cd462945f10531",
+   "query": {}
+  },
+  {
+   "file": "schools/a5ac5b6a50c05c5268870c0449f24c65.json",
+   "path": "/api/v1/screening/schools/by-key/a5ac5b6a50c05c5268870c0449f24c65",
+   "query": {}
+  },
+  {
+   "file": "schools/cad74bfca6abd75b54810c7fce747646.json",
+   "path": "/api/v1/screening/schools/by-key/cad74bfca6abd75b54810c7fce747646",
+   "query": {}
+  },
+  {
+   "file": "schools/17d7f7af2b46961f4b0b87d9c7e23b5e.json",
+   "path": "/api/v1/screening/schools/by-key/17d7f7af2b46961f4b0b87d9c7e23b5e",
+   "query": {}
+  },
+  {
+   "file": "schools/e13b47f0541863bdb3374736fe6643ce.json",
+   "path": "/api/v1/screening/schools/by-key/e13b47f0541863bdb3374736fe6643ce",
+   "query": {}
+  },
+  {
+   "file": "schools/52f5775bbd7f52d844925499e8c3aa83.json",
+   "path": "/api/v1/screening/schools/by-key/52f5775bbd7f52d844925499e8c3aa83",
+   "query": {}
+  },
+  {
+   "file": "schools/ab0fd239b18ad57e4bd6cf8b3df00b90.json",
+   "path": "/api/v1/screening/schools/by-key/ab0fd239b18ad57e4bd6cf8b3df00b90",
+   "query": {}
+  },
+  {
+   "file": "schools/0e7a962b5fd2dcfbd6000ee2a7a298a9.json",
+   "path": "/api/v1/screening/schools/by-key/0e7a962b5fd2dcfbd6000ee2a7a298a9",
+   "query": {}
+  },
+  {
+   "file": "schools/4b3f4957788a373680488b8b6ad6dc69.json",
+   "path": "/api/v1/screening/schools/by-key/4b3f4957788a373680488b8b6ad6dc69",
+   "query": {}
+  },
+  {
    "file": "compare/additive_u__additive_no_u.json",
    "path": "/api/v1/screening/compare",
    "query": {
     "a": "additive_u",
     "b": "additive_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
    }
   }
  ]
