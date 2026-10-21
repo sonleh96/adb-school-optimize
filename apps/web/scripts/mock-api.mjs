@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 
@@ -92,17 +92,83 @@ const districtFeatures = [
 // Screening responses come from e2e/fixtures/screening, which services/api/scripts/generate_screening_fixtures.py
 // saved from the real API. Only a request that was captured is answered; any other screening request fails loudly,
 // so a test cannot pass on a response the API never gave (for example a filter the fixtures do not cover).
+//
+// The folder holds several datasets: the default one in the folder itself and one per subfolder with an index.json
+// ("worst-names", "ties-and-ranges", "one", "empty"). A test picks one for its own requests, so tests that run in
+// parallel never share a choice:
+//   cookie  mock-screening-dataset=worst-names           or header  x-mock-screening-dataset: worst-names
+//   cookie  mock-screening-fail=results:503|inputs:500   or header  x-mock-screening-fail: results:503
+// A failure names the first path segment after /api/v1/screening/ (rules, results, inputs, schools, compare) and
+// the status to answer with; the body has the API's error envelope shape. A fixture saved with a status of its
+// own (the 404 of the empty dataset) is answered with that status.
 const screeningDir = fileURLToPath(new URL("../e2e/fixtures/screening/", import.meta.url));
-const screeningRequests = JSON.parse(readFileSync(`${screeningDir}index.json`, "utf8")).requests;
+const DEFAULT_DATASET = "default";
+const screeningDatasets = new Map([
+  [DEFAULT_DATASET, { dir: screeningDir, requests: readIndex(screeningDir) }],
+]);
+for (const entry of readdirSync(screeningDir, { withFileTypes: true })) {
+  const dir = `${screeningDir}${entry.name}/`;
+  if (entry.isDirectory() && existsSync(`${dir}index.json`)) {
+    screeningDatasets.set(entry.name, { dir, requests: readIndex(dir) });
+  }
+}
 const sameQuery = (a, b) =>
   JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
 
-function screeningFixture(url) {
+function readIndex(dir) {
+  return JSON.parse(readFileSync(`${dir}index.json`, "utf8")).requests;
+}
+
+function cookieValue(request, name) {
+  for (const part of (request.headers.cookie ?? "").split(";")) {
+    const [key, ...rest] = part.trim().split("=");
+    if (key === name) return decodeURIComponent(rest.join("="));
+  }
+  return undefined;
+}
+
+const choice = (request, name) => request.headers[`x-${name}`] ?? cookieValue(request, name);
+
+function screeningFixture(dataset, url) {
   const path = decodeURIComponent(url.pathname);
   const query = Object.fromEntries(url.searchParams);
-  return screeningRequests.find(
+  return dataset.requests.find(
     (entry) => decodeURIComponent(entry.path) === path && sameQuery(entry.query, query)
   );
+}
+
+function screeningFailure(request, url) {
+  const route = url.pathname.split("/")[4];
+  const wanted = String(choice(request, "mock-screening-fail") ?? "")
+    .split("|")
+    .map((item) => item.split(":"))
+    .find(([name]) => name === route);
+  return wanted ? Number(wanted[1]) : undefined;
+}
+
+function answerScreening(request, response, url) {
+  const name = choice(request, "mock-screening-dataset") || DEFAULT_DATASET;
+  const dataset = screeningDatasets.get(name);
+  if (!dataset) {
+    const known = [...screeningDatasets.keys()].join(", ");
+    const message = `No fixture dataset ${name}; known: ${known}`;
+    return json(response, { error: { code: "fixture_dataset_unknown", message } }, 501);
+  }
+  const failure = screeningFailure(request, url);
+  if (failure !== undefined) {
+    const message = `The mock was asked to answer ${failure}`;
+    return json(response, { error: { code: "mock_failure", message } }, failure);
+  }
+  const entry = screeningFixture(dataset, url);
+  if (!entry) {
+    const message = `No saved response for ${request.url}`;
+    return json(response, { error: { code: "fixture_not_captured", message } }, 501);
+  }
+  response.writeHead(entry.status ?? 200, {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+  });
+  return response.end(readFileSync(`${dataset.dir}${entry.file}`));
 }
 
 function json(response, value, status = 200) {
@@ -130,18 +196,7 @@ async function route(request, response) {
       layers: [{ id: "background", type: "background", paint: { "background-color": "#ece9e2" } }],
     });
   }
-  if (url.pathname.startsWith("/api/v1/screening/")) {
-    const entry = screeningFixture(url);
-    if (!entry) {
-      return json(
-        response,
-        { error: { code: "fixture_not_captured", message: `No saved response for ${request.url}` } },
-        501
-      );
-    }
-    response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-    return response.end(readFileSync(`${screeningDir}${entry.file}`));
-  }
+  if (url.pathname.startsWith("/api/v1/screening/")) return answerScreening(request, response, url);
   if (url.pathname === "/api/v1/meta/indicators") {
     return json(response, { default: "Average AQI", items: ["Average AQI", "Conflict Events"] });
   }

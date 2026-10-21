@@ -1,4 +1,5 @@
 {
+ "dataset": "main",
  "input_version": "synthetic-fixture-v1",
  "pinned": "uuids (run ids, school ids) and timestamps",
  "requests": [
@@ -70,6 +71,18 @@
    "query": {
     "placement": "upper",
     "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "inputs.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {}
+  },
+  {
+   "file": "inputs.pinned.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {
+    "input_version": "synthetic-fixture-v1"
    }
   },
   {

@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { ParseError, type Schema, parseWith } from "./schema";
 import {
   type CompareResponse,
+  type InputsResponse,
   type Placement,
   type ResultsResponse,
   type RuleId,
@@ -14,6 +15,7 @@ import {
   type SchoolDetailResponse,
   type SchoolKey,
   compareResponse,
+  inputsResponse,
   resultsResponse,
   rulesResponse,
   schoolDetailResponse,
@@ -98,4 +100,10 @@ export function fetchScreeningCompare(
 ): Promise<CompareResponse> {
   const url = screeningUrl("/compare", { a, b, ...pinParams(pin) });
   return read(compareResponse, url, "Screening comparison", signal);
+}
+
+/** Every school's stored inputs in one read, so a list needs no request per school. */
+export function fetchScreeningInputs(pin: Pin = {}, signal?: AbortSignal): Promise<InputsResponse> {
+  const url = screeningUrl("/inputs", { input_version: pin.inputVersion });
+  return read(inputsResponse, url, "Screening inputs", signal);
 }

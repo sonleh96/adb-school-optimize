@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
-from app.ingestion.load_screening_inputs import LoadReport, load_screening
+from app.ingestion.load_screening_inputs import LoadReport, PersistenceSource, load_screening
 from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row, tuple_row
 from school_scoring.screening import SchoolRecord
@@ -17,6 +17,11 @@ SQL_DIR = Path(__file__).resolve().parents[3] / "infra" / "sql"
 VERSION = "synthetic-v1"
 SOURCE_MANIFEST = [{"table": "synthetic", "root": "datasets", "path": "synthetic.csv", "sha256": "0" * 64}]
 TABLES = ("screening_input_versions", "screening_inputs", "screening_runs", "screening_results")
+PERSISTENCE_TABLES = (
+    "screening_persistence_sets",
+    "screening_persistence_settings",
+    "screening_persistence_frequencies",
+)
 
 
 SCREENING_MIGRATION = SQL_DIR / "005_screening.sql"
@@ -73,7 +78,10 @@ def apply_migrations(connection: psycopg.Connection, files: list[Path] | None = 
 
 
 def load(
-    connection: psycopg.Connection, records: tuple[SchoolRecord, ...], version: str = VERSION
+    connection: psycopg.Connection,
+    records: tuple[SchoolRecord, ...],
+    version: str = VERSION,
+    persistence: PersistenceSource | None = None,
 ) -> LoadReport:
     return load_screening(
         connection,
@@ -81,6 +89,7 @@ def load(
         records=records,
         source_manifest=SOURCE_MANIFEST,
         description="invented records",
+        persistence=persistence,
     )
 
 
@@ -97,13 +106,13 @@ def scalar(connection: psycopg.Connection, query: str, params: tuple = ()) -> An
 
 
 def snapshot(connection: psycopg.Connection) -> dict[str, list[str]]:
-    """Every row of the four screening tables as sorted JSON text, including ids and timestamps."""
+    """Every row of the screening tables, persistence included, as sorted JSON text with ids and timestamps."""
     return {
         table: sorted(
             json.dumps(row["row"], sort_keys=True)
             for row in rows(connection, f"select to_jsonb(t) as row from {table} t")
         )
-        for table in TABLES
+        for table in (*TABLES, *PERSISTENCE_TABLES)
     }
 
 
