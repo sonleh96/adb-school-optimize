@@ -9,13 +9,13 @@ Do not deploy while any required GitHub check is red.
 The merge gate includes:
 
 - frontend lint, formatting, type checking, Vitest, production audit at critical severity, production build, analyzer output, and gzip bundle budgets;
-- Playwright sign-in, Overview renderer, District URL state, Scenario run, and export download smoke tests;
-- desktop Lighthouse performance of at least 90 and accessibility of at least 95 for Overview and District Explorer;
+- Playwright tests of sign-in, the screening workspace, and the check that leaving the workspace releases its WebGL context;
+- desktop Lighthouse performance of at least 90 and accessibility of at least 95 for the workspace and the sign-in page;
 - API and scoring Ruff checks and pytest suites;
 - a clean API Docker build.
 
-The current initial-route JavaScript budget is 250 KiB gzip per application route, excluding dynamically loaded map chunks.
-The Overview renderer regression must remain bounded after repeated compare and score interactions.
+The current initial-route JavaScript budget is 250 KiB gzip for the workspace, excluding dynamically loaded map chunks.
+The WebGL regression test must keep exactly one context alive across repeated visits to the workspace.
 
 ## Local verification
 
@@ -32,23 +32,23 @@ Lighthouse blocks third-party basemap tiles and evaluates the median of three ru
 
 ## Staging deployment
 
-1. Apply additive database migrations through `infra/sql/004_scenario_archive.sql` in the reviewed migration workflow.
+1. Apply the additive database migrations in `infra/sql` through the newest file in the reviewed migration workflow.
 2. Configure staging Supabase redirects, allowlists, and server-only auth variables from `docs/authentication.md`.
 3. Configure the Cloud Run API variables from `infra/cloud-run/README.md`, including exact staging CORS origins and `AUTH_REQUIRED=true`.
 4. Deploy the API image and confirm `/healthz` returns 200 with `X-Request-ID` and `X-Content-Type-Options: nosniff`.
 5. Confirm unauthenticated `/api/v1` requests return the structured 401 response.
 6. Deploy the frontend with its staging API origin and server-only Supabase variables.
-7. Sign in with one allowlisted account and verify Overview, School Explorer, District Explorer, Scenario Lab, raster display, and export download.
+7. Sign in with one allowlisted account and verify the workspace list and map, a school's card, and a CSV export.
 8. Verify one unlisted account is rejected and a random-origin CORS preflight has no allow-origin response header.
 9. Hold staging for at least one normal briefing session and inspect client errors, API error rate, and latency.
 
 ## Production deployment
 
 1. Record the currently healthy Vercel deployment ID, Cloud Run revision, container image digest, and database migration version.
-2. Confirm a recent Supabase backup and verify that the archive migration is additive and applied.
-3. Deploy the immutable API image first with zero traffic, then send an authenticated health and one-record schools request to the new revision.
+2. Confirm a recent Supabase backup and verify that the migrations are applied.
+3. Deploy the immutable API image first with zero traffic, then send an authenticated health request and one `/api/v1/screening/rules` request to the new revision.
 4. Move a small traffic share to the new API revision and monitor for 15 minutes.
-5. Deploy the frontend preview against the canary API revision and run the critical sign-in and Overview flow.
+5. Deploy the frontend preview against the canary API revision and run the sign-in and workspace flow.
 6. Promote the frontend and API only when error rate is within 10 percent of baseline and p95 latency is within 20 percent of baseline.
 7. Monitor for one hour after promotion and keep the release owner available.
 
@@ -61,9 +61,9 @@ Check these signals at deployment, 15 minutes, and 60 minutes:
 - API p50, p95, and p99 latency;
 - database pool saturation and Supabase connection count;
 - Cloud Run CPU and memory;
-- map canvas count after repeated Overview interactions;
-- failed sign-ins, structured 401 volume, write 429 volume, and CORS failures;
-- raster and export response failures.
+- WebGL context count after repeated visits to the workspace;
+- failed sign-ins, structured 401 volume, and CORS failures;
+- export response failures.
 
 Advance when error rate is within 10 percent and p95 latency is within 20 percent of the prior healthy baseline.
 Hold and investigate at a 10 to 100 percent error increase or a 20 to 50 percent p95 increase.
@@ -78,22 +78,16 @@ API rollback target is the previously recorded healthy Cloud Run revision and im
 2. Restore 100 percent API traffic to the previous healthy Cloud Run revision.
 3. Promote the previous healthy Vercel deployment.
 4. Keep `AUTH_REQUIRED=true` during rollback.
-5. Do not reverse the additive scenario archive migration during an application rollback.
-6. Recheck health, authenticated schools data, Overview rendering, and exports.
+5. Do not reverse an additive migration during an application rollback.
+6. Recheck health, authenticated screening data, workspace rendering, and exports.
 7. Record the incident window, request IDs, affected release identifiers, and follow-up owner.
-
-If the defect is limited to authenticated writes, set `WRITE_OPERATIONS_ENABLED=false` as the immediate containment control while read-only analysis remains available.
 
 ## Performance baseline
 
-The 2026-08-10 audit found 247 canvases after an Overview load at zoom 8 and 459 after one compare toggle because each feature allocated its own Leaflet canvas renderer.
-After C1, the same flows remain at one to two shared canvases through repeated score, compare, selection, and zoom interactions.
-See `docs/performance-audit-2026-08-10.md` for the full measurements and architecture changes.
-
-Reopen performance work if the browser regression exceeds the shared-canvas bound, a route crosses 250 KiB gzip initial JavaScript, desktop Lighthouse performance falls below 90, or production p95 increases by more than 20 percent without an explained data change.
+Reopen performance work if the workspace keeps more than one WebGL context alive, the workspace crosses 250 KiB gzip initial JavaScript, desktop Lighthouse performance falls below 90, or production p95 increases by more than 20 percent without an explained data change.
 
 ## Dependency security baseline
 
-The application runs on Next.js 16.3.0 with React 19.2.8.
+The application runs on Next.js 16.4 with React 19.2.
 The production dependency audit must report zero known vulnerabilities before release.
 CI blocks high and critical production advisories and preserves the full audit output for release review.
