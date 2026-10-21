@@ -1880,11 +1880,19 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     top: calc(56px + var(--band) - 8px);
     bottom: auto;
   }
+  /* Open, the key never grows past the band: its title and toggle stay in view under the top bar, and what does not
+     fit scrolls inside it. */
   .foot .legend {
     margin-bottom: 0;
     right: 0;
     width: max-content;
     max-width: 100%;
+    max-height: calc(var(--band) - 16px);
+  }
+  .foot .legendBody {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .root[data-has-insp] .foot,
   .root[data-card-docked] .foot {

@@ -9,6 +9,8 @@
  *  5. Escape closes the card before a popover over it            -> "Escape closes the innermost layer first"
  *  6. A card that steps the list aside leaves focus on the hidden row, so the keyboard user is dropped and Escape
  *     does nothing                                               -> "a card that steps the list aside takes focus..."
+ *  7. At 200 percent zoom the open key runs under the top bar, hiding its title and the toggle that closes it
+ *     -> "the open key stays inside the map band..."
  */
 import type { Page } from "@playwright/test";
 
@@ -209,3 +211,40 @@ for (const size of [
     });
   });
 }
+
+test.describe("the key at 200 percent zoom", () => {
+  test.use({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 2 });
+
+  test("the open key stays inside the map band, under the top bar, and closes again", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    const key = page.locator("[data-slot=legend]");
+    await key.getByRole("button", { name: "Show the map key" }).click();
+    await expect(key.locator("[data-region=legend-point]")).toBeAttached();
+
+    const fits = await page.evaluate(() => {
+      const box = document.querySelector("[data-slot=legend]")!.getBoundingClientRect();
+      const bar = document.querySelector("header[class*=topBar]")!.getBoundingClientRect();
+      const band = document.querySelector("[data-testid=screening-map]")!.getBoundingClientRect();
+      // What is drawn at the toggle's centre and at the title's is the toggle and the title, not the top bar.
+      const atCentre = (selector: string) => {
+        const el = document.querySelector<HTMLElement>(`[data-slot=legend] ${selector}`)!;
+        const r = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+      };
+      return {
+        belowBar: box.top >= bar.bottom,
+        insideBand: box.bottom <= band.bottom + 1,
+        toggle: atCentre("button[aria-controls]"),
+        title: atCentre("[data-testid=legend-rule]"),
+      };
+    });
+    expect(fits).toEqual({ belowBar: true, insideBand: true, toggle: true, title: true });
+
+    // The ramp and the marks can be read by scrolling inside the key.
+    await key.locator("ol li").first().scrollIntoViewIfNeeded();
+    await expect(key.locator("ol li").first()).toBeInViewport();
+    await key.getByRole("button", { name: "Hide the map key" }).click();
+    await expect(key.locator("[data-region=legend-point]")).toHaveCount(0);
+  });
+});
