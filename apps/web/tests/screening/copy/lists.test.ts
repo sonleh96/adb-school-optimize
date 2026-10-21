@@ -7,7 +7,7 @@
  *     quote the wrong school's readings.
  *  3. A reason, a missing-detail chip or a note throws or reads wrong for some row, because the record lacks a
  *     part the card has.
- *  4. A count that needs every record is stated from a filtered list, or without the circulated list.
+ *  4. A count that needs every record is stated from a filtered list, or for a rule whose own list holds no flags.
  */
 import { describe, expect, it } from "vitest";
 
@@ -133,7 +133,7 @@ describe("the counts that need every record", () => {
     expect(raw.schools).toHaveLength(25);
   });
 
-  it("are left out without the records, with a filtered list, or without the circulated list", () => {
+  it("are left out without the records, with a filtered list, or for a rule with no flags of its own", () => {
     expect(countsFromResults(shown)).not.toHaveProperty("emissionsNone");
     expect(countsFromResults(shown)).not.toHaveProperty("flagged");
     const filtered = { ...shown, returned_schools: 10, rows: shown.rows.slice(0, 10) } as ResultsResponse;
@@ -146,9 +146,15 @@ describe("the counts that need every record", () => {
       lists.filter((l) => l.run.rule_id !== "additive_u"),
       "additive_no_u"
     );
-    const plain = countsFromResults(lists[RULES.indexOf("additive_no_u")], without);
+    const revised = lists[RULES.indexOf("additive_no_u")];
+    const plain = countsFromResults(revised, without);
     expect(plain).toHaveProperty("emissionsNone");
-    expect(plain).not.toHaveProperty("flagged");
+    // The flag count is the shown rule's own, from its own list, so the circulated list is not needed for it.
+    expect(plain.flagged).toBe(revised.rows.filter((r) => r.persistent_candidate === true).length);
+    // A list of a rule the test did not run for has no flag to count.
+    const bottleneck = lists[RULES.indexOf("bottleneck_u")];
+    const others = schoolsFromLists(inputs, lists, "bottleneck_u");
+    expect(countsFromResults(bottleneck, others)).not.toHaveProperty("flagged");
   });
 
   it("let the help card state them", () => {

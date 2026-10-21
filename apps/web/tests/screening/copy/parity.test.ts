@@ -614,7 +614,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
                 },
               }
             : s;
-          for (const opts of [{}, { standardError: 0.005656854249492379 }, { standardError: 0.00001 }])
+          for (const opts of [{}, { margin: 0.005656854249492379 }, { margin: 0.00001 }])
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));

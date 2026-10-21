@@ -256,11 +256,11 @@ export const resultsResponse = obj({
   rows: list(listedRow),
   /**
    * Where the persistence flag came from, in the list of each rule the stochastic test ran for, from that rule's own
-   * experiment; null when the rule has none. Only the standard error is read: it is the margin inside which a school
-   * counts as only just above the line. The block adds a margin to a sentence, so a change to it reads as absent
-   * instead of blanking the list.
+   * experiment; null when the rule has none. Only the standard error and the number of standard errors the rule's
+   * band spans are read: together they are the margin inside which a school counts as only just above the line. The
+   * block adds a margin to a sentence, so a change to it reads as absent instead of blanking the list.
    */
-  persistence: tolerant(nullable(obj({ standard_error: num }))),
+  persistence: tolerant(nullable(obj({ standard_error: num, adjacency_standard_errors: optional(int) }))),
 });
 export type ResultsResponse = Infer<typeof resultsResponse>;
 

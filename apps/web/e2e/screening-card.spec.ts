@@ -43,9 +43,12 @@ const card = (page: Page) => page.locator("[data-slot=school-card]");
 const place = (page: Page) => page.getByTestId("card-place");
 const LOAD_FAILED = "Some of the information did not load, so there is nothing to show until you try again.";
 const PERSISTENT =
-  "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.";
-const NEAR_LINE =
-  "In that test it stayed in the top 20 only just often enough to be flagged, within 0.6 percentage points of the line, so another round of random changes to the shares could take the flag away.";
+  "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.";
+const PERSISTENT_REVISED =
+  "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.";
+const near = (points: string) =>
+  `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
+const NEAR_LINE = near("0.6");
 
 test("a complete school's card states one place, its reasons with the school need parts first, and its numbers", async ({
   page,
@@ -128,7 +131,7 @@ test("an incomplete record's card says what is missing and what the record says,
   await expect(card(page)).not.toContainText("null");
 });
 
-test("the persistence flag shows under the circulated rule only, and only for the schools that have it", async ({
+test("each rule's persistence flag shows under its own rule only, in its own words, and only for the schools that have it", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -142,12 +145,19 @@ test("the persistence flag shows under the circulated rule only, and only for th
   await orderedRow(page, "Sample School 01").click();
   await expect(flag).toHaveText(PERSISTENT);
 
+  // Under the rule without urgency the revised paper's own test speaks, in its own words: School 02 is flagged
+  // there but not near the line; School 06 is near it, by the margin of its two standard errors.
   await mainRule(page, RULE.proposed).click();
   await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("without urgency (S0)");
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
+  await expect(flag).toHaveText(PERSISTENT_REVISED);
+  await orderedRow(page, "Sample School 06").click();
+  await expect(flag).toHaveText(`${PERSISTENT_REVISED} ${near("1.1")}`);
+  await orderedRow(page, "Sample School 04").click();
   await expect(flag).toHaveCount(0);
 
   await mainRule(page, RULE.main).click();
+  await orderedRow(page, "Sample School 01").click();
   await expect(flag).toHaveText(PERSISTENT);
   await orderedRow(page, "Sample School 08").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();

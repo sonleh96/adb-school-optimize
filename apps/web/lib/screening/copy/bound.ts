@@ -96,8 +96,8 @@ export type CopyData = {
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
   readonly countsByRule?: CountsByRuleArg;
-  /** Each persistence test's standard error as a fraction (its own list's provenance block), by rule. */
-  readonly standardErrors?: Partial<Record<PersistenceRule, number>>;
+  /** Each persistence test's margin as a fraction (its own list's provenance block), by rule. */
+  readonly margins?: Partial<Record<PersistenceRule, number>>;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
@@ -227,7 +227,7 @@ export function copyFor(data: CopyData = {}) {
     ) => tieNote(school, ruleId, list, form),
     persistenceNote: (school: CopySchool, ruleId: CopyRuleId) =>
       persistenceNote(school, ruleId, {
-        standardError: (data.standardErrors as Record<string, number | undefined> | undefined)?.[ruleId],
+        margin: (data.margins as Record<string, number | undefined> | undefined)?.[ruleId],
       }),
     distinctName: (school: PlacedSchool, list: readonly PlacedSchool[] = schools) =>
       distinctName(school, list),

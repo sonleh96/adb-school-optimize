@@ -34,9 +34,9 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the paper's main rule, until the research team decides. Leaving urgency out keeps the same schools at the top among the 16 with every input recorded.";
+  "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Leaving it out changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, leaving it out can still move their possible places.";
+  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
 const EXAMPLE =
   "Under the combined-factors rule with urgency (S), Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the combined-factors rule without urgency (S0), it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
 const SCOPE_DETAIL =
@@ -100,7 +100,7 @@ test("the statement shows under the main rule only, never beside What changed, a
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   const line = page.locator("[data-region=rule-role]");
   await expect(line).toHaveText(
-    "The screening score adds up several factors, each with a fixed share, and leaves urgency out. A proposed revision of the main rule that leaves urgency out, awaiting the research team's review. Back to the paper's main rule"
+    "The screening score adds up several factors, each with a fixed share, and leaves urgency out. The main rule of the revised paper, which leaves urgency out. Back to the paper's main rule"
   );
   await expect(statement(page)).toHaveCount(0);
   await line.getByRole("button", { name: "Back to the paper's main rule" }).click();
@@ -119,7 +119,7 @@ test("Other rules lists all seven, closes on a choice or on Escape, and the rule
   await expect(popover.getByRole("button")).toHaveCount(7);
   await expect(popover.getByRole("button", { pressed: true })).toContainText(RULE.main);
   await expect(popover.getByRole("button", { name: new RegExp(`^${RULE.needFirst}`) })).toContainText(
-    "Strict alternative, as circulated in the paper"
+    "Urgency sensitivity, from the circulated paper"
   );
   await expect(popover).not.toHaveAttribute("data-instant", /.*/);
 

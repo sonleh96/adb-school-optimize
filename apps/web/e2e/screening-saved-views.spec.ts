@@ -355,7 +355,9 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("Rules the saved views use");
-  await expect(record).toContainText("Combined factors, with urgency. The paper's main rule.");
+  await expect(record).toContainText(
+    "Combined factors, with urgency. A sensitivity check that puts the urgency value back, from the circulated paper."
+  );
   await expect(record).toContainText(/\d+ source files?\./);
   const plain = (await sheet(page).innerText()) ?? "";
   for (const word of ["additive_u", "sha256", "Formula", "Briefing", "Dirichlet", "×", "—"])
@@ -598,7 +600,7 @@ test("a view whose school and rule are gone points at no card, and marks what it
   await expect(page.getByTestId("guide-step-body")).toHaveAttribute("data-dropped", "rule school");
   // One plain sentence says so, in words and never in keys, in the rail and in the sheet.
   const SAYS =
-    "Part of this view could not be reopened: the rule and the school are no longer in the data, so the screen shows the paper's main rule and no school selected instead.";
+    "Part of this view could not be reopened: the rule and the school are no longer in the data, so the screen shows the paper's main rule and no school selected instead, and the order it saved for the schools that show a range still applies.";
   await expect(rail(page).locator("[data-region=view-dropped]")).toHaveText(SAYS);
   await open(page, "?guide=off&panel=export&pack=1");
   await expect(sheet(page).locator("[data-region=pack-table] li").first()).toHaveAttribute(

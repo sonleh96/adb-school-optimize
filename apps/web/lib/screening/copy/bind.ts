@@ -19,7 +19,7 @@ import {
   countsFromResults,
   pairwiseFromCompare,
   schoolsFromLists,
-  standardErrorFromResults,
+  marginFromResults,
 } from "./adapter";
 import { type BoundCopy, copyFor } from "./bound";
 import type { CopyRuleId, CopySchool } from "./model";
@@ -55,10 +55,10 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
       throw new ParseError(`lists: the copy has no words for the rule ${JSON.stringify(l.run.rule_id)}`);
   const schools = schoolsFromLists(inputs, lists, view);
   // Each rule the stochastic test ran for has its own margin, from its own list.
-  const standardErrors = Object.fromEntries(
+  const margins = Object.fromEntries(
     lists.flatMap((l) => {
-      const se = standardErrorFromResults(l);
-      return se === undefined ? [] : [[l.run.rule_id, se]];
+      const margin = marginFromResults(l);
+      return margin === undefined ? [] : [[l.run.rule_id, margin]];
     })
   );
   // The group sizes of every rule's own run, and for each rule the stochastic test ran for, how many schools its own
@@ -74,7 +74,7 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
       schools,
       counts: countsFromResults(shown, schools),
       countsByRule,
-      standardErrors,
+      margins,
       ...(compare ? pairwiseFromCompare(compare) : {}),
     }),
   };

@@ -121,7 +121,9 @@ export const listNames = (page: Page) =>
   page.locator(`${ORDERED} button span[class*=name]`).allTextContents();
 /** One of the two main rules in the switch. */
 export const mainRule = (page: Page, label: string) =>
-  page.getByRole("group", { name: "The two main rules" }).getByRole("button", { name: label });
+  page
+    .getByRole("group", { name: "The main rule and the urgency sensitivity" })
+    .getByRole("button", { name: label });
 export const tab = (page: Page, name: RegExp) => page.getByRole("tab", { name });
 
 export const markAt = (page: Page, key: string) =>

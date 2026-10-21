@@ -18,7 +18,7 @@ import { parseWith } from "@/lib/screening/schema";
 import { resultsResponse } from "@/lib/screening/types";
 
 import { copy as clone, readFixture } from "../fixtures";
-import { RULES, fixtureInputs, fixtureResults, listWithFlags } from "./helpers";
+import { RULES, fixtureInputs, fixtureResults } from "./helpers";
 
 type Body = { persistence?: unknown; rows: Record<string, unknown>[] };
 const circulated = (change: (b: Body) => void) => {
@@ -26,11 +26,7 @@ const circulated = (change: (b: Body) => void) => {
   change(b);
   return parseWith(resultsResponse, b, "results/additive_u");
 };
-const revised = listWithFlags(
-  "additive_no_u",
-  { "Sample School 01": {}, "Sample School 04": {}, "Sample School 05": {} },
-  0.004
-);
+const revised = fixtureResults("additive_no_u");
 const others = RULES.filter((r) => r !== "additive_u" && r !== "additive_no_u").map((r) => fixtureResults(r));
 const inputs = fixtureInputs();
 const bound = (list: ReturnType<typeof circulated>, view: "additive_u" | "additive_no_u" = "additive_u") =>
@@ -83,24 +79,24 @@ describe("each rule's help", () => {
 
   it("states the count of the rule shown, from that rule's own flags", () => {
     const flaggedS0 = revised.rows.filter((r) => r.persistent_candidate === true).length;
-    expect(flaggedS0).toBe(3);
+    expect(flaggedS0).toBe(4);
     expect(view("additive_no_u").termsFor("additive_no_u").persistent_flag.help).toMatch(
-      / Three schools have the flag\.$/
+      / Four schools have the flag\.$/
     );
-    expect(view("additive_no_u").counts.flagged).toBe(3);
+    expect(view("additive_no_u").counts.flagged).toBe(4);
     const flaggedS = fixtureResults("additive_u").rows.filter((r) => r.persistent_candidate === true).length;
     expect(view("additive_u").counts.flagged).toBe(flaggedS);
   });
 
   it("states each rule's own count when both lists are loaded, and none for a rule whose list is not", () => {
     const both = view("additive_no_u");
-    expect(both.termsFor("additive_no_u").persistent_flag.help).toMatch(/ Three schools have the flag\.$/);
+    expect(both.termsFor("additive_no_u").persistent_flag.help).toMatch(/ Four schools have the flag\.$/);
     expect(both.termsFor("additive_u").persistent_flag.help).toMatch(
       / (One|Two|Three|Four|Five) schools? (has|have) the flag\.$/
     );
     // The shown rule's list alone: the other rule's flags are unknown, so its help claims no count.
     const alone = bindCopy({ view: "additive_no_u", inputs, lists: [revised, ...others] }).copy;
-    expect(alone.termsFor("additive_no_u").persistent_flag.help).toMatch(/ Three schools have the flag\.$/);
+    expect(alone.termsFor("additive_no_u").persistent_flag.help).toMatch(/ Four schools have the flag\.$/);
     expect(alone.termsFor("additive_u").persistent_flag.help).not.toMatch(/the flag\.$/);
   });
 

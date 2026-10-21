@@ -1,24 +1,32 @@
 /**
  * What the copy says about the paper's persistence test. The numbers come from the API: whether a school stayed in
- * the top 20, whether it is only just above the line, and the test's standard error. The test was run for two rules,
- * each its own experiment: the revised paper's rule without urgency (a fresh six-component run) and the circulated
- * paper's rule with urgency.
+ * the top 20, whether it is only just above the line, and the margin that means (the test's standard error times the
+ * number of standard errors its band spans). The test was run for two rules, each its own experiment: the revised
+ * paper's rule without urgency (a fresh six-component run, a band of two standard errors) and the circulated paper's
+ * rule with urgency (a band of one).
  *
  * Failure modes, each with the test that catches it:
  *  1. A rule's flag is said under another rule, or one rule's experiment is worded as the other's: the circulated
  *     count read as an urgency-omitted result, or the fresh run read as an isolated estimate of what urgency changes.
- *  2. A school that is not flagged is told it is near the line, or a flagged one is not told when it is; a rule whose
- *     data names no adjacent school is told one is.
- *  3. The sentence states a number the data does not give, or loses the paper's limitation.
+ *  2. A school that is not flagged is told it is near the line, or a flagged one is not told when it is; a school the
+ *     data does not call adjacent under a rule is told it is, because it is adjacent under the other.
+ *  3. The sentence states a number the data does not give, or loses the paper's limitation, or states a margin of one
+ *     standard error for a test whose band is two.
  *  4. The margin comes from a list that is not the flagged rule's own.
  *  5. The flag of a rule whose list carries no flags reads as false instead of unknown.
- * The lists are the API's own saved responses; the saved ones hold the test for the circulated rule only, so the
- * revised rule's list is the saved one with the persistence keys set from what these tests say.
+ * The lists are the API's own saved responses, which hold each rule's invented test. In them the circulated test
+ * flags Sample Schools 01, 02 and 06 (02 and 06 within one standard error of the line); the revised one flags 01, 02,
+ * 03 and 06 (06 within two standard errors).
  */
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
-import { schoolFromDetail, schoolsFromLists, standardErrorFromResults } from "@/lib/screening/copy";
+import {
+  marginFromResults,
+  schoolFromDetail,
+  schoolsFromLists,
+  standardErrorFromResults,
+} from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 import { schoolDetailResponse } from "@/lib/screening/types";
 
@@ -28,43 +36,118 @@ import { KEYS, RULES, fixtureInputs, fixtureResults, listWithFlags, textProblems
 const inputs = fixtureInputs();
 const S = "additive_u";
 const S0 = "additive_no_u";
-// The circulated rule's saved flags: School 01 well above the line, 02 and 06 only just above, 03 not flagged.
 const circulated = fixtureResults(S);
-// The revised rule's, made for these tests: School 01 flagged under both, School 04 under this rule only, none adjacent.
-const revised = listWithFlags(S0, { "Sample School 01": {}, "Sample School 04": {} }, 0.004);
-const lists = RULES.map((r) => (r === S0 ? revised : fixtureResults(r)));
+const revised = fixtureResults(S0);
+const lists = RULES.map((r) => fixtureResults(r));
 const byName = (n: string, view: copy.CopyRuleId = S) =>
   schoolsFromLists(inputs, lists, view).find((s) => s.name === n);
 const bound = copy.bindCopy({ view: S, inputs, lists }).copy;
 
-const NEAR_WITH =
-  "In that test it stayed in the top 20 only just often enough to be flagged, within 0.6 percentage points of the line, so another round of random changes to the shares could take the flag away.";
+const near = (points: string) =>
+  `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
+const NEAR_WITH = near("0.6");
 const NEAR_WITHOUT =
   "In that test it stayed in the top 20 only just often enough to be flagged, so another round of random changes to the shares could take the flag away.";
 const FLAG = copy.STRINGS.persistentFlag;
 
 describe("the margin of the persistence test", () => {
-  it("is the standard error of the provenance block of the list of the rule the test ran for", () => {
-    expect(standardErrorFromResults(circulated)).toBeCloseTo(0.005656854249492379, 12);
-    expect(standardErrorFromResults(revised)).toBe(0.004);
+  it("is the standard error times the band of the list of the rule the test ran for", () => {
+    const se = 0.005656854249492379;
+    expect(standardErrorFromResults(circulated)).toBeCloseTo(se, 12);
+    expect(standardErrorFromResults(revised)).toBeCloseTo(se, 12);
+    expect(marginFromResults(circulated)).toBeCloseTo(se, 12);
+    expect(marginFromResults(revised)).toBeCloseTo(2 * se, 12);
+  });
+
+  it("reads a block that names no band as one standard error, and no block as none", () => {
+    expect(marginFromResults(listWithFlags(S0, {}, 0.004))).toBe(0.004);
+    expect(marginFromResults(listWithFlags(S0, {}, null))).toBeUndefined();
   });
 
   it("is read from the list of no other rule", () => {
     for (const l of lists)
-      if (l.run.rule_id !== S && l.run.rule_id !== S0)
+      if (l.run.rule_id !== S && l.run.rule_id !== S0) {
         expect(standardErrorFromResults(l), l.run.rule_id).toBeUndefined();
+        expect(marginFromResults(l), l.run.rule_id).toBeUndefined();
+      }
   });
 
   it("is each rule's own when the copy is bound to the lists", () => {
-    const school = (n: string, view: copy.CopyRuleId) => bound.persistenceNote(byName(n, view)!, view);
-    expect(school("Sample School 02", S)[1]).toBe(NEAR_WITH);
-    // A margin that is not 0.6 points, from the revised rule's own block, on a school the data calls adjacent.
-    const near = listWithFlags(S0, { "Sample School 04": { adjacent: true } }, 0.004);
-    const b = copy.bindCopy({ view: S0, inputs, lists: [...lists.filter((l) => l !== revised), near] });
-    const s = schoolsFromLists(inputs, [...lists.filter((l) => l !== revised), near], S0).find(
-      (x) => x.name === "Sample School 04"
-    );
-    expect(b.copy.persistenceNote(s!, S0)[1]).toBe(NEAR_WITH.replace("0.6", "0.4"));
+    const say = (n: string, view: copy.CopyRuleId) => bound.persistenceNote(byName(n, view)!, view);
+    expect(say("Sample School 02", S)[1]).toBe(NEAR_WITH);
+    // The same school is flagged under the revised test too, but the data does not call it adjacent there.
+    expect(say("Sample School 02", S0)).toEqual([FLAG[S0]]);
+    // School 06 is adjacent under both; the revised test's band is two standard errors, so twice the margin.
+    expect(say("Sample School 06", S)[1]).toBe(NEAR_WITH);
+    expect(say("Sample School 06", S0)).toEqual([FLAG[S0], near("1.1")]);
+  });
+});
+
+describe("the line a flagged school is near", () => {
+  const threshold = 0.8;
+  const se = 0.004;
+  // How near the line a flagged school is: its lowest frequency less the threshold, against the band of its rule.
+  const near_ = (lowest: number, band: number) => lowest - threshold < band * se;
+
+  it.each([
+    [S, 1],
+    [S0, 2],
+  ] as const)(
+    "is %s's band of %i standard error(s): the sentence is said inside it and not outside it",
+    (rule, band) => {
+      const margin = band * se;
+      const inside = threshold + 0.9 * margin;
+      const outside = threshold + 1.1 * margin;
+      expect(near_(inside, band)).toBe(true);
+      expect(near_(outside, band)).toBe(false);
+      // The two schools as the API would flag them, under a block that names this rule's band.
+      const list = listWithFlags(
+        rule,
+        {
+          "Sample School 01": { adjacent: near_(inside, band) },
+          "Sample School 02": { adjacent: near_(outside, band) },
+        },
+        se,
+        band
+      );
+      const l = lists.map((x) => (x.run.rule_id === rule ? list : x));
+      const b = copy.bindCopy({ view: rule, inputs, lists: l }).copy;
+      const say = (n: string) =>
+        b.persistenceNote(
+          schoolsFromLists(inputs, l, rule).find((x) => x.name === n)!,
+          rule
+        );
+      expect(marginFromResults(list)).toBeCloseTo(margin, 12);
+      const points = Number((margin * 100).toFixed(1));
+      expect(say("Sample School 01")).toEqual([FLAG[rule], near(String(points))]);
+      expect(say("Sample School 02")).toEqual([FLAG[rule]]);
+      // What is said is true of the school it is said for, and of no school outside it.
+      expect(inside - threshold).toBeLessThan(margin);
+      expect(outside - threshold).toBeGreaterThan(margin);
+    }
+  );
+
+  it("holds for every flagged school of the saved lists: the API's flag is the band the margin states", () => {
+    for (const [rule, list] of [
+      [S, circulated],
+      [S0, revised],
+    ] as const) {
+      const raw = readFixture(`results/${rule}.json`) as {
+        persistence: { threshold: number; standard_error: number; adjacency_standard_errors: number };
+        rows: {
+          school: { source_school_name: string };
+          persistent_candidate: boolean | null;
+          lowest_top20_frequency: number;
+          threshold_adjacent: boolean | null;
+        }[];
+      };
+      const { threshold: t, standard_error: e, adjacency_standard_errors: band } = raw.persistence;
+      expect(marginFromResults(list), rule).toBeCloseTo(band * e, 12);
+      for (const row of raw.rows.filter((r) => r.persistent_candidate === true))
+        expect(row.threshold_adjacent, `${rule} ${row.school.source_school_name}`).toBe(
+          row.lowest_top20_frequency - t < band * e
+        );
+    }
   });
 });
 
@@ -83,63 +166,51 @@ describe("a school of the circulated list", () => {
     }
   });
 
-  it("states no number when the test's standard error is not known", () => {
+  it("states no number when the test's margin is not known", () => {
     const s = byName("Sample School 02");
     expect(copy.copyFor().persistenceNote(s!, S)).toEqual([FLAG[S], NEAR_WITHOUT]);
     expect(copy.STRINGS.persistentNearLine).toBe(NEAR_WITHOUT);
-    expect(copy.persistenceNote(s!, S, { standardError: 0 })[1]).toBe(NEAR_WITHOUT);
-    expect(copy.persistenceNote(s!, S, { standardError: 0.00001 })[1]).toBe(NEAR_WITHOUT);
+    expect(copy.persistenceNote(s!, S, { margin: 0 })[1]).toBe(NEAR_WITHOUT);
+    expect(copy.persistenceNote(s!, S, { margin: 0.00001 })[1]).toBe(NEAR_WITHOUT);
   });
 
   it("is told nothing when it is not flagged, even if its frequency is close", () => {
-    // Sample School 03 reached 0.7999 of the 0.80 line, so it is not flagged and is not "just above" anything.
-    const s = byName("Sample School 03");
+    // Sample School 04 is flagged under neither test.
+    const s = byName("Sample School 04");
     expect(s?.persistence?.[S]?.persistent).toBe(false);
     expect(bound.persistenceNote(s!, S)).toEqual([]);
   });
 });
 
 describe("a school of the revised rule's list", () => {
-  it("is told the flag in the words of the fresh run, and never that it is near the line when the data says none is", () => {
-    const s = byName("Sample School 04", S0);
+  it("is told the flag in the words of the fresh run, and near the line only where the data says so", () => {
+    const s = byName("Sample School 03", S0);
     expect(s?.persistence?.[S0]).toEqual({ persistent: true, adjacent: false });
     expect(bound.persistenceNote(s!, S0)).toEqual([FLAG[S0]]);
-    // Even the school that sits only just above the line under the circulated test is not told so under this one.
-    expect(bound.persistenceNote(byName("Sample School 02", S0)!, S0)).toEqual([]);
+    expect(byName("Sample School 06", S0)?.persistence?.[S0]).toEqual({ persistent: true, adjacent: true });
   });
 
-  it("is told it is near the line only where the data says so", () => {
-    const near = listWithFlags(S0, { "Sample School 04": { adjacent: true }, "Sample School 01": {} }, 0.004);
-    const l = lists.map((x) => (x === revised ? near : x));
-    const [flag, line] = copy.bindCopy({ view: S0, inputs, lists: l }).copy.persistenceNote(
-      schoolsFromLists(inputs, l, S0).find((x) => x.name === "Sample School 04")!,
-      S0
-    );
-    expect(flag).toBe(FLAG[S0]);
-    expect(line).toMatch(/within 0\.4 percentage points of the line/);
-    const plain = copy.bindCopy({ view: S0, inputs, lists: l }).copy;
-    expect(
-      plain.persistenceNote(
-        schoolsFromLists(inputs, l, S0).find((x) => x.name === "Sample School 01")!,
-        S0
-      )
-    ).toEqual([FLAG[S0]]);
+  it("is told it is near the line by no school when the data says none is, as the revised paper finds", () => {
+    const none = listWithFlags(S0, { "Sample School 01": {}, "Sample School 04": {} }, 0.004);
+    const l = lists.map((x) => (x.run.rule_id === S0 ? none : x));
+    const b = copy.bindCopy({ view: S0, inputs, lists: l }).copy;
+    for (const s of schoolsFromLists(inputs, l, S0))
+      expect(b.persistenceNote(s, S0).length, s.name as string).toBeLessThanOrEqual(1);
   });
 });
 
 describe("each rule's flag shows under its own rule only", () => {
   it("says nothing under the other rule, and nothing under a rule that had no test", () => {
-    // 02 is flagged under the circulated test only; 04 under the revised one only; 01 under both.
-    const two = byName("Sample School 02")!;
-    const four = byName("Sample School 04")!;
+    // 03 is flagged under the revised test only; 01 under both.
+    const three = byName("Sample School 03")!;
     const one = byName("Sample School 01")!;
-    expect(bound.persistenceNote(two, S0)).toEqual([]);
-    expect(bound.persistenceNote(four, S)).toEqual([]);
+    expect(bound.persistenceNote(three, S)).toEqual([]);
+    expect(bound.persistenceNote(three, S0)).toEqual([FLAG[S0]]);
     expect(bound.persistenceNote(one, S)).toEqual([FLAG[S]]);
     expect(bound.persistenceNote(one, S0)).toEqual([FLAG[S0]]);
     for (const r of RULES)
       if (r !== S && r !== S0)
-        for (const s of [one, two, four]) expect(bound.persistenceNote(s, r), r).toEqual([]);
+        for (const s of [one, three]) expect(bound.persistenceNote(s, r), r).toEqual([]);
   });
 
   it("words the fresh run and the circulated experiment differently, and relabels neither", () => {
@@ -173,7 +244,7 @@ describe("a school of a list that carries no flags for a rule", () => {
   it("has no flag to say for that rule, because the flag is unknown there", () => {
     const without = lists.filter((l) => l.run.rule_id !== S);
     const s = schoolsFromLists(inputs, without, S0).find((x) => x.name === "Sample School 02");
-    expect(s?.persistence).toEqual({ [S0]: { persistent: false, adjacent: false } });
+    expect(s?.persistence).toEqual({ [S0]: { persistent: true, adjacent: false } });
     expect(s?.persistence).not.toHaveProperty(S);
     expect(bound.persistenceNote(s!, S)).toEqual([]);
   });

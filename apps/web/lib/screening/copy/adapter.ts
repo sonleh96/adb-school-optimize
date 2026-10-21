@@ -508,12 +508,23 @@ export function countsByRuleFromResults(
 
 /**
  * The persistence test's standard error as a fraction, from the provenance block of a list of a rule the test ran
- * for, for `copyFor`'s `standardErrors`. Nothing when the list is another rule's or has no such numbers.
+ * for, for `marginFromResults`. Nothing when the list is another rule's or has no such numbers.
  */
 export function standardErrorFromResults(response: ResultsResponse): number | undefined {
   return isPersistenceRule(viewRuleOf(response))
     ? (response.persistence?.standard_error ?? undefined)
     : undefined;
+}
+
+/**
+ * How far above the line a flagged school counts as just above it, as a fraction: the test's standard error times the
+ * number of standard errors its band spans (one for the circulated experiment, two for the revised paper's). Each rule
+ * has its own, from its own list. Nothing when the list is another rule's or has no such numbers; a block that names
+ * no band is read as one standard error, as the circulated experiment's was.
+ */
+export function marginFromResults(response: ResultsResponse): number | undefined {
+  const se = standardErrorFromResults(response);
+  return se === undefined ? undefined : se * (response.persistence?.adjacency_standard_errors ?? 1);
 }
 
 /* ----------------------------------------------------------------- comparison */
