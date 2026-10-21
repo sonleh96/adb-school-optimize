@@ -13,6 +13,8 @@
  *  9. A chart label leaves the chart or loses the school's full name (R4)                       -> "chart labels..."
  * 10. The card in compare mode does not show the school under both rules                        -> "the card in compare mode..."
  * 11. A raw null, undefined or NaN renders in a method state on the worst-case data (R8)        -> "no raw null..."
+ * 12. A method-only key (a filter, a hidden layer) filters a plain screen, from a pasted link or after the switch
+ *     is turned off                                                                             -> "a plain screen..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -67,7 +69,8 @@ test("the switch turns the method details on over the same screen, survives a re
   await expect(page.locator("#screening-formula")).toHaveText(FORMULA);
 
   await methodSwitch(page).click();
-  expect(search(page)).toBe("?formula=1");
+  // The formula is method detail: it leaves the link with the method details.
+  expect(search(page)).toBe("");
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("ol[aria-label='The list'] button").first()).toContainText("1st");
   const text = await workspaceText(page);
@@ -272,4 +275,22 @@ test("no raw null, undefined or NaN renders in the method states on the worst-ca
       expect(text, `${link} school ${i}`).not.toMatch(/\bnull\b|\bundefined\b|\bNaN\b/);
     }
   }
+});
+
+test("a plain screen ignores and drops the method details' filters and layers, from a link or the switch", async ({
+  page,
+}) => {
+  const all = ROWS.filter((r) => r.cohort !== "verification_queue").length;
+  await openWorkspace(page, "?prov=South+Province&hide=numerals");
+  await expect(page.locator("ol[aria-label='The list'] button")).toHaveCount(all);
+  await expect(page.locator("[data-rank-label]")).toHaveCount(10);
+  expect(search(page)).toBe("");
+
+  await page.goto("/screening?analyst=1&prov=South+Province&hide=numerals");
+  await waitForMap(page);
+  await expect(page.locator("[data-rank-label]")).toHaveCount(0);
+  await methodSwitch(page).click();
+  expect(search(page)).toBe("");
+  await expect(page.locator("ol[aria-label='The list'] button")).toHaveCount(all);
+  await expect(page.locator("[data-rank-label]")).toHaveCount(10);
 });

@@ -8,6 +8,8 @@
  *  6. Two links to the same layers differ by order or repetition, or setting the same layers fires a change.
  *  7. A length that is not offered (7 schools, "abc") replaces a good one.
  *  8. A filter value that the loaded list does not hold is kept, so the list shows nothing for no visible reason.
+ *  9. A method-only key (a filter, hidden layers, the formula, the parts, the chart's length) stays in force on a
+ *     plain screen, from a pasted link or after the method details are turned off: a filter nobody can see.
  */
 import { describe, expect, it } from "vitest";
 
@@ -88,32 +90,55 @@ describe("the other method keys", () => {
   });
 
   it("writes hidden layers in one order, once each, and hears no change for the same layers (6)", () => {
-    const a = stateFromSearch("?hide=districts,numerals,districts,roads", loaded);
+    const a = stateFromSearch("?analyst=1&hide=districts,numerals,districts,roads", loaded);
     expect(a.hide).toEqual(["numerals", "districts"]);
-    expect(searchWithState("", a)).toBe("?hide=numerals%2Cdistricts");
+    expect(searchWithState("", a)).toBe("?analyst=1&hide=numerals%2Cdistricts");
     expect(applyPatch(a, { hide: ["districts", "numerals"] }, loaded)).toBe(a);
 
     const store = createWorkspaceStore(S);
     let heard = 0;
     store.onChange(() => (heard += 1));
-    store.setState({ hide: ["provinces"] });
+    store.setState({ analyst: true, hide: ["provinces"] });
     store.setState({ hide: "provinces" });
     expect(heard).toBe(1);
   });
 
   it("ignores a length that is not offered (7)", () => {
-    const state = stateFromSearch("?n=30&k=10", loaded);
+    const state = stateFromSearch("?analyst=1&n=30&k=10", loaded);
     expect(state).toMatchObject({ n: 30, k: 10 });
     expect(applyPatch(state, { n: 7, k: "abc" }, loaded)).toBe(state);
     expect(applyPatch(state, { n: "10" }, loaded).n).toBe(10);
-    expect(searchWithState("", applyPatch(state, { n: 20, k: 20 }, loaded))).toBe("");
+    expect(searchWithState("", applyPatch(state, { n: 20, k: 20 }, loaded))).toBe("?analyst=1");
   });
 
   it("drops a filter value the loaded list does not hold (8)", () => {
     const loading: Known = { ruleIds: null, defaultRule: S, schoolKeys: null };
-    const pasted = stateFromSearch("?prov=West%20Province&loc=Remote", loading);
+    const pasted = stateFromSearch("?analyst=1&prov=West%20Province&loc=Remote", loading);
     expect(pasted).toMatchObject({ prov: "West Province", loc: "Remote" });
     expect(revalidate(pasted, loaded)).toMatchObject({ prov: null, loc: "Remote" });
-    expect(applyPatch(DEFAULT_STATE, { prov: "Nowhere" }, loaded)).toBe(DEFAULT_STATE);
+    const on = applyPatch(DEFAULT_STATE, { analyst: true }, loaded);
+    expect(applyPatch(on, { prov: "Nowhere" }, loaded)).toBe(on);
+  });
+});
+
+describe("method-only keys on a plain screen (9)", () => {
+  const METHOD_ONLY = "prov=South%20Province&loc=Remote&hide=numerals&formula=1&parts=1&k=10";
+
+  it("are read as their defaults from a plain link, and leave it", () => {
+    const plain = stateFromSearch(`?${METHOD_ONLY}&n=30&view=queue`, {
+      ...loaded,
+      provinces: new Set(["South Province"]),
+    });
+    expect(plain).toEqual({ ...DEFAULT_STATE, n: 30, view: "queue" });
+    expect(searchWithState(`?${METHOD_ONLY}&n=30&view=queue`, plain)).toBe("?view=queue&n=30");
+  });
+
+  it("are cleared when the method details are turned off, and the plain keys stay", () => {
+    const on = stateFromSearch(`?analyst=1&${METHOD_ONLY}&n=30&place=upper`, {
+      ...loaded,
+      provinces: new Set(["South Province"]),
+    });
+    expect(on).toMatchObject({ prov: "South Province", loc: "Remote", formula: true, parts: true, k: 10 });
+    expect(applyPatch(on, { analyst: false }, loaded)).toEqual({ ...DEFAULT_STATE, n: 30, place: "upper" });
   });
 });
