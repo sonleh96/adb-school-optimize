@@ -92,11 +92,20 @@ from ..screening_queries import (
     school_key,
 )
 
+# Characters that have no place in an id or a filter, because they break a spreadsheet or hide what a value says:
+#   Cc  control characters: newlines, NUL, escapes, tab
+#   Cf  format characters: the bidirectional overrides, embeddings and isolates, zero-width marks, the byte order mark
+#   Zl, Zp  the line separator U+2028 and the paragraph separator U+2029, which are line breaks that Cc does not cover
+REFUSED_CATEGORIES = frozenset({"Cc", "Cf", "Zl", "Zp"})
+
 
 def _no_control_characters(value: str) -> str:
-    """Control characters (newlines, NUL, escapes) have no place in an id or a filter, and break spreadsheets."""
-    if any(unicodedata.category(ch) == "Cc" for ch in value):
-        raise PydanticCustomError("control_characters", "must not contain control characters")
+    """Refuse control, format and line-separating characters; accents, spaces and other letters pass."""
+    if any(unicodedata.category(ch) in REFUSED_CATEGORIES for ch in value):
+        raise PydanticCustomError(
+            "control_characters",
+            "must not contain control, line-separator or invisible formatting characters",
+        )
     return value
 
 
