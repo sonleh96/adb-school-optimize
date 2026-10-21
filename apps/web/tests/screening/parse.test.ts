@@ -310,6 +310,33 @@ describe("an additive API change", () => {
     }
   });
 
+  it("rejects a largest-factor term that names no factor, and reads one that names several", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: { attained_by: string[] } | null }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term !== null);
+    expect(at).toBeGreaterThanOrEqual(0);
+
+    const tied = copy(body) as typeof body;
+    tied.rows[at].maximum_term!.attained_by = ["N", "A"];
+    expect(parseWith(resultsResponse, tied, "Screening results").rows[at]).toBeDefined();
+
+    body.rows[at].maximum_term!.attained_by = [];
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      `rows[${at}].maximum_term.attained_by: expected a non-empty array`
+    );
+  });
+
+  it("accepts a school with no largest term at all", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: unknown }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term === null);
+    // A queued school has no score, so it has no largest term; the fixture holds some.
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(body.rows.length);
+  });
+
   it("accepts a rule role the page does not know", () => {
     const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
     body.rules[0].policy_role = "a_role_added_later";
