@@ -32,6 +32,8 @@ import {
   NAME_MAX,
   SEED_ENTRIES,
   type Seeds,
+  VIEWS_MAX,
+  canSave,
   cleanName,
   isStarting,
   parseEntries,
@@ -87,6 +89,16 @@ describe("reading what storage holds", () => {
     expect(cleanName("\u202eBoard\u202c meeting")).toBe("Board meeting");
     expect(cleanName("\u2067اجتماع المجلس\u2069")).toBe("اجتماع المجلس");
     expect(parseEntries(JSON.stringify({ v: 1, views: [{ name: "\u200b\u200b", q: "" }] }))).toBeNull();
+  });
+
+  it("reads at most the cap from storage, however much it holds, and refuses a save past it (12)", () => {
+    const many = Array.from({ length: 30000 }, (_, i) => ({ name: `View ${i}`, q: "" }));
+    const kept = parseEntries(JSON.stringify({ v: 1, views: many }))!;
+    expect(kept).toHaveLength(VIEWS_MAX);
+    expect(kept[0]).toEqual({ name: "View 0", q: "" });
+    expect(canSave(kept)).toBe(false);
+    expect(withSaved(kept, "One more", "")).toBe(kept);
+    expect(canSave(null)).toBe(true);
   });
 
   it("offers a seed once (5)", () => {

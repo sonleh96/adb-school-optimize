@@ -34,6 +34,10 @@ export const VIEWS_KEY = "rise-screening-saved-views-v1";
 export const NAME_MAX = 60;
 /** A stored URL state longer than any the workspace writes is junk. */
 const QUERY_MAX = 2000;
+/** The most views kept. A meeting needs a handful; a list of thousands made the rail take seconds to draw. */
+export const VIEWS_MAX = 50;
+/** How many stored items are looked at, so storage holding a huge list is never read whole. */
+const ITEMS_READ = VIEWS_MAX * 4;
 
 /** The seeds, in order: what nothing stored means, and what a first save starts from. */
 export const SEED_ENTRIES: readonly Entry[] = Object.freeze(SEED_KEYS.map((seed) => ({ seed })));
@@ -95,17 +99,26 @@ export function parseEntries(text: string | null): Entry[] | null {
   if (!raw || typeof raw !== "object" || (raw as { v?: unknown }).v !== 1) return null;
   const items = (raw as { views?: unknown }).views;
   if (!Array.isArray(items)) return null;
-  const entries = items.map(entryOf).filter((entry): entry is Entry => entry !== null);
+  const entries = items
+    .slice(0, ITEMS_READ)
+    .map(entryOf)
+    .filter((entry): entry is Entry => entry !== null);
   if (items.length > 0 && entries.length === 0) return null;
-  // A seed is offered once.
+  // A seed is offered once, and no more than the cap are kept.
   const seen = new Set<SeedKey>();
-  return entries.filter((entry) => {
-    if (!("seed" in entry)) return true;
-    if (seen.has(entry.seed)) return false;
-    seen.add(entry.seed);
-    return true;
-  });
+  return entries
+    .filter((entry) => {
+      if (!("seed" in entry)) return true;
+      if (seen.has(entry.seed)) return false;
+      seen.add(entry.seed);
+      return true;
+    })
+    .slice(0, VIEWS_MAX);
 }
+
+/** Whether there is room for one more view. */
+export const canSave = (entries: readonly Entry[] | null): boolean =>
+  (entries ?? SEED_ENTRIES).length < VIEWS_MAX;
 
 export const serialise = (entries: readonly Entry[]): string => JSON.stringify({ v: 1, views: entries });
 
@@ -120,8 +133,16 @@ export function resolve(entries: readonly Entry[] | null, seeds: Seeds): SavedVi
   });
 }
 
-/** What is kept after saving a view: the seeds, if nothing was kept yet, then the new view last. */
-export function withSaved(entries: readonly Entry[] | null, name: string, q: string): Entry[] {
+/**
+ * What is kept after saving a view: the seeds, if nothing was kept yet, then the new view last. At the cap nothing
+ * changes and the same list comes back.
+ */
+export function withSaved<T extends readonly Entry[] | null>(
+  entries: T,
+  name: string,
+  q: string
+): T | Entry[] {
+  if (!canSave(entries)) return entries;
   return [...(entries ?? SEED_ENTRIES), { name: cleanName(name), q: q.replace(/^\?/, "") }];
 }
 
