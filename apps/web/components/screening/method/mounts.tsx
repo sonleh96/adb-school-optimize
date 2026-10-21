@@ -10,13 +10,7 @@
  */
 import { type ReactNode, createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  type BoundCopy,
-  type CopyRuleId,
-  type CopySchool,
-  type ListedSchool,
-  RULE_IDS,
-} from "@/lib/screening/copy";
+import { type BoundCopy, type CopyRuleId, type CopySchool, RULE_IDS } from "@/lib/screening/copy";
 import { type RulePair, useScreeningCompare, useScreeningRules } from "@/lib/screening/hooks";
 import type { OrderedRow } from "@/lib/screening/list";
 import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
@@ -85,7 +79,7 @@ export interface MountInput {
   stale: boolean;
   rows: readonly ListedRow[];
   ordered: readonly OrderedRow[];
-  schools: ReadonlyMap<string, ListedSchool>;
+  schools: ReadonlyMap<string, CopySchool>;
   selectedKey: SchoolKey | null;
   hovered: SchoolKey | null;
   layer: HTMLElement | null;
@@ -262,6 +256,8 @@ export function useMethodMounts(input: MountInput): Mounts {
         schools={input.schools}
         layer={input.layer}
         instant={input.keyboard}
+        pack={state.pack}
+        onTab={(pack) => store.setState({ pack })}
         onLength={(n) => store.setState({ n })}
         onClose={() => {
           store.setState({ panel: null });

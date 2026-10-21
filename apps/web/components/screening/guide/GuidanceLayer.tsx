@@ -13,7 +13,7 @@ import { BookOpen, ListChecks, Menu as MenuIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { type BoundCopy, LAYOUT } from "@/lib/screening/copy";
-import { seenCount } from "@/lib/screening/guide/machine";
+import { isStepping, seenCount } from "@/lib/screening/guide/machine";
 import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
 
 import { useWorkspaceState } from "../WorkspaceProvider";
@@ -137,8 +137,8 @@ export function GuidanceLayer({
           className={styles.rail}
           data-testid="guide-rail"
           data-guidance=""
-          data-present={(state.present && state.rail.kind === "step" && data.mode !== "narrow") || undefined}
-          data-step={state.rail.kind === "step" || undefined}
+          data-present={(state.present && isStepping(state.rail) && data.mode !== "narrow") || undefined}
+          data-step={isStepping(state.rail) || undefined}
         >
           <LazyLayer
             load={loadRail}

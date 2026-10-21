@@ -1,0 +1,312 @@
+/*
+ * Saved views for meetings: their section in the rail's start list, and their list in the export sheet
+ * (notes/final.md, "Components", and R2). The tokens are the workspace's, inherited from its root.
+ */
+
+/* ---------- the rail's start list ---------- */
+.section {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+.heading {
+  margin: 0;
+  font: 500 14px/19px var(--sans);
+  color: var(--ink);
+}
+.note {
+  margin: 6px 0 10px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--hair);
+}
+/* R2: number, name and the remove button share one row; the name wraps anywhere and the button stays in the row. */
+.row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  align-items: start;
+  border-bottom: 1px solid var(--hair);
+}
+.go {
+  position: relative;
+  grid-column: 1 / 3;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: start;
+  min-width: 0;
+  padding: 9px 0 10px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  transition: transform 160ms var(--ease-out);
+}
+/* The hover wash reaches past the row as a shadow, as the guide rows' does, so it never widens the list. */
+.go::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: var(--navy-wash);
+  box-shadow: -12px 0 0 0 var(--navy-wash);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.go > * {
+  position: relative;
+}
+@media (hover: hover) and (pointer: fine) {
+  .go:not(:disabled):hover::before {
+    opacity: 1;
+  }
+  .go:not(:disabled):hover .name {
+    color: var(--navy);
+  }
+}
+.go:not(:disabled):active {
+  transform: scale(0.99);
+}
+.go:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.go:focus-visible,
+.remove:focus-visible,
+.present:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.n {
+  font: italic 400 15px/19px var(--serif);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.name {
+  min-width: 0;
+  font: 400 13.5px/19px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  transition: color 150ms ease;
+}
+.remove {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 5px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-3);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.remove:active {
+  transform: scale(0.95);
+}
+@media (hover: hover) and (pointer: fine) {
+  .remove:hover {
+    background: rgba(21, 24, 29, 0.06);
+    color: var(--ink);
+  }
+}
+/* The field keeps room for its placeholder; in the narrower rail the button wraps under it rather than squeeze it. */
+.save {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.input {
+  flex: 1 1 128px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  font: 400 13.5px/1 var(--sans);
+  color: var(--ink);
+}
+.input::placeholder {
+  color: var(--ink-3);
+}
+.input:disabled {
+  opacity: 0.55;
+}
+.input:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 1px;
+}
+/* Specific enough to win over the rail's own `.rail .quiet` height, whichever stylesheet loads last. */
+.section .save .saveButton {
+  flex: none;
+  height: 36px;
+}
+.resetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 10px;
+}
+/* The label may be long; it wraps in the narrow rail instead of pushing past it. */
+.section .resetRow .reset {
+  white-space: normal;
+  text-align: left;
+}
+.reset:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.saved {
+  min-height: 17px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--navy);
+}
+
+/* ---------- the export sheet's Saved views for meetings tab ---------- */
+.tabs {
+  display: inline-flex;
+  max-width: calc(100% - 44px);
+  padding: 2px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  gap: 2px;
+}
+.tabs button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink-2);
+  text-align: center;
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.tabs button:active {
+  transform: scale(0.97);
+}
+.tabs button[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+.tabs button:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tabs button[aria-pressed="false"]:hover {
+    background: rgba(21, 24, 29, 0.05);
+    color: var(--ink);
+  }
+}
+.packList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.packList li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 4px;
+  padding: 11px 0 12px;
+  border-bottom: 1px solid var(--hair);
+}
+.packN {
+  grid-row: 1 / span 2;
+  font: italic 400 16px/20px var(--serif);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.packName {
+  min-width: 0;
+  font: 400 15px/20px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.packWhat {
+  min-width: 0;
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+/* Under a view's line in the sheet: part of it could not be reopened. */
+.packLost {
+  display: block;
+  grid-column: 2;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+}
+td .packLost {
+  grid-column: auto;
+}
+.ruleLine {
+  display: block;
+}
+.ruleLine + .ruleLine {
+  margin-top: 6px;
+}
+.packTable {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.packTable th {
+  padding: 8px 8px 6px 0;
+  border-bottom: 1px solid var(--hair);
+  font-weight: 500;
+  color: var(--ink-3);
+  text-align: left;
+}
+.packTable td {
+  padding: 8px 8px 8px 0;
+  border-bottom: 1px solid var(--hair-2);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.colRule {
+  width: 30%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go,
+  .remove,
+  .tabs button {
+    transition: none;
+  }
+}

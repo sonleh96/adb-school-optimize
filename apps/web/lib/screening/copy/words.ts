@@ -1,6 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { lowerFirst, plural, slug } from "./format";
+import { joinList, lowerFirst, plural, slug } from "./format";
 import { RULE_IDS } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
@@ -9,6 +9,15 @@ export const removeViewSegments = (name: string): Segments =>
   seg`Remove the saved view ${nameSegment(name, "saved-view")}`;
 /** A saved view's own name as a heading: all of it is a name. */
 export const savedViewSegments = (name: string): Segments => [nameSegment(name, "saved-view")];
+
+/** What a saved view's key names, in plain words, and what the screen shows when the data no longer has it. */
+const LOST: Readonly<Record<string, { readonly missing: string; readonly instead: string } | undefined>> = {
+  rule: { missing: "the rule", instead: "the paper's main rule" },
+  compare: { missing: "the other rule in the comparison", instead: "no comparison" },
+  school: { missing: "the school", instead: "no school selected" },
+  prov: { missing: "the province", instead: "no province filter" },
+  loc: { missing: "the remoteness class", instead: "no remoteness filter" },
+};
 
 // Short interface words, so every variant names the same controls the same way.
 export const LAYOUT = Object.freeze({
@@ -116,6 +125,26 @@ export const LAYOUT = Object.freeze({
   recordCopied: "Method record copied",
   linksCopied: "Links to the saved views copied",
   savedToast: (n: number) => `Saved as view ${n}`,
+  // The saved views list: nothing in it (in the rail and in the export sheet's tab), and the way back to the four
+  // that come with the screen. Restoring asks first only when it would drop a view a person saved.
+  noViews: "There are no saved views yet. Give the screen a name and save it, and it will be listed here.",
+  resetViews: "Restore the starting views",
+  resetViewsConfirm: "Remove my views and restore the starting ones",
+  keepViews: "Keep my views",
+  viewsRestored: "Starting views restored",
+  // Shown when the list holds the most a person can keep, beside the Save button that is then unavailable.
+  viewsFull: (max: number) =>
+    `The list holds ${max} saved views, the most you can keep. Remove a view first to save another.`,
+  // Shown when a saved view names something the loaded data no longer has. The keys are the screen's own
+  // (rule, compare, school, hover, prov, loc); they are said in plain words, with what the screen shows instead.
+  viewPartMissing: (keys: readonly string[]) => {
+    const found = [...new Set(keys.map((k) => (k === "hover" ? "school" : k)))].map((k) => {
+      const words = LOST[k];
+      if (!words) throw new Error(`No words for a saved view's ${k}`);
+      return words;
+    });
+    return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead.`;
+  },
   removeView: (name: string) => textOf(removeViewSegments(name)),
   afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",
   afterDownloadPack:

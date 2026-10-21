@@ -32,6 +32,8 @@ import type { RuleId } from "@/lib/screening/types";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "../Sentence";
+import { SavedViewsSection } from "../views/SavedViewsSection";
+import { ViewStepper } from "../views/ViewStepper";
 import { useWorkspace, useWorkspaceState, useWorkspaceStore } from "../WorkspaceProvider";
 import { scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
 import { useActed, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
@@ -72,6 +74,8 @@ export default function Rail({ root, data, roles, plan }: RailProps) {
     <aside className={styles.railInner} aria-label={later.copy.GUIDE.railAria}>
       {state.rail.kind === "step" ? (
         <Stepper root={root} data={data} roles={roles} plan={plan} later={later.copy} />
+      ) : state.rail.kind === "view" ? (
+        <ViewStepper root={root} data={data} later={later.copy} />
       ) : (
         <Start data={data} plan={plan} later={later.copy} />
       )}
@@ -150,6 +154,7 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
           <span className={styles.taskSub}>{GUIDE.howCount(later.HOW_IT_WORKS.length)}</span>
           <ArrowRight size={14} aria-hidden />
         </button>
+        <SavedViewsSection data={data} later={later} />
       </div>
       <div className={styles.railFoot}>
         <button
