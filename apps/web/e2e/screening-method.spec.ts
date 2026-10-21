@@ -15,6 +15,8 @@
  * 11. A raw null, undefined or NaN renders in a method state on the worst-case data (R8)        -> "no raw null..."
  * 12. A method-only key (a filter, a hidden layer) filters a plain screen, from a pasted link or after the switch
  *     is turned off                                                                             -> "a plain screen..."
+ * 13. The compare card states a rule's own place under a label that counts the schools both rules put in order, so
+ *     it contradicts the chart                                                                  -> "the compare card's places..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -295,4 +297,23 @@ test("a plain screen ignores and drops the method details' filters and layers, f
   expect(search(page)).toBe("");
   await expect(page.locator("ol[aria-label='The list'] button")).toHaveCount(all);
   await expect(page.locator("[data-rank-label]")).toHaveCount(10);
+});
+
+test("the compare card's places are the ones the chart draws, among the schools both rules put in order", async ({
+  page,
+}) => {
+  // Sample School 11 is 14th in the benchmark's own list and 12th among the schools both rules put in order.
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=benchmark&compare=additive_u");
+  const pair = json("compare/additive_u__benchmark.json");
+  const row = pair.ranks.find(
+    (r: { school: { source_school_name: string } }) => r.school.source_school_name === "Sample School 11"
+  );
+  await page
+    .locator("[data-region=slope-chart] text[data-school-key]", { hasText: "Sample School 11" })
+    .first()
+    .click();
+  const blocks = card(page).locator("[data-region=inspector-place] > div");
+  await expect(blocks.nth(0)).toContainText(String(row.rank_a));
+  await expect(blocks.nth(1)).toContainText(String(row.rank_b));
+  await expect(blocks.nth(1)).not.toContainText("14");
 });
