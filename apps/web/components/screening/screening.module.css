@@ -1988,6 +1988,25 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .root {
     --band: max(160px, 32vh);
   }
+  /* A short window: the rule area keeps every word and control, set closer, so the first school and its reason
+     still show under the band before any scrolling. */
+  .rule {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .ruleButton {
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+  .ruleButton .sym {
+    font-size: 19px;
+    line-height: 20px;
+  }
+  .statement {
+    margin-top: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
 }
 
 .barButton {
