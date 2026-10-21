@@ -334,9 +334,10 @@ function Workspace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `layout` is rebuilt each render; its fields are the key.
     [mode, docked, column, card, cardOpen, footHeight]
   );
-  // Each time the clear part of the map changes shape, the map frames the country in it again.
+  // Each time the clear part of the map changes shape, the map frames the country in it again: the layout, the list
+  // stepping aside, and the guide rail, which narrows the map from the left as it opens.
   const [frame, setFrame] = useState(0);
-  const shape = `${layout.mode}:${layout.docked}`;
+  const shape = `${layout.mode}:${layout.docked}:${guidance.rail ?? 0}`;
   const lastShape = useRef(shape);
   useEffect(() => {
     if (lastShape.current === shape) return;
