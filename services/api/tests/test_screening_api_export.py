@@ -29,6 +29,7 @@ TOP_RECORD_KEYS = [
     "rule_provenance",
     "rule_provenance_note",
     "policy_role",
+    "policy_role_note",
     "score_kind",
     "formula",
     "weights",
@@ -273,13 +274,19 @@ def test_the_method_record_names_everything_needed_to_read_the_file(api, connect
     ).fetchone()
     assert method["export"] == "top schools"
     assert (method["rule_id"], method["rule_label"]) == ("additive_no_u", "Additive, urgency omitted")
-    assert method["rule_provenance"] == "proposed_follow_up_pending_author_review"
+    assert method["rule_provenance"] == "revised_paper"
     assert (
-        "pending author review" in method["rule_provenance_note"]
+        "revised paper" in method["rule_provenance_note"]
         and "not a result of the circulated paper" in method["rule_provenance_note"]
+        and "pending" not in method["rule_provenance_note"]
     )
     assert (method["policy_role"], method["score_kind"]) == ("primary", "additive score")
-    assert method["formula"] == rule.formula == "S0 = (S - 0.05U) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
+    assert method["policy_role_note"] == "The revised paper's primary list."
+    assert (
+        method["formula"]
+        == rule.formula
+        == "S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
+    )
     assert method["weights"].startswith("N 12/19 (0.631578947368)") and "U " not in method["weights"]
     assert method["uses_urgency"] == "no"
     assert method["input_version"] == loaded.input_version
@@ -326,6 +333,8 @@ def test_the_caveat_for_an_urgency_rule_says_urgency_is_unresolved_not_omitted(a
         method["rule_provenance"] == "circulated_paper"
         and method["rule_provenance_note"] == "A rule of the circulated paper."
     )
+    assert method["policy_role"] == "urgency_sensitivity"
+    assert "restores the supplied urgency scalar" in method["policy_role_note"]
     assert method["uses_urgency"] == "yes"
     assert "Urgency enters this rule" in method["caveat"] and "inadmissible" not in method["caveat"]
     assert (

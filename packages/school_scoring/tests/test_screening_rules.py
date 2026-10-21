@@ -93,24 +93,39 @@ def test_only_need_first_rules_have_a_primary_sort_key_and_it_is_not_a_summand()
             assert rule.primary_sort_key is None
 
 
-@pytest.mark.parametrize("rule_id", ["additive_u", "need_first_u", "bottleneck_u", "benchmark"])
-def test_urgency_included_and_benchmark_rules_come_from_the_circulated_paper(rule_id):  # FM8
-    assert get_rule(rule_id).provenance is Provenance.CIRCULATED_PAPER
+# The revised paper's reading of every rule: where it comes from and how it is meant to be used.
+PROVENANCE_AND_ROLE = {
+    "additive_no_u": ("revised_paper", "primary"),
+    "need_first_no_u": ("revised_paper", "strict_alternative"),
+    "bottleneck_no_u": ("revised_paper", "policy_sensitivity"),
+    "additive_u": ("circulated_paper", "urgency_sensitivity"),
+    "need_first_u": ("circulated_paper", "urgency_sensitivity"),
+    "bottleneck_u": ("circulated_paper", "urgency_sensitivity"),
+    "benchmark": ("circulated_paper", "conventional_reference"),
+}
+
+
+def test_every_rule_has_the_provenance_and_policy_role_of_the_revised_paper():  # FM8
+    assert {
+        rule_id: (rule.provenance.value, rule.policy_role.value) for rule_id, rule in RULES.items()
+    } == PROVENANCE_AND_ROLE
+
+
+def test_exactly_one_rule_is_primary_and_it_omits_urgency():  # FM8
+    primary = [rule for rule in RULES.values() if rule.policy_role is PolicyRole.PRIMARY]
+    assert [rule.rule_id for rule in primary] == ["additive_no_u"]
+    assert not primary[0].uses_urgency
 
 
 @pytest.mark.parametrize("rule_id", URGENCY_OMITTED)
-def test_urgency_omitted_rules_are_the_proposed_follow_up_pending_author_review(rule_id):  # FM8
+def test_urgency_omitted_rules_come_from_the_revised_paper(rule_id):  # FM8
     rule = get_rule(rule_id)
-    assert rule.provenance is Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW
+    assert rule.provenance is Provenance.REVISED_PAPER
     assert "urgency omitted" in rule.label
 
 
-def test_policy_role_is_independent_of_provenance():  # FM8
-    roles = {rule_id: rule.policy_role for rule_id, rule in RULES.items()}
-    assert roles["additive_u"] is roles["additive_no_u"] is PolicyRole.PRIMARY
-    assert roles["need_first_u"] is roles["need_first_no_u"] is PolicyRole.STRICT_ALTERNATIVE
-    assert roles["bottleneck_u"] is roles["bottleneck_no_u"] is PolicyRole.POLICY_SENSITIVITY
-    assert roles["benchmark"] is PolicyRole.CONVENTIONAL_REFERENCE
+def test_the_retired_provenance_is_gone():  # FM8
+    assert {p.value for p in Provenance} == {"circulated_paper", "revised_paper"}
 
 
 def test_unknown_rule_id_is_refused():  # FM8

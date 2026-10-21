@@ -21,12 +21,12 @@ run.to_frame()  # flat export, one row per input record, in input order
 
 | Id | Provenance | Policy role | Formula |
 | --- | --- | --- | --- |
-| `additive_u` | circulated paper | primary | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L` |
-| `additive_no_u` | proposed follow-up, pending author review | primary | `S0 = (S - 0.05U) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
-| `need_first_u` | circulated paper | strict alternative | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
-| `need_first_no_u` | proposed follow-up, pending author review | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
-| `bottleneck_u` | circulated paper | policy sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
-| `bottleneck_no_u` | proposed follow-up, pending author review | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
+| `additive_u` | circulated paper | urgency sensitivity | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, which is `0.95 S0 + 0.05U` |
+| `additive_no_u` | revised paper | primary | `S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
+| `need_first_u` | circulated paper | urgency sensitivity | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
+| `need_first_no_u` | revised paper | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
+| `bottleneck_u` | circulated paper | urgency sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
+| `bottleneck_no_u` | revised paper | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
 | `benchmark` | circulated paper | conventional reference | `B = 0.55N + 0.20A + 0.15U + 0.10R` |
 
 Weights are exact fractions in the registry and become floats once, at scoring.
