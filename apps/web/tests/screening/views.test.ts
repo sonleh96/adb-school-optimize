@@ -4,8 +4,7 @@
  *     reading as nothing kept, so the seeds show.
  *  2. One bad item throws away the good ones; a list of nothing but junk reads as "the person removed every view".
  *  3. A kept name is longer than the name field allows, is blank, or is cut inside a character.
- *  4. Views kept by the final design's prototype (a bare list with its seeds as fixed states) are lost, or their seeds
- *     keep naming the prototype's school instead of being chosen again by role.
+ *  4. A bare list, a shape this screen never writes, is read as views instead of junk.
  *  5. A seed is offered twice.
  *  6. A seed whose subject the data lacks is offered; or removing a view removes another one, because the list skips
  *     seeds the data cannot show.
@@ -15,6 +14,12 @@
  *     or the order changed.
  *  9. The pack's links carry junk or an unknown school, its file misses a rule a view shows, or its name is not the
  *     plain pattern.
+ * 11. A name of nothing but invisible characters is kept, or a bidirectional override reorders what follows it.
+ * 12. Storage holding thousands of views is read whole, so the rail takes seconds to draw; a save goes past the cap.
+ * 13. Two tabs overwrite each other: each writes from what it read at load, and removing by position removes a view
+ *     the other tab moved there; the other tab's rail never hears of the change.
+ * 14. A view that names a school or rule the data no longer holds opens without it, and nothing can tell.
+ * 15. A link to a saved view names its position, so a colleague's list opens a different screen.
  */
 import { describe, expect, it } from "vitest";
 
@@ -72,17 +77,9 @@ describe("reading what storage holds", () => {
     expect(parseEntries(JSON.stringify({ v: 1, views: [{ name: "   ", q: "" }] }))).toBeNull();
   });
 
-  it("moves the prototype's bare list over, with its seeds chosen again by role (4)", () => {
-    const prototype = [
-      { name: "Top of the list, combined factors", q: "", seed: "top" },
-      { name: "A school with possible places", q: "school=k-prototype", seed: "range" },
-      { name: "Board", q: "?rule=need_first_u", cam: { c: [147, -6], z: 6 } },
-    ];
-    expect(parseEntries(JSON.stringify(prototype))).toEqual([
-      { seed: "top" },
-      { seed: "range" },
-      { name: "Board", q: "rule=need_first_u" },
-    ]);
+  it("reads a bare list, which this screen never writes, as junk (4)", () => {
+    const bare = [{ seed: "top" }, { name: "Board", q: "rule=need_first_u" }];
+    expect(parseEntries(JSON.stringify(bare))).toBeNull();
   });
 
   it("offers a seed once (5)", () => {
