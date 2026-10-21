@@ -990,6 +990,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   right: var(--gap);
   bottom: 24px;
 }
+/* A card there takes the map's right side, so the key and the caveat stop short of it. */
+.root[data-rail][data-layout="compact"][data-has-insp] .foot {
+  right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
 /* The glossary drawer takes the right of the map; the key and the caveat make room for it. */
 .root[data-gloss] .foot {
   right: calc(var(--gap) + 400px + 28px);
