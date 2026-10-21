@@ -75,6 +75,7 @@ class Check:
     n_bit_identical: int = 0
     max_abs_deviation: float = 0.0
     n_mismatch: int = 0
+    rule: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -98,10 +99,14 @@ class Harness:
         reference: dict[str, Any],
         *,
         exact: bool,
+        rule: str | None = None,
     ) -> None:
-        """Compare name-keyed values. A missing value only agrees with a missing value."""
+        """Compare name-keyed values. A missing value only agrees with a missing value.
+
+        ``rule`` names the screening rule whose output is compared, so the report can say which rules a reference covers.
+        """
         name = f"{name} [{scope}]"
-        check = Check(name, reference_label, scope, "exact" if exact else f"abs<={TOLERANCE:g}")
+        check = Check(name, reference_label, scope, "exact" if exact else f"abs<={TOLERANCE:g}", rule=rule)
         if set(engine) != set(reference):
             raise AssertionError(f"{name}: school sets differ between engine and reference")
         for school in engine:
@@ -189,13 +194,6 @@ COMPONENT_CONTRIBUTIONS = (
     ("land_contribution_lower", "L", "lower"),
     ("land_contribution_upper", "L", "upper"),
 )
-
-
-def _contribution(result: SchoolResult, component: str, side: str) -> float | None:
-    for contribution in result.contributions:
-        if contribution.component.value == component:
-            return getattr(contribution, side)
-    return None
 
 
 def _contribution(result: SchoolResult, component: str, side: str) -> float | None:
