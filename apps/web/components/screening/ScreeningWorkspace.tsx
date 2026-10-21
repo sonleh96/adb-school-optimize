@@ -567,7 +567,12 @@ function Workspace() {
           className={styles.topBar}
           actions={
             <GuideMenu copy={copy} ready={ready}>
-              {copyLink(true)}
+              {(act) => (
+                <>
+                  {copyLink(true)}
+                  {method.menuItems(act)}
+                </>
+              )}
             </GuideMenu>
           }
         />

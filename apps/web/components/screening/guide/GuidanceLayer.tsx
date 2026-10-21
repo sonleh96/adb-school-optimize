@@ -320,9 +320,12 @@ export function HowLink({ copy }: { copy: BoundCopy }) {
   );
 }
 
+/** Wraps a menu choice so it closes the menu and hands focus back to the menu button if nothing else takes it. */
+export type MenuAct = (fn: () => void) => () => void;
+
 /**
  * The narrow layout's menu: Guides, Explain this screen and Glossary of terms, then the workspace's own actions.
- * Escape closes it and hands focus back to its button.
+ * Escape closes it and hands focus back to its button. Actions given as a function get the menu's own way to act.
  */
 export function GuideMenu({
   copy,
@@ -331,7 +334,7 @@ export function GuideMenu({
 }: {
   copy: BoundCopy;
   ready: boolean;
-  children?: ReactNode;
+  children?: ReactNode | ((act: MenuAct) => ReactNode);
 }) {
   const store = useLayerStore();
   const { state } = useLayers();
@@ -358,7 +361,7 @@ export function GuideMenu({
     };
   }, [open]);
   // A choice closes the menu; focus goes to what it opened, or back to the menu button.
-  const act = (fn: () => void) => () => {
+  const act: MenuAct = (fn) => () => {
     setOpen(false);
     fn();
     requestAnimationFrame(() => {
@@ -405,7 +408,7 @@ export function GuideMenu({
           >
             {HELP.glossary}
           </button>
-          {children}
+          {typeof children === "function" ? children(act) : children}
         </div>
       ) : null}
     </span>

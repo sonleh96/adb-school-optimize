@@ -92,13 +92,6 @@
   box-shadow: none;
   cursor: default;
 }
-.openIcon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-}
 /* A part of the method details or the export that did not load: the copy's words and Retry, where it would be. */
 .failure button + button {
   margin-left: 8px;
