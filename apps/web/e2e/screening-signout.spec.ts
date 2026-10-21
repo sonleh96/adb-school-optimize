@@ -23,7 +23,7 @@ const signedIn = (page: Page) =>
 const signOut = (page: Page) => page.getByRole("button", { name: LAYOUT.signOut, exact: true });
 const sentToSignIn = async (page: Page) => {
   await expect(page).toHaveURL(/\/sign-in$/);
-  await expect(page.getByRole("heading", { name: "Sign in to the decision workspace" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Sign in to see the school screening" })).toBeVisible();
 };
 
 test("is absent when sign-in is not required", async ({ page }) => {
