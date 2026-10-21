@@ -21,6 +21,7 @@ import type { Page } from "@playwright/test";
 
 import {
   INCOMPLETE,
+  MAIN_RULE,
   ORDERED,
   RULE,
   expect,
@@ -58,10 +59,10 @@ test("a complete school's card states one place, its reasons with the school nee
 
   await expect(place(page)).toHaveText("1st");
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
+    "Place in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
-    "Among the 16 schools with every input recorded."
+    "Among the 17 schools with every input the rule reads recorded."
   );
   // One place only: no other ordinal anywhere in the card.
   const text = await card(page).innerText();
@@ -69,7 +70,7 @@ test("a complete school's card states one place, its reasons with the school nee
 
   const why = card(page).locator("[data-region=inspector-why]");
   await expect(why.locator("p").first()).toHaveText(
-    "Three things add most to its screening score under the combined-factors rule with urgency (S). All three are parts of its school need, the measure built from five parts of its own record."
+    "Three things add most to its screening score under the combined-factors rule without urgency (S0). All three are parts of its school need, the measure built from five parts of its own record."
   );
   // The named parts come first, numbered in reading order; the other parts follow, quieter and unnumbered.
   const parts = why.locator("[data-region=need-box] li");
@@ -79,10 +80,12 @@ test("a complete school's card states one place, its reasons with the school nee
   await expect(parts.nth(2)).toContainText("3Teacher housing shortfall");
   await expect(parts.nth(3)).toHaveText("Missing facility types0.667");
   await expect(parts.nth(4)).toHaveText("Power and water0.600");
-  await expect(why.locator("[data-region=inspector-record]")).toHaveText("All of its inputs are recorded.");
+  await expect(why.locator("[data-region=inspector-record]")).toHaveText(
+    "All of the inputs this rule reads are recorded."
+  );
 
   const numbers = card(page).locator("[data-region=inspector-breakdown]");
-  await expect(numbers).toContainText("Screening score0.683");
+  await expect(numbers).toContainText("Screening score0.708");
   // School need's own value and its share of the score never share a label: "School need" names the value in the
   // need box, and the table names the share for what it is.
   await expect(card(page).getByText("School need", { exact: true })).toHaveCount(1);
@@ -98,7 +101,7 @@ test("a range school's card shows its range, names the missing reading, and labe
 }) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 17").click();
-  await expect(place(page)).toHaveText("11thto18th");
+  await expect(place(page)).toHaveText("10thto17th");
   await expect(page.getByTestId("card-context")).toContainText(
     "Its air-quality reading, an air-pollution index for its location, is missing"
   );
@@ -134,31 +137,32 @@ test("an incomplete record's card says what is missing and what the record says,
 test("each rule's persistence flag shows under its own rule only, in its own words, and only for the schools that have it", async ({
   page,
 }) => {
+  // The screen opens on the main rule, so the revised paper's own test speaks first, in its own words: School 02 is
+  // flagged there but not near the line; School 06 is near it, by the margin of its two standard errors.
   await openWorkspace(page);
   await orderedRow(page, "Sample School 01").click();
   const flag = card(page).locator("[data-region=persistent-flag]");
-  await expect(flag).toHaveText(PERSISTENT);
-
-  // A school flagged only just over the line says that another run could take the flag away, and by how much.
+  await expect(flag).toHaveText(PERSISTENT_REVISED);
   await orderedRow(page, "Sample School 02").click();
-  await expect(flag).toHaveText(`${PERSISTENT} ${NEAR_LINE}`);
-  await orderedRow(page, "Sample School 01").click();
-  await expect(flag).toHaveText(PERSISTENT);
-
-  // Under the rule without urgency the revised paper's own test speaks, in its own words: School 02 is flagged
-  // there but not near the line; School 06 is near it, by the margin of its two standard errors.
-  await mainRule(page, RULE.proposed).click();
-  await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("without urgency (S0)");
-  await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
   await expect(flag).toHaveText(PERSISTENT_REVISED);
   await orderedRow(page, "Sample School 06").click();
   await expect(flag).toHaveText(`${PERSISTENT_REVISED} ${near("1.1")}`);
   await orderedRow(page, "Sample School 04").click();
   await expect(flag).toHaveCount(0);
 
-  await mainRule(page, RULE.main).click();
+  // Under the rule with urgency the circulated experiment speaks, in its own words. A school flagged only just over
+  // its one-standard-error band says that another run could take the flag away, and by how much.
+  await mainRule(page, RULE.urgency).click();
+  await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("with urgency (S)");
+  await orderedRow(page, "Sample School 02").click();
+  await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
+  await expect(flag).toHaveText(`${PERSISTENT} ${NEAR_LINE}`);
   await orderedRow(page, "Sample School 01").click();
   await expect(flag).toHaveText(PERSISTENT);
+
+  await mainRule(page, RULE.main).click();
+  await orderedRow(page, "Sample School 01").click();
+  await expect(flag).toHaveText(PERSISTENT_REVISED);
   await orderedRow(page, "Sample School 08").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
   await expect(flag).toHaveCount(0);
@@ -167,15 +171,15 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
 test("the card steps through the list on screen and counts it", async ({ page }) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 08").click();
-  await expect(card(page)).toContainText("1 of 21");
+  await expect(card(page)).toContainText("1 of 22");
   await expect(card(page).getByRole("button", { name: "Previous school" })).toBeDisabled();
   await card(page).getByRole("button", { name: "Next school" }).click();
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "true");
-  await expect(card(page)).toContainText("2 of 21");
+  await expect(card(page)).toContainText("2 of 22");
 
   await tab(page, /Incomplete records/).click();
   await queuedRow(page, "Sample School 24").click();
-  await expect(card(page)).toContainText("4 of 4");
+  await expect(card(page)).toContainText("3 of 3");
   await expect(card(page).getByRole("button", { name: "Next school" })).toBeDisabled();
 });
 
@@ -197,7 +201,7 @@ test("a card whose record does not load keeps the school's place and offers Retr
 
 test("Copy link copies the address of this screen and says so", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-  await openWorkspace(page, "?rule=additive_no_u&school=4e65114f0b8790b6b906088a6d549020");
+  await openWorkspace(page, "?rule=additive_u&school=4e65114f0b8790b6b906088a6d549020");
   await page.getByRole("button", { name: "Copy link" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Link to this screen copied" })).toBeVisible();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
@@ -210,7 +214,7 @@ test("the key names the rule, cuts its place bands from the data and says what e
   await openWorkspace(page);
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
-  await expect(bands).toHaveText(["1st to 10th", "11th to 16th"]);
+  await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
     "Ring with a centre dotA school with a range of possible places in the list, because its air-quality reading is missing."
   );
@@ -320,11 +324,11 @@ test("a failed load shows one sentence and Retry, with every action off", async 
 
 test("a mark's tooltip uses the list's name and the copy's place sentence", async ({ page }) => {
   await openWorkspace(page);
-  const point = await settledMark(page, keyOf("additive_u", "Sample School 15"));
+  const point = await settledMark(page, keyOf(MAIN_RULE, "Sample School 15"));
   await page.mouse.move(point.x, point.y);
   const tooltip = page.getByRole("status").filter({ hasText: "Sample School 15" });
   await expect(tooltip).toContainText("East One, East Province");
-  await expect(tooltip).toContainText("2nd of the 16 schools with every input recorded");
+  await expect(tooltip).toContainText("2nd of the 17 schools with every input the rule reads recorded");
   await expect(tooltip).toContainText("Select to see why");
   // Hovering a mark marks its row too.
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("data-hover", "true");

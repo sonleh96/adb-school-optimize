@@ -15,7 +15,7 @@ import { besides, catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles
 import { school } from "./copy/helpers";
 
 const copy = copyFor({});
-const FEATURES = { export: false, grouping: true, proposed: true };
+const FEATURES = { export: false, grouping: true, urgencyRule: true };
 
 const third = school({ id: "c3", place: 3 });
 const first = school({ id: "c1", place: 1 });
@@ -90,9 +90,9 @@ describe("the guides on offer", () => {
     expect(planOf(roles, { ...FEATURES, grouping: false }).q4).toEqual(["list", "school"]);
   });
 
-  it("adds the download step once the export is on screen, and drops guide 5 without the proposed revision", () => {
+  it("adds the download step once the export is on screen, and drops guide 5 without the rule with urgency", () => {
     const roles = rolesOf([first], copy)!;
-    expect(planOf(roles, { export: true, grouping: true, proposed: false })).toEqual({
+    expect(planOf(roles, { export: true, grouping: true, urgencyRule: false })).toEqual({
       q1: ["first", "rule", "map", "download"],
       q2: ["why", "need", "adds"],
     });

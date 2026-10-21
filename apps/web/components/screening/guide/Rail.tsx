@@ -11,7 +11,7 @@
 import { ArrowRight, Check, SquareDashed } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { type CopySchool, DEFAULT_RULE, PROPOSED_RULE, pairwiseFromCompare } from "@/lib/screening/copy";
+import { type CopySchool, pairwiseFromCompare } from "@/lib/screening/copy";
 import type { LaterCopy } from "@/lib/screening/copy/later";
 import {
   BASE,
@@ -28,10 +28,11 @@ import { canPresent } from "@/lib/screening/guide/layout";
 import { type GuideId, statusOf } from "@/lib/screening/guide/machine";
 import type { Plan, Roles } from "@/lib/screening/guide/roles";
 import { useScreeningCompare } from "@/lib/screening/hooks";
-import type { RuleId } from "@/lib/screening/types";
+import { PRIMARY_RULE, SENSITIVITY_RULE, isRulePair } from "@/lib/screening/rule-pair";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "../Sentence";
+import { MAIN_PAIR } from "../useScreeningData";
 import { SavedViewsSection } from "../views/SavedViewsSection";
 import { ViewStepper } from "../views/ViewStepper";
 import { useWorkspace, useWorkspaceState, useWorkspaceStore } from "../WorkspaceProvider";
@@ -41,8 +42,6 @@ import { Rings } from "./Rings";
 import type { GuideData } from "./types";
 import { useLater } from "./useLater";
 import styles from "./guide.module.css";
-
-const MAIN_PAIR = { a: DEFAULT_RULE as RuleId, b: PROPOSED_RULE as RuleId };
 
 interface RailProps {
   root: HTMLElement | null;
@@ -193,17 +192,13 @@ function Stepper({
   const acted = useActed();
   const workspaceStore = useWorkspaceStore();
   const ringStores = useMemo(() => [workspaceStore, store], [workspaceStore, store]);
-  const compare = useScreeningCompare(data.proposed ? MAIN_PAIR : null);
+  const compare = useScreeningCompare(data.urgencyRule ? MAIN_PAIR : null);
 
   const ctx = useMemo((): GuideContext | null => {
     const { shown } = data;
     if (!shown || !roles || !plan || !data.ready) return null;
     const pairwise = compare.data ? pairwiseFromCompare(compare.data).pairwise : [];
-    const row = pairwise.find(
-      (p) =>
-        (p.left_rule === DEFAULT_RULE && p.right_rule === PROPOSED_RULE) ||
-        (p.left_rule === PROPOSED_RULE && p.right_rule === DEFAULT_RULE)
-    );
+    const row = pairwise.find((p) => isRulePair(p.left_rule, p.right_rule));
     const agree = row ? [10, 20, 30, 40].filter((k) => row[`top${k}_overlap` as "top10_overlap"] === k) : [];
     return {
       copy: shown.copy,
@@ -214,7 +209,8 @@ function Stepper({
       roles,
       plan,
       agreeK: agree.length ? Math.max(...agree) : null,
-      example: exampleSchool(shown.schools, DEFAULT_RULE, PROPOSED_RULE),
+      // Guide 5 shows the main rule, switched to from the rule that puts the urgency value back.
+      example: exampleSchool(shown.schools, SENSITIVITY_RULE, PRIMARY_RULE),
     };
   }, [data, roles, plan, later, compare.data]);
 

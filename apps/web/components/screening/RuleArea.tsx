@@ -4,7 +4,8 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { type BoundCopy, type CopyRuleId, DEFAULT_RULE } from "@/lib/screening/copy";
+import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
+import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 
 import type { RuleChoice } from "./useScreeningData";
 import styles from "./screening.module.css";
@@ -22,7 +23,8 @@ export function RuleSymbol({ symbol, className }: { symbol: string; className?: 
 
 /**
  * Focus the control that names the rule on screen: its button in the switch, or Other rules when it is another rule.
- * See what changes, Hide, the ways back and a choice in Other rules each remove themselves on use, so they hand focus
+ * Hide, the ways back and a choice in Other rules each remove themselves on use, and See what changes removes the
+ * statement it sits in, so they hand focus
  * here and a keyboard user is never dropped on the page. Runs after the change has rendered.
  */
 export function focusRuleControl(within: HTMLElement | null) {
@@ -48,7 +50,8 @@ interface RuleAreaProps {
   disabled: boolean;
   layer: HTMLElement | null;
   onRule: (rule: CopyRuleId) => void;
-  onSeeWithout: () => void;
+  /** Opens What changed on the main rule, compared with the rule that puts the urgency value back. */
+  onSeeWithUrgency: () => void;
   onBack: () => void;
 }
 
@@ -63,11 +66,11 @@ export function RuleArea(props: RuleAreaProps) {
     disabled,
     layer,
     onRule,
-    onSeeWithout,
+    onSeeWithUrgency,
     onBack,
   } = props;
-  const main = rules.filter((r) => r.primary);
-  const other = rules.filter((r) => !r.primary);
+  const main = rules.filter((r) => r.inPair);
+  const other = rules.filter((r) => !r.inPair);
   const otherActive = other.some((r) => r.id === requested);
   // While the rule just pressed loads, the rows on screen are the previous rule's, and so would be the statement or
   // the rule line beside the new button. Neither shows until the rows are the pressed rule's.
@@ -108,23 +111,23 @@ export function RuleArea(props: RuleAreaProps) {
           </button>
         ))}
       </div>
-      {line === DEFAULT_RULE && statement ? (
+      {line === PRIMARY_RULE && statement ? (
         <p className={styles.statement} data-region="list-statement">
           {statement}{" "}
           <button
             type="button"
             className={styles.arrowLink}
             onClick={() => {
-              onSeeWithout();
+              onSeeWithUrgency();
               focusRuleControl(section.current);
             }}
           >
-            {LAYOUT.seeWithout}
+            {LAYOUT.seeWithUrgency}
             <ChevronRight size={11} aria-hidden />
           </button>
         </p>
       ) : null}
-      {line && line !== DEFAULT_RULE ? (
+      {line && line !== PRIMARY_RULE ? (
         <p className={styles.ruleLine} data-region="rule-role">
           {main.some((r) => r.id === line) ? null : (
             <>
@@ -198,7 +201,8 @@ interface OtherRulesProps {
 }
 
 /**
- * "Other rules (5)" and its popover: the other rules first, then the two main ones, each with its one line and role.
+ * "Other rules (5)" and its popover: the other rules first, then the main rule and the urgency sensitivity, each with
+ * its one line and role.
  * Choosing any rule closes it. Escape closes it and hands focus back to the button. Opened from the keyboard, it
  * appears at once; opened by pointer, it grows from its button.
  */

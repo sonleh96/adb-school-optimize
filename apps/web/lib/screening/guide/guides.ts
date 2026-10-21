@@ -7,16 +7,9 @@
  * A step sets the whole state that matters to it, from the same base, so Back, Next and a pasted link land on the
  * same screen. Rings point at `data-region` hooks the workspace exposes; nothing here reaches into its markup to act.
  */
-import {
-  type BoundCopy,
-  type CopyRuleId,
-  type CopySchool,
-  DEFAULT_RULE,
-  PROPOSED_RULE,
-  SENSITIVITY_RULE,
-  type Segments,
-} from "../copy";
+import { type BoundCopy, type CopyRuleId, type CopySchool, type Segments } from "../copy";
 import type { LaterCopy } from "../copy/later";
+import { PRIMARY_RULE, SENSITIVITY_RULE } from "../rule-pair";
 import { DEFAULT_STATE, type Patch, type StateKey } from "../workspace/state";
 
 import type { GuideId } from "./machine";
@@ -63,9 +56,12 @@ export interface GuideContext {
   readonly ordered: readonly string[];
   readonly roles: Roles;
   readonly plan: Plan;
-  /** The largest top k the two main rules agree on, from the recorded comparison; null when it is not known. */
+  /**
+   * The largest top k the main rule and the urgency sensitivity agree on, from the recorded comparison; null when it
+   * is not known.
+   */
   readonly agreeK: number | null;
-  /** The school What changed uses as its example between the two main rules. */
+  /** The school What changed uses as its example between the main rule and the urgency sensitivity. */
   readonly example: CopySchool | null;
 }
 
@@ -77,7 +73,7 @@ export interface GuideContext {
  * until it is given its starting value.
  */
 export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
-  rule: DEFAULT_RULE,
+  rule: PRIMARY_RULE,
   compare: null,
   view: "ranked",
   school: null,
@@ -390,7 +386,7 @@ export function stepView(
         ...base,
         title: text(call<string>(sc.title, ctx.agreeK)),
         body: [para(STRINGS.urgencyDefinition), para(call<string>(sc.body))],
-        patch: { rule: PROPOSED_RULE, compare: DEFAULT_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
         targets: [[region("changed-lead")]],
         scroll: "top",
       };
@@ -399,7 +395,7 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [para(TERMS.urgency.help)],
-        patch: { rule: PROPOSED_RULE, compare: DEFAULT_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };
@@ -412,7 +408,7 @@ export function stepView(
           ...(limits[2] ? [para(limits[2])] : []),
           ...(subject ? [para(GUIDE_SEGMENTS.rangesBody(name))] : []),
         ],
-        patch: { rule: PROPOSED_RULE, compare: DEFAULT_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
         targets: [[region("changed-example")]],
         scroll: "top",
       };
@@ -421,9 +417,9 @@ export function stepView(
       return {
         ...base,
         title: staticTitle,
-        body: [para(copy.ruleExplanation(PROPOSED_RULE))],
+        body: [para(copy.ruleExplanation(PRIMARY_RULE))],
         tryIt: text(call<string>(sc.tryIt, copy.ruleLabel(SENSITIVITY_RULE))),
-        patch: { rule: PROPOSED_RULE, compare: DEFAULT_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };

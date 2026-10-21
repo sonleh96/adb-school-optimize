@@ -19,6 +19,8 @@
 import { contrastRatio } from "../lib/screening/contrast";
 import {
   INCOMPLETE,
+  MAIN_RULE,
+  URGENCY_RULE,
   ORDERED_COUNT,
   RULE,
   expect,
@@ -48,45 +50,45 @@ test("shows the rows in the API's order, with range schools between complete one
   await openWorkspace(page);
 
   const names = await listNames(page);
-  expect(names).toEqual(orderedNames("additive_u"));
+  expect(names).toEqual(orderedNames(MAIN_RULE));
   expect(names.slice(12, 17)).toEqual([
-    "Sample School 06",
-    "Sample School 01",
+    "Sample School 05",
     "Sample School 17",
-    "Sample School 04",
+    "Sample School 06",
+    "Sample School 14",
     "Sample School 18",
   ]);
 
   // The range school reads as a range, never as one place.
   const range = orderedRow(page, "Sample School 17");
-  await expect(range.locator("[data-place=range]")).toContainText("11thto18th");
+  await expect(range.locator("[data-place=range]")).toContainText("10thto17th");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place=point]")).toHaveText("1st");
 
   // Counts appear with the data, never before it.
   await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(4)");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
 });
 
 test("an exact range keeps the range treatment and carries its scope in the row", async ({ page }) => {
   await openWorkspace(page);
 
-  // Both ends are the 21st place, yet the school is not a plain 21st: the row says what the 21st counts among.
+  // Both ends are the 22nd place, yet the school is not a plain 22nd: the row says what the 22nd counts among.
   const row = orderedRow(page, "Sample School 25");
   const place = row.locator("[data-place]");
   await expect(place).toHaveAttribute("data-place", "scoped");
-  await expect(place).toHaveText("21stof 21");
+  await expect(place).toHaveText("22ndof 22");
   await expect(page.locator("[data-place=point]", { hasText: "of" })).toHaveCount(0);
 
   // The card's figure carries the scope too, and says why the place cannot move.
   await row.click();
-  await expect(page.getByTestId("card-place")).toHaveText("21stof 21");
+  await expect(page.getByTestId("card-place")).toHaveText("22ndof 22");
   await expect(page.getByTestId("card-context")).toContainText(
     "but under this rule that cannot change its place in the list."
   );
 
   // A range school whose ends differ shows its range, never one place.
   await orderedRow(page, "Sample School 17").click();
-  await expect(page.getByTestId("card-place")).toHaveText("11thto18th");
+  await expect(page.getByTestId("card-place")).toHaveText("10thto17th");
 });
 
 test("names the scope each place is counted in, in the list header, the card and the tooltip", async ({
@@ -94,34 +96,34 @@ test("names the scope each place is counted in, in the list header, the card and
 }) => {
   await openWorkspace(page);
   await expect(page.locator("[data-region=scope] p").first()).toHaveText(
-    "21 schools can be put in order, 16 with every input recorded and 5 that show a range of places. Read more"
+    "22 schools can be put in order, 17 with every input the rule reads recorded and 5 that show a range of places. Read more"
   );
 
   // The tooltip names it too. It is checked on the map's first view, where every mark is on screen: choosing
   // schools in the list pans the map to the last one chosen, and how far depends on how long each pan had run when
   // the next school was chosen, so afterwards a given mark can be off screen.
-  const point = await settledMark(page, keyOf("additive_u", "Sample School 13"));
+  const point = await settledMark(page, keyOf(MAIN_RULE, "Sample School 13"));
   await page.mouse.move(point.x, point.y);
   await expect(page.getByRole("status").filter({ hasText: "Sample School 13" })).toContainText(
-    "3rd of the 16 schools with every input recorded"
+    "5th of the 17 schools with every input the rule reads recorded"
   );
 
   await orderedRow(page, "Sample School 15").click();
   await expect(page.getByTestId("card-context")).toHaveText(
-    "Among the 16 schools with every input recorded."
+    "Among the 17 schools with every input the rule reads recorded."
   );
   await orderedRow(page, "Sample School 17").click();
   await expect(page.getByTestId("card-context")).toContainText(
-    "Possible places among the 21 schools that can be put in order."
+    "Possible places among the 22 schools that can be put in order."
   );
 });
 
 test("an exact range's tooltip carries the exact note", async ({ page }) => {
   await openWorkspace(page);
-  const point = await settledMark(page, keyOf("additive_u", "Sample School 25"));
+  const point = await settledMark(page, keyOf(MAIN_RULE, "Sample School 25"));
   await page.mouse.move(point.x, point.y);
   const tooltip = page.getByRole("status").filter({ hasText: "Sample School 25" });
-  await expect(tooltip).toContainText("21st of the 21 schools that can be put in order.");
+  await expect(tooltip).toContainText("22nd of the 22 schools that can be put in order.");
   await expect(tooltip).toContainText("No air-quality reading");
 });
 
@@ -132,11 +134,11 @@ test("keeps one map through rule switches and selections", async ({ page }) => {
   expect([await maps(), await canvases()]).toEqual([1, 1]);
 
   for (let round = 0; round < 3; round += 1) {
-    await mainRule(page, RULE.proposed).click();
-    await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
+    await mainRule(page, RULE.urgency).click();
+    await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
     await orderedRow(page, "Sample School 15").click();
     await mainRule(page, RULE.main).click();
-    await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
+    await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
     await page.getByRole("button", { name: "Close", exact: true }).click();
   }
   expect([await maps(), await canvases()]).toEqual([1, 1]);
@@ -144,7 +146,7 @@ test("keeps one map through rule switches and selections", async ({ page }) => {
 
 test("selecting a row selects its mark, and closing the card clears both", async ({ page }) => {
   await openWorkspace(page);
-  const key = keyOf("additive_u", "Sample School 15");
+  const key = keyOf(MAIN_RULE, "Sample School 15");
   expect(await ringDrawnAround(page, key, 8)).toBe(false);
 
   await orderedRow(page, "Sample School 15").click();
@@ -164,13 +166,13 @@ test("selecting a row selects its mark, and closing the card clears both", async
 test("clicking a mark selects its row, on the tab that holds it", async ({ page }) => {
   await openWorkspace(page);
 
-  const first = keyOf("additive_u", "Sample School 12");
+  const first = keyOf(MAIN_RULE, "Sample School 12");
   const point = await settledMark(page, first);
   await page.mouse.click(point.x, point.y);
   await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "true");
   await expect(mapLocator(page)).toHaveAttribute("data-selected-key", first);
 
-  const queued = keyOf("additive_u", "Sample School 21");
+  const queued = keyOf(MAIN_RULE, "Sample School 21");
   const queuedPoint = await settledMark(page, queued);
   await page.mouse.click(queuedPoint.x, queuedPoint.y);
   await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
@@ -183,23 +185,27 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
 }) => {
   await openWorkspace(page);
 
-  // Held back under the circulated rule, because its urgency is unknown.
+  // In the list under the main rule, which does not read its unknown urgency.
+  await orderedRow(page, "Sample School 23").click();
+  await expect(page.getByTestId("card-place")).toHaveText("17th");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
+
+  // Urgency is included, so the selected school is held back and the list follows it to its tab.
+  await mainRule(page, RULE.urgency).click();
+  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
+  await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
+  await tab(page, /The list/).click();
+  expect(await listNames(page)).toEqual(orderedNames(URGENCY_RULE));
   await tab(page, /Incomplete records/).click();
   await queuedRow(page, "Sample School 23").click();
-  await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
 
-  await mainRule(page, RULE.proposed).click();
-
+  // Back on the main rule, the school has its place again and the list follows it.
+  await mainRule(page, RULE.main).click();
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
   await expect(orderedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("card-place")).toHaveText("17th");
-  expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
-
-  // Urgency is included again, so the selected school is held back and the list follows it to its tab.
-  await mainRule(page, RULE.main).click();
-  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
-  await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
+  expect(await listNames(page)).toEqual(orderedNames(MAIN_RULE));
 
   // A rule from "Other rules" lists its own order, and the selection stays where it is held back.
   await page.getByRole("button", { name: /Other rules/ }).click();
@@ -229,7 +235,7 @@ test("arrow keys on the incomplete records follow the grouped order on screen", 
   await openWorkspace(page);
   await tab(page, /Incomplete records/).click();
   const onScreen = await page.locator(`${INCOMPLETE} button span[class*=name]`).allTextContents();
-  expect(onScreen).toEqual(queuedNames("additive_u"));
+  expect(onScreen).toEqual(queuedNames(MAIN_RULE));
 
   await queuedRow(page, onScreen[0]).click();
   for (let step = 1; step < onScreen.length; step += 1) {
@@ -249,12 +255,12 @@ test("arrow keys on the incomplete records follow the grouped order on screen", 
 
 test("a school without coordinates is listed and selectable but has no mark", async ({ page }) => {
   await openWorkspace(page);
-  const key = keyOf("additive_u", "Sample School 05");
+  const key = keyOf(MAIN_RULE, "Sample School 05");
   expect(await markAt(page, key)).toBeNull();
 
   await orderedRow(page, "Sample School 05").click();
   await expect(page.getByRole("complementary", { name: "Sample School 05" })).toBeVisible();
-  await expect(page.getByTestId("card-place")).toHaveText("12th");
+  await expect(page.getByTestId("card-place")).toHaveText("13th");
   await expect(mapLocator(page)).toHaveAttribute("data-selected-key", key);
   await expect(page.locator(".maplibregl-map")).toHaveCount(1);
 });
@@ -281,7 +287,7 @@ test("the map can be reached and left with the keyboard, and closing the card re
   expect(outline.width).toBeGreaterThanOrEqual(2);
 
   // Closing the card hands focus back to the school's row.
-  const key = keyOf("additive_u", "Sample School 13");
+  const key = keyOf(MAIN_RULE, "Sample School 13");
   await orderedRow(page, "Sample School 13").click();
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await expect(orderedRow(page, "Sample School 13")).toBeFocused();
@@ -321,7 +327,7 @@ test("the first ten places carry their number on their dot, and the numbers foll
   page,
 }) => {
   await openWorkspace(page);
-  const numbered = numberedPlaces("additive_u");
+  const numbered = numberedPlaces(MAIN_RULE);
   expect(numbered.length).toBeGreaterThan(5);
   // Nothing else is numbered: not the places after the tenth, not the ranges, not the incomplete records.
   await expect(page.locator("[data-rank-label]")).toHaveCount(numbered.length);
@@ -348,17 +354,17 @@ test("the first ten places carry their number on their dot, and the numbers foll
       ).toBeGreaterThan(painted[index].zIndex);
     }
   };
-  await expectEarlierPlacesOnTop("additive_u");
+  await expectEarlierPlacesOnTop(MAIN_RULE);
 
-  await mainRule(page, RULE.proposed).click();
+  await mainRule(page, RULE.urgency).click();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(
-    numberedPlaces("additive_no_u").length
+    numberedPlaces(URGENCY_RULE).length
   );
-  await expectEarlierPlacesOnTop("additive_no_u");
+  await expectEarlierPlacesOnTop(URGENCY_RULE);
 
   await mainRule(page, RULE.main).click();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(numbered.length);
-  await expectEarlierPlacesOnTop("additive_u");
+  await expectEarlierPlacesOnTop(MAIN_RULE);
 
   // The list states every place, so a screen reader is not read the numbers on the map as well.
   for (const label of await page.locator("[data-rank-label]").all()) {

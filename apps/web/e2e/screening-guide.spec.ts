@@ -118,26 +118,36 @@ test("a returning visitor starts with the rail closed and sees what they have se
 
 /** What each step must leave on screen: the workspace keys it sets, and a region its ring is round. */
 const SCRIPT: { guide: string; step: number; state: Record<string, unknown>; shows: string }[] = [
-  { guide: "q1", step: 1, state: { rule: "additive_u", school: null, view: "ranked" }, shows: ORDERED },
-  { guide: "q1", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=rule-identity]" },
-  { guide: "q1", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend]" },
+  { guide: "q1", step: 1, state: { rule: "additive_no_u", school: null, view: "ranked" }, shows: ORDERED },
+  {
+    guide: "q1",
+    step: 2,
+    state: { rule: "additive_no_u", school: null },
+    shows: "[data-region=rule-identity]",
+  },
+  { guide: "q1", step: 3, state: { rule: "additive_no_u", school: null }, shows: "[data-region=legend]" },
   {
     guide: "q1",
     step: 4,
-    state: { rule: "additive_u", school: null, panel: null },
+    state: { rule: "additive_no_u", school: null, panel: null },
     shows: "[data-region=export-button]",
   },
   {
     guide: "q2",
     step: 1,
-    state: { rule: "additive_u", view: "ranked" },
+    state: { rule: "additive_no_u", view: "ranked" },
     shows: "[data-region=inspector-why]",
   },
-  { guide: "q2", step: 2, state: { rule: "additive_u" }, shows: "[data-region=need-box]" },
-  { guide: "q2", step: 3, state: { rule: "additive_u" }, shows: "[data-region=inspector-breakdown]" },
-  { guide: "q3", step: 1, state: { rule: "additive_u" }, shows: "[data-region=inspector-place]" },
-  { guide: "q3", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=list-order]" },
-  { guide: "q3", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend-range]" },
+  { guide: "q2", step: 2, state: { rule: "additive_no_u" }, shows: "[data-region=need-box]" },
+  { guide: "q2", step: 3, state: { rule: "additive_no_u" }, shows: "[data-region=inspector-breakdown]" },
+  { guide: "q3", step: 1, state: { rule: "additive_no_u" }, shows: "[data-region=inspector-place]" },
+  { guide: "q3", step: 2, state: { rule: "additive_no_u", school: null }, shows: "[data-region=list-order]" },
+  {
+    guide: "q3",
+    step: 3,
+    state: { rule: "additive_no_u", school: null },
+    shows: "[data-region=legend-range]",
+  },
   { guide: "q4", step: 1, state: { view: "queue", school: null }, shows: "[data-region=queue-list]" },
   {
     guide: "q4",
@@ -290,7 +300,7 @@ test("a pasted link to a step reproduces its screen", async ({ page }) => {
   expect(school).not.toBeNull();
   await expect(page.locator("[data-region=inspector]")).toBeVisible();
   await expect(page.locator(`[data-school-key="${school}"]`)).toHaveAttribute("aria-pressed", "true");
-  // A link to the urgency guide puts the proposed revision on screen with What changed.
+  // A link to the urgency guide puts the main rule on screen with What changed against the rule with urgency.
   await ready(page, "?guide=q5&gstep=1");
   await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
   await expect(page.getByRole("button", { name: /without urgency/, pressed: true })).toBeVisible();
@@ -321,7 +331,7 @@ test("when the screen moves on from a step the rail says so, and puts it back", 
   await page.evaluate(() => window.__screeningWorkspace!.setState({ rule: "benchmark" }));
   await expect(page.getByTestId("guide-drift")).toContainText("The screen has moved on from this step.");
   await page.getByRole("button", { name: "Show this step again" }).click();
-  await expect.poll(async () => (await workspace(page)).rule).toBe("additive_u");
+  await expect.poll(async () => (await workspace(page)).rule).toBe("additive_no_u");
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
   // Every key a step sets counts: opening the scope detail moves the screen on too.
   await page.evaluate(() => window.__screeningWorkspace!.setState({ scope: true }));

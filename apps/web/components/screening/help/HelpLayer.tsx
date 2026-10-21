@@ -12,7 +12,8 @@
 import { X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { type CopySchool, DEFAULT_RULE } from "@/lib/screening/copy";
+import type { CopySchool } from "@/lib/screening/copy";
+import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 import { type CardModel, cardModel } from "@/lib/screening/guide/cards";
 import { type CardId, isCardId } from "@/lib/screening/guide/machine";
 import { type MarkContext, marksIn } from "@/lib/screening/guide/marks";
@@ -65,7 +66,7 @@ export default function HelpLayer({
   const keyboard = useKeyboardRef();
   const [count, setCount] = useState(0);
   const [said, setSaid] = useState("");
-  const rule = data.shown?.rule ?? DEFAULT_RULE;
+  const rule = data.shown?.rule ?? PRIMARY_RULE;
   const markCtx = useMemo((): MarkContext => ({ rule, school: wsState.school }), [rule, wsState.school]);
 
   // Marks follow the screen: every change to the workspace's markup re-marks it on the next frame.

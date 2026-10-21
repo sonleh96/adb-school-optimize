@@ -64,8 +64,8 @@ export function GuidanceLayer({
   );
   const { export: canExport, grouping } = data.features;
   const plan = useMemo(
-    () => (roles ? planOf(roles, { export: canExport, grouping, proposed: data.proposed }) : null),
-    [roles, canExport, grouping, data.proposed]
+    () => (roles ? planOf(roles, { export: canExport, grouping, urgencyRule: data.urgencyRule }) : null),
+    [roles, canExport, grouping, data.urgencyRule]
   );
   useEffect(() => {
     if (plan) store.setCatalog(catalogOf(plan));

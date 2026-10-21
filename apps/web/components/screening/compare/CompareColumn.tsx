@@ -98,9 +98,9 @@ function Picker({
           onClose={onClose}
         >
           <p className={base.eyebrow}>{words.compare.pickPrimary}</p>
-          <ul className={base.popList}>{rules.filter((r) => r.primary).map(item)}</ul>
+          <ul className={base.popList}>{rules.filter((r) => r.inPair).map(item)}</ul>
           <p className={base.eyebrow}>{LAYOUT.otherRules}</p>
-          <ul className={base.popList}>{rules.filter((r) => !r.primary).map(item)}</ul>
+          <ul className={base.popList}>{rules.filter((r) => !r.inPair).map(item)}</ul>
         </Popover>
       ) : null}
     </>

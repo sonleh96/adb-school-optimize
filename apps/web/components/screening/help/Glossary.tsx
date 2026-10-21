@@ -8,7 +8,7 @@
 import { ChevronRight, Search, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { DEFAULT_RULE } from "@/lib/screening/copy";
+import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 import { markFor } from "@/lib/screening/guide/marks";
 
 import { useWorkspaceState } from "../WorkspaceProvider";
@@ -53,7 +53,7 @@ export default function Glossary({ root, data }: { root: HTMLElement | null; dat
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on load and when the entry changes from outside.
   }, [ready]);
 
-  const rule = data.shown?.rule ?? DEFAULT_RULE;
+  const rule = data.shown?.rule ?? PRIMARY_RULE;
   const markCtx = { rule, school: wsState.school };
   const groups: { heading: string; items: Entry[] }[] =
     later.status === "ready"

@@ -7,7 +7,8 @@
  */
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 
-import { type BoundCopy, type CopySchool, PROPOSED_RULE } from "@/lib/screening/copy";
+import type { BoundCopy, CopySchool } from "@/lib/screening/copy";
+import { SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { rolesOf } from "@/lib/screening/guide/roles";
 import { useScreeningRules } from "@/lib/screening/hooks";
 import { seedsOf } from "@/lib/screening/views/seeds";
@@ -35,11 +36,11 @@ export function useSavedViews(copy: BoundCopy, schools: readonly CopySchool[] | 
   const store = useMemo(() => viewsStore(), []);
   const entries = useSyncExternalStore(store.subscribe, store.entries, noEntries);
   const rules = useScreeningRules().data?.rules ?? null;
-  const proposed = !!rules?.some((rule) => rule.rule_id === PROPOSED_RULE);
+  const urgencyRule = !!rules?.some((rule) => rule.rule_id === SENSITIVITY_RULE);
   const roles = useMemo(() => (schools ? rolesOf(schools, copy) : null), [schools, copy]);
   const views = useMemo(
-    () => (roles && rules ? resolve(entries, seedsOf(roles, proposed)) : null),
-    [roles, rules, entries, proposed]
+    () => (roles && rules ? resolve(entries, seedsOf(roles, urgencyRule)) : null),
+    [roles, rules, entries, urgencyRule]
   );
   useEffect(() => {
     if (!TEST_HOOKS) return;

@@ -35,6 +35,9 @@
  * 23. The compare card's two tables do not add up to their totals                              -> "every rule's rows add up ... compare card"
  * 24. A largest-factor tie (two factors share the largest value) names one factor, or counts the extra share once
  *     per factor, so the rows no longer add up                                                  -> "a largest-factor tie..."
+ * 25. The method card states one rule's persistence test under the other rule, or says a school is near the line
+ *     where that rule's own band does not put it, or leaves the near-line sentence out where it does
+ *                                                                                                -> "each rule's persistence test..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -56,14 +59,14 @@ const methodRow = (page: Page, name: string) =>
 const card = (page: Page) => page.locator("[data-slot=school-card]");
 const workspaceText = (page: Page) => page.getByTestId("screening-workspace").innerText();
 
-const ROWS = json("results/additive_u.json").rows as {
+const ROWS = json("results/additive_no_u.json").rows as {
   school: { source_school_name: string; province: string; school_key: string };
   scores: { point: number | null };
   point_rank: { rank: number | null };
   cohort: string;
 }[];
 const FORMULA = (json("rules.json").rules as { rule_id: string; formula: string }[]).find(
-  (r) => r.rule_id === "additive_u"
+  (r) => r.rule_id === "additive_no_u"
 )!.formula;
 
 test("the switch turns the method details on over the same screen, survives a reload and turns off cleanly", async ({
@@ -74,11 +77,13 @@ test("the switch turns the method details on over the same screen, survives a re
   await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "true");
   expect(search(page)).toBe("?analyst=1");
 
-  await expect(page.getByRole("heading", { level: 2, name: "Combined factors, with urgency" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Combined factors, without urgency" })
+  ).toBeVisible();
   const first = methodRow(page, "Sample School 08");
-  await expect(first).toContainText("1Sample School 08South One, South Province0.683");
+  await expect(first).toContainText("1Sample School 08South One, South Province0.708");
   await expect(page.getByTestId("legend-rule")).toContainText(
-    "Place in the list under combined factors, with urgency"
+    "Place in the list under combined factors, without urgency"
   );
   await page.getByRole("button", { name: "Formula" }).click();
   await expect(page.locator("#screening-formula")).toHaveText(FORMULA);
@@ -94,7 +99,7 @@ test("the switch turns the method details on over the same screen, survives a re
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("ol[aria-label='The list'] button").first()).toContainText("1st");
   const text = await workspaceText(page);
-  for (const word of ["×", "Formula", "Dirichlet", "additive_u", "sha256", "Map layers"])
+  for (const word of ["×", "Formula", "Dirichlet", "additive_no_u", "sha256", "Map layers"])
     expect(text, `plain view shows "${word}"`).not.toContain(word);
 });
 
@@ -105,13 +110,13 @@ test("the card's method layer states the API's place, screening score, shares an
   await methodRow(page, "Sample School 08").click();
   const c = card(page);
   await expect(c.locator("[data-region=inspector-place]")).toContainText(
-    "1Place in the listunder combined factors, with urgency, among the 16 schools with every input recorded"
+    "1Place in the listunder combined factors, without urgency, among the 17 schools with every input the rule reads recorded"
   );
-  await expect(c).toContainText("Screening score0.683");
+  await expect(c).toContainText("Screening score0.708");
   const breakdown = c.locator("[data-region=inspector-breakdown]");
-  await expect(breakdown).toContainText("School need× 0.60");
-  await expect(breakdown).toContainText("District context× 0.15");
-  await expect(breakdown.getByRole("row").last()).toContainText("Screening score0.683");
+  await expect(breakdown).toContainText("School need× 12/19");
+  await expect(breakdown).toContainText("District context× 3/19");
+  await expect(breakdown.getByRole("row").last()).toContainText("Screening score0.708");
   await expect(c.locator("[data-region=inspector-across] dt")).toHaveCount(7);
   await expect(c).toContainText(ROWS[0].school.school_key);
   // The parts of school need open and close in place, and the link keeps the choice.
@@ -206,18 +211,18 @@ test("the map bar holds Map layers, and steps down or keeps its icons rather tha
 });
 
 const LEAD_20 =
-  "This compares the combined-factors rule with urgency (S) with the combined-factors rule without urgency (S0) among the 16 schools with every input recorded.";
+  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with every input recorded.";
 
 test("compare mode reproduces a pasted pair, says the agreement in What changed's words, swaps and goes back", async ({
   page,
 }) => {
   // A copied link carries both rules; compare mode is method detail, so the link turns the method details on.
-  await openWorkspace(page, "?mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?mode=compare&rule=additive_u&compare=additive_no_u");
   await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "true");
   const statement = page.locator("[data-region=compare-statement]");
   await expect(statement.locator("p").first()).toHaveText(LEAD_20);
   await expect(page.getByRole("button", { name: /^Choose the rule to compare from:/ })).toContainText(
-    "Combined factors, with urgency"
+    "Combined factors, without urgency"
   );
   await expect(page.locator("[data-region=slope-chart] svg path[stroke]")).toHaveCount(16);
   // The chart's accessible table is headed in the copy's words.
@@ -233,36 +238,36 @@ test("compare mode reproduces a pasted pair, says the agreement in What changed'
     (t: { k: number }) => t.k === 10
   ).overlap;
   await expect(statement.locator("p").first()).toHaveText(
-    `Among the 16 schools both rules put in order, the combined-factors rule with urgency (S) and the combined-factors rule without urgency (S0) share ${overlap} of their top 10 schools.`
+    `Among the 16 schools both rules put in order, the combined-factors rule without urgency (S0) and the combined-factors rule with urgency (S) share ${overlap} of their top 10 schools.`
   );
   await expect(statement.getByText("Joins the top 10")).toBeVisible();
-  expect(search(page)).toBe("?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u&k=10");
+  expect(search(page)).toBe("?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u&k=10");
 
   await page.getByRole("button", { name: "Swap the two rules" }).click();
-  expect(search(page)).toBe("?analyst=1&mode=compare&compare=additive_no_u&k=10");
+  expect(search(page)).toBe("?analyst=1&mode=compare&compare=additive_u&k=10");
   await expect(page.getByRole("button", { name: /^Choose the rule to compare from:/ })).toContainText(
-    "Combined factors, without urgency"
+    "Combined factors, with urgency"
   );
 
   await page.getByRole("button", { name: "Back to the list" }).click();
-  expect(search(page)).toBe("?analyst=1&compare=additive_no_u&k=10");
+  expect(search(page)).toBe("?analyst=1&compare=additive_u&k=10");
   await expect(page.locator("[data-region=what-changed]")).toBeVisible();
 });
 
 test("turning the method details off while comparing returns to the plain list on the compared rule", async ({
   page,
 }) => {
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   await expect(page.locator("[data-region=compare-statement]")).toBeVisible();
   await methodSwitch(page).click();
-  expect(search(page)).toBe("?rule=additive_no_u&compare=additive_u");
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  expect(search(page)).toBe("?rule=additive_u&compare=additive_no_u");
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-region=what-changed]")).toBeVisible();
   await expect(page.locator("[data-region=compare-statement]")).toHaveCount(0);
 });
 
 test("a pair without the circulated rule is compared from the pickers", async ({ page }) => {
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   await page.getByRole("button", { name: /^Choose the rule to compare from:/ }).click();
   await page
     .locator("#screening-pick-a")
@@ -288,7 +293,7 @@ test("chart labels never leave the chart, and each keeps the school's full name 
   context,
 }) => {
   await useMockDataset(context, "worst-names");
-  await page.goto("/screening?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u&k=10");
+  await page.goto("/screening?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u&k=10");
   await waitForMap(page);
   const svg = page.locator("[data-region=slope-chart] svg");
   await expect(svg.locator("text[data-school-key]").first()).toBeVisible();
@@ -315,7 +320,7 @@ test("chart labels never leave the chart, and each keeps the school's full name 
 });
 
 test("the card in compare mode shows the school under both rules and how far it moved", async ({ page }) => {
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   await page.locator("[data-region=slope-chart] text[data-school-key]").first().click();
   const c = card(page);
   await expect(c.locator("[data-region=inspector-place] > div")).toHaveCount(2);
@@ -332,7 +337,7 @@ test("no raw null, undefined or NaN renders in the method states on the worst-ca
   await useMockDataset(context, "worst-names");
   for (const link of [
     "?analyst=1",
-    "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u",
+    "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u",
     "?analyst=1&view=queue",
   ]) {
     await page.goto(`/screening${link}`);
@@ -371,8 +376,8 @@ test("the compare card's places are the ones the chart draws, among the schools 
   page,
 }) => {
   // Sample School 11 is 14th in the benchmark's own list and 12th among the schools both rules put in order.
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=benchmark&compare=additive_u");
-  const pair = json("compare/additive_u__benchmark.json");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=benchmark&compare=additive_no_u");
+  const pair = json("compare/additive_no_u__benchmark.json");
   const row = pair.ranks.find(
     (r: { school: { source_school_name: string } }) => r.school.source_school_name === "Sample School 11"
   );
@@ -387,7 +392,7 @@ test("the compare card's places are the ones the chart draws, among the schools 
 });
 
 test("the chart has a table a keyboard and a screen reader can use", async ({ page }) => {
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   const pair = json("compare/additive_u__additive_no_u.json");
   const table = page.getByRole("table", {
     name: "Places in the list under the two rules, joined by a line per school",
@@ -412,7 +417,7 @@ test("the chart has a table a keyboard and a screen reader can use", async ({ pa
 test("every chart line carries its path as an attribute, for browsers that do not read it from CSS", async ({
   page,
 }) => {
-  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   const pair = json("compare/additive_u__additive_no_u.json");
   const lines = page.locator("[data-region=slope-chart] svg path[stroke]");
   await expect(lines).toHaveCount(pair.ranks.length);
@@ -433,7 +438,9 @@ test("a failed load of the method layer says so and loads it again on Retry", as
   await expect(failure).toBeVisible();
   await page.unroute("**/_next/static/chunks/**");
   await failure.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByRole("heading", { level: 2, name: "Combined factors, with urgency" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Combined factors, without urgency" })
+  ).toBeVisible();
   // The refused scripts are expected failures; nothing else may go wrong on the page.
   expect(errors).toEqual([]);
   await page.close();
@@ -452,7 +459,7 @@ test("help mode explains the method details' rules, lines and controls, and a ma
   for (const selector of [
     "[data-region=layers]",
     "[data-region=filters]",
-    "[data-region=rule-switch] [data-rule=additive_no_u]",
+    "[data-region=rule-switch] [data-rule=additive_u]",
     "[data-region=scope] > p[data-term]",
     "[data-region=ranked-list] [data-place=point]",
     "[data-region=ranked-list] [data-place=range]",
@@ -464,7 +471,7 @@ test("help mode explains the method details' rules, lines and controls, and a ma
   await expect(page.locator("[data-help-card]")).toContainText("Map layers");
   await expect(page.locator("#screening-layers")).toHaveCount(0);
 
-  await openWorkspace(page, "?mode=compare&rule=additive_no_u&compare=additive_u&help=1");
+  await openWorkspace(page, "?mode=compare&rule=additive_u&compare=additive_no_u&help=1");
   await expect(page.locator("[data-region=compare-statement] > p[data-xp]")).toHaveCount(1);
 });
 
@@ -525,8 +532,8 @@ test("guide 4's group step stays in the plain layer and offers no Try it, since 
 });
 
 const ALL_RULES = [
-  "additive_u",
   "additive_no_u",
+  "additive_u",
   "need_first_u",
   "need_first_no_u",
   "bottleneck_u",
@@ -595,9 +602,9 @@ test("every rule's rows add up to the total in the method card and the plain car
 test("every rule's rows add up to the total in both tables of the compare card", async ({ page }) => {
   // Four pairs that hold every rule between them, both largest-factor rules among them.
   for (const [rule, compare] of [
-    ["bottleneck_u", "additive_u"],
+    ["bottleneck_u", "additive_no_u"],
     ["bottleneck_no_u", "bottleneck_u"],
-    ["need_first_no_u", "additive_no_u"],
+    ["need_first_no_u", "additive_u"],
     ["benchmark", "need_first_u"],
   ]) {
     const complete = (r: string) =>
@@ -651,7 +658,7 @@ test("a largest-factor tie names both factors once and the rows still add up, in
   const method = card(page).locator("[data-region=inspector-breakdown]").first();
   await expect(method.locator("[data-row=largest]")).toHaveCount(1);
   await expect(method.locator("[data-row=largest] [role=rowheader]")).toContainText(
-    "Largest factor: School need and District context"
+    "Extra share for the largest factor: school need and district context"
   );
   await methodTableAddsUp(method, "method card, a tie");
 
@@ -659,6 +666,34 @@ test("a largest-factor tie names both factors once and the rows still add up, in
   await waitForMap(page);
   await plainCardAddsUp(page, rule);
   await expect(card(page)).toContainText("school need and district context, which are equal");
+});
+
+test("each rule's persistence test shows in the method card under its own rule, near the line only by its own band", async ({
+  page,
+}) => {
+  const REVISED =
+    "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80), drawn fresh over the six components this rule uses. It is a revised sensitivity result, not an isolated estimate of what urgency changes.";
+  const CIRCULATED =
+    "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80) of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.";
+  const near = (points: string) =>
+    `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
+  const flags = card(page).locator("[data-persistence]");
+
+  // Under the main rule: School 02 is flagged and clear of its two-standard-error band, School 06 is inside it.
+  await openWorkspace(page, "?analyst=1");
+  await methodRow(page, "Sample School 02").click();
+  await expect(flags).toHaveText([REVISED]);
+  await methodRow(page, "Sample School 06").click();
+  await expect(flags).toHaveText([`${REVISED} ${near("1.1")}`]);
+
+  // Under the rule with urgency, the circulated experiment's own words, and School 02 inside its one-error band.
+  await page.locator("[data-region=rule-switch] [data-rule=additive_u]").click();
+  await methodRow(page, "Sample School 02").click();
+  await expect(flags).toHaveText([`${CIRCULATED} ${near("0.6")}`]);
+  await expect(flags.filter({ hasText: "drawn fresh" })).toHaveCount(0);
+  await methodRow(page, "Sample School 08").click();
+  await expect(card(page).locator("[data-region=inspector-place]")).toBeVisible();
+  await expect(flags).toHaveCount(0);
 });
 
 test.describe("the narrow layout", () => {
