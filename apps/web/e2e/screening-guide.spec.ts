@@ -16,6 +16,8 @@
  *  9. The guide copy fails to download and the rail is stuck                           -> "a failed download ..."
  * 10. Guides can be started before there is anything to guide (R14)                    -> "with no schools ..."
  * 11. The narrow layout keeps the rail beside the map, or a map step hides the map     -> "in the narrow layout ..."
+ * 12. A link to guide 5 is dropped when the rules answer after the list, so the screen opens without the step
+ *                                                                                      -> "a link to guide 5 ..."
  */
 import type { Page } from "@playwright/test";
 
@@ -367,6 +369,18 @@ test("presenting widens the rail, shows Up next and the key hints, and Page Down
   await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
   await rail(page).getByRole("button", { name: "Leave presentation mode" }).click();
   expect((await rail(page).boundingBox())!.width).toBe(312);
+});
+
+test("a link to guide 5 lands on its step when the rules answer after the list", async ({ page }) => {
+  // The list is asked for beside the rules; held back, the rules come in after it.
+  await page.route("**/api/v1/screening/rules", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto("/screening?guide=q5&gstep=1");
+  await expect(stepTitle(page)).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q5", step: 1 });
+  await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
 });
 
 test("on data with one school the rail offers the guides it can teach and they run", async ({

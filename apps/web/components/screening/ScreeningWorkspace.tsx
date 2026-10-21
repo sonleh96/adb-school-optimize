@@ -521,7 +521,7 @@ function Workspace() {
       shown,
       ordered: ordered.map((row) => row.school.school_key),
       ready,
-      urgencyRule: !!data.rules?.some((r) => r.id === SENSITIVITY_RULE),
+      urgencyRule: data.rules ? data.rules.some((r) => r.id === SENSITIVITY_RULE) : null,
       // Set each to true when the workspace shows the region the guide step points at.
       features: GUIDE_FEATURES,
       mode: layout.mode,
