@@ -18,7 +18,7 @@ export interface GuideData {
    * What the workspace shows that some guide steps point at: "Download the top list" (`export-button`) and the
    * incomplete records' Group by control (`queue-group`). A step is offered only when its region exists.
    */
-  readonly features: { readonly export: boolean; readonly grouping: boolean };
+  readonly features: { readonly export: boolean; readonly grouping: boolean; readonly filters: boolean };
   readonly mode: LayoutMode;
   readonly width: number;
 }

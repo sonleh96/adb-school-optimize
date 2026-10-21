@@ -210,6 +210,7 @@ function Stepper({
       plan,
       agreeK: agree.length ? Math.max(...agree) : null,
       example: exampleSchool(shown.schools, DEFAULT_RULE, PROPOSED_RULE),
+      filters: data.features.filters,
     };
   }, [data, roles, plan, later, compare.data]);
 
@@ -393,7 +394,9 @@ function Stepper({
                     {view.onScreen}
                   </span>
                 </p>
-                {view.tryIt ? (
+                {/* In the narrow layout a step that opens a card covers the list and the map with the card and
+                    the rail, so a Try it that sends the person to them points at nothing on screen. */}
+                {view.tryIt && !(data.mode === "narrow" && view.patch.school) ? (
                   <p className={styles.tryIt}>
                     <span className={styles.label}>{GUIDE.tryIt}</span>
                     <Sentence segments={view.tryIt} />
