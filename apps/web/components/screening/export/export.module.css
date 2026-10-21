@@ -268,6 +268,14 @@
   justify-content: space-between;
   gap: 12px;
 }
+.filter {
+  display: inline-block;
+  margin-right: 10px;
+}
+.filter[data-filter-not-applied] {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
 .limits {
   margin: 10px 0 0;
   font: 400 15px/22px var(--serif);

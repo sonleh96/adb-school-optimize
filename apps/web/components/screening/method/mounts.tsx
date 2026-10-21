@@ -208,6 +208,7 @@ export function useMethodMounts(input: MountInput): Mounts {
         rule={rule}
         comparedWith={comparing && on ? a : null}
         n={state.n}
+        filters={{ prov: state.prov, loc: state.loc }}
         schools={input.schools}
         layer={input.layer}
         instant={input.keyboard}

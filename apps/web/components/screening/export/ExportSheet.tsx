@@ -27,6 +27,11 @@ export interface ExportSheetProps {
   /** In compare mode, the rule the list is compared with. */
   comparedWith: CopyRuleId | null;
   n: TopLength;
+  /**
+   * The method details' filters on screen. The file follows the province; the API has no remoteness filter, so a
+   * remoteness filter is shown as not applied to the file. The plain sheet has none: a plain screen is never filtered.
+   */
+  filters: { prov: string | null; loc: string | null };
   /** The schools of the list on screen, so a name shows in the one display form (R17). */
   schools: ReadonlyMap<string, ListedSchool>;
   layer: HTMLElement | null;
@@ -44,9 +49,9 @@ export interface ExportSheetProps {
 export function ExportSheet(props: ExportSheetProps) {
   const { copy, method, rule, n, schools, layer, onNotify } = props;
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
-  const read = useTopList(rule as RuleId, n, true);
-  const closeButton = useRef<HTMLButtonElement>(null);
   const plain = method === null;
+  const read = useTopList(rule as RuleId, n, plain ? null : props.filters.prov, true);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const file = read.data ?? null;
   const list = file?.list ?? null;
   const needFirst = file?.file.rows.some((row) => row.sort_key_primary !== null) ?? false;
@@ -306,7 +311,24 @@ export function ExportSheet(props: ExportSheetProps) {
             <dt>{TERMS.shortlist_size.label}</dt>
             <dd>{lengths}</dd>
             <dt>{TERMS.filters.label}</dt>
-            <dd>{method.sheet.filtersOff}</dd>
+            <dd data-region="export-filters">
+              {props.filters.prov === null && props.filters.loc === null ? (
+                method.sheet.filtersOff
+              ) : (
+                <>
+                  {props.filters.prov !== null ? (
+                    <span className={styles.filter}>{method.filter.chipProvince(props.filters.prov)}</span>
+                  ) : null}
+                  {props.filters.loc !== null ? (
+                    // The file cannot follow this filter. The sentence that says so is a copy request; until it lands
+                    // the filter shows here marked as not applied, and never as "None".
+                    <span className={styles.filter} data-filter-not-applied="">
+                      {method.filter.chipLocality(props.filters.loc)}
+                    </span>
+                  ) : null}
+                </>
+              )}
+            </dd>
           </dl>
           {pointTable}
         </section>

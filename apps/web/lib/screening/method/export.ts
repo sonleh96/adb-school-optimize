@@ -23,8 +23,18 @@ export interface TopListFile {
   readonly list: TopList;
 }
 
-export async function fetchTopList(rule: RuleId, k: number, signal?: AbortSignal): Promise<TopListFile> {
-  const read = await apiFetchFile(screeningUrl("/exports/top.csv", { rule, k: String(k) }), { signal });
+/**
+ * The top list of `rule` at length `k`. `province` cuts it as the screen's filter does; the API names the filter in
+ * the file's own record. The API has no remoteness filter, so the sheet says when one is on screen and not in the file.
+ */
+export async function fetchTopList(
+  rule: RuleId,
+  k: number,
+  province: string | null,
+  signal?: AbortSignal
+): Promise<TopListFile> {
+  const url = screeningUrl("/exports/top.csv", { rule, k: String(k), province: province ?? undefined });
+  const read = await apiFetchFile(url, { signal });
   const file = parseTopCsv(read.text);
   return {
     text: read.text,
@@ -35,11 +45,11 @@ export async function fetchTopList(rule: RuleId, k: number, signal?: AbortSignal
   };
 }
 
-/** The top list of `rule` at length `k`, or nothing while `enabled` is false. */
-export function useTopList(rule: RuleId | null, k: number, enabled: boolean) {
+/** The top list of `rule` at length `k`, cut to `province` when one is set, or nothing while `enabled` is false. */
+export function useTopList(rule: RuleId | null, k: number, province: string | null, enabled: boolean) {
   return useQuery({
-    queryKey: ["screening", "export", "top", rule, k],
-    queryFn: ({ signal }) => fetchTopList(rule as RuleId, k, signal),
+    queryKey: ["screening", "export", "top", rule, k, province],
+    queryFn: ({ signal }) => fetchTopList(rule as RuleId, k, province, signal),
     enabled: enabled && rule !== null,
     retry: (failures, error) => failures < 1 && ["server", "network"].includes(classifyFailure(error)),
     // A file carries the time it was made, so an open sheet keeps the file it showed.
