@@ -306,9 +306,10 @@ test("without the basemap the page says so, the marks still draw and a selection
 /**
  * The page asks for the expected default rule's list before the rules say which rule is the default. This holds
  * the rules back until the returned function releases them, refuses that speculative list (its one retry is
- * refused too), and answers the rules with `rulesDefault` as the default. It resolves once the page is holding.
+ * refused too), and answers the rules with `rulesDefault` as the default, without the main rule when `withoutMain`
+ * (an API that does not offer it). It resolves once the page is holding.
  */
-async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: string) {
+async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: string, withoutMain = false) {
   let release!: () => void;
   const rulesHeld = new Promise<void>((resolve) => (release = resolve));
   let speculativeRequests = 0;
@@ -319,7 +320,10 @@ async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: str
   await page.route("**/api/v1/screening/rules", async (route) => {
     await rulesHeld;
     const body = await (await route.fetch()).json();
-    await route.fulfill({ json: { ...body, default_rule_id: rulesDefault } });
+    const rules = withoutMain
+      ? body.rules.filter((rule: { rule_id: string }) => rule.rule_id !== MAIN_RULE)
+      : body.rules;
+    await route.fulfill({ json: { ...body, rules, default_rule_id: rulesDefault } });
   });
   await page.goto("/screening");
   // A failed list is retried once, so the failure is final after the second refusal.
@@ -331,11 +335,11 @@ async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: str
   return release;
 }
 
-test("a failed speculative list is not an error while the rules load, and the list loads when they name another default", async ({
+test("a failed speculative list is not an error while the rules load, and an API without the main rule opens its own default", async ({
   page,
   problems,
 }) => {
-  const release = await refuseSpeculativeListWhileRulesHeld(page, URGENCY_RULE);
+  const release = await refuseSpeculativeListWhileRulesHeld(page, URGENCY_RULE, true);
 
   release();
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames(URGENCY_RULE).length);
@@ -343,6 +347,28 @@ test("a failed speculative list is not an error while the rules load, and the li
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   // The two refused requests were expected; they are not problems.
   problems.length = 0;
+});
+
+test("an API that names another default still opens the main rule, so the screen and its words agree", async ({
+  page,
+}) => {
+  // An older API, whose default is the rule with urgency, and which offers the main rule as well.
+  await page.route("**/api/v1/screening/rules", async (route) => {
+    const body = await (await route.fetch()).json();
+    await route.fulfill({ json: { ...body, default_rule_id: URGENCY_RULE } });
+  });
+  await page.goto("/screening");
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames(MAIN_RULE).length);
+  expect(await listNames(page)).toEqual(orderedNames(MAIN_RULE));
+  await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-region=list-statement]")).toContainText(
+    "This one, the paper's main rule."
+  );
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule without urgency (S0)"
+  );
+  expect(new URL(page.url()).search).toBe("");
+  await waitForMap(page);
 });
 
 test("a failed speculative list shows its failure once the rules name the same default", async ({
