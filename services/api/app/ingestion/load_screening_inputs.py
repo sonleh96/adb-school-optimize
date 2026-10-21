@@ -388,9 +388,13 @@ def read_persistence_source(
             )
         rows.append((name, frequencies))
     derived = sum(store.is_persistent(f, PERSISTENCE_THRESHOLD) for _, f in rows)
-    if derived != receipt_count or len(receipt_flagged) != receipt_count:
+    if derived != receipt_count:
         raise ScreeningLoadError(
             f"persistence file flags {derived} schools but its receipt states {receipt_count}"
+        )
+    if len(receipt_flagged) != receipt_count:
+        raise ScreeningLoadError(
+            f"persistence receipt states {receipt_count} persistent schools but names {len(receipt_flagged)}"
         )
     draw_count = draws.pop()
     _check_threshold_adjacency(path.parent, rule_id, PERSISTENCE_THRESHOLD, draw_count, rows)
