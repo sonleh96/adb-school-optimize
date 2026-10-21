@@ -21,7 +21,7 @@ from screening_api_helpers import api_records, load_synthetic
 from screening_db_factories import (
     AWKWARD_NAMES as AWK,
 )
-from screening_db_factories import awkward_number_records, write_persistence_files
+from screening_db_factories import awkward_number_records, record, write_persistence_files
 from screening_db_helpers import load
 
 API = "/api/v1/screening"
@@ -92,12 +92,12 @@ def test_the_bulk_inputs_equal_the_per_school_detail_for_every_school(api, loade
 
     assert bulk["input_version"] == loaded.input_version
     assert len(bulk["schools"]) == len(loaded.records)
-    for school, record in zip(bulk["schools"], loaded.records, strict=True):  # in the order supplied
-        assert school["source_school_name"] == record.school_name
-        assert school["school_key"] == school_key(loaded.input_version, record.school_name)
+    for school, stored in zip(bulk["schools"], loaded.records, strict=True):  # in the order supplied
+        assert school["source_school_name"] == stored.school_name
+        assert school["school_key"] == school_key(loaded.input_version, stored.school_name)
         detail = fetch(api, f"{API}/schools/by-key/{quote(school['school_key'], safe='')}")
-        assert school["inputs"] == detail["inputs"], record.school_name
-        assert school["inputs"] == {f.name: getattr(record, f.name) for f in fields(record)}
+        assert school["inputs"] == detail["inputs"], stored.school_name
+        assert school["inputs"] == {f.name: getattr(stored, f.name) for f in fields(stored)}
         assert set(school) == {"school_key", "source_school_name", "inputs"}
 
 
@@ -295,6 +295,57 @@ def test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree
     # The comparison serves all three kinds: ranks, entrants and exits, the common cohort and interval bounds.
     compare_codes = {code for _, _, code in scope_pairs(bodies["compare"])}
     assert compare_codes == {"common_complete_cohort", "eligible"}
+
+
+def thirty_schools():
+    """Thirty complete schools whose order differs between rules enough to change the top 20."""
+    n = 30
+    return tuple(
+        record(
+            f"Compare School {i:02d}",
+            permanent_classrooms=float((i * 3) % 7),
+            teacher_houses=float((i * 5) % 6),
+            libraries=float(i % 2),
+            secondary_students_per_1000=30.0 + 17 * ((i * 7) % n),
+            progression_g10_corrected_pct=50.0 + (i * 11) % 45,
+            walking_catchment_population=100.0 * (1 + (i * 13) % n),
+            aqi_p95_selected=20.0 + 3 * ((i * 5) % n),
+            emissions_co2e_100yr_10km_tonnes=float(((i * 3) % n) ** 2),
+            water_flooded_vegetation_fraction_500m=round(0.02 * ((i * 7) % n) / 2, 2),
+            urgency_source_scalar=round(((i * 17) % n) / n, 3),
+        )
+        for i in range(n)
+    )
+
+
+def test_every_entrant_and_exit_of_a_comparison_carries_the_common_cohort_scope_code(
+    api, connection
+):  # API39
+    # With fewer than 20 schools in common every school is in both top lists and there are no entrants or exits, so a
+    # wrong code on them would go unseen. Thirty schools make the lists change.
+    load_synthetic(connection, thirty_schools())
+
+    body = fetch(api, f"{API}/compare", a=CIRCULATED, b="additive_no_u")
+
+    changes = [*body["entrants"], *body["exits"]]
+    assert len(body["entrants"]) == len(body["exits"]) > 0  # the precondition: the loop below is not empty
+    assert body["common_cohort_count"] == 30
+    for change in changes:
+        assert change["rank_scope_code"] == "common_complete_cohort", change["status"]
+        assert change["rank_scope"] == body["common_cohort_scope"]
+        assert label_of(change["rank_scope_code"], change["rank_scope"])
+        assert 1 <= change["rank_a"] <= 30 and 1 <= change["rank_b"] <= 30
+    assert {c["status"] for c in changes} == {"entrant", "exit"}
+    # The ranks of the whole common cohort carry the same code.
+    assert {r["rank_scope_code"] for r in body["ranks"]} == {"common_complete_cohort"}
+
+
+def test_a_wrong_scope_code_on_an_entrant_or_an_exit_is_caught_by_the_check():  # API39
+    # The check that the test above uses rejects the other two kinds of scope for a compared rank.
+    label = "common complete cohort of additive_u, additive_no_u (30)"
+    assert label_of("common_complete_cohort", label)
+    assert not label_of("complete_under_rule", label)
+    assert not label_of("eligible", label)
 
 
 def test_a_label_and_a_code_that_disagree_are_caught_by_the_check():  # API32
