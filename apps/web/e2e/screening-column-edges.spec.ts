@@ -11,6 +11,7 @@
  *     -> "while the rule just pressed loads..."
  *  6. A rule pressed and left before its list loaded becomes the one What changed compares with
  *     -> "a rule left before its list loaded..."
+ *  7. A control that removes itself on use drops focus on the page          -> "each column control that removes..."
  */
 import type { Page } from "@playwright/test";
 
@@ -26,6 +27,7 @@ import {
   openWorkspace,
   test,
   useMockDataset,
+  waitForMap,
 } from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
@@ -156,4 +158,37 @@ test("a rule left before its list loaded is not the one What changed compares wi
   const cancelled = `requestfailed: ${APP_ORIGIN}/api/v1/screening/results?rule=additive_no_u`;
   expect(problems.filter((p) => p !== cancelled)).toEqual([]);
   problems.length = 0;
+});
+
+test("each column control that removes itself on use hands focus to the rule's own control", async ({
+  page,
+  problems,
+}) => {
+  await openWorkspace(page);
+  const other = page.getByRole("button", { name: "Other rules (5)" });
+
+  await statement(page).getByRole("button", { name: LAYOUT.seeWithout }).press("Enter");
+  await expect(mainRule(page, RULE.proposed)).toBeFocused();
+
+  await changed(page).getByRole("button", { name: LAYOUT.hideComparison }).press("Enter");
+  await expect(changed(page)).toHaveCount(0);
+  await expect(mainRule(page, RULE.proposed)).toBeFocused();
+
+  await ruleLine(page).getByRole("button", { name: LAYOUT.backToMainRule }).press("Enter");
+  await expect(mainRule(page, RULE.main)).toBeFocused();
+
+  await mainRule(page, RULE.proposed).press("Enter");
+  await changed(page).getByRole("button", { name: LAYOUT.backToMainRule }).press("Enter");
+  await expect(changed(page)).toHaveCount(0);
+  await expect(mainRule(page, RULE.main)).toBeFocused();
+
+  await other.press("Enter");
+  await page
+    .locator("#screening-other-rules")
+    .getByRole("button", { name: new RegExp(`^${RULE.needFirst}`) })
+    .press("Enter");
+  await expect(page.locator("#screening-other-rules")).toHaveCount(0);
+  await expect(other).toBeFocused();
+  await waitForMap(page);
+  allowUncapturedComparisons(problems);
 });

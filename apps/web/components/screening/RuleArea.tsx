@@ -20,6 +20,20 @@ export function RuleSymbol({ symbol, className }: { symbol: string; className?: 
   );
 }
 
+/**
+ * Focus the control that names the rule on screen: its button in the switch, or Other rules when it is another rule.
+ * See what changes, Hide, the ways back and a choice in Other rules each remove themselves on use, so they hand focus
+ * here and a keyboard user is never dropped on the page. Runs after the change has rendered.
+ */
+export function focusRuleControl(within: HTMLElement | null) {
+  requestAnimationFrame(() => {
+    const target =
+      within?.querySelector<HTMLElement>("[data-region=rule-switch] [aria-pressed=true]") ??
+      within?.querySelector<HTMLElement>("[aria-controls=screening-other-rules]");
+    target?.focus({ preventScroll: true });
+  });
+}
+
 interface RuleAreaProps {
   copy: BoundCopy;
   rules: readonly RuleChoice[];
@@ -58,10 +72,11 @@ export function RuleArea(props: RuleAreaProps) {
   // While the rule just pressed loads, the rows on screen are the previous rule's, and so would be the statement or
   // the rule line beside the new button. Neither shows until the rows are the pressed rule's.
   const line = shown === requested ? shown : null;
+  const section = useRef<HTMLElement>(null);
   const { LAYOUT, TERMS } = copy;
 
   return (
-    <section className={styles.rule} data-region="rule-identity" aria-label={TERMS.rule.label}>
+    <section ref={section} className={styles.rule} data-region="rule-identity" aria-label={TERMS.rule.label}>
       <div className={styles.ruleTop}>
         <span className={styles.eyebrow}>{TERMS.rule.label}</span>
         {other.length > 0 ? (
@@ -95,7 +110,14 @@ export function RuleArea(props: RuleAreaProps) {
       {line === DEFAULT_RULE && statement ? (
         <p className={styles.statement} data-region="list-statement">
           {statement}{" "}
-          <button type="button" className={styles.arrowLink} onClick={onSeeWithout}>
+          <button
+            type="button"
+            className={styles.arrowLink}
+            onClick={() => {
+              onSeeWithout();
+              focusRuleControl(section.current);
+            }}
+          >
             {LAYOUT.seeWithout}
             <ChevronRight size={11} aria-hidden />
           </button>
@@ -113,7 +135,14 @@ export function RuleArea(props: RuleAreaProps) {
           {comparing ? null : (
             <>
               {" "}
-              <button type="button" className={styles.arrowLink} onClick={onBack}>
+              <button
+                type="button"
+                className={styles.arrowLink}
+                onClick={() => {
+                  onBack();
+                  focusRuleControl(section.current);
+                }}
+              >
                 {LAYOUT.backToMainRule}
                 <ChevronRight size={11} aria-hidden />
               </button>
@@ -191,9 +220,11 @@ function OtherRules({ copy, main, other, requested, active, disabled, layer, onR
   }, [open]);
 
   const close = () => setOpen(null);
+  // The chosen item goes with the popover, so focus goes back to the button that opened it.
   const choose = (id: CopyRuleId) => {
     close();
     onRule(id);
+    button.current?.focus({ preventScroll: true });
   };
   const item = (r: RuleChoice) => (
     <li key={r.id}>

@@ -12,7 +12,7 @@ import type { ListView } from "@/lib/screening/workspace/state";
 
 import { COPY } from "./copy";
 import { Legend } from "./Legend";
-import { RuleArea } from "./RuleArea";
+import { RuleArea, focusRuleControl } from "./RuleArea";
 import { SchoolCard } from "./SchoolCard";
 import { IncompleteList, OrderedList } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
@@ -113,6 +113,15 @@ function Workspace() {
     list.current?.scrollTo({ top: 0 });
   };
   const backToMain = () => store.setState({ rule: null, compare: null });
+  // What changed's own controls remove it, so focus goes to the rule's control in the switch.
+  const hideComparison = () => {
+    store.setState({ compare: null });
+    focusRuleControl(root.current);
+  };
+  const backFromComparison = () => {
+    backToMain();
+    focusRuleControl(root.current);
+  };
 
   const padding = useMemo(
     () => ({ top: 80, bottom: 120, left: PANEL.column, right: selectedRow ? PANEL.card : 64 }),
@@ -234,8 +243,8 @@ function Workspace() {
                         failed={data.comparison.status === "failed" || data.comparison.status === "retrying"}
                         retrying={data.comparison.status === "retrying"}
                         onRetry={data.comparison.retry}
-                        onHide={() => store.setState({ compare: null })}
-                        onBack={backToMain}
+                        onHide={hideComparison}
+                        onBack={backFromComparison}
                       />
                     ) : null}
                     <header className={styles.listHead} data-region="scope">
