@@ -580,7 +580,9 @@ test("while the guide copy downloads, the rail, the page and the glossary say wh
     if (body.includes("What do you want to find out?")) await held;
     return route.fulfill({ response, body });
   });
-  await page.goto("/screening");
+  // Not the load event: when the held chunk starts before it, the load event waits for the release, which waits
+  // for the load event.
+  await page.goto("/screening", { waitUntil: "domcontentloaded" });
   await waitForMap(page);
   await expect(rail(page).getByRole("status")).toHaveText("Loading the guide");
   await expect(rail(page).locator("[aria-busy=true]")).toHaveCount(1);
