@@ -43,11 +43,6 @@ export interface ExportSheetProps {
 }
 
 /**
- * Download the top list: the first 10, 20 or 30 of the list under the rule on screen, previewed from the file the API
- * writes, with its method record, and downloaded as that same file. The plain sheet says it all in the copy system's
- * words; with the method details on it keeps the formula, the shares, the ids and the fingerprints.
- */
-/**
  * The source for a record row, whose label already says "Source". The copy's source line names itself ("Source: the
  * research paper ..."), so its own lead is left out here and the label is said once.
  */
@@ -56,6 +51,11 @@ function sourceValue({ TERMS, STRINGS }: BoundCopy): string {
   return capitalise(STRINGS.source.startsWith(lead) ? STRINGS.source.slice(lead.length) : STRINGS.source);
 }
 
+/**
+ * Download the top list: the first 10, 20 or 30 of the list under the rule on screen, previewed from the file the API
+ * writes, with its method record, and downloaded as that same file. The plain sheet says it all in the copy system's
+ * words; with the method details on it keeps the formula, the shares, the ids and the fingerprints.
+ */
 export function ExportSheet(props: ExportSheetProps) {
   const { copy, method, rule, n, schools, layer, onNotify } = props;
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
