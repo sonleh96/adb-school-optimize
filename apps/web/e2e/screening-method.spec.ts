@@ -20,6 +20,7 @@
  * 14. Compare mode's chart is a picture only: no keyboard or screen-reader way to each school's
  *     two places                                                                                -> "the chart has a table..."
  * 15. A chart line has its path only in CSS, which some browsers do not read                    -> "every chart line..."
+ * 16. The method layer's code fails to load and the switch does nothing, with no way on         -> "a failed load..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -353,4 +354,23 @@ test("every chart line carries its path as an attribute, for browsers that do no
   await expect(lines).toHaveCount(pair.ranks.length);
   for (const d of await lines.evaluateAll((paths) => paths.map((p) => p.getAttribute("d"))))
     expect(d).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
+});
+
+test("a failed load of the method layer says so and loads it again on Retry", async ({ context }) => {
+  // A page of its own: the refused scripts are this test's subject, not problems of the shared page.
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openWorkspace(page);
+  // Every script from now on fails, as on a dropped connection, so the method layer's code cannot load.
+  await page.route("**/_next/static/chunks/**", (route) => route.abort());
+  await methodSwitch(page).click();
+  const failure = page.getByRole("alert").filter({ hasText: "Some of the information did not load" });
+  await expect(failure).toBeVisible();
+  await page.unroute("**/_next/static/chunks/**");
+  await failure.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByRole("heading", { level: 2, name: "Combined factors, with urgency" })).toBeVisible();
+  // The refused scripts are expected failures; nothing else may go wrong on the page.
+  expect(errors).toEqual([]);
+  await page.close();
 });

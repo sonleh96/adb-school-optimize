@@ -28,6 +28,7 @@ import type { WorkspaceState } from "@/lib/screening/workspace/state";
 import type { WorkspaceStore } from "@/lib/screening/workspace/store";
 
 import type { RuleChoice } from "../useScreeningData";
+import base from "../screening.module.css";
 import styles from "./actions.module.css";
 import { MethodSwitch } from "./MethodSwitch";
 import { useMethod } from "./useMethod";
@@ -45,16 +46,24 @@ const loadLayer = once(() => import("./layer"));
 const loadCompare = once(() => import("../compare/layer"));
 const loadExport = once(() => import("../export/layer"));
 
-/** A chunk's exports, once `wanted` has held or `load` has been called (the switch pointed at, for one). */
+/**
+ * A chunk's exports, once `wanted` has held or `load` has been called (the switch pointed at, for one). `failed` holds
+ * after a load that did not arrive, until `load` tries again.
+ */
 function useChunk<T>(load: () => Promise<T>, wanted: boolean) {
   const [mod, setMod] = useState<T | null>(null);
+  const [failed, setFailed] = useState(false);
   const start = useCallback(() => {
-    void load().then(setMod, (error: unknown) => console.error(error));
+    setFailed(false);
+    void load().then(setMod, (error: unknown) => {
+      console.error(error);
+      setFailed(true);
+    });
   }, [load]);
   useEffect(() => {
-    if (wanted && !mod) start();
-  }, [wanted, mod, start]);
-  return { mod, load: start };
+    if (wanted && !mod && !failed) start();
+  }, [wanted, mod, failed, start]);
+  return { mod, failed, load: start };
 }
 
 /** Two rules in the rules' own order, the order the app asks the API for a comparison in. */
@@ -117,10 +126,10 @@ export function useMethodMounts(input: MountInput): Mounts {
   const { store, state, copy, rule, ready } = input;
   const comparing = state.mode === "compare";
   const exporting = state.panel === "export" && ready && rule !== null;
-  const { mod, load } = useChunk(loadLayer, state.analyst);
-  const { mod: compareMod } = useChunk(loadCompare, comparing);
-  const { mod: exportMod, load: loadSheet } = useChunk(loadExport, exporting);
-  const { method } = useMethod(copy, rule, state.analyst && ready);
+  const { mod, failed: layerFailed, load } = useChunk(loadLayer, state.analyst);
+  const { mod: compareMod, failed: compareFailed, load: loadComparison } = useChunk(loadCompare, comparing);
+  const { mod: exportMod, failed: exportFailed, load: loadSheet } = useChunk(loadExport, exporting);
+  const { method, failed: wordsFailed, retry: retryWords } = useMethod(copy, rule, state.analyst && ready);
   const on = state.analyst && ready && mod !== null && method !== null && rule !== null;
   const detail = useScreeningRules().data?.rules ?? null;
   // Held in state, not useRef: they go to the method chunk's builder as plain objects for its buttons to fill.
@@ -200,8 +209,32 @@ export function useMethodMounts(input: MountInput): Mounts {
       <Download size={15} aria-hidden />
     </button>
   );
+  // A chunk or the method words that did not load say so in the copy's words, with a Retry that asks again.
+  const failure = (retry: () => void, close?: () => void) => (
+    <div className={`${base.fullState} ${styles.failure}`} role="alert">
+      <p>{copy.LAYOUT.loadFailed}</p>
+      <button type="button" className={base.retryButton} onClick={retry}>
+        {copy.LAYOUT.retry}
+      </button>
+      {close ? (
+        <button type="button" className={base.retryButton} onClick={close}>
+          {copy.HELP.close}
+        </button>
+      ) : null}
+    </div>
+  );
+  const methodFailure =
+    state.analyst && ready && (layerFailed || wordsFailed)
+      ? failure(() => {
+          if (layerFailed) load();
+          if (wordsFailed) retryWords();
+        })
+      : null;
+
   const exportSheet =
-    exporting && exportMod && rule ? (
+    exporting && exportFailed ? (
+      <div className={styles.sheetFailure}>{failure(loadSheet, () => store.setState({ panel: null }))}</div>
+    ) : exporting && exportMod && rule ? (
       <exportMod.ExportSheet
         copy={copy}
         method={on ? method : null}
@@ -227,7 +260,7 @@ export function useMethodMounts(input: MountInput): Mounts {
     return {
       ...common,
       on: false,
-      ruleArea: null,
+      ruleArea: methodFailure,
       rankedList: null,
       compareColumn: null,
       legend: null,
@@ -246,7 +279,9 @@ export function useMethodMounts(input: MountInput): Mounts {
     filterButton,
     layersButton,
     compareColumn: ({ compared: data, names }) =>
-      compareMod && a && input.rules ? (
+      compareFailed ? (
+        failure(loadComparison)
+      ) : compareMod && a && input.rules ? (
         <compareMod.CompareColumn
           copy={copy}
           words={method}

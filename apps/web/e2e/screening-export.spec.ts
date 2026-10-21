@@ -13,6 +13,7 @@
  *  8. The file ignores the province filter on screen and the sheet says no filter is set; a filter the file cannot
  *     follow (remoteness) goes unmentioned                                                    -> "the method sheet follows..."
  *  9. The plain sheet copies or names its file in method words (a rule id, a hash, a formula)  -> "the plain sheet copies..."
+ * 10. The sheet's code fails to load and the button does nothing, with no way on               -> "a failed load of the sheet..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -268,4 +269,23 @@ test("the plain sheet copies its record in plain words, and the method sheet kee
     sheet(page).getByRole("button", { name: "Download the top list" }).click(),
   ]);
   expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_u.csv");
+});
+
+test("a failed load of the sheet's code says so and loads it again on Retry", async ({ context }) => {
+  // A page of its own: the refused scripts are this test's subject, not problems of the shared page.
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openWorkspace(page);
+  // Every script from now on fails, as on a dropped connection, so the sheet's code cannot load.
+  await page.route("**/_next/static/chunks/**", (route) => route.abort());
+  await page.getByRole("button", { name: "Download the top list" }).click();
+  const failure = page.getByRole("alert").filter({ hasText: "Some of the information did not load" });
+  await expect(failure).toBeVisible();
+  await page.unroute("**/_next/static/chunks/**");
+  await failure.getByRole("button", { name: "Retry" }).click();
+  await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
+  // The refused scripts are expected failures; nothing else may go wrong on the page.
+  expect(errors).toEqual([]);
+  await page.close();
 });
