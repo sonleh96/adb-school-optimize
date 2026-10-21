@@ -21,6 +21,8 @@
  *     two places                                                                                -> "the chart has a table..."
  * 15. A chart line has its path only in CSS, which some browsers do not read                    -> "every chart line..."
  * 16. The method layer's code fails to load and the switch does nothing, with no way on         -> "a failed load..."
+ * 17. Map layers sits apart from the guidance map bar, or widens it into the actions or the card
+ *     without the bar stepping down or keeping its icons only                                    -> "the map bar..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -146,6 +148,49 @@ test("map layers turn the place numbers off through the controller, and Escape h
   // Turning the method details off draws the plain map again; the choice waits in the link for their return.
   await methodSwitch(page).click();
   await expect(page.locator("[data-rank-label]")).toHaveCount(10);
+});
+
+test("the map bar holds Map layers, and steps down or keeps its icons rather than touch the actions or the card", async ({
+  page,
+}) => {
+  const school = ROWS.find((r) => r.cohort === "complete")!.school.school_key;
+  for (const width of [1600, 1440, 1280, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const link of ["?analyst=1", `?analyst=1&school=${school}`]) {
+      // A card that steps the list aside takes the column's heading with it, so wait for the map instead.
+      await page.goto(`/screening${link}`);
+      await waitForMap(page);
+      const bar = page.getByRole("toolbar", { name: "Guidance and map" });
+      await expect(bar.getByRole("button", { name: "Map layers" })).toBeVisible();
+      if (link.includes("school"))
+        await expect(card(page).locator("[data-region=inspector-place]")).toBeVisible();
+      await page.waitForFunction(() => document.getAnimations().length === 0);
+      const touching = await page.evaluate(() => {
+        const box = (selector: string) => {
+          const element = document.querySelector(selector);
+          const r = element?.getBoundingClientRect();
+          return r && r.width > 0 && getComputedStyle(element!).visibility !== "hidden" ? r : null;
+        };
+        const bar = box("[data-region=mapbar]")!;
+        const others = {
+          actions: box("[data-region=actions]"),
+          column: box("section[data-slot=column]:not([data-aside])"),
+          card: box("[data-slot=school-card]"),
+        };
+        return Object.entries(others)
+          .filter(
+            ([, r]) =>
+              r &&
+              bar.left < r.right - 1 &&
+              r.left < bar.right - 1 &&
+              bar.top < r.bottom - 1 &&
+              r.top < bar.bottom - 1
+          )
+          .map(([name]) => name);
+      });
+      expect(touching, `${width} ${link}`).toEqual([]);
+    }
+  }
 });
 
 const LEAD_20 =

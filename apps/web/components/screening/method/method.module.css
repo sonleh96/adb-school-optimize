@@ -462,58 +462,13 @@
   outline-offset: 2px;
 }
 
-/* ---------- the map bar's layers button; the zoom buttons step down under it ---------- */
-@media (min-width: 1024px) {
-  .methodRoot :global(.maplibregl-ctrl-top-left) {
-    top: 64px;
-  }
-}
-/* The narrow layout has no map bar; its menu, when it comes, holds the layers. */
-@media (max-width: 1023px) {
-  .mapBar.mapBar {
-    display: none;
-  }
-}
-.mapBar {
-  position: absolute;
-  top: var(--gap);
-  left: calc(var(--gap) + var(--col-w) + var(--gap));
-  z-index: 3;
-  display: flex;
-  gap: 2px;
-  padding: 4px;
-}
-[data-card-docked] .mapBar {
-  left: var(--gap);
-}
-.barButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 12px 0 10px;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  cursor: pointer;
-  white-space: nowrap;
-  font: 500 13px/1 var(--sans);
-  color: var(--ink);
-  transition:
-    background-color 150ms ease,
-    transform 160ms var(--ease-out);
-}
-.barButton:active {
-  transform: scale(0.97);
-}
-@media (hover: hover) and (pointer: fine) {
-  .barButton:hover {
-    background: rgba(21, 24, 29, 0.05);
-  }
-}
-.barButton[aria-expanded="true"] {
-  background: var(--navy-wash-2);
-  color: var(--navy);
+/* ---------- the rule before Map layers in the guidance map bar ---------- */
+.barSep {
+  flex: none;
+  width: 1px;
+  height: 22px;
+  margin: 0 6px;
+  background: var(--hair);
 }
 
 /* ---------- the key ---------- */
@@ -643,7 +598,6 @@
   .tile,
   .compareToggle,
   .backButton,
-  .barButton,
   .layerSwitch::after {
     transition: none;
   }

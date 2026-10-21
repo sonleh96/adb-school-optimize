@@ -27,6 +27,7 @@ import type { Layout } from "@/lib/screening/workspace/layout";
 import type { WorkspaceState } from "@/lib/screening/workspace/state";
 import type { WorkspaceStore } from "@/lib/screening/workspace/store";
 
+import type { MapBarClasses } from "../guide/GuidanceLayer";
 import type { RuleChoice } from "../useScreeningData";
 import base from "../screening.module.css";
 import styles from "./actions.module.css";
@@ -115,7 +116,8 @@ export interface Mounts {
   /** Compare mode's column, which replaces the rule, the tabs and the list. */
   compareColumn: ReactNode | null;
   legend: ReactNode | null;
-  mapBar: ReactNode | null;
+  /** Map layers, for the end of the guidance map bar. */
+  mapBar: ((classes: MapBarClasses) => ReactNode) | null;
   paint: MarkPaint;
   rootClassName: string;
   /** The card's method layer, given the school's whole record. */
