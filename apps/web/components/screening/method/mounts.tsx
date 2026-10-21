@@ -152,9 +152,10 @@ export function useMethodMounts(input: MountInput): Mounts {
             rows,
             filters: { prov: state.prov, loc: state.loc },
             compared: comparing ? compared : null,
+            edges: method.compare.moveEdges,
           })
         : NO_PAINT,
-    [on, mod, state.hide, state.prov, state.loc, rows, comparing, compared]
+    [on, mod, method, state.hide, state.prov, state.loc, rows, comparing, compared]
   );
 
   const methodSwitch = (

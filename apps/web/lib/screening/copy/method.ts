@@ -13,6 +13,7 @@ import { IDEAS } from "./ideas";
 import type { CopyRuleId, CountBag } from "./model";
 import { sharedSize } from "./rank";
 import { RULE_IDS, urgencyNote } from "./rules";
+import { type Segments, nameSegment, seg, textOf } from "./segments";
 import { STRINGS } from "./strings";
 import { TERMS } from "./terms";
 
@@ -48,6 +49,9 @@ const shareDenominator = (weights: Record<string, number | null | undefined>): n
     if (values.every((w) => Math.abs(w * d - Math.round(w * d)) < 1e-9)) return d;
   return null;
 };
+
+/** The sheet's title with the rule's name marked, so the page can set it in italics without reading markup. */
+const sheetTitle = (n: number, name: string): Segments => seg`First ${n}, ${nameSegment(name, "rule")}`;
 
 export function buildMethod(ctx: MethodContext = {}) {
   const c = ctx.counts || {};
@@ -146,6 +150,8 @@ export function buildMethod(ctx: MethodContext = {}) {
         [/\s+Secondary School$/i, " SS"],
         [/\s+Junior High$/i, " JH"],
       ] as const),
+      // The edges that sort a move into its bin (1 to a, a + 1 to b, more than b), which the key's labels use too.
+      moveEdges: MOVE_EDGES,
       moveBins: moveBinLabels,
     }),
     insp: Object.freeze({
@@ -225,11 +231,12 @@ export function buildMethod(ctx: MethodContext = {}) {
       allProvinces: "All provinces",
       allLocalities: "Any remoteness",
       chipProvince: (v: string) => `Province: ${v}`,
+      chipLocality: (v: string) => `${T.need_locality.label}: ${v}`,
       chipsAria: "Active filters",
       remove: (t: string) => `Remove ${t} filter`,
     }),
     sheet: Object.freeze({
-      title: (n: number, name: string) => `First ${n}, <em>${name}</em>`,
+      title: (n: number, name: string) => textOf(sheetTitle(n, name)),
       lede: (n: number, name: string, has124: boolean) =>
         `The first ${n} places in the list among ${completePhrase(c, reads)} under ${name}${has124 ? `, then the schools whose possible places reach the top ${n}` : ""}. ${T.export.line}`,
       ledeCompare: (name: string) => ` The workspace is comparing it with ${name}.`,
@@ -289,6 +296,10 @@ export function buildMethod(ctx: MethodContext = {}) {
     // A share written as a fraction of the whole number its rule's shares add to (12/19), not a typed 19.
     shareFraction: (n: number, total: number) => `${n}/${total}`,
     shareDenominator,
+    /** Sentences that name something, as segments; `textOf` of one is the string of the same name above. */
+    segments: Object.freeze({
+      sheetTitle: (n: number, name: string) => sheetTitle(n, name),
+    }),
   });
 }
 export const METHOD = buildMethod();

@@ -5,7 +5,7 @@ import { useRef } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
-import { type Compared, MOVE_EDGES } from "@/lib/screening/method/compare";
+import type { Compared } from "@/lib/screening/method/compare";
 import type { SchoolKey } from "@/lib/screening/types";
 import type { Patch, WorkspaceState } from "@/lib/screening/workspace/state";
 
@@ -263,7 +263,7 @@ export function CompareColumn(props: CompareColumnProps) {
             </div>
           ) : (
             <p className={base.state} role="status">
-              {copy.LAYOUT.loading}
+              {copy.LAYOUT.loadingComparison}
             </p>
           )
         ) : (
@@ -300,7 +300,7 @@ export function CompareColumn(props: CompareColumnProps) {
                 data={data}
                 names={names}
                 suffixes={words.compare.suffixes}
-                edges={MOVE_EDGES}
+                edges={words.compare.moveEdges}
                 breakLabel={words.compare.slopeBreak(data.k, data.n)}
                 label={words.compare.slopeAria}
                 selected={props.selected}

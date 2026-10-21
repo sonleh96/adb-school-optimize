@@ -9,8 +9,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { MOVE_EDGES as COPY_EDGES } from "@/lib/screening/copy/method";
-import { MOVE_EDGES, compareFor, moveStep, topStatus } from "@/lib/screening/method/compare";
+import { copyFor } from "@/lib/screening/copy";
+import { compareFor, moveStep, topStatus } from "@/lib/screening/method/compare";
 import { parseWith } from "@/lib/screening/schema";
 import { type CompareResponse, type RuleId, compareResponse } from "@/lib/screening/types";
 
@@ -67,6 +67,11 @@ describe("compareFor", () => {
   });
 });
 
+async function edgesFromCopy() {
+  const method = await copyFor({}).methodFor("additive_u");
+  return { edges: method.compare.moveEdges, labels: method.compare.moveBins(method.compare.moveEdges) };
+}
+
 describe("moveStep and topStatus", () => {
   it.each([
     [0, 0],
@@ -77,12 +82,28 @@ describe("moveStep and topStatus", () => {
     [-1, -1],
     [-5, -2],
     [-30, -3],
-  ])("puts a move of %i places in bin %i (4)", (d, bin) => {
-    expect(moveStep(d, [4, 14])).toBe(bin);
+  ])("puts a move of %i places in bin %i (4)", async (d, bin) => {
+    // The edges are the copy's, the same ones that word the key's bins; the page does not restate them.
+    const { edges } = await edgesFromCopy();
+    expect(moveStep(d, edges)).toBe(bin);
   });
 
-  it("sorts moves by the same edges the copy words the key's bins with (4)", () => {
-    expect(MOVE_EDGES).toEqual(COPY_EDGES);
+  it("sorts each move into the bin whose label the key shows, using the edges the copy hands out", async () => {
+    const { edges, labels } = await edgesFromCopy();
+    const label = (d: number) => labels[3 + moveStep(d, edges)];
+    expect([0, 1, 4, 5, 14, 15, -1, -4, -5, -14, -15].map(label)).toEqual([
+      "0",
+      "1 to 4",
+      "1 to 4",
+      "5 to 14",
+      "5 to 14",
+      "15+",
+      "1 to 4",
+      "1 to 4",
+      "5 to 14",
+      "5 to 14",
+      "15+",
+    ]);
   });
 
   it("says whether a school joins, leaves or stays in the top k", () => {

@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 
-import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
+import { type BoundCopy, type CopyRuleId, type ListedSchool, isName } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { recordText, saveFile, useTopList } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
@@ -17,25 +17,7 @@ import base from "../screening.module.css";
 import styles from "./export.module.css";
 
 const f3 = (value: number) => value.toFixed(3);
-const SENTINEL = "\u0000";
 const LENGTHS: readonly TopLength[] = [10, 20, 30];
-
-/**
- * A copy string that sets part of itself in italics with `<em>` around a name, rendered without writing HTML: the
- * string is built around a placeholder, its `<em>` pair becomes an element, and the name goes back in as text.
- */
-function Emphasised({ build, name }: { build: (name: string) => string; name: string }) {
-  const text = build(SENTINEL);
-  const parts = text.split(/<em>|<\/em>/);
-  return (
-    <>
-      {parts.map((part, index) => {
-        const words = part.split(SENTINEL).join(name);
-        return index % 2 === 1 ? <em key={index}>{words}</em> : <span key={index}>{words}</span>;
-      })}
-    </>
-  );
-}
 
 export interface ExportSheetProps {
   copy: BoundCopy;
@@ -139,7 +121,7 @@ export function ExportSheet(props: ExportSheetProps) {
           <th className={styles.num} scope="col">
             {TERMS.rank.label}
           </th>
-          {plain ? <td /> : <th scope="col">{method.sheet.school}</th>}
+          <th scope="col">{plain ? LAYOUT.schoolHead : method.sheet.school}</th>
           {plain ? null : <th scope="col">{LAYOUT.byProvince}</th>}
           <th className={styles.num} scope="col">
             {scoreHead}
@@ -186,7 +168,7 @@ export function ExportSheet(props: ExportSheetProps) {
             <th className={styles.num} scope="col">
               {plain ? TERMS.rank_range.label : method.sheet.rangeH}
             </th>
-            {plain ? <td /> : <th scope="col">{method.sheet.school}</th>}
+            <th scope="col">{plain ? LAYOUT.schoolHead : method.sheet.school}</th>
             <th scope="col">{plain ? TERMS.air_quality.label : method.sheet.missingH}</th>
             <th className={styles.num} scope="col">
               {scoreHead}
@@ -284,7 +266,7 @@ export function ExportSheet(props: ExportSheetProps) {
   if (read.isPending)
     body = (
       <p className={base.state} role="status">
-        {LAYOUT.loading}
+        {LAYOUT.loadingTopList}
       </p>
     );
   else if (read.isError || !list)
@@ -376,11 +358,13 @@ export function ExportSheet(props: ExportSheetProps) {
               </Dialog.Close>
             </div>
             <Dialog.Title className={styles.title}>
-              {plain ? (
-                LAYOUT.listTitle(n, copy.ruleName(rule))
-              ) : (
-                <Emphasised build={(name) => method.sheet.title(n, name)} name={copy.ruleShortName(rule)} />
-              )}
+              {plain
+                ? LAYOUT.listTitle(n, copy.ruleName(rule))
+                : method.segments
+                    .sheetTitle(n, copy.ruleShortName(rule))
+                    .map((part, index) =>
+                      isName(part) ? <em key={index}>{part.name}</em> : <span key={index}>{part}</span>
+                    )}
             </Dialog.Title>
             <Dialog.Description id="screening-export-lede" className={styles.lede}>
               {plain

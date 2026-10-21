@@ -105,6 +105,11 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.legend.sub": [[10], [3]],
   "METHOD.layers.items.numerals": [[10], [3]],
   "METHOD.filter.chipProvince": [["Highlands"]],
+  "METHOD.filter.chipLocality": [["Remote"]],
+  "METHOD.segments.sheetTitle": [
+    [20, "Combined"],
+    [10, "J"],
+  ],
   "METHOD.filter.remove": [["Province: Highlands"]],
   "METHOD.sheet.title": [[20, "the benchmark"]],
   "METHOD.sheet.lede": [

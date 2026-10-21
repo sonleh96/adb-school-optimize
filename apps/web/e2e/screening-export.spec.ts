@@ -190,3 +190,36 @@ test("a failed read says so in the sheet and offers Retry", async ({ page, conte
   ).toBe(true);
   problems.length = 0;
 });
+
+test("while the file loads the sheet says so, and the plain table heads its school column", async ({
+  page,
+}) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/exports\/top\.csv/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await openWithSheet(page, "?panel=export");
+  await expect(sheet(page).getByRole("status")).toHaveText("Loading the top list");
+  release();
+  await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
+  await expect(
+    sheet(page).locator("[data-region=export-table] thead").getByRole("columnheader", { name: "School" })
+  ).toBeVisible();
+});
+
+test("while a comparison loads the column says so", async ({ page }) => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  // The pair the statement already read loads with the list; another pair is read when the column asks.
+  await page.route(/\/api\/v1\/screening\/compare\?.*need_first_u/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/screening?analyst=1&mode=compare&rule=need_first_u&compare=additive_u");
+  await waitForMap(page);
+  await expect(page.getByRole("status").filter({ hasText: "Loading the comparison" })).toBeVisible();
+  release();
+  await expect(page.locator("[data-region=slope-chart]")).toBeVisible();
+});

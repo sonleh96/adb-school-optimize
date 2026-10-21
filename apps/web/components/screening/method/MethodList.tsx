@@ -231,7 +231,7 @@ export function MethodListHead({
   const { TERMS } = copy;
   const chips = [
     filters.prov !== null ? (["prov", method.filter.chipProvince(filters.prov)] as const) : null,
-    filters.loc !== null ? (["loc", `${TERMS.need_locality.label}: ${filters.loc}`] as const) : null,
+    filters.loc !== null ? (["loc", method.filter.chipLocality(filters.loc)] as const) : null,
   ].filter((chip) => chip !== null);
   const active = chips.length;
   return (
