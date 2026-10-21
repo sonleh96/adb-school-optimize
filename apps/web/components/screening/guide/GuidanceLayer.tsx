@@ -208,11 +208,16 @@ function MapBar({
     if (!element || !root) return;
     // What the bar holds may have changed, so its full width is measured again before the check.
     element.removeAttribute("data-bar-tight");
+    element.removeAttribute("data-bar-icons");
     const check = () => {
       if (!element.hasAttribute("data-bar-tight")) full.current = element.offsetWidth;
-      const top = root.getBoundingClientRect().top;
+      const box = root.getBoundingClientRect();
+      const top = box.top;
       const left = element.getBoundingClientRect().left;
       const right = left + full.current + 8;
+      // Even a row down, the bar with its names would pass the window's edge (a wide column beside the rail): every
+      // button keeps only its icon, as in the compact layout.
+      const icons = right > box.right - GAP;
       const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
       const shown = !!actions && actions.width > 0;
       // A row down, the bar meets the card, or the hint that holds the card's place.
@@ -223,8 +228,9 @@ function MapBar({
       const squeeze = stack && below.some((box) => right > box.left);
       for (const node of [element, root]) {
         node.toggleAttribute("data-bar-stack", stack);
-        node.toggleAttribute("data-bar-tight", squeeze || data.mode === "compact");
+        node.toggleAttribute("data-bar-tight", squeeze || icons || data.mode === "compact");
       }
+      element.toggleAttribute("data-bar-icons", icons);
       // One row of actions ends 50 px down, so the stepped-down bar and the hint sit at 64 px, as specified; a second
       // row of actions moves both down with it.
       const underActions = shown ? Math.round(actions.bottom - top) + BELOW_ACTIONS : HINT_TOP;
@@ -249,7 +255,9 @@ function MapBar({
       frame = requestAnimationFrame(check);
     });
     observer.observe(root);
-    // The actions wrap to a second row, and the hint rewraps, without the root changing size.
+    // The bar widens on its own ("Explaining this screen" in help mode), the actions wrap to a second row, and the
+    // hint rewraps, all without the root changing size.
+    observer.observe(element);
     for (const selector of ['[data-region="actions"]', '[data-region="slot-hint"]']) {
       const part = root.querySelector(selector);
       if (part) observer.observe(part);
