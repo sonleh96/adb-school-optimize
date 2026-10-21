@@ -138,6 +138,7 @@ The files and schools are invented.
 | `test_a_file_that_does_not_hash_to_the_expected_value_is_refused` | PE8 |
 | `test_a_flag_column_that_disagrees_with_the_frequencies_is_refused` | PE9 |
 | `test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused` | PE10 |
+| `test_a_receipt_whose_list_is_longer_than_its_count_says_so_and_does_not_blame_the_flags` | PE10 |
 | `test_a_receipt_that_names_other_schools_than_the_file_flags_is_refused_by_count` | PE20 |
 | `test_a_receipt_may_spell_a_name_differently_when_it_normalises_alike` | PE20 |
 | `test_a_receipt_that_lists_a_school_the_version_does_not_have_is_refused` | PE20 |

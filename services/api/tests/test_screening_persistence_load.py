@@ -82,6 +82,10 @@ def source(reference: Path, frequencies=FREQUENCIES, **kwargs):
     return read_persistence_source(reference, relative, "additive_u")
 
 
+def _pin(reference: Path, relative: str) -> str:
+    return hashlib.sha256((reference / relative).read_bytes()).hexdigest()
+
+
 def source_no_u(reference: Path, frequencies=FREQUENCIES_NO_U, **kwargs):
     """The urgency-omitted experiment's files, read for the rule that leaves urgency out."""
     relative = write_persistence_files(reference, frequencies, urgency_omitted=True, **kwargs)
@@ -315,6 +319,20 @@ def test_a_receipt_without_the_list_of_names_is_refused(reference):  # PE20
 
     with pytest.raises(ScreeningLoadError, match="persistent_investigation_candidates"):
         read_persistence_source(reference, relative, "additive_u")
+
+
+def test_a_receipt_whose_list_is_longer_than_its_count_says_so_and_does_not_blame_the_flags(
+    reference,
+):  # PE10
+    # The file flags 2 schools and the receipt counts 2, but names 3: the message must be about the list.
+    names = ["Leading Space School", "Trailing Space School", "Interval No Air"]
+    relative = write_persistence_files(reference, FREQUENCIES, receipt_names=names)
+
+    with pytest.raises(ScreeningLoadError) as error:
+        read_persistence_source(reference, relative, "additive_u", _pin(reference, relative))
+
+    assert "receipt states 2 persistent schools but names 3" in str(error.value)
+    assert "flags 2 schools but" not in str(error.value)
 
 
 def test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused(reference):  # PE10
