@@ -39,6 +39,8 @@ const SEARCHES = [
   "?guide=off",
   "?guide=q3&gstep=2",
   "?guide=q2&gstep=1&present=1",
+  "?guide=views&gstep=2&present=1",
+  "?guide=views&gstep=1",
   "?guide=start&present=1",
   "?guide=q9",
   "?school=k1&help=1",
