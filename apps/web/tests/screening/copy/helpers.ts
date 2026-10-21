@@ -127,7 +127,14 @@ export function addFixedCopy(corpus: Corpus, P: FixedCopy, tag: string): void {
     corpus.add(`${tag} TERMS.${k}.help`, t.help);
   }
   for (const [k, v] of Object.entries(P.STRINGS)) {
-    corpus.add(`${tag} STRINGS.${k}`, v, { sentence: !LABEL_STRINGS.has(k), plain: !ANALYST_STRINGS.has(k) });
+    // A string kept for each rule is checked under its own name.
+    for (const [name, text] of typeof v === "string"
+      ? [[k, v]]
+      : Object.entries(v).map(([r, t]) => [`${k}.${r}`, t]))
+      corpus.add(`${tag} STRINGS.${name}`, text, {
+        sentence: !LABEL_STRINGS.has(k),
+        plain: !ANALYST_STRINGS.has(k),
+      });
   }
   for (const [k, v] of Object.entries(P.IDEAS)) {
     corpus.add(`${tag} IDEAS.${k}.title`, v.title, { sentence: false });
@@ -151,6 +158,34 @@ export const RULES: readonly CopyRuleId[] = RULE_IDS;
 
 export const fixtureResults = (rule: string, upper = false): ResultsResponse =>
   parseWith(resultsResponse, readFixture(`results/${rule}${upper ? ".upper" : ""}.json`), `results/${rule}`);
+
+/**
+ * A saved list with the persistence keys of one rule's stochastic test set, for a rule whose saved list has none: the
+ * schools named in `flagged` are flagged (and adjacent where `adjacent` says so), every other school is not, and the
+ * block carries `standardError` (or none). The saved responses hold the test for one rule only; the API now holds it
+ * for two, each from its own experiment.
+ */
+export function listWithFlags(
+  rule: string,
+  flagged: Readonly<Record<string, { adjacent?: boolean }>>,
+  standardError: number | null
+): ResultsResponse {
+  const body = structuredClone(readFixture(`results/${rule}.json`)) as {
+    persistence?: unknown;
+    rows: {
+      school: { source_school_name: string };
+      persistent_candidate?: boolean;
+      threshold_adjacent?: boolean;
+    }[];
+  };
+  for (const row of body.rows) {
+    const f = flagged[row.school.source_school_name];
+    row.persistent_candidate = !!f;
+    row.threshold_adjacent = f?.adjacent === true;
+  }
+  body.persistence = standardError === null ? null : { standard_error: standardError };
+  return parseWith(resultsResponse, body, `results/${rule}`);
+}
 
 export const fixtureDetail = (key: string): SchoolDetailResponse =>
   parseWith(schoolDetailResponse, readFixture(`schools/${key}.json`), `schools/${key}`);

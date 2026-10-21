@@ -145,7 +145,7 @@ describe("the worked example in How this works", () => {
   it("names the group of each rule when they differ", async () => {
     const text = (await example(byRule)) as string;
     expect(text).toContain(
-      "possible places among all the schools that can be put in order under each rule move from"
+      "possible places among all the schools that can be put in order under each rule are"
     );
     expect(textProblems(text)).toEqual([]);
   });
@@ -155,7 +155,7 @@ describe("the worked example in How this works", () => {
       additive_u: byRule.additive_u,
       additive_no_u: byRule.additive_u,
     })) as string;
-    expect(same).toContain("possible places among all 21 schools that can be put in order move from");
+    expect(same).toContain("possible places among all 21 schools that can be put in order are");
   });
 });
 

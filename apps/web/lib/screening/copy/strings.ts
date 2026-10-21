@@ -19,7 +19,7 @@ import {
   urgencyDefinition,
   type Reads,
 } from "./counts";
-import type { CountBag } from "./model";
+import type { CountBag, PersistenceRule } from "./model";
 
 /* ------------------------------------------------------ the persistence flag */
 
@@ -31,9 +31,21 @@ function marginPoints(se: number | undefined): number | null {
 }
 
 /**
+ * What the flag means under each rule the stochastic test ran for, in one sentence each. Each rule has its own
+ * experiment: neither is read as the other's result, and the rule without urgency is not a re-labelled copy of the
+ * circulated one.
+ */
+export const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object.freeze({
+  additive_no_u:
+    "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.",
+  additive_u:
+    "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.",
+});
+
+/**
  * A flagged school whose lowest frequency is within one standard error of the line, in one sentence. The margin is
- * the test's standard error from the circulated list's provenance block, as a fraction; without it the sentence
- * states no number.
+ * the test's standard error from the provenance block of the list of the rule it was run for, as a fraction;
+ * without it the sentence states no number.
  */
 export function persistentNearLine(standardError?: number): string {
   const pts = marginPoints(standardError);
@@ -121,11 +133,9 @@ export function buildStrings(c: CountBag = {}) {
     cannotWorkOut: "Cannot be worked out",
     noResult: "No result",
     scoreNote: "Each input runs from 0 to 1; higher means more reason to look.",
-    persistentFlag:
-      "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.",
+    persistentFlag: PERSISTENT_FLAG,
     defaultRuleNote:
-      "The screen opens on the paper's main rule, the combined-factors rule with urgency (S). The proposed revision, the combined-factors rule without urgency (S0), is one click away.",
-    proposedPending: "Proposed revision. Awaiting the research team's review.",
+      "The screen opens on the paper's main rule, the combined-factors rule without urgency (S0). The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is one click away as a sensitivity check.",
     source: SOURCE_LINE,
     schoolNeedDefinition: SCHOOL_NEED_DEFINITION,
     airQualityDefinition: AIR_DEFINITION,

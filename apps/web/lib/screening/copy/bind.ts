@@ -12,7 +12,9 @@
 import { ParseError } from "../schema";
 import type { CompareResponse, InputsResponse, ResultsResponse } from "../types";
 
+import { countsFrom } from "./counts";
 import {
+  PERSISTENCE_RULES,
   countsByRuleFromResults,
   countsFromResults,
   pairwiseFromCompare,
@@ -30,7 +32,8 @@ export interface CopyResponses {
   readonly inputs: InputsResponse;
   /**
    * The unfiltered list of every rule the screen compares, and of the shown rule. Include both combined-factors
-   * lists for the reasons that name what each input adds, and the circulated rule's for the persistence flag.
+   * lists for the reasons that name what each input adds, and the list of each rule the stochastic test ran for
+   * (`additive_no_u`, `additive_u`) for its persistence flag.
    */
   readonly lists: readonly ResultsResponse[];
   /** The recorded comparison of the two rules the screen compares, if it shows one. */
@@ -51,14 +54,27 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
     if (!isCopyRuleId(l.run.rule_id))
       throw new ParseError(`lists: the copy has no words for the rule ${JSON.stringify(l.run.rule_id)}`);
   const schools = schoolsFromLists(inputs, lists, view);
-  const circulated = lists.find((l) => l.run.rule_id === "additive_u");
+  // Each rule the stochastic test ran for has its own margin, from its own list.
+  const standardErrors = Object.fromEntries(
+    lists.flatMap((l) => {
+      const se = standardErrorFromResults(l);
+      return se === undefined ? [] : [[l.run.rule_id, se]];
+    })
+  );
+  // The group sizes of every rule's own run, and for each rule the stochastic test ran for, how many schools its own
+  // test flags (when every school has a flag under it), so each rule's help states its own count.
+  const countsByRule = countsByRuleFromResults(...lists);
+  for (const id of PERSISTENCE_RULES) {
+    if (countsByRule[id] && schools.length > 0 && schools.every((s) => s.persistence?.[id] !== undefined))
+      countsByRule[id] = { ...countsByRule[id], flagged: countsFrom(schools, id).flagged as number };
+  }
   return {
     schools,
     copy: copyFor({
       schools,
       counts: countsFromResults(shown, schools),
-      countsByRule: countsByRuleFromResults(...lists),
-      standardError: circulated ? standardErrorFromResults(circulated) : undefined,
+      countsByRule,
+      standardErrors,
       ...(compare ? pairwiseFromCompare(compare) : {}),
     }),
   };

@@ -9,6 +9,9 @@
  *  2. A string names a group size that belongs to a rule other than the one shown.
  *  3. A string says one group is the same under every rule, or that places can be compared across rules because of it.
  *  4. A definition of the whole method is worded with the numbers of whichever rule was bound.
+ *  5. Somewhere on the surface (the guides and the glossary included) the rule without urgency is still called
+ *     proposed or awaiting review, the stochastic test is still said not to have been redone for it, or the
+ *     circulated rule with urgency is still called the paper's main rule.
  * The lists are the API's own saved responses; the sets differ by rule.
  */
 import { describe, expect, it } from "vitest";
@@ -63,7 +66,32 @@ async function bind(rule: copy.CopyRuleId) {
     P.listStartsSentence(undefined, rule),
   ];
   const neutral = [P.TERMS, P.STRINGS, P.IDEAS, P.LAYOUT, later.HOW_IT_WORKS, later.FIRST_QUESTIONS];
-  return { scoped: [...strings(scoped), ...method], neutral: strings(neutral), method, P, schools };
+  // Everything a person can read about the rules and the paper, the guides and the glossary's terms included.
+  const about = [
+    neutral,
+    later.GUIDE,
+    later.GLOSSARY_GROUPS,
+    P.defaultListStatement(),
+    P.defaultListStatementLong(),
+    P.urgencyReassurance(),
+    P.comparisonSentence("additive_no_u", "additive_u"),
+    RULES.flatMap((r) => [
+      P.ruleRole(r),
+      P.ruleSource(r),
+      P.ruleRoleLine(r),
+      P.ruleRelation(r),
+      P.ruleExplanation(r),
+      P.termsFor(r),
+    ]),
+  ];
+  return {
+    scoped: [...strings(scoped), ...method],
+    neutral: strings(neutral),
+    about: [...strings(about), ...method],
+    method,
+    P,
+    schools,
+  };
 }
 
 describe.each(RULES)("bound under %s", (rule) => {
@@ -73,6 +101,17 @@ describe.each(RULES)("bound under %s", (rule) => {
     const { scoped } = await surface;
     if (readsAll(rule)) return;
     expect(scoped.filter((t) => /every input recorded|All of its inputs are recorded/.test(t))).toEqual([]);
+  });
+
+  it("never calls the rule without urgency proposed or pending, nor the circulated rule the main rule", async () => {
+    const { about } = await surface;
+    const stale =
+      /proposed|pending|awaiting|not yet reviewed|has not been redone|research team is reviewing|paper's main rule only|main rule in the research paper as circulated/i;
+    expect(about.filter((t) => stale.test(t))).toEqual([]);
+    // The only rule the surface calls the main rule is the one without urgency.
+    expect(
+      about.filter((t) => /(?:main rule|main one)[^.]*combined-factors rule with urgency \(S\)/i.test(t))
+    ).toEqual([]);
   });
 
   it("names a complete group only by the size a rule that reads every input gives it", async () => {

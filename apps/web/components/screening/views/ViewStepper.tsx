@@ -174,7 +174,10 @@ export function ViewStepper({
             </div>
             {step.dropped.length > 0 ? (
               <p className={styles.drift} data-region="view-dropped">
-                {LAYOUT.viewPartMissing(step.dropped)}
+                {LAYOUT.viewPartMissing(
+                  step.dropped,
+                  typeof step.patch.place === "string" ? step.patch.place : null
+                )}
               </p>
             ) : null}
             <p className={styles.onScreen}>

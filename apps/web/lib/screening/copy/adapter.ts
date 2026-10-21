@@ -47,6 +47,8 @@ import type {
   NeedField,
   NeedParts,
   PairwiseRow,
+  PersistenceFlag,
+  PersistenceRule,
   PlacedSchool,
   RecordedContribution,
   RecordedRule,
@@ -238,11 +240,17 @@ function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[
   ];
 }
 
-/** What the experiment says about a school, for the circulated rule only. Absent where the rule has no such list. */
-interface Circulated {
+/** What a rule's stochastic test says about a school. Absent where the rule has no such test. */
+interface Flags {
   readonly persistent_candidate?: boolean | null;
   readonly threshold_adjacent?: boolean | null;
 }
+type FlagsByRule = Partial<Record<PersistenceRule, Flags | undefined>>;
+
+/** The rules the paper's stochastic test ran for. Their lists and details are the ones that carry its flags. */
+export const PERSISTENCE_RULES: readonly PersistenceRule[] = ["additive_no_u", "additive_u"];
+const isPersistenceRule = (id: string): id is PersistenceRule =>
+  (PERSISTENCE_RULES as readonly string[]).includes(id);
 
 /** One school's whole record from its identity, stored inputs and result under every rule that has one. */
 function buildSchool(
@@ -250,7 +258,7 @@ function buildSchool(
   inputs: Inputs,
   view: CopyRuleId,
   entries: ReadonlyMap<CopyRuleId, DetailResult>,
-  circulated: Circulated | undefined,
+  flags: FlagsByRule,
   missingView: string
 ): CopySchool {
   const shown = entries.get(view);
@@ -294,6 +302,16 @@ function buildSchool(
   const { N, A, R, Q, E, L } = shown.components;
   const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
 
+  const persistence: { -readonly [K in PersistenceRule]?: PersistenceFlag } = {};
+  for (const id of PERSISTENCE_RULES) {
+    const f = flags[id];
+    if (f && f.persistent_candidate !== undefined)
+      persistence[id] = {
+        persistent: f.persistent_candidate === true,
+        adjacent: f.threshold_adjacent === true,
+      };
+  }
+
   const needParts: NeedParts = shown.need_parts;
   return {
     id: identity.school_key,
@@ -314,14 +332,9 @@ function buildSchool(
     results,
     contributions,
     ...(unreadable.length ? { unreadable } : {}),
-    // Only a list that carries the experiment's keys says anything about the flag. Without them the flag is not
-    // false for every school, it is unknown, so the record leaves it out.
-    ...(circulated && circulated.persistent_candidate !== undefined
-      ? {
-          persistent_candidate_circulated: circulated.persistent_candidate === true,
-          threshold_adjacent_circulated: circulated.threshold_adjacent === true,
-        }
-      : {}),
+    // Only a list that carries a rule's keys says anything about that rule's flag. Without them the flag is not
+    // false for every school, it is unknown, so the record leaves that rule out.
+    ...(Object.keys(persistence).length ? { persistence } : {}),
   };
 }
 
@@ -331,19 +344,20 @@ function buildSchool(
  */
 export function schoolFromDetail(detail: SchoolDetailResponse, view: CopyRuleId): CopySchool {
   const entries = new Map<CopyRuleId, DetailResult>();
-  let circulated: Circulated | undefined;
+  const flags: FlagsByRule = {};
   for (const entry of detail.rules) {
     if (!isCopyRuleId(entry.rule.rule_id)) continue;
     entries.set(entry.rule.rule_id, entry.result);
-    // Only the circulated rule's entry has the persistence keys.
-    if (entry.rule.rule_id === "additive_u" && "persistent_candidate" in entry) circulated = entry;
+    // Only an entry of a rule the stochastic test ran for has the persistence keys.
+    const id: string = entry.rule.rule_id;
+    if (isPersistenceRule(id) && "persistent_candidate" in entry) flags[id] = entry;
   }
   return buildSchool(
     detail.school,
     detail.inputs,
     view,
     entries,
-    circulated,
+    flags,
     `rules: the school has no result under ${view}`
   );
 }
@@ -354,8 +368,8 @@ export function schoolFromDetail(detail: SchoolDetailResponse, view: CopyRuleId)
  * Every school of a list with its whole record, in the list's order: the rows of the rule shown, the bulk stored
  * inputs, and the other rules' lists. Pass the list of each rule the screen compares (unfiltered, so a school's
  * place under it is there), the two combined-factors lists for the reasons that name what each input adds, and the
- * circulated rule's list for the persistence flag. A school missing from one of those lists simply has no result
- * under that rule. `inputs` must be of the same input version as the lists.
+ * list of each rule the stochastic test ran for (`additive_no_u`, `additive_u`) for its flag. A school missing from
+ * one of those lists simply has no result under that rule. `inputs` must be of the same input version as the lists.
  */
 export function schoolsFromLists(
   inputs: InputsResponse,
@@ -373,7 +387,6 @@ export function schoolsFromLists(
   const shown = lists.find((l) => viewRuleOf(l) === view);
   if (!shown) throw new ParseError(`lists: there is no list for ${view}`);
   const stored = new Map(inputs.schools.map((s) => [s.school_key as string, s.inputs]));
-  const circulatedRows = rowsOf.get("additive_u");
   return shown.rows.map((row) => {
     const key = row.school.school_key;
     const own = stored.get(key);
@@ -383,13 +396,14 @@ export function schoolsFromLists(
       const r = rows.get(key);
       if (r) entries.set(id, r);
     }
-    const circ = circulatedRows?.get(key);
+    const flags: FlagsByRule = {};
+    for (const id of PERSISTENCE_RULES) flags[id] = rowsOf.get(id)?.get(key);
     return buildSchool(
       row.school,
       own,
       view,
       entries,
-      circ,
+      flags,
       `lists: the school ${key} has no row under ${view}`
     );
   });
@@ -446,8 +460,8 @@ export function placedFromResults(first: ResultsResponse, ...others: ResultsResp
  *  - how many schools have no air-quality reading, and how many have an urgency value of 0, come from the rows and
  *    only when the list is unfiltered and (for urgency) the rule gives the value;
  *  - how many have no nearby emissions, how many records give only a remoteness category, and how many carry the
- *    circulated candidate flag need the whole records of every school (`schools`, from `schoolsFromLists`), and are
- *    left out without them, with a filtered list, or (for the flag) without the circulated rule's list.
+ *    rule's own persistence flag need the whole records of every school (`schools`, from `schoolsFromLists`), and
+ *    are left out without them, with a filtered list, or (for the flag) under a rule the stochastic test did not run for.
  * Counts belong to the run: they describe the rule shown. The group sizes of other rules are
  * `countsByRuleFromResults`.
  */
@@ -470,10 +484,13 @@ export function countsFromResults(response: ResultsResponse, schools?: readonly 
       out.urgencyZero = rows.filter((r) => r.components.U === 0).length;
     }
     if (schools && schools.length === rows.length) {
-      const c = countsFrom(schools);
+      const shown = viewRuleOf(response);
+      const test = isPersistenceRule(shown) ? shown : undefined;
+      const c = countsFrom(schools, test);
       out.emissionsNone = c.emissionsNone;
       out.remotenessOnly = c.remotenessOnly;
-      if (schools.every((s) => s.persistent_candidate_circulated !== undefined)) out.flagged = c.flagged;
+      if (test && schools.every((s) => s.persistence?.[test] !== undefined))
+        out.flagged = c.flagged as number;
     }
   }
   return out;
@@ -490,11 +507,11 @@ export function countsByRuleFromResults(
 }
 
 /**
- * The persistence test's standard error as a fraction, from the circulated list's provenance block, for
- * `copyFor`'s `standardError`. Nothing when the list is not the circulated rule's or the version has no such numbers.
+ * The persistence test's standard error as a fraction, from the provenance block of a list of a rule the test ran
+ * for, for `copyFor`'s `standardErrors`. Nothing when the list is another rule's or has no such numbers.
  */
 export function standardErrorFromResults(response: ResultsResponse): number | undefined {
-  return viewRuleOf(response) === "additive_u"
+  return isPersistenceRule(viewRuleOf(response))
     ? (response.persistence?.standard_error ?? undefined)
     : undefined;
 }

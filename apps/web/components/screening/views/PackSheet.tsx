@@ -157,7 +157,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
               </span>
               {lost(view).length > 0 ? (
                 <span className={styles.packLost} data-region="view-dropped">
-                  {LAYOUT.viewPartMissing(lost(view))}
+                  {LAYOUT.viewPartMissing(lost(view), states[i].place)}
                 </span>
               ) : null}
             </li>
@@ -214,7 +214,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                     <Sentence segments={shows} />
                     {lost(view).length > 0 ? (
                       <span className={styles.packLost} data-region="view-dropped">
-                        {LAYOUT.viewPartMissing(lost(view))}
+                        {LAYOUT.viewPartMissing(lost(view), states[i].place)}
                       </span>
                     ) : null}
                   </td>

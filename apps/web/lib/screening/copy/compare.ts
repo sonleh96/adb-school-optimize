@@ -169,42 +169,45 @@ export const comparisonSentence = (
   opts: { top?: number } = {}
 ): string => textOf(comparisonSegments(ruleA, ruleB, data, opts));
 
-// Answers "what changes without urgency?" from the recorded comparison of the two combined-factors rules.
-// data: { pairwise }.
+// Answers "what did leaving urgency out change?" from the recorded comparison of the two combined-factors rules. The
+// main rule leaves urgency out and the circulated rule puts it back, so it reads the same from either side: how many
+// of the top stay, and how far a school moves when the urgency value is put back. data: { pairwise }.
 export function urgencyReassurance(data: ComparisonData): string {
-  const row = findPair(data.pairwise, "additive_u", "additive_no_u");
+  const row = findPair(data.pairwise, "additive_no_u", "additive_u");
   if (!row) return "No recorded comparison exists for the combined-factors rules with and without urgency.";
   const most = row.maximum_absolute_rank_shift;
   const rc = data.schools ? countsFrom(data.schools) : null;
   return [
     `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency value"))}`,
-    `Leaving it out changes the order in the list, and the largest move for any school is ${most} ${plural(most, "place", "places")}.`,
-    `For ${rangePhrase(rc)}, leaving it out can still move ${theirScore(rc)} possible places.`,
+    `Putting it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "place", "places")}.`,
+    `For ${rangePhrase(rc)}, putting it back can still move ${theirScore(rc)} possible places.`,
   ].join(" ");
 }
 
-// Which list to use, short, for the rule area: a question, the answer, and the agreement. data: { pairwise }.
+// Which list to use, short, for the rule area: a question, the answer, why urgency is left out, and the agreement
+// with the rule that puts it back. data: { pairwise }.
 export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): string {
-  const row = findPair(data.pairwise, "additive_u", "additive_no_u");
-  const lead = "Which list should I use? This one, the paper's main rule, until the research team decides.";
+  const row = findPair(data.pairwise, "additive_no_u", "additive_u");
+  const lead =
+    "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards.";
   if (!row) return lead;
   const n = pairSize(row);
   const among =
     n != null
       ? `among the ${formatCount(n)} with every input recorded`
       : "among the schools with every input recorded";
-  if (n != null && n <= 20) return `${lead} Leaving urgency out keeps the same schools at the top ${among}.`;
+  if (n != null && n <= 20) return `${lead} Putting it back keeps the same schools at the top ${among}.`;
   if (row.top20_overlap !== 20)
-    return `${lead} Leaving urgency out keeps ${row.top20_overlap} of the top 20 ${among}.`;
+    return `${lead} Putting it back keeps ${row.top20_overlap} of the top 20 ${among}.`;
   const larger = ([30, 40] as const).filter((k) => overlapAt(row, k) === k);
   const tail = larger.length ? ` and top ${Math.max(...larger)}` : "";
-  return `${lead} Leaving urgency out keeps the same top 20${tail} ${among}.`;
+  return `${lead} Putting it back keeps the same top 20${tail} ${among}.`;
 }
 
 // The long form, for a help card or disclosure. data: { pairwise }.
 export function defaultListStatementLong(data: Pick<ComparisonData, "pairwise">): string {
-  const row = findPair(data.pairwise, "additive_u", "additive_no_u");
-  const lead = `This list uses the paper's main rule, ${rule("additive_u").name}. Use it until the research team decides on the proposed revision, ${rule("additive_no_u").name}.`;
+  const row = findPair(data.pairwise, "additive_no_u", "additive_u");
+  const lead = `This list uses the paper's main rule, ${rule("additive_no_u").name}. It leaves out the urgency value, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, ${rule("additive_u").name}, is kept beside it as a sensitivity check.`;
   if (!row) return lead;
   return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both"))}`;
 }

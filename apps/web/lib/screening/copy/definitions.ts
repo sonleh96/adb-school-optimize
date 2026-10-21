@@ -13,7 +13,7 @@ export const SIX_FACILITIES =
 // Wording kept in one place: no source in the project confirms this is an official national scale.
 export const REMOTENESS_SCALE = "a six-step remoteness scale from highly accessible to extremely remote";
 export const SOURCE_LINE =
-  'Source: the research paper "Comparing approaches to screening existing school locations in Papua New Guinea", circulated on 12 October 2026.';
+  'Source: the revised research paper "Comparing school inspection screening approaches under incomplete evidence in Papua New Guinea", which makes the rule without urgency its main rule.';
 /** The six categories the study's remoteness scale holds, as the engine reads them (lower case). */
 export const REMOTENESS_CATEGORIES: readonly string[] = [
   "highly accessible",

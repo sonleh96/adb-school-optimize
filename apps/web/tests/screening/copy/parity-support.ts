@@ -49,7 +49,14 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.savedToast": [[3]],
   "LAYOUT.removeView": [["Top of the list"], ["J"]],
   "LAYOUT.viewsFull": [[50]],
-  "LAYOUT.viewPartMissing": [[["rule", "school", "hover"]], [["prov"]], [["compare", "loc"]]],
+  "LAYOUT.viewPartMissing": [
+    [["rule", "school", "hover"]],
+    [["prov"]],
+    [["compare", "loc"]],
+    [["school"], "upper"],
+    [["rule"], "lower"],
+  ],
+  "LAYOUT.partAdds": [["Remoteness"], ["Classrooms not of permanent materials"]],
   "METHOD.list.wasUnder": [["14th", "the benchmark"]],
   "METHOD.list.rankUnder": [["the benchmark", 9]],
   "METHOD.samePlaceUnder": [["the benchmark"]],
@@ -106,6 +113,8 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.insp.addsBetween": [["0.10", "0.20"]],
   "METHOD.insp.across": [[], [7], [3]],
   "METHOD.insp.noSplitBoth": [["the benchmark"]],
+  "METHOD.insp.persistent": [["additive_no_u"], ["additive_u"]],
+  "METHOD.insp.largestRow": [[["School need"]], [["School need", "District context"]], [[]]],
   "METHOD.insp.times": [["12/19"]],
   "METHOD.insp.partRecorded": [["Teacher housing"]],
   "METHOD.legend.title": [["the benchmark"]],
@@ -375,11 +384,30 @@ export const withLargestRecords = (s: any): any => {
   return { ...s, contributions: { ...s.contributions, ...Object.fromEntries(added) } };
 };
 
+/**
+ * The design records carry the circulated test's flag (`persistent_candidate_circulated`, `threshold_adjacent_circulated`)
+ * and nothing for the revised rule, whose test the design never ran. The port holds a flag per rule, so each record
+ * gets the circulated flag as the circulated rule's and, to exercise the revised rule's words and its absence of
+ * adjacent schools, a made-up flag for the revised rule that depends only on the school's id.
+ */
+export const withPersistence = (s: any): any => {
+  const { persistent_candidate_circulated: persistent, threshold_adjacent_circulated: adjacent, ...rest } = s;
+  if (persistent === undefined) return rest;
+  const h = [...String(s.id)].reduce((total, ch) => total + ch.charCodeAt(0), 0);
+  return {
+    ...rest,
+    persistence: {
+      additive_u: { persistent: persistent === true, adjacent: adjacent === true },
+      additive_no_u: { persistent: h % 3 === 0, adjacent: false },
+    },
+  };
+};
+
 export function loadDatasets(): Dataset[] {
   return DATASET_DIRS.map(([name, dir]) => ({
     name,
     data: {
-      schools: read(`${dir}/schools.json`).schools.map(withLargestRecords),
+      schools: read(`${dir}/schools.json`).schools.map(withLargestRecords).map(withPersistence),
       pairwise: read(`${dir}/pairwise.json`),
       top20Changes: read(`${dir}/top20_changes.json`),
     },

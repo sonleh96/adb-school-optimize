@@ -67,6 +67,7 @@ export {
 export {
   DEFAULT_RULE,
   isCopyRuleId,
+  PRIMARY_RULE,
   PROPOSED_RULE,
   RULE_IDS,
   ruleExplanation,
@@ -81,6 +82,7 @@ export {
   ruleSource,
   ruleSymbol,
   ruleUsesUrgency,
+  SENSITIVITY_RULE,
   shareSentence,
   urgencyNote,
   type FactorKey,
