@@ -192,6 +192,9 @@ export function useShareableUrlState() {
 
   const replaceState = useCallback(
     (patch: UrlStatePatch) => {
+      // A page writes only its own address. Right after a navigation the old page can still run a timer or an
+      // effect, and replaceState would then put its address over the new page's.
+      if (window.location.pathname !== pathname) return;
       const currentSearch = new URLSearchParams(latestSearchRef.current);
       const search = serializeUrlState(currentSearch, patch);
       latestSearchRef.current = search;
