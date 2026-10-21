@@ -10,6 +10,8 @@
  *  6. A long name pushes the table past the sheet, or a number wraps (R3)                      -> "the tables keep..."
  *  7. The button works before the schools are on screen, or a failed read leaves an empty sheet with no way on
  *                                                                                              -> "with no schools...", "a failed read..."
+ *  8. The file ignores the province filter on screen and the sheet says no filter is set; a filter the file cannot
+ *     follow (remoteness) goes unmentioned                                                    -> "the method sheet follows..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -222,4 +224,21 @@ test("while a comparison loads the column says so", async ({ page }) => {
   await expect(page.getByRole("status").filter({ hasText: "Loading the comparison" })).toBeVisible();
   release();
   await expect(page.locator("[data-region=slope-chart]")).toBeVisible();
+});
+
+test("the method sheet follows the province on screen, and says when a filter is not applied to the file", async ({
+  page,
+}) => {
+  await openWithSheet(page, "?analyst=1&prov=South+Province&panel=export");
+  const south = lines("exports/top_additive_u_20_south.csv").filter((l) => l.startsWith("point,")).length;
+  await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(south);
+  await expect(sheet(page).locator("[data-region=export-filters]")).toContainText("Province: South Province");
+  await expect(sheet(page).locator("[data-region=export-filters]")).not.toContainText("None.");
+  await expect(sheet(page).locator("[data-filter-not-applied]")).toHaveCount(0);
+
+  await page.goto("/screening?analyst=1&loc=Remote&panel=export");
+  await waitForMap(page);
+  const filters = sheet(page).locator("[data-region=export-filters]");
+  await expect(filters).not.toContainText("None.");
+  await expect(filters.locator("[data-filter-not-applied]")).toContainText("Remote");
 });

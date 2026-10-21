@@ -172,6 +172,8 @@ class Dataset:
     top_lists: tuple[tuple[str, int], ...] = ((CIRCULATED_RULE, 20),)
     # Every pair of rules compared, not only the circulated rule against each other: compare mode can pick any two.
     every_pair: bool = False
+    # Top lists cut by a province, as (rule, length, province, file suffix): the export follows the screen's filter.
+    filtered_top_lists: tuple[tuple[str, int, str, str], ...] = ()
 
 
 def main_records() -> tuple[SchoolRecord, ...]:
@@ -375,6 +377,7 @@ def datasets() -> tuple[Dataset, ...]:
             without_coordinates=WITHOUT_COORDINATES,
             top_lists=tuple((rule_id, k) for rule_id in RULES for k in TOP_LENGTHS),
             every_pair=True,
+            filtered_top_lists=((CIRCULATED_RULE, 20, "South Province", "south"),),
         ),
         Dataset(
             name="worst-names",
@@ -531,6 +534,14 @@ def capture_top_lists(cap: Capture, ds: Dataset) -> None:
     """The top list's CSV, with its method record, for each (rule, length) the dataset names."""
     for rule_id, k in ds.top_lists:
         cap.get_file(f"{API}/exports/top.csv", f"exports/top_{rule_id}_{k}.csv", rule=rule_id, k=str(k))
+    for rule_id, k, province, suffix in ds.filtered_top_lists:
+        cap.get_file(
+            f"{API}/exports/top.csv",
+            f"exports/top_{rule_id}_{k}_{suffix}.csv",
+            rule=rule_id,
+            k=str(k),
+            province=province,
+        )
 
 
 def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
