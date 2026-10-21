@@ -345,11 +345,11 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   if (school.cohort === "complete")
     return all
       ? ["All of its inputs are recorded."]
-      : ["All of the inputs this rule reads are recorded.", ...notRead()];
+      : ["All of the inputs this rule uses are recorded.", ...notRead()];
   if (school.cohort === "interval")
     return [
       `${missingReadingsClause(school)}.`,
-      all ? "Every other input is recorded." : "Every other input this rule reads is recorded.",
+      all ? "Every other input is recorded." : "Every other input this rule uses is recorded.",
       ...notRead(),
     ];
   const parts: string[] = [];

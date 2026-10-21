@@ -200,7 +200,7 @@ describe("one school under two rules", () => {
   it("gives a place under the rule that has one for a school held back under the other", () => {
     const q = { ...school({ id: "q", cohort: "queue" }), results: { benchmark: { rank_complete120: 7 } } };
     expect(P.rangeComparisonSentence(q, "additive_u", "benchmark")).toBe(
-      "Under the conventional benchmark (B), School q is 7th among the 16 schools with every input the rule reads recorded. It cannot be put in order under the combined-factors rule with urgency (S) yet, because its record is incomplete."
+      "Under the conventional benchmark (B), School q is 7th among the 16 schools with a record for every input the rule uses. It cannot be put in order under the combined-factors rule with urgency (S) yet, because its record is incomplete."
     );
   });
 });
@@ -314,7 +314,7 @@ describe("one school under two rules, whatever its group under each", () => {
       "interval"
     );
     expect(P.rangeComparisonSentence(r, "additive_u", "benchmark")).toBe(
-      `Under ${S}, School r could be anywhere from 12th to 18th among the 21 schools that can be put in order. Under ${B}, it is 9th among the 16 schools with every input the rule reads recorded.`
+      `Under ${S}, School r could be anywhere from 12th to 18th among the 21 schools that can be put in order. Under ${B}, it is 9th among the 16 schools with a record for every input the rule uses.`
     );
   });
 
@@ -349,7 +349,7 @@ describe("one school under two rules, whatever its group under each", () => {
       },
     });
     expect(differ.rangeComparisonSentence(a, "additive_u", "additive_no_u")).toBe(
-      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. Under ${S0}, it is 5th among the 17 schools with every input the rule reads recorded.`
+      `Under ${S}, School a is 3rd among the 16 schools with every input recorded. Under ${S0}, it is 5th among the 17 schools with a record for every input the rule uses.`
     );
     const equal = copy.copyFor({
       counts: { complete: 16, range: 5, ranked: 21 },

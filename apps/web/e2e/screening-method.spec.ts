@@ -110,7 +110,7 @@ test("the card's method layer states the API's place, screening score, shares an
   await methodRow(page, "Sample School 08").click();
   const c = card(page);
   await expect(c.locator("[data-region=inspector-place]")).toContainText(
-    "1Place in the listunder combined factors, without urgency, among the 17 schools with every input the rule reads recorded"
+    "1Place in the listunder combined factors, without urgency, among the 17 schools with a record for every input the rule uses"
   );
   await expect(c).toContainText("Screening score0.708");
   const breakdown = c.locator("[data-region=inspector-breakdown]");

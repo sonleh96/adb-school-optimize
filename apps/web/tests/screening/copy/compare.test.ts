@@ -522,7 +522,7 @@ describe("read from the main rule's side", () => {
       countsByRule: { additive_no_u: { complete: 17 }, additive_u: { complete: 16 } },
     });
     expect(P.rangeComparisonSentence(s, S0, S)).toBe(
-      "Under the combined-factors rule without urgency (S0), Palm is 4th among the 17 schools with every input the rule reads recorded. Under the combined-factors rule with urgency (S), it is 6th among the 16 schools with every input recorded."
+      "Under the combined-factors rule without urgency (S0), Palm is 4th among the 17 schools with a record for every input the rule uses. Under the combined-factors rule with urgency (S), it is 6th among the 16 schools with every input recorded."
     );
   });
 });

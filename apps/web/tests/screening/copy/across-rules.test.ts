@@ -63,7 +63,7 @@ describe("a school held back under the rule shown, from the list route", () => {
     expect(place).toBeGreaterThan(0);
     const text = P.rangeComparisonSentence(s23 as never, "additive_u", "additive_no_u");
     expect(text).toBe(
-      `Under ${S0}, Sample School 23 is ${copy.ordinal(place as number)} among the 17 schools with every input the rule reads recorded. It cannot be put in order under ${S} yet, because its record is incomplete.`
+      `Under ${S0}, Sample School 23 is ${copy.ordinal(place as number)} among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because its record is incomplete.`
     );
     expect(text).not.toMatch(/any rule/);
     expect(textProblems(text)).toEqual([]);
@@ -100,7 +100,7 @@ describe("a school held back under the rule shown, from the detail route", () =>
   it("says where the other rule puts it", () => {
     const P = copy.copyFor({ counts: { complete: 16 }, countsByRule: { additive_no_u: { complete: 17 } } });
     expect(P.rangeComparisonSentence(s, "additive_u", "additive_no_u")).toBe(
-      `Under ${S0}, Sample School 08 is 1st among the 17 schools with every input the rule reads recorded. It cannot be put in order under ${S} yet, because its record is incomplete.`
+      `Under ${S0}, Sample School 08 is 1st among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because its record is incomplete.`
     );
   });
 });
@@ -117,13 +117,13 @@ describe("a complete school under two rules whose groups differ", () => {
 
   it("names the group of each rule, not the group of the rule shown", () => {
     expect(P.rangeComparisonSentence(s08 as never, "additive_u", "benchmark")).toBe(
-      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the 21 schools with every input the rule reads recorded.`
+      `Under ${S}, Sample School 08 is 1st among the 16 schools with every input recorded. Under ${B}, it is 4th among the 21 schools with a record for every input the rule uses.`
     );
   });
 
   it("names the group of the rule a sentence is about when it is not the rule shown", () => {
     const sentence = P.rankSentence(s08 as never, "benchmark");
-    expect(sentence).toMatch(/^4th of the 21 schools with every input the rule reads recorded/);
+    expect(sentence).toMatch(/^4th of the 21 schools with a record for every input the rule uses/);
   });
 
   it("without the groups of each rule says what it can: one group for both", () => {
