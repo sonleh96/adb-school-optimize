@@ -63,8 +63,9 @@ async function holdList(page: Page, rule: string) {
 test("a URL that says nothing but defaults and junk is tidied, keeping the keys other layers own", async ({
   page,
 }) => {
-  await openWorkspace(page, "?view=bogus&rule=additive_u&scope=0&qgroup=zzz&guide=q1");
-  await expect.poll(() => search(page)).toBe("?guide=q1");
+  // `guide=start` stands for a key another layer owns; that layer writes it back as it is.
+  await openWorkspace(page, "?view=bogus&rule=additive_u&scope=0&qgroup=zzz&guide=start");
+  await expect.poll(() => search(page)).toBe("?guide=start");
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 });
 

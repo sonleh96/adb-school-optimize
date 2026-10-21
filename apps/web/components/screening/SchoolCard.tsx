@@ -117,9 +117,11 @@ export function SchoolCard(props: CardProps) {
     scroll.current?.scrollTo({ top: 0 });
   }, [listed.id]);
   // When the list steps aside for the card, the row that had focus goes with it, so the card takes focus: on its
-  // heading, so the school's name is read first. Focus already in the card (its previous or next) stays where it is.
+  // heading, so the school's name is read first. Focus already in the card (its previous or next) stays where it is,
+  // and so does focus in a guidance layer: a guide step that opened the card keeps its own title focused.
   useEffect(() => {
     if (!docked || card.current?.contains(document.activeElement)) return;
+    if (document.activeElement?.closest("[data-guidance]")) return;
     heading.current?.focus({ preventScroll: true });
   }, [docked, listed.id]);
 

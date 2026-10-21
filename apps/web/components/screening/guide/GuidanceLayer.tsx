@@ -119,6 +119,7 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
         <div
           className={styles.rail}
           data-testid="guide-rail"
+          data-guidance=""
           data-present={(state.present && state.rail.kind === "step" && data.mode !== "narrow") || undefined}
           data-step={state.rail.kind === "step" || undefined}
         >
