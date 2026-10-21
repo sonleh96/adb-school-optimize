@@ -391,6 +391,25 @@ test("a failed download of a layer's own code says so, and Retry loads it again"
   );
 });
 
+test("Page Down and Page Up stay with How this works and the glossary while either is open", async ({
+  page,
+}) => {
+  await ready(page, "?guide=q1&gstep=2&page=how");
+  const main = page.getByRole("main", { name: "How this works" });
+  await expect(main.locator("section h2")).toHaveCount(6);
+  await page.keyboard.press("PageDown");
+  await expect(main).toBeVisible();
+  expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });
+  await page.getByRole("button", { name: "Back to the map" }).click();
+  await expect(main).toHaveCount(0);
+  await page.getByRole("toolbar").getByRole("button", { name: "Glossary of terms" }).click();
+  const drawer = page.getByRole("complementary", { name: "Glossary of terms" });
+  await drawer.getByRole("button", { name: "Place in the list", exact: true }).click();
+  await page.keyboard.press("PageUp");
+  await expect(drawer).toBeVisible();
+  expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });
+});
+
 test("with no schools the guides cannot be started", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");
   await page.goto("/screening");

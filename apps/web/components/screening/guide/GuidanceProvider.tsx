@@ -4,7 +4,7 @@
  * The guidance layers' context: the guide rail, the How this works page, help mode and the glossary share one store
  * (lib/screening/guide/store.ts). The provider reads the URL and the person's memory before the first paint, so a
  * first visit paints with the rail open and a returning visit with it closed, and it owns the layers' keys:
- * Page Down and Page Up step a guide, `?` explains the screen, `g` opens the glossary, and Escape closes the
+ * Page Down and Page Up step a guide (except while the page or the glossary is open), `?` explains the screen, `g` opens the glossary, and Escape closes the
  * innermost layer (the help card, then the glossary, then help mode, then the page) before the workspace sees it.
  */
 import {
@@ -100,7 +100,9 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
         return take();
       }
       if (typing(event.target)) return;
-      if ((event.key === "PageDown" || event.key === "PageUp") && state.rail.kind === "step") {
+      // Page Down and Page Up step a guide, unless How this works or the glossary is open: they scroll those.
+      const reading = state.page !== null || state.gloss.open;
+      if ((event.key === "PageDown" || event.key === "PageUp") && state.rail.kind === "step" && !reading) {
         take();
         store.dispatch({ type: event.key === "PageDown" ? "pageDown" : "pageUp" });
         return;
