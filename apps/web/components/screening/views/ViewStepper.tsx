@@ -148,7 +148,13 @@ export function ViewStepper({
       <div className={styles.railBody}>
         {step ? (
           <>
-            <h2 ref={title} className={styles.stepTitle} tabIndex={-1} data-testid="guide-step-title">
+            <h2
+              ref={title}
+              className={styles.stepTitle}
+              dir="auto"
+              tabIndex={-1}
+              data-testid="guide-step-title"
+            >
               <Sentence segments={step.title} />
             </h2>
             <div className={styles.stepBody} data-testid="guide-step-body">
