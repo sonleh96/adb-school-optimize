@@ -107,7 +107,8 @@ def test_the_csv_rebuilds_the_list_from_its_declared_keys(api, loaded, rule_id):
         for r in sorted((r for r in engine.results if r.rank_point), key=lambda r: r.rank_point)
     ]
     for row in listed:
-        assert float(row["score_point"]) == by_name[row["source_school_name"]].score_point  # full precision
+        # Twelve places (R20), enough that rebuilding by these keys gives the engine's order above.
+        assert float(row["score_point"]) == round(by_name[row["source_school_name"]].score_point, 12)
 
 
 def test_k_cuts_the_list_at_a_point_rank_and_a_name_tie_is_broken_by_code_point(api, connection):  # API7
@@ -130,24 +131,23 @@ def test_names_are_exported_byte_for_byte(api, loaded):  # API12
     )  # both accent forms survive
 
 
-def test_values_are_written_in_full_precision(api, loaded):  # API12
+def test_values_are_the_engine_s_to_twelve_places(api, loaded):  # API12, R20
     for rule_id in ("additive_u", "bottleneck_u", "need_first_no_u"):
         _, rows = top(api, rule=rule_id, k=50)
         engine = {r.school_name: r for r in loaded.runs[rule_id].results}
         for row in point_rows(rows):
             result = engine[row["source_school_name"]]
             for component in "NARQEL":
-                assert float(row[component]) == getattr(result.components, component)
+                assert float(row[component]) == round(getattr(result.components, component), 12)
             for c in result.contributions:
-                assert float(row[f"contribution_{c.component.value}_lower"]) == c.lower
-                assert float(row[f"contribution_{c.component.value}_upper"]) == c.upper
+                assert float(row[f"contribution_{c.component.value}_lower"]) == round(c.lower, 12)
+                assert float(row[f"contribution_{c.component.value}_upper"]) == round(c.upper, 12)
             if result.maximum:
-                assert float(row["maximum_term"]) == result.maximum.contribution
+                assert float(row["maximum_term"]) == round(result.maximum.contribution, 12)
                 assert row["maximum_attained_by"] == ";".join(c.value for c in result.maximum.attained_by)
-            assert (
-                float(row["score_lower"]) == result.score_lower
-                and float(row["score_upper"]) == result.score_upper
-            )
+            assert float(row["score_lower"]) == round(result.score_lower, 12) and float(
+                row["score_upper"]
+            ) == round(result.score_upper, 12)
 
 
 def test_unknown_values_are_empty_cells_never_zero(api, loaded):  # API12
@@ -159,6 +159,100 @@ def test_unknown_values_are_empty_cells_never_zero(api, loaded):  # API12
     assert (
         float(air["contribution_Q_lower"]) == 0.0 and float(air["contribution_Q_upper"]) == 0.05
     )  # bounds, not a guess
+
+
+# ---------------------------------------------------------------------------------------------
+# Numbers: up to 12 decimal places, trailing zeros removed, no float noise (R20).
+# ---------------------------------------------------------------------------------------------
+
+NUMBER = re.compile(r"-?\d+(\.\d{0,11}[1-9])?")
+NUMERIC_COLUMN = re.compile(
+    r"[NAURQEL]|sort_key_primary|contribution_\w+|need_part_contribution_\w+|maximum_(component|term)"
+    r"|score_(lower|upper|point)|latitude|longitude|rank_(point|best|worst)"
+)
+
+
+def cell(rows, name: str, column: str) -> str:
+    return next(r for r in rows if r["source_school_name"] == name)[column]
+
+
+def numbers(rows) -> list[str]:
+    return [text for row in rows for column, text in row.items() if text and NUMERIC_COLUMN.fullmatch(column)]
+
+
+def xlsx_numbers(content: bytes) -> list[str]:
+    """The numbers as the workbook stores them: the text of every value that is not a string."""
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        xml = archive.read("xl/worksheets/sheet2.xml").decode()
+    return re.findall(r'<c r="[A-Z]+\d+"(?: s="\d+")? t="n"><v>([^<]*)</v></c>', xml)
+
+
+def test_a_value_with_float_noise_is_written_clean(api, loaded):  # R20
+    _, rows = top(api, rule="additive_u", k=50)
+
+    # The engine's floats are 0.5650000000000001, 0.7150000000000001 and 0.0025000000000000005.
+    assert cell(rows, " Leading Space School", "A") == "0.565"
+    assert cell(rows, "Trailing Space School ", "N") == "0.715"
+    assert cell(rows, "Trailing Space School ", "contribution_L_lower") == "0.0025"
+
+
+def test_a_value_that_needs_all_twelve_places_keeps_them(api, loaded):  # R20
+    _, rows = top(api, rule="additive_u", k=50)
+
+    # 0.08279104477611941 and 0.0029411764705882344, rounded at the twelfth place.
+    assert cell(rows, "Trailing Space School ", "contribution_A_lower") == "0.082791044776"
+    assert cell(rows, "Trailing Space School ", "contribution_Q_lower") == "0.002941176471"
+
+
+def test_every_number_in_every_export_has_no_trailing_zero_and_at_most_twelve_places(api, loaded):  # R20
+    _, rows = top(api, rule="bottleneck_u", k=50, include_ranges=True)
+    assert cell(rows, " Leading Space School", "contribution_U_lower") == "0"  # the engine's 0.0
+    _, queue = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    workbook = xlsx_numbers(export(api, XLSX, rule="need_first_u", k=50))
+
+    for name, written in (
+        ("top.csv", numbers(rows)),
+        ("incomplete.csv", numbers(queue)),
+        ("top.xlsx", workbook),
+    ):
+        assert written, name
+        assert [t for t in written if not NUMBER.fullmatch(t)] == [], name
+
+
+def test_screening_scores_stay_within_0_and_1_after_rounding(api, loaded, connection):  # R20
+    # Shares that add to one can add to 1.0000000000000002 in floating point, and a stored score keeps what it was
+    # given. These two stand for a score a bit past each end.
+    stored = {1: 1.0000000000000002, 2: -1e-12}
+    for rank, score in stored.items():
+        connection.execute(
+            "update screening_results r set score_point = %(s)s, score_lower = %(s)s, score_upper = %(s)s "
+            "from screening_runs u where u.run_id = r.run_id and u.rule_id = 'additive_u' and r.rank_point = %(rank)s",
+            {"s": score, "rank": rank},
+        )
+
+    _, rows = top(api, rule="additive_u", k=2)
+    assert [(r["score_point"], r["score_lower"], r["score_upper"]) for r in rows] == [("1",) * 3, ("0",) * 3]
+    sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=2)))["Top schools"]
+    header = [c.value for c in sheet[1]]
+    scores = [
+        [row[header.index(c)] for c in ("score_point", "score_lower", "score_upper")]
+        for row in sheet.iter_rows(min_row=2, values_only=True)
+    ]
+    assert scores == [[1, 1, 1], [0, 0, 0]]
+
+
+def test_the_method_record_writes_its_shares_and_anchors_the_same_way(api, loaded):  # R20
+    method, _ = top(api, rule="additive_u", k=50)
+    # The engine's anchors include 135.54999999999998, 0.030000000000000006 and 0.36999999999999994.
+    assert "p95=135.55" in method["normalization_anchors"]
+    assert "p05=0.03, p95=0.37" in method["normalization_anchors"]
+    without, _ = top(api, rule="additive_no_u", k=50)
+    assert "N 12/19 (0.631578947368)" in without["weights"]  # 12/19 is 0.631578947368421
+
+    queue_method, _ = parse_csv_export(export(api, INCOMPLETE, rule="additive_no_u"))
+    for written in (method, without, queue_method):
+        figures = re.findall(r"\d+\.\d+", written["weights"] + " " + written["normalization_anchors"])
+        assert figures and [f for f in figures if not NUMBER.fullmatch(f)] == []
 
 
 # ---------------------------------------------------------------------------------------------
@@ -186,7 +280,7 @@ def test_the_method_record_names_everything_needed_to_read_the_file(api, connect
     )
     assert (method["policy_role"], method["score_kind"]) == ("primary", "additive score")
     assert method["formula"] == rule.formula == "S0 = (S - 0.05U) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
-    assert method["weights"].startswith("N 12/19 (0.631578947368421") and "U " not in method["weights"]
+    assert method["weights"].startswith("N 12/19 (0.631578947368)") and "U " not in method["weights"]
     assert method["uses_urgency"] == "no"
     assert method["input_version"] == loaded.input_version
     assert (
@@ -401,7 +495,7 @@ def test_the_xlsx_holds_a_method_record_sheet_and_the_same_table_as_the_csv(
             if text == "":
                 assert cell is None, column
             elif isinstance(cell, (int, float)):
-                assert float(text) == cell, column  # numbers keep their full precision
+                assert float(text) == cell, column  # the same numbers, to the same twelve places
             else:
                 assert cell == text, column
 
