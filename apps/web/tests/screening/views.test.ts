@@ -11,6 +11,8 @@
  *     seeds the data cannot show.
  *  7. Saving the first view loses the seeds; a view keeps what only passes (the pointer's school, an open sheet).
  *  8. Seeds are chosen by the order the API sent the schools, or name a school by id that the roles did not choose.
+ * 10. Restore the starting views is offered when there is nothing to restore, or withheld after a seed was removed
+ *     or the order changed.
  *  9. The pack's links carry junk or an unknown school, its file misses a rule a view shows, or its name is not the
  *     plain pattern.
  */
@@ -23,8 +25,10 @@ import { linkOf, linksText, packFileName, packText, rulesUsed, stateOf } from "@
 import { seedsOf } from "@/lib/screening/views/seeds";
 import {
   NAME_MAX,
+  SEED_ENTRIES,
   type Seeds,
   cleanName,
+  isStarting,
   parseEntries,
   resolve,
   viewQuery,
@@ -187,5 +191,19 @@ describe("the pack", () => {
       "1. Top\nhttps://rise.example/screening\n\n2. Board\nhttps://rise.example/screening?school=k1"
     );
     expect(packFileName(new Date(2026, 9, 21, 23, 30))).toBe("rise-png-saved-views-2026-10-21.json");
+  });
+});
+
+describe("when the starting views are what is kept", () => {
+  const seeds = SEED_ENTRIES;
+  it("is true for nothing kept and for the four seeds in order, so there is nothing to restore", () => {
+    expect(isStarting(null)).toBe(true);
+    expect(isStarting(seeds)).toBe(true);
+  });
+  it("is false once a seed is removed, the order changes, or a view is saved", () => {
+    expect(isStarting([])).toBe(false);
+    expect(isStarting(withRemoved(seeds, 1))).toBe(false);
+    expect(isStarting([seeds[1], seeds[0], seeds[2], seeds[3]])).toBe(false);
+    expect(isStarting(withSaved(null, "Board", "view=queue"))).toBe(false);
   });
 });

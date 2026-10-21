@@ -19,6 +19,12 @@
  *                                                                                                  and "with the method details ..."
  * 11. A guide step lands on the saved views tab, or the next "Download the top list" opens on it -> "a guide step ..."
  * 12. The narrow layout scrolls sideways, or hides the views or the step's controls             -> "in the narrow layout ..."
+ * 13. Restore the starting views drops a saved view without asking, asks when nothing of the person's would be
+ *     lost, or leaves the focus nowhere                                                          -> "restoring the starting views ..."
+ * 14. An empty list shows nothing in the rail or the sheet, or the sheet's record and download offer a file of
+ *     nothing                                                                                    -> "with no saved views ..."
+ * 15. A saved view is promised to keep the map position, which a link cannot                     -> "the note under the heading ..."
+ * 16. The method tab's heading and its Shows column name the tab, not what each view opens on    -> "with the method details on ..."
  */
 import { readFileSync } from "node:fs";
 
@@ -382,11 +388,87 @@ test("with the method details on, the tab shows each rule's formula and the file
   const table = sheet(page).locator("[data-region=pack-table]");
   await expect(table.locator("tbody tr")).toHaveCount(4);
   await expect(table.locator("thead")).toContainText("Saved view");
+  await expect(sheet(page).getByText("Saved views, in order", { exact: true })).toBeVisible();
+  // What each view opens on, not the names of the tabs.
+  const shows = table.locator("tbody tr td:nth-child(3)");
+  await expect(shows.nth(0)).toHaveText("Schools in order");
+  await expect(shows.nth(1)).toHaveText("Schools in order · compared with Combined");
+  await expect(shows.nth(2)).toHaveText(/^Schools in order · /);
+  await expect(shows.nth(3)).toHaveText("Incomplete records, grouped by what is missing");
   await expect(table.locator("tbody tr").nth(1)).toContainText("compared with");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("additive_no_u");
   await expect(record.locator("li").first()).toContainText("sha256");
+});
+
+test("the note under the heading promises only what a link restores", async ({ page }) => {
+  await startList(page);
+  const note = section(page).locator("p").first();
+  await expect(note).toContainText("keeps the rule, the list and its tab, the selected school, the grouping");
+  await expect(note).toContainText("The map position is not kept.");
+  await expect(note).not.toContainText("and the map position");
+});
+
+test("restoring the starting views asks before it drops a saved view, and not when nothing of the person's is lost", async ({
+  page,
+}) => {
+  await startList(page);
+  const restore = section(page).locator("[data-region=reset-views]");
+  await expect(restore).toHaveCount(0);
+
+  // Removing a starting view alone: restoring brings it back at once, with no question.
+  await section(page)
+    .getByRole("button", { name: /^Remove the saved view With and without urgency/ })
+    .click();
+  await expect(viewButtons(page)).toHaveCount(3);
+  await expect(restore).toHaveText("Restore the starting views");
+  await restore.click();
+  await expect(viewButtons(page)).toHaveText(SEEDS.map((n, i) => `${i + 1}${n}`));
+  await expect(section(page).getByRole("status")).toHaveText("Starting views restored");
+  await expect(viewButtons(page).first()).toBeFocused();
+  await expect(restore).toHaveCount(0);
+  expect(await page.evaluate((k) => window.localStorage.getItem(k), VIEWS_KEY)).toBeNull();
+
+  // A saved view is only dropped on the second press, and Keep my views backs out.
+  await section(page).getByRole("textbox", { name: "Name this view" }).fill("Provincial board");
+  await section(page).getByRole("button", { name: "Save this view" }).click();
+  await expect(viewButtons(page)).toHaveCount(5);
+  await restore.click();
+  await expect(restore).toHaveText("Remove my views and restore the starting ones");
+  await expect(viewButtons(page)).toHaveCount(5);
+  await section(page).locator("[data-region=keep-views]").click();
+  await expect(restore).toHaveText("Restore the starting views");
+  await expect(viewButtons(page)).toHaveCount(5);
+  await restore.click();
+  await restore.click();
+  await expect(viewButtons(page)).toHaveText(SEEDS.map((n, i) => `${i + 1}${n}`));
+  expect(await spills(page, "[data-region=saved-views]")).toEqual([]);
+});
+
+test("with no saved views the rail and the sheet's tab say so, and restoring brings the starting ones back", async ({
+  page,
+  context,
+}) => {
+  const SAYS =
+    "There are no saved views yet. Give the screen a name and save it, and it will be listed here.";
+  await store(context, JSON.stringify({ v: 1, views: [] }));
+  await startList(page).catch(() => undefined);
+  await expect(section(page).locator("[data-region=no-views]")).toHaveText(SAYS);
+  await expect(viewButtons(page)).toHaveCount(0);
+  await expect(section(page).getByRole("button", { name: "Presentation mode" })).toHaveCount(0);
+
+  await page.goto("/screening?guide=off&panel=export&pack=1");
+  await waitForMap(page);
+  await expect(sheet(page).locator("[data-region=no-views]")).toHaveText(SAYS);
+  await expect(sheet(page).locator("[data-region=pack-record]")).toHaveCount(0);
+  await expect(sheet(page).getByRole("button", { name: "Copy all links" })).toBeDisabled();
+  await expect(sheet(page).getByRole("button", { name: "Download the saved views" })).toBeDisabled();
+
+  await startList(page).catch(() => undefined);
+  await section(page).locator("[data-region=reset-views]").click();
+  await expect(viewButtons(page)).toHaveCount(4);
+  await expect(section(page).locator("[data-region=no-views]")).toHaveCount(0);
 });
 
 test("a guide step never lands on the saved views tab", async ({ page }) => {

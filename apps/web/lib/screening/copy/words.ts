@@ -116,6 +116,13 @@ export const LAYOUT = Object.freeze({
   recordCopied: "Method record copied",
   linksCopied: "Links to the saved views copied",
   savedToast: (n: number) => `Saved as view ${n}`,
+  // The saved views list: nothing in it (in the rail and in the export sheet's tab), and the way back to the four
+  // that come with the screen. Restoring asks first only when it would drop a view a person saved.
+  noViews: "There are no saved views yet. Give the screen a name and save it, and it will be listed here.",
+  resetViews: "Restore the starting views",
+  resetViewsConfirm: "Remove my views and restore the starting ones",
+  keepViews: "Keep my views",
+  viewsRestored: "Starting views restored",
   removeView: (name: string) => textOf(removeViewSegments(name)),
   afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",
   afterDownloadPack:

@@ -371,7 +371,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       technical: "Briefing stops",
       label: "Saved views for meetings",
       line: "Views you save to walk a meeting through, one at a time.",
-      help: "A saved view keeps the rule, the selected school, the view and the map position, and opens as a link.",
+      help: "A saved view keeps the rule, the list and its tab, the selected school, the grouping, the method details and the comparison, and opens as a link. The map position is not kept.",
       where: "Map bar, saved views for meetings",
     },
     compare: {
