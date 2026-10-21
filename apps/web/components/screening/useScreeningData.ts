@@ -107,12 +107,17 @@ export function useScreeningData(): ScreeningData {
   const urlRead = useUrlRead();
 
   const rules = useScreeningRules();
-  const defaultRule = rules.data?.default_rule_id ?? EXPECTED_DEFAULT_RULE;
+  // A link with no rule opens the web app's main rule, the one its words call the main rule, whatever rule the API
+  // names as its own default. Only an API that does not offer the main rule falls back to its default.
+  const defaultRule =
+    rules.data && !rules.data.rules.some((r) => r.rule_id === PRIMARY_RULE)
+      ? rules.data.default_rule_id
+      : EXPECTED_DEFAULT_RULE;
   const ruleIds = useMemo(
     () => (rules.data ? rules.data.rules.map((r) => r.rule_id).filter((id) => isCopyRuleId(id)) : null),
     [rules.data]
   );
-  // The store checks rules against what the API offers, and resolves `rule: null` to the API's default.
+  // The store checks rules against what the API offers, and resolves `rule: null` to the default above.
   useEffect(() => {
     if (ruleIds) store.setKnown({ ruleIds: new Set(ruleIds), defaultRule });
   }, [store, ruleIds, defaultRule]);

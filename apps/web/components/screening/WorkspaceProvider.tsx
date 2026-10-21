@@ -20,9 +20,9 @@ import {
 } from "@/lib/screening/workspace/store";
 
 /**
- * The rule the API names as its default: the revised paper's main rule. Its list is asked for at the same time as
- * the rules, so the first list does not wait a round trip for them. If the API's default turns out to be another
- * rule, the rules say so and the store follows.
+ * The rule a link with no rule opens: the revised paper's main rule, which the screen's words call the main rule,
+ * whatever the API names as its default. Its list is asked for at the same time as the rules, so the first list does
+ * not wait a round trip for them. Only an API that does not offer it makes the store follow the API's default.
  */
 export const EXPECTED_DEFAULT_RULE = RuleId.parse(PRIMARY_RULE, "expected default rule");
 
