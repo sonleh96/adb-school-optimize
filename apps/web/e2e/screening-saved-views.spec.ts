@@ -533,3 +533,14 @@ test("a name of only invisible characters is not saved", async ({ page }) => {
   await expect(section(page).getByRole("textbox", { name: "Name this view" })).toBeFocused();
   await expect(viewButtons(page)).toHaveCount(4);
 });
+
+test("thousands of stored views are read up to the cap, and saving stops there", async ({
+  page,
+  context,
+}) => {
+  const many = Array.from({ length: 30000 }, (_, i) => ({ name: `View ${i + 1}`, q: "" }));
+  await store(context, JSON.stringify({ v: 1, views: many }));
+  await openWorkspace(page, "?");
+  await expect(viewButtons(page)).toHaveCount(50, { timeout: 5000 });
+  await expect(section(page).getByRole("button", { name: "Save this view" })).toBeDisabled();
+});

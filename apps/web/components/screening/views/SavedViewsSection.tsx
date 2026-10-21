@@ -10,7 +10,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { LaterCopy } from "@/lib/screening/copy/later";
 import { canPresent } from "@/lib/screening/guide/layout";
 import { plainViewTitle, viewTitle } from "@/lib/screening/views/step";
-import { NAME_MAX, cleanName, isStarting, viewQuery } from "@/lib/screening/views/views";
+import { NAME_MAX, canSave, cleanName, isStarting, viewQuery } from "@/lib/screening/views/views";
 
 import { Sentence } from "../Sentence";
 import { useWorkspaceStore } from "../WorkspaceProvider";
@@ -67,6 +67,8 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   // Back to the starting views. A view a person saved is only dropped after a second press; removing a starting
   // view alone costs nothing that cannot be brought back, so it restores at once.
   const kept = store.entries();
+  // At the cap the form is closed; the sentence that says so is a copy request.
+  const full = !canSave(kept);
   const hasOwn = !!kept?.some((entry) => "name" in entry);
   const restore = () => {
     if (hasOwn && !confirming) {
@@ -172,10 +174,10 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
           autoComplete="off"
           placeholder={LAYOUT.viewName}
           aria-label={LAYOUT.viewName}
-          disabled={!ready}
+          disabled={!ready || full}
           onChange={(event) => setName(event.target.value)}
         />
-        <button type="submit" className={`${rail.quiet} ${styles.saveButton}`} disabled={!ready}>
+        <button type="submit" className={`${rail.quiet} ${styles.saveButton}`} disabled={!ready || full}>
           {LAYOUT.saveView}
         </button>
       </form>
