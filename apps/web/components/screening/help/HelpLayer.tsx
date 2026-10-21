@@ -189,6 +189,13 @@ export default function HelpLayer({
         )
       : null;
 
+  // A card a pasted link names that the data does not hold (a school that is not in it) is dropped once the data
+  // is in, so the address stops naming it and the first Escape leaves help mode as it should.
+  const unknown = !!state.card && !!roles && !!data.shown && data.ready && later.status === "ready" && !model;
+  useEffect(() => {
+    if (unknown) store.dispatch({ type: "card", id: null });
+  }, [unknown, store]);
+
   return (
     <>
       <p className={styles.live} aria-live="polite">

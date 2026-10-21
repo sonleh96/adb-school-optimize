@@ -251,6 +251,11 @@ test("when the screen moves on from a step the rail says so, and puts it back", 
   await page.getByRole("button", { name: "Show this step again" }).click();
   await expect.poll(async () => (await workspace(page)).rule).toBe("additive_u");
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
+  // Every key a step sets counts: opening the scope detail moves the screen on too.
+  await page.evaluate(() => window.__screeningWorkspace!.setState({ scope: true }));
+  await expect(page.getByTestId("guide-drift")).toBeVisible();
+  await page.getByRole("button", { name: "Show this step again" }).click();
+  await expect.poll(async () => (await workspace(page)).scope).toBe(false);
 });
 
 test("presenting widens the rail, shows Up next and the key hints, and Page Down and Page Up cross guides", async ({
