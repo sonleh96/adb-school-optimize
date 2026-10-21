@@ -48,6 +48,7 @@ import {
   isStarting,
   parseEntries,
   resolve,
+  viewIdOf,
   viewQuery,
   withRemoved,
   withSaved,
@@ -315,5 +316,19 @@ describe("what a view names that the data no longer holds", () => {
     expect(droppedKeys("school=nope&rule=ghost&place=upper", known)).toEqual(["rule", "school"]);
     expect(droppedKeys("rule=additive_u&school=k1&view=queue&junk=1", known)).toEqual([]);
     expect(droppedKeys("compare=ghost", known)).toEqual(["compare"]);
+  });
+});
+
+describe("a saved view's link", () => {
+  it("names the view by what it is, so the same view has the same name in any list (15)", () => {
+    const board = viewIdOf({ seed: null, name: "Board", q: "school=k1" });
+    expect(board).toMatch(/^[0-9a-z]{4,10}$/);
+    expect(viewIdOf({ seed: null, name: "Board", q: "school=k1" })).toBe(board);
+    expect(viewIdOf({ seed: null, name: "Board", q: "school=k2" })).not.toBe(board);
+    expect(viewIdOf({ seed: null, name: "Other", q: "school=k1" })).not.toBe(board);
+    const range = viewIdOf({ seed: "range", name: null, q: "school=k1" });
+    expect(viewIdOf({ seed: "range", name: null, q: "school=k1" })).toBe(range);
+    const list = resolve([{ seed: "top" }, { name: "Board", q: "school=k1" }], { top: "" });
+    expect(list.map((v) => v.id)).toEqual([viewIdOf({ seed: "top", name: null, q: "" }), board]);
   });
 });

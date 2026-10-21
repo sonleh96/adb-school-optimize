@@ -29,6 +29,22 @@ export interface SavedView {
   readonly q: string;
   /** What is kept for it, so it is removed by what it is, not by where it sits. */
   readonly entry: Entry;
+  /** Its name in a link (`gview`): a short hash of what it is, the same in any list that holds it. */
+  readonly id: string;
+}
+
+/**
+ * A view's id: FNV-1a over what the view is (its seed or its name, and its state), in base 36. The same view gets
+ * the same id in a colleague's list, so a pasted link names it there too; a view they do not have names nothing.
+ */
+export function viewIdOf(view: Pick<SavedView, "seed" | "name" | "q">): string {
+  const text = `${view.seed ? `seed:${view.seed}` : `name:${view.name ?? ""}`}\n${view.q}`;
+  let hash = 0x811c9dc5;
+  for (const char of text) {
+    hash ^= char.codePointAt(0)!;
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
 }
 
 export const VIEWS_KEY = "rise-screening-saved-views-v1";
@@ -126,12 +142,20 @@ export const serialise = (entries: readonly Entry[]): string => JSON.stringify({
 
 /** The views the person sees: what is kept, or the seeds, less the seeds the loaded data cannot show. */
 export function resolve(entries: readonly Entry[] | null, seeds: Seeds): SavedView[] {
-  return (entries ?? SEED_ENTRIES).flatMap((entry, at): SavedView[] => {
+  const views = (entries ?? SEED_ENTRIES).flatMap((entry, at): Omit<SavedView, "id">[] => {
     if ("seed" in entry) {
       const q = seeds[entry.seed];
       return q === undefined ? [] : [{ at, seed: entry.seed, name: null, q, entry }];
     }
     return [{ at, seed: null, name: entry.name, q: entry.q, entry }];
+  });
+  // Two views that are the same (one name, one state) are told apart by which of them comes first.
+  const seen = new Map<string, number>();
+  return views.map((view) => {
+    const base = viewIdOf(view);
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return { ...view, id: n === 1 ? base : `${base}y${n}` };
   });
 }
 

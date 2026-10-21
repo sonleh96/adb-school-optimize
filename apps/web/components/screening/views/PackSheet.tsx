@@ -138,10 +138,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
     <ol className={styles.packList} data-region="pack-table" aria-busy={!ready}>
       {ready
         ? views.map((view, i) => (
-            <li
-              key={`${view.at}:${view.seed ?? view.name}`}
-              data-dropped={droppedKeys(view.q, known).join(" ") || undefined}
-            >
+            <li key={view.id} data-dropped={droppedKeys(view.q, known).join(" ") || undefined}>
               <span className={styles.packN}>{i + 1}.</span>
               <span className={styles.packName} dir="auto">
                 <Sentence segments={titles[i]} />
@@ -200,7 +197,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                       schoolName(state),
                     ]);
               return (
-                <tr key={`${view.at}:${view.seed ?? view.name}`}>
+                <tr key={view.id}>
                   <td dir="auto">
                     <Sentence segments={titles[i]} />
                   </td>

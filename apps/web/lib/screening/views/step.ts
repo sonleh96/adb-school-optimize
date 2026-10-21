@@ -68,7 +68,7 @@ export function viewStep(ctx: ViewContext, view: SavedView): ViewStep {
   const rule = shownRule(state, known) as CopyRuleId;
   const ruleLine = para(`${TERMS.rule.label}: ${copy.ruleLabel(rule)}. ${copy.ruleRoleLine(rule)}.`);
   const base = {
-    key: view.seed ?? `view-${view.at}`,
+    key: view.id,
     title: viewTitle(later, view),
     tryIt: null,
     // The whole state, so every key lands where the view was saved and nothing from the screen before stays.
