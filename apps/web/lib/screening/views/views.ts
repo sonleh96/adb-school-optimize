@@ -72,16 +72,6 @@ function entryOf(raw: unknown): Entry | null {
   return { name, q };
 }
 
-/** The final design's prototype kept a bare list of `{ name, q, seed }`, with its seeds as fixed states. */
-function fromPrototype(items: readonly unknown[]): Entry[] {
-  return items
-    .map((item) => {
-      const seed = item && typeof item === "object" ? (item as Record<string, unknown>).seed : null;
-      return isSeedKey(seed) ? { seed } : entryOf(item);
-    })
-    .filter((entry): entry is Entry => entry !== null);
-}
-
 /**
  * What storage held, read defensively. `null` means nothing usable is kept, so the seeds show; an empty list means the
  * person removed every view. A list whose every item is junk is junk, not an empty list.
@@ -94,17 +84,11 @@ export function parseEntries(text: string | null): Entry[] | null {
   } catch {
     return null;
   }
-  let items: readonly unknown[];
-  let entries: Entry[];
-  if (Array.isArray(raw)) {
-    items = raw;
-    entries = fromPrototype(raw);
-  } else if (raw && typeof raw === "object" && (raw as { v?: unknown }).v === 1) {
-    const views = (raw as { views?: unknown }).views;
-    if (!Array.isArray(views)) return null;
-    items = views;
-    entries = views.map(entryOf).filter((entry): entry is Entry => entry !== null);
-  } else return null;
+  // Only the shape this screen writes is read; anything else, a bare list included, is junk.
+  if (!raw || typeof raw !== "object" || (raw as { v?: unknown }).v !== 1) return null;
+  const items = (raw as { views?: unknown }).views;
+  if (!Array.isArray(items)) return null;
+  const entries = items.map(entryOf).filter((entry): entry is Entry => entry !== null);
   if (items.length > 0 && entries.length === 0) return null;
   // A seed is offered once.
   const seen = new Set<SeedKey>();
