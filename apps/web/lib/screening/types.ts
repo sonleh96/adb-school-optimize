@@ -19,6 +19,7 @@ import {
   int,
   list,
   looseEnum,
+  nonEmptyList,
   nullable,
   num,
   obj,
@@ -130,8 +131,11 @@ const areaParts = obj({
 });
 
 const maximumTerm = obj({
-  /** The factors that tie for the largest value: school need, district context and, where the rule reads it, urgency. */
-  attained_by: list(oneOf("N", "A", "U")),
+  /**
+   * The factors that tie for the largest value: school need, district context and, where the rule reads it, urgency.
+   * A largest term always has a source, so an empty list is a malformed response and is rejected here.
+   */
+  attained_by: nonEmptyList(oneOf("N", "A", "U")),
   value: num,
   share: num,
   /** What the largest factor adds to the score: `share` times `value`. */

@@ -118,6 +118,18 @@ export function list<T>(item: Schema<T>): Schema<T[]> {
   };
 }
 
+/** An array with at least one entry, for a fact that is meaningless when empty. */
+export function nonEmptyList<T>(item: Schema<T>): Schema<[T, ...T[]]> {
+  const inner = list(item);
+  return {
+    parse: (value, path) => {
+      const items = inner.parse(value, path);
+      if (items.length === 0) return fail(path, "a non-empty array", value);
+      return items as [T, ...T[]];
+    },
+  };
+}
+
 export function dict<T>(item: Schema<T>): Schema<Record<string, T>> {
   return {
     parse: (value, path) => {
