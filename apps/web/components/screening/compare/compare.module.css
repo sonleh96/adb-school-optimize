@@ -345,6 +345,33 @@
   stroke-width: 1;
 }
 
+/* In the narrow layout the list region scrolls as one, so the chart is never squeezed out by the rules above it. */
+@media (max-width: 1023px) {
+  .column {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .scroll {
+    flex: none;
+    overflow: visible;
+  }
+}
+/* A narrow column stacks the two rules, the swap between them turned to match. */
+@media (max-width: 559px) {
+  .pickers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .swap {
+    justify-self: center;
+  }
+  .swap svg {
+    transform: rotate(90deg);
+  }
+  .ioGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .line,
   .picker,

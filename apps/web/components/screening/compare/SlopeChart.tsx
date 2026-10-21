@@ -108,8 +108,10 @@ export function SlopeChart({
     labelWidth(nameOf(r), `  ${padRank(rank)}`, cap, fs, weight, measure, suffixes) + off;
   if (width > 0 && measured) {
     for (const r of rows) {
-      if (r.a <= k) want = Math.max(want, need(r, r.a, 8, crossA.has(r.key) ? 600 : 400));
-      if (r.b <= k) want = Math.max(want, need(r, r.b, 8, crossB.has(r.key) ? 600 : 400));
+      if (r.a <= k)
+        want = Math.max(want, need(r, r.a, 8, crossA.has(r.key) || r.key === selected ? 600 : 400));
+      if (r.b <= k)
+        want = Math.max(want, need(r, r.b, 8, crossB.has(r.key) || r.key === selected ? 600 : 400));
       if (r.a > k && (crossB.has(r.key) || pinned.includes(r.key)))
         want = Math.max(want, need(r, r.a, 26, 600));
       if (r.b > k && (crossA.has(r.key) || pinned.includes(r.key)))
@@ -125,8 +127,9 @@ export function SlopeChart({
     const full = nameOf(r);
     const rankPart = `  ${padRank(rank)}`;
     const avail = (side === "A" ? xA : width - xB) - off;
-    const fit = fitLabel(full, rankPart, avail, fs, emph ? 600 : 400, measure, suffixes);
     const on = r.key === selected;
+    // The selected school's label is set bold, so it is fitted bold.
+    const fit = fitLabel(full, rankPart, avail, fs, emph || on ? 600 : 400, measure, suffixes);
     labels.push(
       <text
         key={`${side}-${r.key}`}
