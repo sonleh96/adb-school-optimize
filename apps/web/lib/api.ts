@@ -103,7 +103,3 @@ export async function apiFetchFile(
     disposition: response.headers.get("Content-Disposition"),
   };
 }
-
-export function getAuthenticatedAssetUrl(path: string): string {
-  return `/api/proxy/${path.replace(/^\/+/, "")}`;
-}
