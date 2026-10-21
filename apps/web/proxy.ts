@@ -43,9 +43,11 @@ function signInRedirect(request: NextRequest, error: string | null) {
 }
 
 // Every page links the manifest and the icons, the sign-in page included, so they stay public: sent to sign in, the
-// browser reads the sign-in page as the manifest and logs "Manifest: Syntax error".
+// browser reads the sign-in page as the manifest and logs "Manifest: Syntax error". The app's static files all sit at
+// the root (app/icon.svg is /icon.svg), so only a root path with a static extension skips the check; under /api/ or a
+// page, /api/v1/x.png included, every path is checked whatever it ends in.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static/|_next/image|manifest\\.webmanifest$|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
