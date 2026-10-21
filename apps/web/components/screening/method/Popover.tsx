@@ -47,6 +47,18 @@ export function Popover({
     setAt({ top, left, maxHeight: Math.max(160, host.height - top - 16) });
   }, [anchor, layer, align, width]);
 
+  // However the popover closes (a choice, Escape, its own control), focus that was inside it goes back to its button,
+  // never to the page's body. A click elsewhere keeps the focus it gave.
+  useEffect(() => {
+    const element = panel.current;
+    const button = anchor.current;
+    return () => {
+      const active = document.activeElement;
+      if (!active || active === document.body || element?.contains(active))
+        button?.focus({ preventScroll: true });
+    };
+  }, [anchor]);
+
   const placed = at !== null;
   useEffect(() => {
     if (!placed) return;
