@@ -510,8 +510,9 @@
 :global([data-card-docked]) .mapbar {
   left: calc(var(--rail-w) + var(--gap));
 }
+/* Stepped down: under the actions, however many rows they take (MapBar measures them and sets --bar-top). */
 .mapbar[data-bar-stack] {
-  top: calc(var(--gap) + 48px);
+  top: var(--bar-top, calc(var(--gap) + 48px));
 }
 .mapbar .barButton {
   display: inline-flex;
