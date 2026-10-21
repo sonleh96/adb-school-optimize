@@ -211,6 +211,9 @@ test("save a fifth view of the screen, open it after a reload, and remove it", a
   await expect(section(page).getByRole("status")).toHaveText("Saved as view 5");
   await expect(viewButtons(page)).toHaveCount(5);
   await expect(viewButtons(page).nth(4)).toHaveText("5Provincial board");
+  // The view names its rule though it is the default, so a later change of default does not move it.
+  const saved = await page.evaluate((k) => JSON.parse(window.localStorage.getItem(k)!), VIEWS_KEY);
+  expect(saved.views[4]).toEqual({ name: "Provincial board", q: `rule=additive_no_u&school=${key}` });
   // The name a person typed is set apart as a name.
   await expect(viewButtons(page).nth(4).locator("[data-name-kind=saved-view]")).toHaveText(
     "Provincial board"
@@ -373,10 +376,10 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   const origin = new URL(page.url()).origin;
   expect(copied).toBe(
     [
-      `1. ${SEEDS[0]}\n${origin}/screening`,
-      `2. ${SEEDS[1]}\n${origin}/screening?compare=additive_u`,
-      `3. ${SEEDS[2]}\n${origin}/screening?school=${RANGE_KEY}`,
-      `4. ${SEEDS[3]}\n${origin}/screening?view=queue&qgroup=evidence`,
+      `1. ${SEEDS[0]}\n${origin}/screening?rule=additive_no_u`,
+      `2. ${SEEDS[1]}\n${origin}/screening?rule=additive_no_u&compare=additive_u`,
+      `3. ${SEEDS[2]}\n${origin}/screening?rule=additive_no_u&school=${RANGE_KEY}`,
+      `4. ${SEEDS[3]}\n${origin}/screening?rule=additive_no_u&view=queue&qgroup=evidence`,
     ].join("\n\n")
   );
 

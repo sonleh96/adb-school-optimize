@@ -52,8 +52,12 @@ export function droppedKeys(q: string, known: Known): StateKey[] {
  */
 export const PACK_LENGTH: TopLength = 20;
 
-/** The link that reopens a view: the page's address with the view's state and nothing else. */
-export const linkOf = (page: string, state: WorkspaceState): string => `${page}${searchWithState("", state)}`;
+/**
+ * The link that reopens a view: the page's address with the view's state and nothing else. It names the rule even
+ * when it is the default, so a link handed on keeps its rule if the default changes.
+ */
+export const linkOf = (page: string, state: WorkspaceState, known: Pick<Known, "defaultRule">): string =>
+  `${page}${searchWithState("", { ...state, rule: shownRule(state, known) })}`;
 
 /** The rules the views show, in the order they first appear: the list's rule, and in compare mode the other one. */
 export function rulesUsed(states: readonly WorkspaceState[], known: Known): RuleId[] {

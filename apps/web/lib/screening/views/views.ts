@@ -6,7 +6,7 @@
  * every load, by role, so a seed never names a school by id and a seed whose subject the data lacks is not offered.
  * Nothing stored means the seeds alone. Storage that is blocked or holds junk reads as nothing stored.
  */
-import { type WorkspaceState, searchWithState } from "../workspace/state";
+import { type Known, type WorkspaceState, searchWithState, shownRule } from "../workspace/state";
 
 export const SEED_KEYS = ["top", "urgency", "range", "queue"] as const;
 export type SeedKey = (typeof SEED_KEYS)[number];
@@ -88,13 +88,18 @@ export function cleanName(raw: string): string {
 
 /**
  * The URL state a view keeps: every workspace key, less what only passes. The pointer's school, an open sheet and an
- * open popover are not part of a screen to come back to.
+ * open popover are not part of a screen to come back to. The rule is written even when it is the default, so the
+ * view keeps its rule if the default changes; a view kept without one opens on the default of the day.
  */
-export function viewQuery(state: WorkspaceState): string {
-  return searchWithState("", { ...state, hover: null, panel: null, pack: false, pop: null }).replace(
-    /^\?/,
-    ""
-  );
+export function viewQuery(state: WorkspaceState, known: Pick<Known, "defaultRule">): string {
+  return searchWithState("", {
+    ...state,
+    rule: shownRule(state, known),
+    hover: null,
+    panel: null,
+    pack: false,
+    pop: null,
+  }).replace(/^\?/, "");
 }
 
 function entryOf(raw: unknown): Entry | null {

@@ -49,7 +49,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
       input.current?.focus();
       return;
     }
-    store.save(name, viewQuery(workspace.snapshot()));
+    store.save(name, viewQuery(workspace.snapshot(), workspace.known()));
     setName("");
     setStatus(LAYOUT.savedToast(views.length + 1));
   };
