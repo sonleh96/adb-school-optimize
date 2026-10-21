@@ -212,6 +212,9 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
 
 const STATE_KEYS = Object.keys(KEYS) as StateKey[];
 
+/** The keys only the method details show or act on. */
+const METHOD_ONLY = ["prov", "loc", "hide", "formula", "parts", "k"] as const satisfies readonly StateKey[];
+
 const same = <K extends StateKey>(key: K, a: WorkspaceState[K], b: WorkspaceState[K]): boolean =>
   (KEYS[key] as KeyDef<WorkspaceState[K]>).same?.(a, b) ?? a === b;
 
@@ -239,6 +242,10 @@ function normalise(state: WorkspaceState, known: Known): WorkspaceState {
     }
   } else if (next.pop === "pickA" || next.pop === "pickB") next = { ...next, pop: null };
   if (!next.analyst && next.pop !== null && next.pop !== "rules") next = { ...next, pop: null };
+  // The method details' own keys hold nothing on a plain screen: a pasted plain link that carries them, and turning
+  // the method details off, both leave them at their defaults, so no filter a plain user cannot see stays in force.
+  if (!next.analyst && METHOD_ONLY.some((key) => !same(key, next[key], DEFAULT_STATE[key])))
+    next = { ...next, ...Object.fromEntries(METHOD_ONLY.map((key) => [key, DEFAULT_STATE[key]])) };
   return next;
 }
 
