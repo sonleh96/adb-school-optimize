@@ -179,18 +179,33 @@
   white-space: nowrap;
 }
 
+/* Two rows, so no caption is squeezed at a 360 to 416 px column: what the chart counts beside the top 10 or 20
+   switch, then each rule's name over its own axis. */
 .slopeHead {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  grid-template-areas:
+    "mid mid k"
+    "a b b";
   align-items: end;
-  column-gap: 12px;
+  gap: 6px 12px;
   margin-bottom: 8px;
+}
+.capA {
+  grid-area: a;
+}
+.capB {
+  grid-area: b;
+  text-align: right;
+}
+.slopeHead .kSeg {
+  grid-area: k;
 }
 .cap {
   font: 500 13px/16px var(--sans);
 }
 .capMid {
-  text-align: center;
+  grid-area: mid;
   font-weight: 400;
   font-size: 12.5px;
   color: var(--ink-3);
