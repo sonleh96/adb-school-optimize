@@ -12,7 +12,14 @@
  */
 import type { Page } from "@playwright/test";
 
-import { ORDERED, expect, openWorkspace, test, useMockDataset } from "./screening-helpers";
+import {
+  ORDERED,
+  expect,
+  openWorkspace,
+  test,
+  useMockDataset,
+  waitForWorkspaceHook,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 90_000 });
@@ -204,6 +211,8 @@ test("worst-case names stay inside the help cards, the glossary and the page", a
   await useMockDataset(context, "worst-names");
   await page.goto("/screening?guide=off&help=1");
   await expect(page.locator(`${ORDERED} button`).first()).toBeVisible();
+  // The guidance hook is published in the same commit as the workspace's.
+  await waitForWorkspaceHook(page);
   for (const id of ["term:rank", "term:rank_range", "term:queue", "term:score", "compare-main"]) {
     await page.evaluate(
       (cardId) => window.__screeningGuide!.dispatch({ type: "card", id: cardId as "compare" }),
