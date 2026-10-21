@@ -4,20 +4,56 @@
  *  2. The export preview shows a range school among the single places, drops a row, or reads an empty score as 0.
  *  3. A preview of a file with a cell that is not a number shows NaN instead of refusing the file.
  *  4. A share is shown rounded: 12/19 as 0.63.
+ *  5. The filter by what is missing shows an incomplete record under a part of school need its record has, or
+ *     hides one under a part it lacks, so the chips disagree with the record's own missing-detail chips.
+ *  6. The filter by what is missing hides a school that can be put in order.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { admits, filterOptions } from "@/lib/screening/method/filters";
+import { schoolsFromLists } from "@/lib/screening/copy";
+import { admits, filterOptions, lacks } from "@/lib/screening/method/filters";
+import { parseWith } from "@/lib/screening/schema";
+import { inputsResponse } from "@/lib/screening/types";
+import { MISSING_DETAILS } from "@/lib/screening/workspace/state";
 import { shareText } from "@/lib/screening/method/shares";
 import { TopCsvError, parseTopCsv } from "@/lib/screening/method/top-csv";
 import { fileNameOf, topListOf } from "@/lib/screening/method/top-list";
 
-import { results } from "./fixtures";
+import { readFixture, results } from "./fixtures";
 
 const ROOT = path.resolve(__dirname, "../../e2e/fixtures/screening");
+
+describe("the filter by what is missing", () => {
+  const rows = results("additive_u").rows;
+  const inputs = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+  const records = new Map(
+    schoolsFromLists(inputs, [results("additive_u")], "additive_u").map((s) => [s.id, s])
+  );
+
+  it("keeps an incomplete record exactly when its record lacks that part of school need (5)", () => {
+    const queued = rows.filter((r) => r.cohort === "verification_queue");
+    let lacking = 0;
+    for (const row of queued)
+      for (const detail of MISSING_DETAILS) {
+        const gates = records.get(row.school.school_key)!.gate_failures as readonly string[];
+        expect(lacks(row, detail), `${row.school.school_key} ${detail}`).toBe(gates.includes(detail));
+        expect(admits(row, { prov: null, loc: null, miss: detail })).toBe(gates.includes(detail));
+        if (gates.includes(detail)) lacking += 1;
+      }
+    expect(lacking).toBeGreaterThan(0);
+  });
+
+  it("keeps every school that can be put in order (6)", () => {
+    const ordered = rows.filter((r) => r.cohort !== "verification_queue");
+    for (const detail of MISSING_DETAILS)
+      expect(ordered.filter((r) => admits(r, { prov: null, loc: null, miss: detail }))).toHaveLength(
+        ordered.length
+      );
+  });
+});
 
 describe("filters (1)", () => {
   const rows = results("additive_u").rows;

@@ -2,7 +2,7 @@
 import type { ListedRow, SchoolKey } from "../types";
 import type { MapLayer } from "../workspace/state";
 import type { Compared, MoveEdges } from "./compare";
-import { type Filters, admits, filtering } from "./filters";
+import { type Filters, admits, filteringAny } from "./filters";
 import { OUTSIDE_HEX, moveHex } from "./moves";
 import type { MarkPaint, Move } from "./paint";
 
@@ -16,7 +16,7 @@ export function paintFor(input: {
   edges: MoveEdges;
 }): MarkPaint {
   const { filters, compared } = input;
-  const faint = filtering(filters)
+  const faint = filteringAny(filters)
     ? new Set(input.rows.filter((row) => !admits(row, filters)).map((row) => row.school.school_key))
     : null;
   let moves: Map<SchoolKey, Move> | null = null;

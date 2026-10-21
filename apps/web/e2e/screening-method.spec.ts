@@ -27,6 +27,9 @@
  *     choice in its menu leaves focus nowhere                                                    -> "the narrow menu..."
  * 19. Help mode leaves the method details unexplained (their rules, scope line, places, key, Map layers, filters and
  *     compare mode's statement), or marks so much it stops being a short list                    -> "help mode..."
+ * 20. The filter by what is missing does nothing, miscounts its choices, or a link does not reproduce it
+ *                                                                                                -> "the incomplete records filter..."
+ * 21. Guide 4's Try it asks for the filter by what is missing while it is off screen             -> "guide 4's group step..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -451,6 +454,63 @@ test("help mode explains the method details' rules, lines and controls, and a ma
 
   await openWorkspace(page, "?mode=compare&rule=additive_no_u&compare=additive_u&help=1");
   await expect(page.locator("[data-region=compare-statement] > p[data-xp]")).toHaveCount(1);
+});
+
+const MISSING = {
+  permanent_classroom_deficit: "Classroom count blank, or recorded as 0",
+  teacher_housing_deficit: "Teacher or house count blank, or recorded as 0",
+  facility_presence_deficit: "Facility counts blank",
+  service_deficit: "Power or water source blank",
+} as const;
+
+test("the incomplete records filter by what is missing, count each choice and reproduce it from a link", async ({
+  page,
+}) => {
+  const queued = (ROWS as unknown as { cohort: string; need_parts: Record<string, number | null> }[]).filter(
+    (r) => r.cohort === "verification_queue"
+  );
+  const lacking = (detail: keyof typeof MISSING) =>
+    queued.filter((r) => r.need_parts[detail] === null).length;
+  const [detail, n] = (Object.keys(MISSING) as (keyof typeof MISSING)[])
+    .map((d) => [d, lacking(d)] as const)
+    .sort((x, y) => y[1] - x[1])[0];
+  expect(n).toBeGreaterThan(0);
+  expect(n).toBeLessThan(queued.length);
+
+  await openWorkspace(page, "?analyst=1&view=queue");
+  const chips = page.getByRole("group", { name: "Show only schools missing this detail" });
+  const rows = page.locator("ol[aria-label='Incomplete records'] button[data-school-key]");
+  await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(rows).toHaveCount(queued.length);
+  const chip = chips.getByRole("button", { name: new RegExp(`^${MISSING[detail]}`) });
+  await expect(chip).toContainText(String(n));
+  await chip.click();
+  await expect(rows).toHaveCount(n);
+  await expect(page.locator("[data-region=queue-order]")).toContainText(`Showing ${n} of ${queued.length}.`);
+  expect(search(page)).toBe(`?analyst=1&view=queue&miss=${detail}`);
+
+  await page.reload();
+  await expect(rows).toHaveCount(n);
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await chips.getByRole("button", { name: /^All/ }).click();
+  await expect(rows).toHaveCount(queued.length);
+  expect(search(page)).toBe("?analyst=1&view=queue");
+});
+
+test("guide 4's group step turns the method details on and offers its Try it on the filter by what is missing", async ({
+  page,
+}) => {
+  await openWorkspace(page, "?guide=q4&gstep=2");
+  const rail = page.getByTestId("guide-rail");
+  await expect(rail.getByText("Try it")).toBeVisible();
+  await expect(rail).toContainText("Choose a kind of missing detail to show only those schools.");
+  await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "true");
+  await expect(
+    page
+      .locator("[data-region=queue-missing]")
+      .getByRole("group", { name: "Show only schools missing this detail" })
+  ).toBeVisible();
+  await expect(page.getByTestId("guide-drift")).toHaveCount(0);
 });
 
 test.describe("the narrow layout", () => {

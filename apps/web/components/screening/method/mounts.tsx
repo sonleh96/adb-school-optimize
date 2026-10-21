@@ -118,6 +118,10 @@ export interface Mounts {
   legend: ReactNode | null;
   /** Map layers, for the end of the guidance map bar. */
   mapBar: ((classes: MapBarClasses) => ReactNode) | null;
+  /** The incomplete records' filter by what is missing, the rows the filters leave, and the count before the order. */
+  queueFilter: ReactNode | null;
+  queueRows: (<T extends ListedRow>(rows: readonly T[]) => readonly T[]) | null;
+  queueShowing: string | null;
   paint: MarkPaint;
   rootClassName: string;
   /** The card's method layer, given the school's whole record. */
@@ -161,12 +165,12 @@ export function useMethodMounts(input: MountInput): Mounts {
         ? mod.paintFor({
             hide: state.hide,
             rows,
-            filters: { prov: state.prov, loc: state.loc },
+            filters: { prov: state.prov, loc: state.loc, miss: state.miss },
             compared: comparing ? compared : null,
             edges: method.compare.moveEdges,
           })
         : NO_PAINT,
-    [on, mod, method, state.hide, state.prov, state.loc, rows, comparing, compared]
+    [on, mod, method, state.hide, state.prov, state.loc, state.miss, rows, comparing, compared]
   );
 
   const methodSwitch = (
@@ -285,6 +289,9 @@ export function useMethodMounts(input: MountInput): Mounts {
       compareColumn: null,
       legend: null,
       mapBar: null,
+      queueFilter: null,
+      queueRows: null,
+      queueShowing: null,
       rootClassName: "",
       cardLayer: null,
     };

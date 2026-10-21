@@ -106,6 +106,12 @@ describe("the other method keys", () => {
     expect(heard).toBe(1);
   });
 
+  it("ignores a missing detail that is not one of the four parts of school need (7)", () => {
+    const on = applyPatch(DEFAULT_STATE, { analyst: true, miss: "teacher_housing_deficit" }, loaded);
+    expect(applyPatch(on, { miss: "locality_disadvantage" }, loaded).miss).toBe("teacher_housing_deficit");
+    expect(stateFromSearch("?analyst=1&miss=nothing", loaded).miss).toBeNull();
+  });
+
   it("ignores a length that is not offered (7)", () => {
     const state = stateFromSearch("?analyst=1&n=30&k=10", loaded);
     expect(state).toMatchObject({ n: 30, k: 10 });
@@ -125,7 +131,8 @@ describe("the other method keys", () => {
 });
 
 describe("method-only keys on a plain screen (9)", () => {
-  const METHOD_ONLY = "prov=South%20Province&loc=Remote&hide=numerals&formula=1&parts=1&k=10";
+  const METHOD_ONLY =
+    "prov=South%20Province&loc=Remote&miss=service_deficit&hide=numerals&formula=1&parts=1&k=10";
 
   it("are read as their defaults from a plain link, and leave it", () => {
     const plain = stateFromSearch(`?${METHOD_ONLY}&n=30&view=queue`, {
@@ -141,7 +148,14 @@ describe("method-only keys on a plain screen (9)", () => {
       ...loaded,
       provinces: new Set(["South Province"]),
     });
-    expect(on).toMatchObject({ prov: "South Province", loc: "Remote", formula: true, parts: true, k: 10 });
+    expect(on).toMatchObject({
+      prov: "South Province",
+      loc: "Remote",
+      miss: "service_deficit",
+      formula: true,
+      parts: true,
+      k: 10,
+    });
     expect(applyPatch(on, { analyst: false }, loaded)).toEqual({ ...DEFAULT_STATE, n: 30, place: "upper" });
   });
 });
@@ -149,7 +163,7 @@ describe("method-only keys on a plain screen (9)", () => {
 describe("a guide step's starting state (10)", () => {
   it("is the state a step lands on, from any method details state", () => {
     const busy = stateFromSearch(
-      "?mode=compare&rule=need_first_u&k=10&panel=export&n=30&prov=South%20Province&loc=Remote&formula=1&parts=1&hide=numerals,range",
+      "?mode=compare&rule=need_first_u&k=10&panel=export&n=30&prov=South%20Province&loc=Remote&miss=service_deficit&formula=1&parts=1&hide=numerals,range",
       loaded
     );
     expect(busy).toMatchObject({ analyst: true, mode: "compare", hide: ["numerals", "range"] });

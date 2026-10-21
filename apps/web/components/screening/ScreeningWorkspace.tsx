@@ -130,10 +130,10 @@ function FailedWorkspace({ onRetry }: { onRetry: () => void }) {
 }
 
 /**
- * What the guides can point at beside the list and the card: the incomplete records' Group by (`queue-missing`) and
- * "Download the top list" (`export-button`) are here; the filter by what is missing arrives with the method details.
+ * What the guides can point at beside the list and the card: the incomplete records' Group by and, in the method
+ * details, their filter by what is missing (both `queue-missing`), and "Download the top list" (`export-button`).
  */
-const GUIDE_FEATURES = { export: true, grouping: true, filters: false } as const;
+const GUIDE_FEATURES = { export: true, grouping: true, filters: true } as const;
 
 /** The window's size. The server renders for the design's reference size; the browser corrects it before paint. */
 const SERVER_VIEWPORT = "1600x1000";
@@ -355,22 +355,6 @@ function Workspace() {
     });
   }, [store, selectedKey]);
 
-  // The card steps through the list on screen, in its order.
-  const onScreen =
-    state.view !== "queue"
-      ? ordered
-      : shown
-        ? incompleteGroups(incomplete, schools, shown.copy, state.qgroup).flatMap((group) => group.rows)
-        : incomplete;
-  const position = {
-    index: selectedKey ? onScreen.findIndex((row) => row.school.school_key === selectedKey) : -1,
-    total: onScreen.length,
-  };
-  const step = (delta: 1 | -1) => {
-    const next = neighbour(onScreen, selectedKey, delta);
-    if (next) select(next);
-  };
-
   const showTab = (next: ListView) => {
     // A school the other tab does not hold stops being the selection.
     const keep = selectedTab === null || selectedTab === next;
@@ -456,6 +440,23 @@ function Workspace() {
     onRule: changeRule,
     onNotify: notify,
   });
+  // The incomplete records on screen: in the method details, the ones their filters leave.
+  const queued = method.queueRows ? method.queueRows(incomplete) : incomplete;
+  // The card steps through the list on screen, in its order.
+  const onScreen =
+    state.view !== "queue"
+      ? ordered
+      : shown
+        ? incompleteGroups(queued, schools, shown.copy, state.qgroup).flatMap((group) => group.rows)
+        : queued;
+  const position = {
+    index: selectedKey ? onScreen.findIndex((row) => row.school.school_key === selectedKey) : -1,
+    total: onScreen.length,
+  };
+  const step = (delta: 1 | -1) => {
+    const next = neighbour(onScreen, selectedKey, delta);
+    if (next) select(next);
+  };
   const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
   // A tab with nothing in it cannot be chosen. The one showing stays enabled even when empty, as after a pasted link or
   // a rule switch that emptied it, so it can always be left.
@@ -728,31 +729,35 @@ function Workspace() {
                           </p>
                           {incomplete.length > 0 ? (
                             <>
-                              <div className={styles.groupBy} data-region="queue-missing">
-                                <span id="screening-group-by">{shown.copy.LAYOUT.groupBy}</span>
-                                <div
-                                  className={styles.segmented}
-                                  role="group"
-                                  aria-labelledby="screening-group-by"
-                                >
-                                  <button
-                                    type="button"
-                                    aria-pressed={state.qgroup === "province"}
-                                    onClick={() => groupBy("province")}
+                              <div data-region="queue-missing">
+                                {method.queueFilter}
+                                <div className={styles.groupBy}>
+                                  <span id="screening-group-by">{shown.copy.LAYOUT.groupBy}</span>
+                                  <div
+                                    className={styles.segmented}
+                                    role="group"
+                                    aria-labelledby="screening-group-by"
                                   >
-                                    {shown.copy.LAYOUT.byProvince}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    aria-pressed={state.qgroup === "evidence"}
-                                    onClick={() => groupBy("evidence")}
-                                  >
-                                    {shown.copy.LAYOUT.missingFilters}
-                                  </button>
+                                    <button
+                                      type="button"
+                                      aria-pressed={state.qgroup === "province"}
+                                      onClick={() => groupBy("province")}
+                                    >
+                                      {shown.copy.LAYOUT.byProvince}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      aria-pressed={state.qgroup === "evidence"}
+                                      onClick={() => groupBy("evidence")}
+                                    >
+                                      {shown.copy.LAYOUT.missingFilters}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                               {/* Each grouping has its own order sentence. */}
                               <p className={styles.scopeLine} data-region="queue-order">
+                                {method.queueShowing}
                                 {state.qgroup === "province"
                                   ? shown.copy.STRINGS.queueOrder
                                   : shown.copy.STRINGS.queueOrderMissing}
@@ -760,8 +765,11 @@ function Workspace() {
                             </>
                           ) : null}
                         </header>
+                        {queued.length === 0 && incomplete.length > 0 ? (
+                          <p className={styles.state}>{shown.copy.LAYOUT.emptyIncompleteFiltered}</p>
+                        ) : null}
                         <IncompleteList
-                          rows={incomplete}
+                          rows={queued}
                           schools={schools}
                           copy={shown.copy}
                           grouping={state.qgroup}
