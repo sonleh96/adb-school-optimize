@@ -27,6 +27,16 @@ export interface PersistenceFlag {
   readonly adjacent: boolean;
 }
 
+/** How a rule's stochastic test was drawn, from its list's provenance block. */
+export interface PersistenceTest {
+  /** How many weight draws were made in each setting. */
+  readonly draws: number;
+  /** The share of the draws in which a school must be certainly in the top 20, as a fraction. */
+  readonly threshold: number;
+  /** The concentrations drawn at, one pair per setting. */
+  readonly settings: readonly { readonly topLevel: number; readonly schoolNeed: number }[];
+}
+
 /** The group a school falls in under the rule being shown. The API calls the last one `verification_queue`. */
 export type CopyCohort = "complete" | "interval" | "queue";
 

@@ -37,6 +37,7 @@ import type {
   CountsByRuleArg,
   PairwiseRow,
   PersistenceRule,
+  PersistenceTest,
   PlacedSchool,
   Top20Change,
   ComparisonData,
@@ -97,6 +98,8 @@ export type CopyData = {
   readonly countsByRule?: CountsByRuleArg;
   /** Each persistence test's margin as a fraction (its own list's provenance block), by rule. */
   readonly margins?: Partial<Record<PersistenceRule, number>>;
+  /** How each persistence test was drawn (its own list's provenance block), by rule, for the method details. */
+  readonly tests?: Partial<Record<PersistenceRule, PersistenceTest>>;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
@@ -183,7 +186,9 @@ export function copyFor(data: CopyData = {}) {
      * guide, so a plain view never ships them.
      */
     methodFor: (ruleId: CopyRuleId): Promise<Method> =>
-      loadMethod().then((m) => m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId) })),
+      loadMethod().then((m) =>
+        m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId), tests: data.tests })
+      ),
     /** The terms worded for one rule: its group sizes and the inputs it reads. */
     termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId), ruleId),
     groupsSentence: (ruleId: CopyRuleId) => groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)),

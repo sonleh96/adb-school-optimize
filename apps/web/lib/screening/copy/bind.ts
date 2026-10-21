@@ -20,6 +20,7 @@ import {
   pairwiseFromCompare,
   schoolsFromLists,
   marginFromResults,
+  testFromResults,
 } from "./adapter";
 import { type BoundCopy, copyFor } from "./bound";
 import type { CopyRuleId, CopySchool } from "./model";
@@ -68,6 +69,13 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
     if (countsByRule[id] && schools.length > 0 && schools.every((s) => s.persistence?.[id] !== undefined))
       countsByRule[id] = { ...countsByRule[id], flagged: countsFrom(schools, id).flagged as number };
   }
+  // How each rule's test was drawn, for the method details' words.
+  const tests = Object.fromEntries(
+    lists.flatMap((l) => {
+      const test = testFromResults(l);
+      return test === undefined ? [] : [[l.run.rule_id, test]];
+    })
+  );
   return {
     schools,
     copy: copyFor({
@@ -75,6 +83,7 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
       counts: countsFromResults(shown, schools),
       countsByRule,
       margins,
+      tests,
       ...(compare ? pairwiseFromCompare(compare) : {}),
     }),
   };

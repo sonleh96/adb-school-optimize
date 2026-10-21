@@ -19,11 +19,23 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
-import { copyFor } from "@/lib/screening/copy";
+import { bindCopy, copyFor } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
 import { METHOD } from "@/lib/screening/copy/method";
+import { parseWith } from "@/lib/screening/schema";
+import { resultsResponse } from "@/lib/screening/types";
 
-import { Corpus, RULES, addFixedCopy, withLater, type FixedCopy } from "./helpers";
+import { readFixture } from "../fixtures";
+
+import {
+  Corpus,
+  RULES,
+  addFixedCopy,
+  fixtureInputs,
+  fixtureResults,
+  withLater,
+  type FixedCopy,
+} from "./helpers";
 
 const FULL = {
   all: 148,
@@ -447,6 +459,45 @@ describe("the fixed strings that carry a rule of the project", () => {
     );
   });
 
+  it("states how each persistence test was drawn from the data, per rule, never from a literal", async () => {
+    const lists = RULES.map((r) => fixtureResults(r));
+    const bound = bindCopy({ view: "additive_no_u", inputs: fixtureInputs(), lists });
+    const s0 = (await bound.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u");
+    const s = (await bound.copy.methodFor("additive_u")).insp.persistent("additive_u");
+    const want =
+      "at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80)";
+    expect(s0).toContain(`membership in ${want}, drawn fresh over the six components`);
+    expect(s).toContain(`membership in ${want} of the circulated, urgency-included experiment`);
+    // Another draw count and threshold, in one rule's list only, change that rule's words and not the other's.
+    const body = structuredClone(readFixture("results/additive_no_u.json")) as {
+      persistence: { draws: number; threshold: number; settings: unknown[] };
+    };
+    Object.assign(body.persistence, { draws: 2000, threshold: 0.9 });
+    body.persistence.settings.splice(1);
+    const other = parseWith(resultsResponse, body, "results");
+    const changed = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) => (l.run.rule_id === "additive_no_u" ? other : l)),
+    });
+    expect((await changed.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u")).toContain(
+      "at least 90% of 2,000 Dirichlet weight draws in the concentration setting (20/15)"
+    );
+    expect((await changed.copy.methodFor("additive_u")).insp.persistent("additive_u")).toContain(want);
+    // A block that gives none of it says none.
+    body.persistence = { standard_error: 0.005 } as never;
+    const bare = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) =>
+        l.run.rule_id === "additive_no_u" ? parseWith(resultsResponse, body, "results") : l
+      ),
+    });
+    expect(
+      (await bare.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u").replace("top-20", "")
+    ).not.toMatch(/\d/);
+  });
+
   it("names the method card's extra-share row by the factor or factors that attain the largest value", () => {
     expect(METHOD.insp.largestRow(["School need"])).toBe("Extra share for the largest factor: school need");
     expect(METHOD.insp.largestRow(["School need", "District context"])).toBe(
@@ -465,8 +516,11 @@ describe("the fixed strings that carry a rule of the project", () => {
     const { additive_no_u: revised, additive_u: circulated } = copy.STRINGS.persistentFlag;
     for (const t of [revised, circulated]) expect(t).not.toMatch(/5,000|Dirichlet/);
     expect(revised).not.toBe(circulated);
-    expect(METHOD.insp.persistent("additive_no_u")).toMatch(/5,000/);
-    expect(METHOD.insp.persistent("additive_u")).toMatch(/5,000/);
+    // No draw count, threshold or setting is typed: without the data the words state none, and with it they state its own.
+    for (const r of ["additive_no_u", "additive_u"] as const) {
+      expect(METHOD.insp.persistent(r).replace("top-20", ""), r).not.toMatch(/\d/);
+      expect(METHOD.insp.persistent(r), r).toMatch(/Dirichlet weight draws in each concentration setting/);
+    }
     // Each test is said to be its own: the fresh six-component run is not an isolated estimate of urgency's effect, and
     // the circulated experiment is never relabelled as an urgency-omitted result.
     expect(METHOD.insp.persistent("additive_no_u")).toMatch(/six components.*not an isolated estimate/);
