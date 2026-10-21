@@ -12,8 +12,8 @@ import type { CopyRuleId, CopySchool, ListedSchool } from "@/lib/screening/copy"
 import type { Method } from "@/lib/screening/copy/method";
 import { LABELLED_PLACES } from "@/lib/screening/marks";
 import { type Compared, compareFor } from "@/lib/screening/method/compare";
-import { admits, filterOptions, filtering } from "@/lib/screening/method/filters";
-import type { CompareResponse, Rule, RuleId, SchoolDetailResponse } from "@/lib/screening/types";
+import { admits, filterOptions, filtering, filteringAny } from "@/lib/screening/method/filters";
+import type { CompareResponse, ListedRow, Rule, RuleId, SchoolDetailResponse } from "@/lib/screening/types";
 import type { MapLayer, WorkspaceState } from "@/lib/screening/workspace/state";
 
 import type { MountInput } from "./mounts";
@@ -25,6 +25,7 @@ import type { MapBarClasses } from "../guide/GuidanceLayer";
 import { FilterPanel, LayersPanel } from "./MapOptions";
 import { MethodRuleArea } from "./MethodRuleArea";
 import { Popover } from "./Popover";
+import { QueueFilter } from "./QueueFilter";
 import styles from "./method.module.css";
 
 export { filterOptions };
@@ -65,6 +66,12 @@ export interface Built {
   compareColumn: ReactNode | null;
   legend: ReactNode;
   mapBar: (classes: MapBarClasses) => ReactNode;
+  /** The incomplete records' filter by what is missing, for their list head. */
+  queueFilter: ReactNode;
+  /** The incomplete records the filters leave. */
+  queueRows: <T extends ListedRow>(rows: readonly T[]) => readonly T[];
+  /** "Showing 2 of 4. " before the incomplete records' order sentence while a filter hides some; null otherwise. */
+  queueShowing: string | null;
   rootClassName: string;
   cardLayer: (input: { record: CopySchool; detail: SchoolDetailResponse }) => ReactNode;
 }
@@ -222,6 +229,24 @@ export function buildMounts(input: BuildInput): Built {
     </>
   );
 
+  // The incomplete records: every filter applies to them, the one by what is missing only to them.
+  const queued = input.rows.filter((row) => row.cohort === "verification_queue");
+  const queueFilters = { ...filters, miss: state.miss };
+  const queueRows = <T extends ListedRow>(rows: readonly T[]) =>
+    filteringAny(queueFilters) ? rows.filter((row) => admits(row, queueFilters)) : rows;
+  const queueShown = queueRows(queued).length;
+  const queueFilter = (
+    <QueueFilter
+      copy={copy}
+      method={method}
+      rows={filtering(filters) ? queued.filter((row) => admits(row, filters)) : queued}
+      miss={state.miss}
+      onMiss={(miss) => store.setState({ miss })}
+    />
+  );
+  const queueShowing =
+    queueShown < queued.length ? `${method.queue.showing(queueShown, queued.length)} ` : null;
+
   const names = new Map(
     [...schools.values()].map((school: ListedSchool) => [school.id, copy.distinctName(school)])
   );
@@ -258,6 +283,9 @@ export function buildMounts(input: BuildInput): Built {
     compareColumn,
     legend,
     mapBar,
+    queueFilter,
+    queueRows,
+    queueShowing,
     rootClassName: `${styles.methodRoot} ${comparing ? styles.compareRoot : ""}`,
     cardLayer,
   };

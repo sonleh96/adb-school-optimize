@@ -28,6 +28,15 @@ export const MAP_LAYERS: readonly MapLayer[] = [
   "provinces",
   "districts",
 ];
+/** The parts of school need an incomplete record can lack, which the method details filter those records by. */
+export type MissingDetail =
+  "permanent_classroom_deficit" | "teacher_housing_deficit" | "facility_presence_deficit" | "service_deficit";
+export const MISSING_DETAILS: readonly MissingDetail[] = [
+  "permanent_classroom_deficit",
+  "teacher_housing_deficit",
+  "facility_presence_deficit",
+  "service_deficit",
+];
 /** How many schools the top list holds. */
 export type TopLength = 10 | 20 | 30;
 /** How many places at the top of the compare chart are drawn in full. */
@@ -59,6 +68,8 @@ export interface WorkspaceState {
   /** The method details' filters: they hide rows and dim marks, and never renumber a place. */
   readonly prov: string | null;
   readonly loc: string | null;
+  /** Only the incomplete records that lack this part of school need. */
+  readonly miss: MissingDetail | null;
   readonly formula: boolean;
   /** The parts of school need are open in the card's numbers. */
   readonly parts: boolean;
@@ -88,6 +99,7 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   n: 20,
   prov: null,
   loc: null,
+  miss: null,
   formula: false,
   parts: false,
   hide: NO_LAYERS,
@@ -203,6 +215,7 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
   scope: flag,
   prov: placeKey((known) => known.provinces),
   loc: placeKey((known) => known.localities),
+  miss: { parse: oneOf(...MISSING_DETAILS), write: (value) => value },
   formula: flag,
   parts: flag,
   hide: hideKey,
@@ -217,7 +230,15 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
 const STATE_KEYS = Object.keys(KEYS) as StateKey[];
 
 /** The keys only the method details show or act on. */
-const METHOD_ONLY = ["prov", "loc", "hide", "formula", "parts", "k"] as const satisfies readonly StateKey[];
+const METHOD_ONLY = [
+  "prov",
+  "loc",
+  "miss",
+  "hide",
+  "formula",
+  "parts",
+  "k",
+] as const satisfies readonly StateKey[];
 
 const same = <K extends StateKey>(key: K, a: WorkspaceState[K], b: WorkspaceState[K]): boolean =>
   (KEYS[key] as KeyDef<WorkspaceState[K]>).same?.(a, b) ?? a === b;

@@ -94,6 +94,7 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   n: 20,
   prov: null,
   loc: null,
+  miss: null,
   formula: false,
   parts: false,
   hide: DEFAULT_STATE.hide,
@@ -363,9 +364,11 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [term("missing_all_but_remoteness"), term("missing_classrooms")],
-        // Its Try it is about the filter by what is missing, which arrives with the method details.
+        // Its Try it is about the filter by what is missing, a method-details control, so the step turns them on.
         tryIt: ctx.filters ? base.tryIt : null,
-        patch: { view: "queue", qgroup: "evidence" },
+        patch: ctx.filters
+          ? { view: "queue", qgroup: "evidence", analyst: true }
+          : { view: "queue", qgroup: "evidence" },
         // Group by in the column (the card names its own chips `queue-missing` too), then the first group.
         targets: [
           [`[data-slot="column"] ${region("queue-missing")}`],
