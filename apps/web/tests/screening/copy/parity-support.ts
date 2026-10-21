@@ -38,6 +38,10 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.placeRange": [["3rd", "12th"]],
   "LAYOUT.valueRange": [["0.487", "0.537"]],
   "LAYOUT.underRule": [["Place in the list", "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.topListFileName": [
+    [20, "Combined factors, with urgency"],
+    [10, 'Équipe / mix (S0): "a" b'],
+  ],
   "LAYOUT.groupMany": [[2], [5], [1]],
   "LAYOUT.addedBy": [["School need"], ["Air quality"]],
   "LAYOUT.tooltipMissing": [["classroom count blank, power source blank"]],
@@ -49,6 +53,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.samePlaceUnder": [["the benchmark"]],
   "METHOD.moved.eyebrow": [["the benchmark"]],
   "METHOD.queue.showing": [[3, 9]],
+  "METHOD.compare.table.place": [["Combined"]],
   "METHOD.compare.pickAria": [["on the left"]],
   "METHOD.compare.enteringK": [[10], [20]],
   "METHOD.compare.leavingK": [[10], [20]],

@@ -65,8 +65,7 @@ test("the sheet previews the API's file and downloads that file byte for byte", 
     sheet(page).getByRole("button", { name: "Download the top list" }).click(),
   ]);
   // The plain sheet names the file in plain words; the bytes are still the API's file.
-  expect(download.suggestedFilename()).toMatch(/\.csv$/);
-  expect(download.suggestedFilename()).not.toMatch(/additive_u|rise_png|_/);
+  expect(download.suggestedFilename()).toBe("rise-png-top-20-combined-factors-with-urgency.csv");
   const saved = readFileSync((await download.path())!);
   expect(saved.equals(file("exports/top_additive_u_20.csv"))).toBe(true);
   await expect(page.getByRole("status").filter({ hasText: "Downloaded the top list" })).toHaveText(
@@ -245,6 +244,9 @@ test("the method sheet follows the province on screen, and says when a filter is
   const filters = sheet(page).locator("[data-region=export-filters]");
   await expect(filters).not.toContainText("None.");
   await expect(filters.locator("[data-filter-not-applied]")).toContainText("Remote");
+  await expect(sheet(page).locator("[data-region=export-filter-note]")).toHaveText(
+    "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here."
+  );
 });
 
 test("the plain sheet copies its record in plain words, and the method sheet keeps the API's record and name", async ({

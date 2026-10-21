@@ -61,10 +61,10 @@ export function ChartTable({
     <table className={styles.chartTable} aria-label={label}>
       <thead>
         <tr>
-          <th scope="col">{copy.LAYOUT.schoolHead}</th>
-          <th scope="col">{copy.ruleShortName(a)}</th>
-          <th scope="col">{copy.ruleShortName(b)}</th>
-          <th scope="col">{copy.LAYOUT.change}</th>
+          <th scope="col">{words.compare.table.school}</th>
+          <th scope="col">{words.compare.table.place(copy.ruleShortName(a))}</th>
+          <th scope="col">{words.compare.table.place(copy.ruleShortName(b))}</th>
+          <th scope="col">{words.compare.table.move}</th>
         </tr>
       </thead>
       <tbody ref={body} onKeyDown={onKeyDown}>

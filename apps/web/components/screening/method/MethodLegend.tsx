@@ -6,7 +6,7 @@ import { useId, useState } from "react";
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { RAMP_HEX } from "@/lib/screening/marks";
-import { MOVE_HEX } from "@/lib/screening/method/moves";
+import { MOVE_HEX, OUTSIDE_HEX } from "@/lib/screening/method/moves";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import { RuleSymbol } from "../RuleArea";
@@ -174,6 +174,10 @@ export function CompareLegend({
           <i />
         </span>
         <span>{method.compare.legendSize(k, copy.ruleShortName(a), copy.ruleShortName(b))}</span>
+      </span>
+      <span className={styles.legendKey}>
+        <i className={styles.outsideKey} style={{ background: OUTSIDE_HEX }} aria-hidden />
+        <span>{method.compare.legendOutside}</span>
       </span>
       <Keys {...common} />
     </Frame>

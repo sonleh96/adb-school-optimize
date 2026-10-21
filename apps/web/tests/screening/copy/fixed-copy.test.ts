@@ -132,12 +132,15 @@ describe("every fixed string follows the writing rules", () => {
       "emptyData",
       "loadFailed",
       "availableAfterLoad",
+      "fileNotByRemoteness",
       "mapKeyboard",
       "basemapUnavailable",
       "refreshFailed",
       "sessionEnded",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
+      // A file name is a name, not a sentence; its own test checks it.
+      if (k === "topListFileName") continue;
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
       corpus.add(`LAYOUT.${k}`, text, { sentence: LAYOUT_SENTENCES.has(k) });
     }
