@@ -433,20 +433,28 @@ export function MethodCard({
   }
 
   if (compare) {
-    const block = (id: CopyRuleId) => {
-      const place = placeOf(copy, resultOf(id));
+    // Among the schools both rules put in order, the places are the comparison's, as the chart draws them. A school
+    // outside that group shows its place in each rule's own list, under a label that says so.
+    const block = (id: CopyRuleId, common: number | null) => {
+      const own = placeOf(copy, resultOf(id));
+      const place = common !== null ? { kind: "common" as const, text: String(common) } : own;
       return (
         <div className={styles.block}>
           <span className={base.eyebrow}>{copy.ruleShortName(id)}</span>
-          <div className={styles.blockFigure} data-kind={place?.kind ?? "none"}>
+          <div
+            className={styles.blockFigure}
+            data-kind={place === null ? "none" : place.kind === "common" ? "point" : place.kind}
+          >
             {place ? <PlaceText text={place.text} /> : method.insp.noResultHero}
           </div>
           <p className={styles.blockSub}>
             {place === null
               ? method.noResultForSchool
-              : place.kind === "point"
+              : place.kind === "common"
                 ? method.compare.slopeMid(compare.n)
-                : method.compare.rangesSub()}
+                : place.kind === "point"
+                  ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(id))
+                  : method.compare.rangesSub()}
           </p>
         </div>
       );
@@ -464,8 +472,8 @@ export function MethodCard({
     return (
       <>
         <div className={styles.blocks} data-region="inspector-place">
-          {block(compare.a)}
-          {block(compare.b)}
+          {block(compare.a, compare.row?.a ?? null)}
+          {block(compare.b, compare.row?.b ?? null)}
         </div>
         {row ? (
           <p className={styles.moveLine}>
