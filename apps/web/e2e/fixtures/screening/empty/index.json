@@ -9,10 +9,10 @@
    "query": {}
   },
   {
-   "file": "results/additive_u.json",
+   "file": "results/additive_no_u.json",
    "path": "/api/v1/screening/results",
    "query": {
-    "rule": "additive_u"
+    "rule": "additive_no_u"
    },
    "status": 404
   },
@@ -77,11 +77,56 @@
    "status": 404
   },
   {
-   "file": "exports/top_additive_u_20.json",
+   "file": "compare/additive_no_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_no_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_no_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_no_u"
+   },
+   "status": 404
+  },
+  {
+   "file": "compare/additive_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "benchmark"
+   },
+   "status": 404
+  },
+  {
+   "file": "exports/top_additive_no_u_20.json",
    "path": "/api/v1/screening/exports/top.csv",
    "query": {
     "k": "20",
-    "rule": "additive_u"
+    "rule": "additive_no_u"
    },
    "status": 404
   }
