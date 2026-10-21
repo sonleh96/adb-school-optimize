@@ -24,7 +24,14 @@ from typing import Any
 from openpyxl import Workbook
 from openpyxl.cell import _writer as openpyxl_cell_writer
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from school_scoring.screening import INPUT_CONTRACT, Component, GateFailure, Provenance, SchoolRecord
+from school_scoring.screening import (
+    INPUT_CONTRACT,
+    Component,
+    GateFailure,
+    PolicyRole,
+    Provenance,
+    SchoolRecord,
+)
 
 from . import screening_store as store
 from .models.screening import AnchorOut, ManifestOut, WeightOut
@@ -46,9 +53,20 @@ GATE_FAILURE_DETAILS: dict[GateFailure, str] = {
 
 PROVENANCE_NOTES: dict[Provenance, str] = {
     Provenance.CIRCULATED_PAPER: "A rule of the circulated paper.",
-    Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW: (
-        "A proposed follow-up scenario pending author review. It is not a result of the circulated paper."
+    Provenance.REVISED_PAPER: (
+        "A rule of the revised paper, which leaves urgency out of every primary calculation. "
+        "It is not a result of the circulated paper."
     ),
+}
+
+POLICY_ROLE_NOTES: dict[PolicyRole, str] = {
+    PolicyRole.PRIMARY: "The revised paper's primary list.",
+    PolicyRole.STRICT_ALTERNATIVE: "A stricter ordering that puts school need before every other input.",
+    PolicyRole.POLICY_SENSITIVITY: "A sensitivity that lets the largest of several inputs lift a school.",
+    PolicyRole.URGENCY_SENSITIVITY: (
+        "A sensitivity that restores the supplied urgency scalar. It is kept for comparison and is not the primary list."
+    ),
+    PolicyRole.CONVENTIONAL_REFERENCE: "A conventional benchmark kept for comparison.",
 }
 
 CAVEAT = (
@@ -165,6 +183,7 @@ def method_record(
         ("rule_provenance", manifest.provenance.value),
         ("rule_provenance_note", PROVENANCE_NOTES[manifest.provenance]),
         ("policy_role", manifest.policy_role.value),
+        ("policy_role_note", POLICY_ROLE_NOTES[manifest.policy_role]),
         ("score_kind", manifest.score_kind),
         ("formula", manifest.rule_formula),
         ("weights", "; ".join(_format_weight(w) for w in manifest.weights)),

@@ -54,7 +54,8 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
     assert [r["rule_id"] for r in body["rules"] if r["is_default"]] == ["additive_u"]
 
     circulated = rules["additive_u"]
-    assert circulated["provenance"] == "circulated_paper" and circulated["policy_role"] == "primary"
+    assert circulated["provenance"] == "circulated_paper"
+    assert circulated["policy_role"] == "urgency_sensitivity"
     assert circulated["score_kind"] == "additive score" and circulated["uses_urgency"] is True
     assert [(w["component"], w["fraction"], w["value"]) for w in circulated["weights"]] == [
         ("N", "3/5", 0.6),
@@ -67,7 +68,7 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
     ]
 
     omitted = rules["additive_no_u"]
-    assert omitted["provenance"] == "proposed_follow_up_pending_author_review"
+    assert (omitted["provenance"], omitted["policy_role"]) == ("revised_paper", "primary")
     assert omitted["uses_urgency"] is False
     assert [(w["component"], w["fraction"]) for w in omitted["weights"]] == [
         ("N", "12/19"),
@@ -78,6 +79,16 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
         ("L", "1/19"),
     ]
     assert omitted["weights"][0]["value"] == pytest.approx(12 / 19, abs=1e-15)
+
+    assert {rid: (r["provenance"], r["policy_role"]) for rid, r in rules.items()} == {
+        "additive_no_u": ("revised_paper", "primary"),
+        "need_first_no_u": ("revised_paper", "strict_alternative"),
+        "bottleneck_no_u": ("revised_paper", "policy_sensitivity"),
+        "additive_u": ("circulated_paper", "urgency_sensitivity"),
+        "need_first_u": ("circulated_paper", "urgency_sensitivity"),
+        "bottleneck_u": ("circulated_paper", "urgency_sensitivity"),
+        "benchmark": ("circulated_paper", "conventional_reference"),
+    }
 
     need_first = rules["need_first_no_u"]
     assert need_first["primary_sort_key"] == "N" and "N" not in [
