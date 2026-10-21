@@ -10,9 +10,12 @@
  *  8. A filter value that the loaded list does not hold is kept, so the list shows nothing for no visible reason.
  *  9. A method-only key (a filter, hidden layers, the formula, the parts, the chart's length) stays in force on a
  *     plain screen, from a pasted link or after the method details are turned off: a filter nobody can see.
+ * 10. A guide step reads as moved on the moment it lands: a method key's starting value is not the value the state
+ *     then holds, so the rail offers to go back to a step the screen is already on.
  */
 import { describe, expect, it } from "vitest";
 
+import { BASE, STEP_KEYS } from "@/lib/screening/guide/guides";
 import type { RuleId } from "@/lib/screening/types";
 import {
   DEFAULT_STATE,
@@ -140,5 +143,20 @@ describe("method-only keys on a plain screen (9)", () => {
     });
     expect(on).toMatchObject({ prov: "South Province", loc: "Remote", formula: true, parts: true, k: 10 });
     expect(applyPatch(on, { analyst: false }, loaded)).toEqual({ ...DEFAULT_STATE, n: 30, place: "upper" });
+  });
+});
+
+describe("a guide step's starting state (10)", () => {
+  it("is the state a step lands on, from any method details state", () => {
+    const busy = stateFromSearch(
+      "?mode=compare&rule=need_first_u&k=10&panel=export&n=30&prov=South%20Province&loc=Remote&formula=1&parts=1&hide=numerals,range",
+      loaded
+    );
+    expect(busy).toMatchObject({ analyst: true, mode: "compare", hide: ["numerals", "range"] });
+    const landed = applyPatch(busy, BASE, loaded);
+    // The rail reads a step as left when a key it set no longer holds the value it set, compared as it compares them.
+    const left = STEP_KEYS.filter((key) => key !== "rule" && BASE[key] !== landed[key]);
+    expect(left).toEqual([]);
+    expect(landed).toEqual(DEFAULT_STATE);
   });
 });
