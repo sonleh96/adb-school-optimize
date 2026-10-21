@@ -6,11 +6,11 @@
  * Roles are read under the paper's main rule, whose list the workspace always loads, so they do not change when the
  * screen shows another rule. Ties go to the earlier place, then to the name, so the choice is the same every load.
  */
-import type { BoundCopy, CopySchool, InputKey, NeedKey } from "../copy";
+import { type BoundCopy, type CopySchool, DEFAULT_RULE, type InputKey, type NeedKey } from "../copy";
 
 import type { Catalog, GuideId } from "./machine";
 
-const MAIN = "additive_u" as const;
+const MAIN = DEFAULT_RULE;
 const NEED_KEYS: readonly NeedKey[] = ["classrooms", "housing", "facilities", "services", "locality"];
 const NEED_GATES = [
   "permanent_classroom_deficit",
@@ -97,6 +97,8 @@ export interface Features {
   readonly export: boolean;
   /** The API offers the proposed revision, so the urgency guide can switch to it. */
   readonly proposed: boolean;
+  /** The incomplete records can be grouped by what is missing. */
+  readonly grouping: boolean;
 }
 
 /** Each guide's steps, by key, as the data and the build allow them. */
@@ -109,7 +111,7 @@ export function planOf(roles: Roles, features: Features): Plan {
   // the card's reasons and the inputs.
   if (roles.complete.length > 0) plan.q2 = roles.reasons ? ["why", "need", "adds"] : ["why", "adds"];
   if (roles.ranges.length > 0) plan.q3 = ["range", "order", "map"];
-  if (roles.incomplete.length > 0) plan.q4 = ["list", "group", "school"];
+  if (roles.incomplete.length > 0) plan.q4 = ["list", ...(features.grouping ? ["group"] : []), "school"];
   if (features.proposed && roles.complete.length > 0)
     plan.q5 = ["agree", "why", ...(roles.ranges.length > 0 ? ["ranges"] : []), "use"];
   return plan;

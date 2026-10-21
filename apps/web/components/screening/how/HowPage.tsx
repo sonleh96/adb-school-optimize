@@ -12,8 +12,7 @@ import { type Segments, textOf } from "@/lib/screening/copy";
 import type { GuideId } from "@/lib/screening/guide/machine";
 
 import { Sentence } from "../Sentence";
-import { acted } from "../guide/dom";
-import { useLayerStore, useLayers } from "../guide/GuidanceProvider";
+import { useActed, useLayerStore, useLayers } from "../guide/GuidanceProvider";
 import type { GuideData } from "../guide/types";
 import { useLater } from "../guide/useLater";
 import { useReturnFocus } from "../guide/useReturnFocus";
@@ -73,12 +72,14 @@ export default function HowPage({ data }: { data: GuideData }) {
   const page = useRef<HTMLElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const [current, setCurrent] = useState<string | null>(null);
+  const acted = useActed();
   useReturnFocus();
   const { copy } = data;
 
   const ready = later.status === "ready";
   useEffect(() => {
     if (ready && acted()) title.current?.focus({ preventScroll: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once the page's words have loaded.
   }, [ready]);
 
   // The contents mark the section being read; at the end of the page, the last one.

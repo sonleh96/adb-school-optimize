@@ -69,7 +69,7 @@ test("a returning visitor starts with the rail closed and sees what they have se
 }) => {
   await context.addInitScript(
     ([key, value]) => window.localStorage.setItem(key, value),
-    [MEMORY, JSON.stringify({ seen: true, done: ["q1", "q2"], last: { guide: "q4", step: 2 } })]
+    [MEMORY, JSON.stringify({ seen: true, done: ["q1", "q2"], last: { guide: "q5", step: 2 } })]
   );
   await ready(page);
   await expect(rail(page)).toHaveCount(0);
@@ -80,8 +80,8 @@ test("a returning visitor starts with the rail closed and sees what they have se
   const rows = rail(page).locator("button[data-guide]");
   await expect(rows.nth(0)).toContainText("Seen");
   await expect(rows.nth(1)).toContainText("Seen");
-  await expect(rows.nth(3)).toContainText("Step 2 of 3");
-  await expect(rows.nth(4)).toContainText("4 steps");
+  await expect(rows.nth(3)).toContainText("2 steps");
+  await expect(rows.nth(4)).toContainText("Step 2 of 4");
   await expect(rail(page).getByRole("button", { name: "Close guides" })).toBeVisible();
 });
 
@@ -102,8 +102,8 @@ const SCRIPT: { guide: string; step: number; state: Record<string, unknown>; sho
   { guide: "q3", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=list-order]" },
   { guide: "q3", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend-range]" },
   { guide: "q4", step: 1, state: { view: "queue", school: null }, shows: "[data-region=queue-list]" },
-  { guide: "q4", step: 2, state: { view: "queue", qgroup: "evidence" }, shows: "[data-region=queue-list]" },
-  { guide: "q4", step: 3, state: { view: "queue" }, shows: "[data-region=inspector-place]" },
+  // Grouping by what is missing arrives with the workspace's Group by control; until then guide 4 has two steps.
+  { guide: "q4", step: 2, state: { view: "queue" }, shows: "[data-region=inspector-place]" },
   {
     guide: "q5",
     step: 1,
@@ -154,8 +154,44 @@ test("every step sets its screen, rings what it points at and says nothing has m
   expect(memory.done).toEqual(["q1", "q2", "q3", "q4", "q5"]);
 });
 
+test("opening a guide moves focus to its step, and closing the rail hands focus to Guides", async ({
+  page,
+}) => {
+  await ready(page);
+  await rail(page).locator("button[data-guide=q2]").click();
+  await expect(stepTitle(page)).toBeFocused();
+  await rail(page).getByRole("button", { name: "Skip this guide" }).click();
+  await expect(rail(page)).toHaveCount(0);
+  await expect(page.getByRole("toolbar").getByRole("button", { name: "Guides" })).toBeFocused();
+  // By keyboard too: the start list opens with its title focused, and Enter on a guide focuses its step.
+  await page.keyboard.press("Enter");
+  await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeFocused();
+  await rail(page).locator("button[data-guide=q1]").focus();
+  await page.keyboard.press("Enter");
+  await expect(stepTitle(page)).toBeFocused();
+});
+
+test("rings follow a scrolled panel at once and ease only between steps", async ({ page }) => {
+  await ready(page, "?guide=q1&gstep=1");
+  await ringed(page);
+  const ring = page.locator("[data-testid=guide-rings] > div").first();
+  await expect(ring).not.toHaveAttribute("data-moving", /.*/);
+  // The ring is cut to the list's visible part, so as the rows scroll up its lower edge rises with them.
+  const bottom = async () => {
+    const box = (await ring.boundingBox())!;
+    return Math.round(box.y + box.height);
+  };
+  const before = await bottom();
+  await page.locator("#screening-list").evaluate((list) => (list.scrollTop = 40));
+  await expect.poll(bottom).toBe(before - 40);
+  await expect(ring).not.toHaveAttribute("data-moving", /.*/);
+  await rail(page).getByRole("button", { name: "Next", exact: true }).click();
+  await expect(ring).toHaveAttribute("data-moving");
+  await expect(ring).not.toHaveAttribute("data-moving", /.*/);
+});
+
 test("a pasted link to a step reproduces its screen", async ({ page }) => {
-  await ready(page, "?guide=q4&gstep=3");
+  await ready(page, "?guide=q4&gstep=2");
   await expect(stepTitle(page)).toContainText("What");
   await expect.poll(() => workspace(page)).toMatchObject({ view: "queue" });
   const { school } = await workspace(page);
@@ -249,7 +285,7 @@ test("worst-case names stay inside the rail and read as names", async ({ page, c
     "?guide=q1&gstep=1",
     "?guide=q2&gstep=1",
     "?guide=q3&gstep=2",
-    "?guide=q4&gstep=3",
+    "?guide=q4&gstep=2",
   ]) {
     await page.goto(`/screening${link}`);
     await expect(rail(page).locator("aside")).toBeVisible();
