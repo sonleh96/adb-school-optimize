@@ -191,6 +191,7 @@ export default function MapCanvas({
   const [moving, setMoving] = useState(false);
   const [basemapFailed, setBasemapFailed] = useState(false);
   const [pointer, setPointer] = useState<SchoolKey | null>(null);
+  const pointerKey = useRef<SchoolKey | null>(null);
 
   const byKey = useMemo(() => new Map(schools.map((s) => [s.key, s])), [schools]);
   const selected = selectedKey ? (byKey.get(selectedKey) ?? null) : null;
@@ -299,10 +300,11 @@ export default function MapCanvas({
       const canvas = mapRef.current?.getCanvas();
       if (canvas) canvas.style.cursor = info.object ? "pointer" : "";
       const key = info.object?.key ?? null;
-      setPointer((previous) => {
-        if (previous !== key) onHoverChange(key);
-        return key;
-      });
+      // The parent hears of a change once, here in the event, never from inside a state update.
+      if (pointerKey.current === key) return;
+      pointerKey.current = key;
+      setPointer(key);
+      onHoverChange(key);
     },
     [onHoverChange]
   );
