@@ -69,6 +69,9 @@ export interface WorkspaceState {
 
 export type StateKey = keyof WorkspaceState;
 
+/** No layer hidden. One array, so a state that hides none holds the default itself and compares equal to it. */
+const NO_LAYERS: readonly MapLayer[] = Object.freeze([]);
+
 export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   rule: null,
   compare: null,
@@ -87,7 +90,7 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   loc: null,
   formula: false,
   parts: false,
-  hide: Object.freeze([]) as readonly MapLayer[],
+  hide: NO_LAYERS,
   pop: null,
 });
 
@@ -180,7 +183,8 @@ const hideKey: KeyDef<readonly MapLayer[]> = {
   parse: (value) => {
     const names = typeof value === "string" ? value.split(",") : Array.isArray(value) ? value : null;
     if (!names) return INVALID;
-    return Object.freeze(MAP_LAYERS.filter((layer) => names.includes(layer)));
+    const hidden = MAP_LAYERS.filter((layer) => names.includes(layer));
+    return hidden.length ? Object.freeze(hidden) : NO_LAYERS;
   },
   write: (value) => (value.length ? value.join(",") : null),
   same: (a, b) => a.join(",") === b.join(","),
