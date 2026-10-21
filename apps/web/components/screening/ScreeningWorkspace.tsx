@@ -576,8 +576,9 @@ function Workspace() {
             <GuideMenu copy={copy} ready={ready}>
               {(act) => (
                 <>
+                  {method.methodMenuItem(act)}
                   {copyLink(true)}
-                  {method.menuItems(act)}
+                  {method.exportMenuItem(act)}
                   {signOut(true)}
                 </>
               )}
