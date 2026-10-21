@@ -23,6 +23,8 @@ export interface LayerSnapshot {
   readonly state: LayerState;
   readonly memory: Memory;
   readonly catalog: Catalog | null;
+  /** The URL and the memory have been read; until then the page's boot script decides the rail's width. */
+  readonly attached: boolean;
 }
 
 export interface LayerStore {
@@ -43,7 +45,7 @@ const sameCatalog = (a: Catalog | null, b: Catalog) =>
   !!a && a.length === b.length && a.every((g, i) => g.id === b[i].id && g.steps === b[i].steps);
 
 export function createLayerStore(): LayerStore {
-  let snap: LayerSnapshot = { state: INITIAL_STATE, memory: EMPTY_MEMORY, catalog: null };
+  let snap: LayerSnapshot = { state: INITIAL_STATE, memory: EMPTY_MEMORY, catalog: null, attached: false };
   const listeners = new Set<() => void>();
   let env: {
     location: Pick<Location, "search" | "pathname" | "hash">;
@@ -52,7 +54,13 @@ export function createLayerStore(): LayerStore {
   } | null = null;
 
   function commit(next: LayerSnapshot) {
-    if (next.state === snap.state && next.memory === snap.memory && next.catalog === snap.catalog) return;
+    if (
+      next.state === snap.state &&
+      next.memory === snap.memory &&
+      next.catalog === snap.catalog &&
+      next.attached === snap.attached
+    )
+      return;
     const previous = snap;
     snap = next;
     if (env) {
@@ -99,7 +107,12 @@ export function createLayerStore(): LayerStore {
       }
       const memory = parseMemory(text);
       const state = stateFromSearch(location.search, memory);
-      commit({ ...snap, memory, state: snap.catalog ? revalidate(state, snap.catalog) : state });
+      commit({
+        ...snap,
+        attached: true,
+        memory,
+        state: snap.catalog ? revalidate(state, snap.catalog) : state,
+      });
     },
   };
 }

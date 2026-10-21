@@ -24,7 +24,7 @@ import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
 import { GuidanceLayer, GuideMenu, HowLink } from "./guide/GuidanceLayer";
-import { GuidanceProvider, useGuidanceFrame } from "./guide/GuidanceProvider";
+import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
 import type { GuideData } from "./guide/types";
 import { Legend } from "./Legend";
 import type { TipContent } from "./MapTooltip";
@@ -46,6 +46,7 @@ export function ScreeningWorkspace() {
   return (
     <WorkspaceProvider>
       <GuidanceProvider>
+        <RailBoot />
         <UnreadableData>
           <Workspace />
         </UnreadableData>
@@ -313,7 +314,12 @@ function Workspace() {
   const viewport = useViewport();
   const cardOpen = selectedSchool !== null;
   const guidance = useGuidanceFrame(viewport.width);
-  const layout = layoutOf({ width: viewport.width, height: viewport.height, cardOpen, rail: guidance.rail });
+  const layout = layoutOf({
+    width: viewport.width,
+    height: viewport.height,
+    cardOpen,
+    rail: guidance.rail ?? 0,
+  });
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
@@ -495,11 +501,12 @@ function Workspace() {
       data-card-docked={layout.docked || undefined}
       data-instant={keyboard || undefined}
       data-gloss={guidance.glossary || undefined}
-      data-rail={guidance.rail > 0 || undefined}
+      data-rail={(guidance.rail ?? 0) > 0 || undefined}
       aria-label={copy.LAYOUT.workspaceAria}
       style={
         {
-          "--rail-w": `${guidance.rail}px`,
+          // Until the guidance store has read the URL, the boot script's width (in the stylesheet) stands.
+          ...(guidance.rail === null ? {} : { "--rail-w": `${guidance.rail}px` }),
           ...(layout.band ? { "--band": `${layout.band}px` } : {}),
         } as React.CSSProperties
       }
