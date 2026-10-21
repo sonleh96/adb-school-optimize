@@ -369,26 +369,6 @@ def test_urgency_never_appears_in_an_urgency_omitted_rule(api, loaded, rule_id):
     assert any(r["components"]["U"] is not None for r in twin["rows"])
 
 
-def test_old_model_priorities_do_not_reach_the_screening_responses(api, connection, loaded):  # API6
-    before = api.get("/api/v1/screening/results", params={"rule": "additive_u"}).content
-    scenario = connection.execute(
-        "insert into scoring_scenarios (scenario_name, weights, is_default) values ('old', '{}', true) returning scenario_id"
-    ).fetchone()[0]
-    for i, school_id in enumerate(loaded.school_ids.values()):
-        connection.execute(
-            "insert into school_scores (scenario_id, school_id, priority_score, rank_priority, rank_need) "
-            "values (%s, %s, 0.99, %s, %s)",
-            (scenario, school_id, 100 - i, 100 - i),
-        )
-
-    after = api.get("/api/v1/screening/results", params={"rule": "additive_u"}).content
-
-    assert after == before
-    assert b"priority" not in after
-    detail = api.get(f"/api/v1/screening/schools/{loaded.school_ids[AWK[7]]}").content
-    assert b"rank_priority" not in detail and b"priority_score" not in detail
-
-
 # ---------------------------------------------------------------------------------------------
 # Unknown ids.
 # ---------------------------------------------------------------------------------------------

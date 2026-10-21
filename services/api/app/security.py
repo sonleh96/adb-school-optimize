@@ -1,13 +1,10 @@
-"""Authentication, trusted identity, and bounded mutation controls."""
+"""Authentication and the trusted identity of a request."""
 
 from __future__ import annotations
 
-from collections import OrderedDict, deque
 from dataclasses import dataclass
 from functools import lru_cache
-from threading import Lock
-from time import monotonic
-from typing import Annotated, Any
+from typing import Any
 
 import jwt
 from fastapi import Depends
@@ -24,10 +21,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 class AuthenticatedUser:
     user_id: str
     email: str | None
-
-    @property
-    def actor(self) -> str:
-        return self.email or self.user_id
 
 
 @lru_cache(maxsize=4)
@@ -86,57 +79,3 @@ def require_authenticated_user(
     if not settings.is_allowed_email(email):
         raise ApiError("This account is not authorized.", status_code=403, code="forbidden")
     return AuthenticatedUser(user_id=user_id, email=email)
-
-
-CurrentUser = Annotated[AuthenticatedUser, Depends(require_authenticated_user)]
-
-
-class WriteRateLimiter:
-    def __init__(self, max_keys: int = 5000) -> None:
-        self.max_keys = max_keys
-        self._events: OrderedDict[str, deque[float]] = OrderedDict()
-        self._lock = Lock()
-
-    def check(self, key: str, limit: int, window_seconds: float = 60.0) -> None:
-        now = monotonic()
-        cutoff = now - window_seconds
-        with self._lock:
-            events = self._events.setdefault(key, deque())
-            while events and events[0] <= cutoff:
-                events.popleft()
-            if len(events) >= limit:
-                raise ApiError(
-                    "Write rate limit exceeded. Try again shortly.",
-                    status_code=429,
-                    code="rate_limit_exceeded",
-                )
-            events.append(now)
-            self._events.move_to_end(key)
-            while len(self._events) > self.max_keys:
-                self._events.popitem(last=False)
-
-    def clear(self) -> None:
-        with self._lock:
-            self._events.clear()
-
-
-write_rate_limiter = WriteRateLimiter()
-
-
-def require_write_rate_limit(
-    user: AuthenticatedUser = Depends(require_authenticated_user),  # noqa: B008
-    settings: Settings = Depends(get_settings),  # noqa: B008
-) -> None:
-    write_rate_limiter.check(user.user_id, settings.write_rate_limit_per_minute)
-
-
-def require_write_operations(settings: Settings = Depends(get_settings)) -> None:  # noqa: B008
-    """Reject mutations unless a server operator explicitly enables them."""
-    if settings.write_operations_enabled:
-        return
-
-    raise ApiError(
-        "Write operations are disabled while the service is in research-only mode.",
-        status_code=503,
-        code="write_operations_disabled",
-    )
