@@ -11,18 +11,9 @@ import type { ReactNode, RefObject } from "react";
 import type { CopyRuleId, CopySchool, ListedSchool } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { LABELLED_PLACES } from "@/lib/screening/marks";
-import { type Compared, type MoveEdges, compareFor } from "@/lib/screening/method/compare";
-import { type Filters, admits, filterOptions, filtering } from "@/lib/screening/method/filters";
-import { moveHex } from "@/lib/screening/method/moves";
-import type { MarkPaint, Move } from "@/lib/screening/method/paint";
-import type {
-  CompareResponse,
-  ListedRow,
-  Rule,
-  RuleId,
-  SchoolDetailResponse,
-  SchoolKey,
-} from "@/lib/screening/types";
+import { type Compared, compareFor } from "@/lib/screening/method/compare";
+import { admits, filterOptions, filtering } from "@/lib/screening/method/filters";
+import type { CompareResponse, Rule, RuleId, SchoolDetailResponse } from "@/lib/screening/types";
 import type { MapLayer, WorkspaceState } from "@/lib/screening/workspace/state";
 
 import type { MountInput } from "./mounts";
@@ -36,6 +27,7 @@ import { Popover } from "./Popover";
 import styles from "./method.module.css";
 
 export { filterOptions };
+export { paintFor } from "@/lib/screening/method/paint-for";
 
 /** The layers the screen has data for. Boundary outlines need an outlines read the screening API does not have. */
 const AVAILABLE: readonly MapLayer[] = ["ranked", "numerals", "range", "queue"];
@@ -53,30 +45,6 @@ export function comparedOf(
     // The comparison on hand is of the previous pair; the next one is on its way.
     return null;
   }
-}
-
-/** The map's paint: layers off, schools outside the filters faint, compare mode's move colours. */
-export function paintFor(input: {
-  hide: readonly MapLayer[];
-  rows: readonly ListedRow[];
-  filters: Filters;
-  compared: Compared | null;
-  /** The edges that sort a move into its bin, from the method words. */
-  edges: MoveEdges;
-}): MarkPaint {
-  const { filters, compared } = input;
-  const faint = filtering(filters)
-    ? new Set(input.rows.filter((row) => !admits(row, filters)).map((row) => row.school.school_key))
-    : null;
-  const moves: ReadonlyMap<SchoolKey, Move> | null = compared
-    ? new Map(
-        compared.rows.map((r) => [
-          r.key,
-          { hex: moveHex(r.d, input.edges), top: r.a <= compared.k || r.b <= compared.k },
-        ])
-      )
-    : null;
-  return { hidden: input.hide, faint, moves };
 }
 
 export interface BuildInput extends MountInput {
