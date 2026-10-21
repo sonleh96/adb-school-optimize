@@ -89,6 +89,7 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   mode: "screen",
   k: 20,
   panel: null,
+  pack: false,
   n: 20,
   prov: null,
   loc: null,
