@@ -501,14 +501,11 @@ test("with no saved views the rail and the sheet's tab say so, and restoring bri
 
 test("a guide step never lands on the saved views tab", async ({ page, problems }) => {
   // The tab may start reading its rules' files before the step closes the sheet, depending on timing. The reads are
-  // held until the step has closed it, so every run takes the same path: closing the sheet cancels them.
+  // held until the step has closed it, so a read that started is always cancelled by the close. That cancellation is
+  // the next test's subject, where reads are sure to start; here the step's screen is.
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
   const reads: string[] = [];
-  const cancelled: string[] = [];
-  page.on("requestfailed", (request) => {
-    if (request.failure()?.errorText === "net::ERR_ABORTED") cancelled.push(request.url());
-  });
   await page.route(/\/exports\/top\.csv/, async (route) => {
     reads.push(route.request().url());
     await held;
@@ -521,9 +518,7 @@ test("a guide step never lands on the saved views tab", async ({ page, problems 
   await expect.poll(() => workspace(page)).toMatchObject({ panel: null, pack: false });
   release();
 
-  // Every read the tab started was cancelled with the sheet, quietly: nothing else failed and nothing was logged.
-  await expect.poll(() => cancelled.length).toBe(reads.length);
-  expect(cancelled.sort()).toEqual(reads.sort());
+  // A cancelled read of the tab is the only failure allowed.
   expect(problems.filter((p) => !reads.some((url) => p === `requestfailed: ${url}`))).toEqual([]);
   problems.length = 0;
 });
