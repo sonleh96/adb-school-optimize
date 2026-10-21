@@ -27,6 +27,8 @@ export interface SavedView {
   /** The name a person gave the view; null for a seed, which the copy names. */
   readonly name: string | null;
   readonly q: string;
+  /** What is kept for it, so it is removed by what it is, not by where it sits. */
+  readonly entry: Entry;
 }
 
 export const VIEWS_KEY = "rise-screening-saved-views-v1";
@@ -127,9 +129,9 @@ export function resolve(entries: readonly Entry[] | null, seeds: Seeds): SavedVi
   return (entries ?? SEED_ENTRIES).flatMap((entry, at): SavedView[] => {
     if ("seed" in entry) {
       const q = seeds[entry.seed];
-      return q === undefined ? [] : [{ at, seed: entry.seed, name: null, q }];
+      return q === undefined ? [] : [{ at, seed: entry.seed, name: null, q, entry }];
     }
-    return [{ at, seed: null, name: entry.name, q: entry.q }];
+    return [{ at, seed: null, name: entry.name, q: entry.q, entry }];
   });
 }
 
@@ -146,6 +148,15 @@ export function withSaved<T extends readonly Entry[] | null>(
   return [...(entries ?? SEED_ENTRIES), { name: cleanName(name), q: q.replace(/^\?/, "") }];
 }
 
-/** What is kept after removing the kept entry at `at`. */
-export const withRemoved = (entries: readonly Entry[] | null, at: number): Entry[] =>
-  (entries ?? SEED_ENTRIES).filter((_, i) => i !== at);
+const sameEntry = (a: Entry, b: Entry): boolean =>
+  "seed" in a ? "seed" in b && a.seed === b.seed : !("seed" in b) && a.name === b.name && a.q === b.q;
+
+/**
+ * What is kept after removing `target`: the first entry that is the same view, wherever it now sits, so a list another
+ * tab has changed meanwhile loses the view chosen and no other.
+ */
+export function withRemoved(entries: readonly Entry[] | null, target: Entry): Entry[] {
+  const list = entries ?? SEED_ENTRIES;
+  const at = list.findIndex((entry) => sameEntry(entry, target));
+  return at < 0 ? [...list] : list.filter((_, i) => i !== at);
+}

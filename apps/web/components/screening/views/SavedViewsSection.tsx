@@ -56,7 +56,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   // Removing a view hands focus to the row that takes its place, or the name field when none is left.
   const remove = (index: number) => {
     if (!views) return;
-    store.remove(views[index].at);
+    store.remove(views[index].entry);
     setStatus(null);
     requestAnimationFrame(() => {
       const buttons = list.current?.querySelectorAll<HTMLButtonElement>("button[data-remove]") ?? [];
