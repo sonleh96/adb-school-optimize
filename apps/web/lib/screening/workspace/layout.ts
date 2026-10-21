@@ -110,3 +110,33 @@ export function mapPadding(layout: Layout, cardOpen: boolean, foot: number | nul
   const right = cardOpen ? GAP + layout.card + 40 : 64;
   return { top: 80, right, bottom: foot === null ? FOOT_GUESS : foot + GAP, left };
 }
+
+/** The least of the map a fit leaves clear on each axis, however much the panels cover. */
+export const MIN_CLEAR = 64;
+
+/**
+ * `padding` cut to what a map of `width` by `height` can hold: on an axis where the two sides would leave less than
+ * `MIN_CLEAR`, both shrink in proportion. The map is briefly narrower than the layout expects while the rail opens or
+ * the list steps aside, and a fit asked for more room than the map has is skipped (MapLibre warns) instead of made.
+ */
+export function fitPadding(padding: Padding, width: number, height: number): Padding {
+  const axis = (a: number, b: number, size: number): [number, number] => {
+    const room = Math.max(0, size - MIN_CLEAR);
+    if (a + b <= room) return [a, b];
+    const scale = a + b > 0 ? room / (a + b) : 0;
+    return [Math.floor(a * scale), Math.floor(b * scale)];
+  };
+  const [left, right] = axis(padding.left, padding.right, width);
+  const [top, bottom] = axis(padding.top, padding.bottom, height);
+  return { top, right, bottom, left };
+}
+
+/**
+ * How far a school's point sits from the map's centre when it is centred in the clear part `padding` leaves. Moving
+ * the map with this offset, not with `padding`, leaves the map's own padding at zero; MapLibre keeps a move's padding
+ * and adds it to every later fit's, so a later fit would ask for the clear part twice.
+ */
+export const clearCentreOffset = (padding: Padding): [number, number] => [
+  (padding.left - padding.right) / 2,
+  (padding.top - padding.bottom) / 2,
+];
