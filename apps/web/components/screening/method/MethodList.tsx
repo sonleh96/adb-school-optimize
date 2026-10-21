@@ -152,7 +152,11 @@ export function MethodList({
                 aria-pressed={key === selected}
                 onClick={() => onSelect(key)}
               >
-                <span className={styles.place} data-range={range || undefined}>
+                <span
+                  className={styles.place}
+                  data-range={range || undefined}
+                  data-place={range ? "range" : "point"}
+                >
                   {range ? (
                     <PlaceText text={copy.placeHeadline(school, rule)} />
                   ) : (
@@ -272,7 +276,9 @@ export function MethodListHead({
           {scope.filterNote}
         </p>
       ) : (
-        <p className={base.scopeLine}>{hasRanges ? scope.scopeRanked : scope.scopeComplete}</p>
+        <p className={base.scopeLine} data-term={hasRanges ? "cohort_ranked" : "cohort_complete"}>
+          {hasRanges ? scope.scopeRanked : scope.scopeComplete}
+        </p>
       )}
       {hasRanges ? (
         <p className={`${base.scopeLine} ${styles.placeLine}`} data-region="list-order">

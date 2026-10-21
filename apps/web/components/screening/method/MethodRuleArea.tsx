@@ -102,6 +102,7 @@ export function MethodRuleArea({
               key={r.id}
               type="button"
               className={styles.tile}
+              data-rule={r.id}
               aria-pressed={r.id === requested}
               disabled={disabled}
               onClick={() => onRule(r.id)}
@@ -132,6 +133,7 @@ export function MethodRuleArea({
                     key={r.id}
                     type="button"
                     className={styles.otherName}
+                    data-rule={r.id}
                     aria-pressed={r.id === requested}
                     title={`${copy.ruleLabel(r.id)}. ${copy.ruleRoleLine(r.id)}`}
                     disabled={disabled}

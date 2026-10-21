@@ -51,6 +51,15 @@ export const MARKS: readonly MarkRule[] = [
     block: true,
   },
   { selector: '[data-region="persistent-flag"]', card: term("persistent_flag"), block: true },
+  // The method details: their scope line, compare mode's statement, and the two controls only they have.
+  {
+    selector: '[data-region="scope"] > p[data-term]',
+    card: (e) => `term:${(e as HTMLElement).dataset.term}`,
+    block: true,
+  },
+  { selector: '[data-region="compare-statement"] > p:first-child', card: () => "compare", block: true },
+  { selector: '[data-region="layers"]', card: term("layers") },
+  { selector: '[data-region="filters"]', card: term("filters") },
   // Terms the workspace names where they appear: the key, the queue's lead, the card's reasons and its total.
   { selector: "[data-term]", card: (e) => `term:${(e as HTMLElement).dataset.term}` },
 ];

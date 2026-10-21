@@ -166,12 +166,18 @@ function Breakdown({
                 </span>
                 <span role="rowheader" className={styles.label}>
                   {isNeed ? (
-                    <button type="button" className={styles.expander} aria-expanded={open} onClick={onParts}>
+                    <button
+                      type="button"
+                      className={styles.expander}
+                      data-term={TERM[c]}
+                      aria-expanded={open}
+                      onClick={onParts}
+                    >
                       {TERMS[TERM[c]].label}
                       <ChevronRight size={11} aria-hidden />
                     </button>
                   ) : (
-                    TERMS[TERM[c]].label
+                    <span data-term={TERM[c]}>{TERMS[TERM[c]].label}</span>
                   )}
                   <span className={styles.times}>{method.insp.times(shareOf(ruleInfo, c, weight))}</span>
                 </span>
@@ -212,7 +218,7 @@ function Breakdown({
                           ) : null}
                         </span>
                         <span role="rowheader" className={styles.label}>
-                          {TERMS[term].label}
+                          <span data-term={term}>{TERMS[term].label}</span>
                         </span>
                         <span role="cell">
                           <Bar track={px(weight / 5)} fill={px(adds ?? 0)} missing={part === null} />
@@ -241,7 +247,7 @@ function Breakdown({
         <div className={`${styles.tr} ${styles.total}`} role="row">
           <span role="cell" />
           <span role="rowheader" className={styles.label}>
-            {TERMS.score.label}
+            <span data-term="score">{TERMS.score.label}</span>
           </span>
           <span role="cell" />
           <span role="cell" />

@@ -46,7 +46,7 @@ function Frame({
       data-stale={stale || undefined}
     >
       <div className={base.legendTop}>
-        <div className={styles.legendTitle} data-testid="legend-rule">
+        <div className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
           {title}
         </div>
         {collapsed ? (
@@ -80,7 +80,7 @@ function Keys({ copy, ranges, incomplete }: Pick<Common, "copy" | "ranges" | "in
       <span className={styles.legendKey} data-region="legend-range">
         <span className={base.keyMark} data-mark="range" aria-hidden />
         <span>
-          <span>
+          <span data-term="rank_range">
             {bare(TERMS.rank_range.label)} <em>{copy.formatCount(ranges)}</em>
           </span>
           <span className={styles.legendHint}>{LAYOUT.legendNoAirQuality}</span>
@@ -89,7 +89,7 @@ function Keys({ copy, ranges, incomplete }: Pick<Common, "copy" | "ranges" | "in
       <span className={styles.legendKey} data-region="legend-queue">
         <span className={base.keyMark} data-mark="ring" aria-hidden />
         <span>
-          <span>
+          <span data-term="queue">
             {bare(TERMS.queue.label)} <em>{copy.formatCount(incomplete)}</em>
           </span>
           <span className={styles.legendHint}>{LAYOUT.legendIncomplete}</span>

@@ -25,6 +25,8 @@
  *     without the bar stepping down or keeping its icons only                                    -> "the map bar..."
  * 18. The narrow layout, which hides the actions, offers no way to the method details or the export sheet, or a
  *     choice in its menu leaves focus nowhere                                                    -> "the narrow menu..."
+ * 19. Help mode leaves the method details unexplained (their rules, scope line, places, key, Map layers, filters and
+ *     compare mode's statement), or marks so much it stops being a short list                    -> "help mode..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -420,6 +422,35 @@ test("a failed load of the method layer says so and loads it again on Retry", as
   // The refused scripts are expected failures; nothing else may go wrong on the page.
   expect(errors).toEqual([]);
   await page.close();
+});
+
+test("help mode explains the method details' rules, lines and controls, and a mark explains instead of acting", async ({
+  page,
+}) => {
+  const school = ROWS.find((r) => r.cohort === "complete")!.school.school_key;
+  await openWorkspace(page, `?analyst=1&school=${school}`);
+  await expect(card(page).locator("[data-region=inspector-place]")).toBeVisible();
+  await page.getByRole("toolbar").getByRole("button", { name: "Explain this screen" }).click();
+  const marked = page.locator("[data-testid=screening-workspace] [data-xp]");
+  await expect.poll(() => marked.count()).toBeGreaterThanOrEqual(18);
+  expect(await marked.count()).toBeLessThanOrEqual(40);
+  for (const selector of [
+    "[data-region=layers]",
+    "[data-region=filters]",
+    "[data-region=rule-switch] [data-rule=additive_no_u]",
+    "[data-region=scope] > p[data-term]",
+    "[data-region=ranked-list] [data-place=point]",
+    "[data-region=ranked-list] [data-place=range]",
+    "[data-region=legend-range] [data-term]",
+  ])
+    await expect(page.locator(`${selector}[data-xp]`), selector).toHaveCount(1);
+  // Map layers explains itself instead of opening its popover.
+  await page.locator("[data-region=layers]").click();
+  await expect(page.locator("[data-help-card]")).toContainText("Map layers");
+  await expect(page.locator("#screening-layers")).toHaveCount(0);
+
+  await openWorkspace(page, "?mode=compare&rule=additive_no_u&compare=additive_u&help=1");
+  await expect(page.locator("[data-region=compare-statement] > p[data-xp]")).toHaveCount(1);
 });
 
 test.describe("the narrow layout", () => {
