@@ -282,8 +282,10 @@ export default function MapCanvas({
       waiting.current = null;
       show?.();
     };
+    let started = false;
     let step = requestAnimationFrame(() => {
       step = requestAnimationFrame(() => {
+        started = true;
         const bounds = boundsOf(latest.current.schools);
         if (!bounds) return settle();
         map.fitBounds(bounds, {
@@ -295,7 +297,20 @@ export default function MapCanvas({
         else settle();
       });
     });
-    return () => cancelAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(step);
+      if (started || fitting.current !== fit) return;
+      // Cancelled before it moved. The next frame's effect, which runs straight after this, may start a fit that the
+      // waiting school then waits on; if it does not (no map, no schools yet), nothing is running, so the school is
+      // shown now rather than waiting for ever.
+      fitting.current = null;
+      queueMicrotask(() => {
+        if (fitting.current !== null || !waiting.current) return;
+        const show = waiting.current;
+        waiting.current = null;
+        show();
+      });
+    };
   }, [frame]);
 
   // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
@@ -312,7 +327,8 @@ export default function MapCanvas({
     const midPan = map.isMoving() && fitting.current === null;
     const show = (force: boolean) => {
       const { padding: clear, still: instant, selected: now } = latest.current;
-      if (now?.key !== chosen.key) return;
+      // Not for a school no longer chosen, or a map that has gone.
+      if (now?.key !== chosen.key || mapRef.current !== map) return;
       const point = map.project([chosen.lon, chosen.lat]);
       const { width, height } = map.getContainer().getBoundingClientRect();
       // The room a fit leaves, as the fit measured it: a fit puts the outermost schools on its edge, to a fraction of
