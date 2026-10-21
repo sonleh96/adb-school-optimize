@@ -1,7 +1,7 @@
 # Screening engine failure modes
 
 Each test in `test_screening_*.py` carries the id of the failure mode it guards.
-The reproduction test (`test_screening_reproduction.py`) guards FM1, FM2, FM4, FM6, FM7, FM8 and FM9 against the frozen research outputs.
+The reproduction test (`test_screening_reproduction.py`) guards FM1, FM2, FM4, FM6, FM7, FM8, FM9 and FM13 against the frozen research outputs.
 
 | Id | Failure mode |
 | --- | --- |
@@ -17,3 +17,5 @@ The reproduction test (`test_screening_reproduction.py`) guards FM1, FM2, FM4, F
 | FM10 | Rank scope confusion. An interval school receives a point rank, or a rank is not labeled with its cohort scope. |
 | FM11 | Coding errors. Power, water or locality text maps to the wrong deficit. |
 | FM12 | Contract drift. The documented input contract and the parsed record disagree. |
+| FM13 | Pairwise metric errors. A sign, a denominator or a top-K size is wrong, entrants and exits are swapped or misordered, or an undefined metric is reported as a number. |
+| FM14 | Data-derived constants in committed prose. A README or failure-mode file states a cohort size or pair count taken from the school data. |
