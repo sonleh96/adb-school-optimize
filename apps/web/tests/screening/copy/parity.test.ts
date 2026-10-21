@@ -283,21 +283,25 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         // With the way each persistence test was drawn bound from the data, one setting and several.
         for (const settings of [
           [{ topLevel: 20, schoolNeed: 15 }],
+          [{ topLevel: 17.5, schoolNeed: 12.5 }],
+          [{ topLevel: 0, schoolNeed: 12.5 }],
           [
             { topLevel: 20, schoolNeed: 15 },
             { topLevel: 40, schoolNeed: 35 },
             { topLevel: 100, schoolNeed: 80 },
           ],
         ]) {
-          const tests = {
-            additive_no_u: { draws: 4000, threshold: 0.8, settings },
-            additive_u: { draws: 5000, threshold: 0.75, settings },
-          };
-          same(
-            "METHOD",
-            proto.buildMethod({ counts: bag, reads, tests }),
-            method.buildMethod({ counts: bag, reads, tests })
-          );
+          for (const draws of [4000, 0, 2.5]) {
+            const tests = {
+              additive_no_u: { draws, threshold: 0.8, settings },
+              additive_u: { draws: 5000, threshold: draws === 0 ? 1.5 : 0.75, settings },
+            };
+            same(
+              "METHOD",
+              proto.buildMethod({ counts: bag, reads, tests }),
+              method.buildMethod({ counts: bag, reads, tests })
+            );
+          }
         }
       }
     flush();
