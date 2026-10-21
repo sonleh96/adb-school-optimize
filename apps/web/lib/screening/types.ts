@@ -14,6 +14,7 @@ import {
   type Schema,
   bool,
   branded,
+  dict,
   failParse,
   int,
   list,
@@ -22,7 +23,9 @@ import {
   num,
   obj,
   oneOf,
+  optional,
   refine,
+  scalar,
   str,
 } from "./schema";
 
@@ -71,8 +74,20 @@ const schoolIdentity = obj({
 });
 export type SchoolIdentity = Infer<typeof schoolIdentity>;
 
-const pointRank = obj({ rank: nullable(int), scope: str, count: int });
-const rankBounds = obj({ best: nullable(int), worst: nullable(int), scope: str, count: int });
+/**
+ * Which cohort a rank counts, as a code to branch on. The label beside it is for reading, never for parsing.
+ * A point rank counts the schools complete under its rule; rank bounds count the eligible schools.
+ */
+const scopeCode = looseEnum<"complete_under_rule" | "eligible" | "common_complete_cohort">();
+
+const pointRank = obj({ rank: nullable(int), scope: str, scope_code: scopeCode, count: int });
+const rankBounds = obj({
+  best: nullable(int),
+  worst: nullable(int),
+  scope: str,
+  scope_code: scopeCode,
+  count: int,
+});
 const cohort = oneOf("complete", "interval", "verification_queue");
 export type Cohort = Infer<typeof cohort>;
 
@@ -81,11 +96,25 @@ const rawListedRow = obj({
   point_rank: pointRank,
   rank_bounds: rankBounds,
   school: schoolIdentity,
+  /**
+   * Whether the school stayed in the top 20 when the paper changed the factors' shares at random: true or false,
+   * or null when it was not in that experiment. Present only in the list of the circulated rule, `additive_u`,
+   * because the experiment included urgency. It must never be shown for another rule.
+   */
+  persistent_candidate: optional(nullable(bool)),
+  /** The school's lowest top-20 frequency over the experiment's settings; null when it was not in the experiment. */
+  lowest_top20_frequency: optional(nullable(num)),
+  /**
+   * True for a persistent school whose lowest frequency is less than one standard error above the threshold, so
+   * "only just above the line" can be said from data. Same presence rule as `persistent_candidate`.
+   */
+  threshold_adjacent: optional(nullable(bool)),
 });
 type RawRow = Infer<typeof rawListedRow>;
 
-type RankedPoint = { rank: number; scope: string; count: number };
-type RankedBounds = { best: number; worst: number; scope: string; count: number };
+type Scope = { scope: string; scope_code: string; count: number };
+type RankedPoint = Scope & { rank: number };
+type RankedBounds = Scope & { best: number; worst: number };
 type RowBase = Omit<RawRow, "cohort" | "point_rank" | "rank_bounds">;
 
 /** A complete school: one exact place among the complete schools. */
@@ -97,14 +126,14 @@ export type CompleteRow = RowBase & {
 /** An interval school: no exact place, only the best and worst place it could take. */
 export type IntervalRow = RowBase & {
   cohort: "interval";
-  point_rank: { rank: null; scope: string; count: number };
+  point_rank: Scope & { rank: null };
   rank_bounds: RankedBounds;
 };
 /** A school held for verification: not in the ordered list at all. */
 export type QueuedRow = RowBase & {
   cohort: "verification_queue";
-  point_rank: { rank: null; scope: string; count: number };
-  rank_bounds: { best: null; worst: null; scope: string; count: number };
+  point_rank: Scope & { rank: null };
+  rank_bounds: Scope & { best: null; worst: null };
 };
 export type ListedRow = CompleteRow | IntervalRow | QueuedRow;
 
@@ -141,8 +170,10 @@ export const resultsResponse = obj({
   manifest: obj({
     rule_label: str,
     point_rank_scope: str,
+    point_rank_scope_code: scopeCode,
     point_rank_count: int,
     rank_bounds_scope: str,
+    rank_bounds_scope_code: scopeCode,
     rank_bounds_count: int,
   }),
   rows: list(listedRow),
@@ -158,20 +189,48 @@ export const schoolDetailResponse = obj({
     obj({
       rule: obj({ rule_id: RuleId, label: str }),
       point_rank_scope: str,
+      point_rank_scope_code: scopeCode,
       rank_bounds_scope: str,
+      rank_bounds_scope_code: scopeCode,
       result: detailResult,
+      /** As on a listed row: only the circulated rule's entry has these three. */
+      persistent_candidate: optional(nullable(bool)),
+      lowest_top20_frequency: optional(nullable(num)),
+      threshold_adjacent: optional(nullable(bool)),
     })
   ),
 });
 export type SchoolDetailResponse = Infer<typeof schoolDetailResponse>;
 
-const compared = obj({ school: schoolIdentity, rank_a: int, rank_b: int, rank_scope: str });
+/** The stored inputs of every school of an input version, as `inputs` is in a school's detail. */
+export const inputsResponse = obj({
+  input_version: str,
+  input_sha256: str,
+  schools: list(
+    obj({
+      school_key: SchoolKey,
+      source_school_name: str,
+      /** One entry per input field: a number, a text, or null when the reading is unknown. */
+      inputs: dict(nullable(scalar)),
+    })
+  ),
+});
+export type InputsResponse = Infer<typeof inputsResponse>;
+
+const compared = obj({
+  school: schoolIdentity,
+  rank_a: int,
+  rank_b: int,
+  rank_scope: str,
+  rank_scope_code: scopeCode,
+});
 
 export const compareResponse = obj({
   input_version: str,
   run_a: run,
   run_b: run,
   common_cohort_scope: str,
+  common_cohort_scope_code: scopeCode,
   common_cohort_count: int,
   ranks: list(compared),
   entrants: list(compared),

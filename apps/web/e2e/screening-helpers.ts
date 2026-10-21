@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { expect, test as base, type Page } from "@playwright/test";
+import { expect, test as base, type BrowserContext, type Page } from "@playwright/test";
 
 import { isSoftwareGlNote } from "./console-noise";
 
@@ -161,4 +161,27 @@ export async function ringDrawnAround(page: Page, key: string, markRadius: numbe
     },
     { png, radius: markRadius + 4.5, size }
   );
+}
+
+/** The datasets the mock API can serve; see scripts/mock-api.mjs. The default one is what a test gets unasked. */
+export type MockDataset = "default" | "worst-names" | "ties-and-ranges" | "one" | "empty";
+
+/**
+ * Makes the mock API answer this browser context's screening requests from `dataset`, and answer the routes named in
+ * `fail` with the status given (for example `{ results: 503 }`). The choice rides on cookies of the context, so tests
+ * that run in parallel never see each other's. Call it before the page loads.
+ */
+export async function useMockDataset(
+  context: BrowserContext,
+  dataset: MockDataset,
+  fail: Partial<Record<"rules" | "results" | "inputs" | "schools" | "compare", number>> = {}
+) {
+  const failures = Object.entries(fail)
+    .map(([route, status]) => `${route}:${status}`)
+    .join("|");
+  const url = "http://127.0.0.1:3105";
+  await context.addCookies([
+    { name: "mock-screening-dataset", value: dataset, url },
+    ...(failures ? [{ name: "mock-screening-fail", value: encodeURIComponent(failures), url }] : []),
+  ]);
 }

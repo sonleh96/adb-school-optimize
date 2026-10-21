@@ -38,6 +38,12 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API27 | Urgency is present as a key or column, even empty, under a rule that does not read it. | `components` has a `U` key, an export has a `U` column, or the queue export lists the urgency source value as missing, for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`. |
 | API28 | The display order is read as a rank. | The field that numbers the rows of the list is called a position or rank, or is not documented as display order, so a client quotes it as a rank that differs from the point rank. |
 | API30 | A newer engine's stored fields break reading. | A run or result stored with a field the API does not know gives a 500 instead of being read, or the unknown field is passed on to clients. |
+| API31 | The bulk inputs differ from the per-school detail. | For some school or field, `/inputs` gives a value, a name, a key or an order that `/schools/by-key` and the stored version do not; a float is rounded, a negative zero or an unknown becomes zero, a name loses its spaces. |
+| API32 | A scope code is missing, wrong, or taken from the label. | A rank, a manifest, a detail entry or a comparison (ranks, entrants, exits, common cohort, interval bounds) lacks its code, a point rank carries the bounds' code, or the label no longer equals the engine's label for the count the same response states. |
+| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, or one input version shows the flag of another. |
+| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but the circulated one, or inside the school's inputs. |
+| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or circulated-results response omits the source file hash, the experiment, the draws, the settings, the threshold or the sentence that the numbers describe the urgency-included rule only. |
+| API36 | The margin of a persistent school is wrong or left to the reader. | A school less than one standard error above the threshold is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition. |
 
 ## Test map
 
@@ -100,3 +106,28 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_route_on_a_school_id_returns_every_school_that_shares_the_link` | API21 |
 | `test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leaves_out` | API26 |
 | `test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_unchanged` | API30 |
+| `test_the_bulk_inputs_equal_the_per_school_detail_for_every_school` | API31 |
+| `test_the_bulk_inputs_name_the_version_and_its_hash_like_every_other_screening_route` | API31 |
+| `test_the_bulk_inputs_keep_every_value_exactly` | API12, API31 |
+| `test_the_default_is_the_latest_version_and_a_named_version_gives_its_own_schools` | API14, API31 |
+| `test_an_unknown_version_is_a_404_in_the_error_envelope_and_nothing_loaded_is_too` | API11 |
+| `test_a_request_that_names_the_version_is_immutable_and_the_default_is_not` | API10, API31 |
+| `test_the_validator_changes_with_the_input_version` | API10 |
+| `test_every_rank_carries_a_scope_code_that_matches_its_label_and_count` | API32 |
+| `test_a_range_school_has_two_different_scopes_and_the_codes_say_which_is_which` | API32 |
+| `test_the_school_detail_carries_the_codes_for_every_rule` | API32 |
+| `test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree` | API32 |
+| `test_a_label_and_a_code_that_disagree_are_caught_by_the_check` | API32 |
+| `test_the_codes_follow_the_engine_for_the_stored_runs` | API32 |
+| `test_the_circulated_list_flags_the_schools_of_the_experiment_and_leaves_the_rest_null` | API33 |
+| `test_no_other_rule_carries_the_flag_or_the_provenance_at_all` | API34 |
+| `test_the_school_detail_flags_only_the_circulated_rules_entry` | API34 |
+| `test_the_provenance_travels_with_the_flag_and_names_the_rule_and_the_limit` | API35 |
+| `test_a_version_without_the_numbers_has_null_flags_and_no_provenance` | API33, API35 |
+| `test_another_versions_numbers_are_not_lent_to_a_version_without_them` | API33 |
+| `test_the_flag_does_not_move_a_rank_or_a_score` | API12 |
+| `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
+| `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
+| `test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_standard_error_above` | API36 |
+| `test_the_detail_carries_the_same_margin_fields_on_the_circulated_rules_entry_only` | API36, API34 |
+| `test_the_provenance_states_the_margin_it_is_judged_by` | API36, API35 |
