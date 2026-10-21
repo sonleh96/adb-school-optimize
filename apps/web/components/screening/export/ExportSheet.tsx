@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 
 import { type BoundCopy, type CopyRuleId, type ListedSchool, isName } from "@/lib/screening/copy";
+import { capitalise } from "@/lib/screening/copy/format";
 import type { Method } from "@/lib/screening/copy/method";
 import { recordText, saveFile, useTopList } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
@@ -46,6 +47,15 @@ export interface ExportSheetProps {
  * writes, with its method record, and downloaded as that same file. The plain sheet says it all in the copy system's
  * words; with the method details on it keeps the formula, the shares, the ids and the fingerprints.
  */
+/**
+ * The source for a record row, whose label already says "Source". The copy's source line names itself ("Source: the
+ * research paper ..."), so its own lead is left out here and the label is said once.
+ */
+function sourceValue({ TERMS, STRINGS }: BoundCopy): string {
+  const lead = `${TERMS.source.label}: `;
+  return capitalise(STRINGS.source.startsWith(lead) ? STRINGS.source.slice(lead.length) : STRINGS.source);
+}
+
 export function ExportSheet(props: ExportSheetProps) {
   const { copy, method, rule, n, schools, layer, onNotify } = props;
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
@@ -95,7 +105,7 @@ export function ExportSheet(props: ExportSheetProps) {
           [TERMS.rank.label, copy.groupsSentence(rule)],
           [bare(TERMS.queue.label), STRINGS.queueIntro],
           [TERMS.tie_rule.label, TERMS.tie_rule.line],
-          [TERMS.source.label, STRINGS.source],
+          [TERMS.source.label, sourceValue(copy)],
         ] as const
       ).map(([label, value]) => `${label}: ${value}`),
       STRINGS.caveat,
@@ -231,7 +241,7 @@ export function ExportSheet(props: ExportSheetProps) {
         </>
       )}
       <dt>{TERMS.source.label}</dt>
-      <dd>{STRINGS.source}</dd>
+      <dd>{sourceValue(copy)}</dd>
       {plain || !generated ? null : (
         <>
           <dt>{method.sheet.fixture}</dt>

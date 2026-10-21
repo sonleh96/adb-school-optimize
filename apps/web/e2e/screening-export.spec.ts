@@ -14,6 +14,7 @@
  *     follow (remoteness) goes unmentioned                                                    -> "the method sheet follows..."
  *  9. The plain sheet copies or names its file in method words (a rule id, a hash, a formula)  -> "the plain sheet copies..."
  * 10. The sheet's code fails to load and the button does nothing, with no way on               -> "a failed load of the sheet..."
+ * 11. A record says its source's label twice ("Source: Source: ...")                           -> "the plain sheet copies..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -45,6 +46,11 @@ const openWithSheet = async (page: Page, link: string) => {
   await page.goto(`/screening${link}`);
   await waitForMap(page);
 };
+
+/** The source row of a record, said once: its label, then the paper. */
+const SOURCE_VALUE =
+  'The research paper "Comparing approaches to screening existing school locations in Papua New Guinea", circulated on 12 October 2026.';
+const SOURCE_LINE = `Source: ${SOURCE_VALUE}`;
 
 test("the sheet previews the API's file and downloads that file byte for byte", async ({ page }) => {
   await openWorkspace(page);
@@ -258,12 +264,23 @@ test("the plain sheet copies its record in plain words, and the method sheet kee
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
   const plain = await page.evaluate(() => navigator.clipboard.readText());
   expect(plain).toContain("Combined factors, with urgency");
+  expect(plain.split("\n").filter((line) => line.includes("Source"))).toEqual([SOURCE_LINE]);
+  await expect(
+    sheet(page)
+      .locator("dt", { hasText: /^Source$/ })
+      .locator("+ dd")
+  ).toHaveText(SOURCE_VALUE);
   for (const word of ["additive_u", "sha256", "formula", "run_id", "S = 0.60N"])
     expect(plain, `plain record carries "${word}"`).not.toContain(word);
 
   await page.goto("/screening?analyst=1&panel=export");
   await waitForMap(page);
   await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
+  await expect(
+    sheet(page)
+      .locator("dt", { hasText: /^Source$/ })
+      .locator("+ dd")
+  ).toHaveText(SOURCE_VALUE);
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("rule_id: additive_u");
   const [download] = await Promise.all([
