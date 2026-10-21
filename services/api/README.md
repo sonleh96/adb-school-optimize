@@ -1,22 +1,14 @@
 # API Service
 
-Planned `FastAPI` backend hosted on Cloud Run.
-
-Responsibilities:
-- metadata endpoints
-- school and district query endpoints
-- scoring scenario CRUD
-- scoring execution via `packages/school_scoring`
-- CSV/XLSX export endpoints
-- raster overlay delivery from district-based preclipped assets
-
-This service is the boundary between the UI and the data/scoring stack.
+`FastAPI` backend hosted on Cloud Run.
+It serves the stored screening runs, their comparisons and their CSV and XLSX exports, and checks every request's token.
+It reads the database and recomputes nothing: the runs are made by `packages/school_scoring` when inputs are loaded.
 
 ## Current Scaffold
 
 - app entrypoint: [main.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/main.py)
-- ingestion CLI: [load_core_data.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/load_core_data.py)
-- default scenario seeding: [seed_default_scenario.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/seed_default_scenario.py)
+- school loader: [load_core_data.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/load_core_data.py)
+- screening input loader: [load_screening_inputs.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/load_screening_inputs.py)
 
 ## Expected Local Flow
 
@@ -28,13 +20,13 @@ This service is the boundary between the UI and the data/scoring stack.
    The API now loads `.env` and `.env.local` automatically from both the repo root and `services/api`, with `services/api/.env.local` taking precedence over the other files.
 3. Install the local scoring package so the API can import it: `pip install -e ../../packages/school_scoring`.
 4. Install the API package dependencies: `pip install -e .`
-5. Run `python -m app.ingestion.load_core_data`.
-6. Run `python -m app.ingestion.seed_default_scenario`.
+5. Run `python -m app.ingestion.load_core_data` to fill `schools`, whose ids and coordinates the screening API reads.
+6. Load a screening input version, as below.
 7. Start the API with `uvicorn app.main:app --reload`.
 
 ## Screening inputs and results
 
-`infra/sql/005_screening.sql` adds four tables next to the old scoring tables, which stay untouched:
+`infra/sql/005_screening.sql` adds four tables:
 `screening_input_versions`, `screening_inputs`, `screening_runs` and `screening_results`.
 They hold one frozen input version, the seven rules of the screening engine run on it, and every school's result under every rule.
 The tables have row level security on and no privileges for `anon` or `authenticated`, as in `002_security_lockdown.sql`.
@@ -79,8 +71,8 @@ The numbers come from an experiment that included urgency, so the migration stor
 
 ## Screening API
 
-`app/routers/screening.py` serves the stored runs under `/api/v1/screening`, behind the same authentication as every other route.
-It reads `screening_*` tables and recomputes nothing; the old Need/Priority endpoints are unchanged and share nothing with it.
+`app/routers/screening.py` serves the stored runs under `/api/v1/screening`, behind authentication.
+It reads `screening_*` tables and recomputes nothing.
 Unknown rule, input version or school gives 404 in the API's `{"error": {code, message, details}}` envelope.
 
 | Route | Returns |
@@ -147,57 +139,3 @@ Override them with:
 ```env
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
-
-## Raster / GCS Config
-
-The backend now reads district-specific preclipped raster assets directly from GCS.
-
-Set:
-- `GCS_BUCKET`
-- `GCS_DISTRICT_CLIP_PREFIX` or the layer-specific:
-  - `GCS_FLOOD_DISTRICT_CLIP_PREFIX`
-  - `GCS_LANDCOVER_DISTRICT_CLIP_PREFIX`
-  - `GCS_LUMINOSITY_DISTRICT_CLIP_PREFIX`
-  - `GCS_ELEVATION_DISTRICT_CLIP_PREFIX`
-- optionally `GCS_FLOOD_RASTER_CRS` and `GCS_LANDCOVER_RASTER_CRS` if a source TIFF has bad or missing CRS metadata
-- optionally `RASTER_CACHE_DIR` and `RASTER_CACHE_TTL_SECONDS` to control local raster clip caching
-
-If you use preclipped district assets, the backend now expects this object key convention under the configured prefix:
-
-```text
-<prefix>/<layer>/<province_norm>/<district_norm>.tif
-```
-
-Where:
-- `province_norm` mirrors the database `normalize_join_key(...)` intent and is then filename-slugged
-- `district_norm` follows the same rule
-
-Example:
-
-```text
-rise-png/rasters/district-clips/flood/eastern-highlands/goroka.tif
-rise-png/rasters/district-clips/landcover/eastern-highlands/goroka.tif
-rise-png/rasters/district-clips/luminosity/eastern-highlands/goroka.tif
-rise-png/rasters/district-clips/elevation/eastern-highlands/goroka.tif
-```
-
-This keeps district names deterministic, collision-safe across provinces, and easy for the backend to resolve from the existing `province` + `district` request parameters.
-
-For local auth, use either:
-- `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
-- or Application Default Credentials from `gcloud`
-
-For Cloud Run later, prefer workload identity instead of a JSON key path.
-
-Once the raster dependencies are installed, the API exposes:
-- `GET /api/v1/rasters/status`
-- `GET /api/v1/rasters/flood/metadata?district=...&province=...`
-- `GET /api/v1/rasters/flood/overlay?district=...&province=...&format=png`
-- `GET /api/v1/rasters/landcover/metadata?district=...&province=...`
-- `GET /api/v1/rasters/landcover/overlay?district=...&province=...&format=png`
-- `GET /api/v1/rasters/luminosity/metadata?district=...&province=...`
-- `GET /api/v1/rasters/luminosity/overlay?district=...&province=...&format=png`
-- `GET /api/v1/rasters/elevation/metadata?district=...&province=...`
-- `GET /api/v1/rasters/elevation/overlay?district=...&province=...&format=png`
-
-Overlay responses also include bounds and source metadata in response headers for frontend map integration.
