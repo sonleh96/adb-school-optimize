@@ -3,6 +3,10 @@
  *  1. An empty or failed list never tells the guide layer the map is ready, or shows counts beside its failure
  *     -> "an empty store and a failed list..."
  *  2. An empty Incomplete records tab says schools are in it, or can be chosen      -> "an empty Incomplete records tab..."
+ *  3. Exact ties go unmarked, or the tie sentence is missing or repeated (R15)     -> "exact ties..."
+ *  4. A blank name shows a raw value, a long unbroken name overflows its row, or "·" ends a line apart from its
+ *     province (R6, R8)                                                             -> "blank and unbroken names..."
+ *  5. A list of one school states counts from another dataset (R11)               -> "a list of one school..."
  */
 import type { Page } from "@playwright/test";
 
@@ -12,6 +16,7 @@ import {
   ORDERED,
   allowUncapturedComparisons,
   expect,
+  orderedRow,
   tab,
   test,
   useMockDataset,
@@ -20,6 +25,8 @@ import {
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
+
+const column = (page: Page) => page.locator("section[aria-label='RISE-PNG']");
 
 async function open(page: Page, search = "") {
   await page.goto(`/screening${search}`);
@@ -88,5 +95,80 @@ test("an empty Incomplete records tab says no school is in it and cannot be chos
   await expect(page.locator("#screening-list")).not.toContainText("what is missing");
   await list.click();
   await expect(queue).toBeDisabled();
+  allowUncapturedComparisons(problems);
+});
+
+test("exact ties are marked on every tied row, with the tie sentence once after them", async ({
+  page,
+  context,
+}) => {
+  await useMockDataset(context, "ties-and-ranges");
+  await open(page);
+  const tied = ["Ranked 08", "Tie Alpha", "Tie Bravo", "Tie Charlie"];
+  // A tie marker names the other schools, so a row is found by its own name only.
+  const row = (name: string) =>
+    page
+      .locator(`${ORDERED} button`)
+      .filter({ has: page.locator("span[class*=name]", { hasText: new RegExp(`^${name}$`) }) });
+  for (const name of tied) {
+    const others = tied.filter((n) => n !== name);
+    await expect(row(name).locator("span[class*=tie]")).toHaveText(
+      `Level with ${others[0]}, ${others[1]} and ${others[2]}`
+    );
+  }
+  await expect(row("Ranked 12")).toHaveCount(1);
+  await expect(row("Ranked 12").locator("span[class*=tie]")).toHaveCount(0);
+
+  const sentence = page.locator(`${ORDERED} > [data-region=tie-rule]`);
+  await expect(sentence).toHaveCount(1);
+  await expect(sentence).toHaveText(
+    "When two schools are exactly level, the one whose name comes first alphabetically goes first."
+  );
+  await expect(sentence.locator("xpath=preceding-sibling::li[1]//button")).toContainText("Tie Charlie");
+});
+
+test("blank and unbroken names render as words, stay inside their rows and keep the province whole", async ({
+  page,
+  context,
+  problems,
+}) => {
+  await useMockDataset(context, "worst-names");
+  await open(page);
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(17);
+
+  const text = await column(page).innerText();
+  expect(text).not.toMatch(/\bnull\b|undefined|NaN/);
+  // A name with nothing printable in it is the copy's unnamed school, with its province.
+  await expect(orderedRow(page, "Unnamed school")).toContainText("17thUnnamed school · North Province");
+
+  const report = await page.locator(`${ORDERED} button`).evaluateAll((rows) =>
+    rows.map((row) => {
+      const where = row.querySelector("span[class*=where]");
+      return {
+        name: row.querySelector("span[class*=name]")?.textContent,
+        overflows: row.scrollWidth > row.clientWidth + 1,
+        // One line box: the separator and the province never split, so "·" never ends a line (R6).
+        whereLines: where ? where.getClientRects().length : 1,
+      };
+    })
+  );
+  expect(report.filter((r) => r.overflows || r.whereLines !== 1)).toEqual([]);
+  expect(report.map((r) => r.name)).toContain("UnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnbrokenUnb");
+  allowUncapturedComparisons(problems);
+});
+
+test("a list of one school states only its own counts", async ({ page, context, problems }) => {
+  await useMockDataset(context, "one");
+  await open(page);
+  await expect(tab(page, /The list/)).toHaveText("The list(1)");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(0)");
+  // Every count the column states is the one school's: its place, its count, and no school in the other groups.
+  // The rule area's "Other rules (5)" counts rules, not schools, so it is left out.
+  const said = await page
+    .locator("[data-region=list-statement], [role=tablist], #screening-list")
+    .allInnerTexts();
+  const numbers = said.join(" ").match(/\d+/g) ?? [];
+  expect(numbers.length).toBeGreaterThan(0);
+  expect(numbers.filter((n) => n !== "0" && n !== "1")).toEqual([]);
   allowUncapturedComparisons(problems);
 });
