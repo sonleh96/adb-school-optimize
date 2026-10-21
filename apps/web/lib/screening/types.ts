@@ -39,9 +39,12 @@ export type RuleId = Infer<typeof RuleId>;
 /** Where a list puts its interval schools: at the lower or the upper end of their range of scores. */
 export type Placement = "lower" | "upper";
 
-/** The page splits rules by this: the primary rules sit side by side, the rest behind "Other rules". */
+/**
+ * How the API says a rule is meant to be used. The page does not split rules by it: the two main rules sit side by
+ * side and the rest behind "Other rules" by the pair the page compares (see `useScreeningData`).
+ */
 const policyRole = looseEnum<
-  "primary" | "strict_alternative" | "policy_sensitivity" | "conventional_reference"
+  "primary" | "strict_alternative" | "policy_sensitivity" | "urgency_sensitivity" | "conventional_reference"
 >();
 
 // ---------------------------------------------------------------------------------------------
