@@ -26,6 +26,7 @@ type Body = {
       components: Record<string, number | null | undefined>;
       contributions: { component: string }[];
       need_part_contributions: Record<string, unknown> | null;
+      maximum_term: Record<string, unknown> | null;
     };
   }[];
 };
@@ -48,17 +49,33 @@ describe("one rule's contributions are broken", () => {
   it("fails only that rule's part, not a card that shows another rule", () => {
     const s = load(broken(), "additive_u");
     expect(s.cohort).toBe("complete");
-    expect(Object.keys(s.contributions ?? {})).toEqual(["additive_u"]);
+    expect(Object.keys(s.contributions ?? {})).toEqual(["additive_u", "bottleneck_u", "bottleneck_no_u"]);
     expect(copy.reasonSentence(s, "additive_u")).toMatch(/^\w+ things? adds? most to its screening score/);
     expect(load(broken(), "benchmark").cohort).toBe("complete");
     expect(load(broken(), "need_first_u").cohort).toBe("complete");
   });
 
-  it("still fails the card of the rule it belongs to, and the rule built on it, naming the path", () => {
+  it("still fails the card of the rule it belongs to, naming the path", () => {
     const path = "rules.additive_no_u.result.need_part_contributions: expected a value, got null";
     expect(() => load(broken(), "additive_no_u")).toThrow(path);
-    expect(() => load(broken(), "bottleneck_no_u")).toThrow(path);
     expect(() => load(broken(), "additive_no_u")).toThrow(ParseError);
+  });
+
+  it("does the same for a largest-factor rule, which is built from its own record and nothing else", () => {
+    const b = body();
+    entry(b, "bottleneck_no_u").result.maximum_term = null;
+    expect(() => load(b, "bottleneck_no_u")).toThrow(
+      "rules.bottleneck_no_u.result.maximum_term: expected a value, got null"
+    );
+    const s = load(b, "additive_u");
+    expect(Object.keys(s.contributions ?? {})).toEqual(["additive_u", "additive_no_u", "bottleneck_u"]);
+  });
+
+  it("builds a largest-factor card without the combined-factors record it once leaned on", () => {
+    const b = body();
+    b.rules = b.rules.filter((r) => r.rule.rule_id === "bottleneck_u");
+    const s = load(b, "bottleneck_u");
+    expect(copy.topDrivers(s, "bottleneck_u").length).toBeGreaterThan(0);
   });
 
   it("does not say that no input adds when the contributions are only missing", () => {

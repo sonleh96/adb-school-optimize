@@ -279,7 +279,6 @@ describe("an additive API change", () => {
   it("does not need fields the page does not read", () => {
     const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
     for (const row of body.rows) {
-      delete row.maximum_term;
       delete row.placement;
       delete row.display_order;
     }
@@ -293,6 +292,7 @@ describe("an additive API change", () => {
       "area_parts",
       "contributions",
       "need_part_contributions",
+      "maximum_term",
     ]) {
       const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
       delete body.rows[3][field];

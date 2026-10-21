@@ -94,7 +94,7 @@ describe("a school held back under the rule shown, from the detail route", () =>
       "bottleneck_no_u",
       "need_first_no_u",
     ]);
-    expect(Object.keys(s.contributions ?? {})).toEqual(["additive_no_u"]);
+    expect(Object.keys(s.contributions ?? {})).toEqual(["additive_no_u", "bottleneck_no_u"]);
   });
 
   it("says where the other rule puts it", () => {

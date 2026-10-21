@@ -124,6 +124,15 @@ const areaParts = obj({
   female_disadvantage: nullable(num),
 });
 
+const maximumTerm = obj({
+  /** The factors that tie for the largest value: school need, district context and, where the rule reads it, urgency. */
+  attained_by: list(oneOf("N", "A", "U")),
+  value: num,
+  share: num,
+  /** What the largest factor adds to the score: `share` times `value`. */
+  contribution: num,
+});
+
 /** What the engine produced for one school under one rule, as a listed row and a school's detail both carry it. */
 const resultParts = {
   cohort,
@@ -133,9 +142,11 @@ const resultParts = {
   scores,
   need_parts: needParts,
   area_parts: areaParts,
-  /** What each component adds to the score; the two combined-factors rules record it, the others leave it empty. */
+  /** What each component adds to the score under this rule; empty for a school held back. */
   contributions: list(obj({ component: str, lower: num, upper: num })),
   need_part_contributions: nullable(needParts),
+  /** The share a largest-factor rule gives to its largest factor; null under every other rule. */
+  maximum_term: nullable(maximumTerm),
   point_rank: pointRank,
   rank_bounds: rankBounds,
 };

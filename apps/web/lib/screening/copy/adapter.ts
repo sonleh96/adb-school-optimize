@@ -49,13 +49,14 @@ import type {
   PairwiseRow,
   PlacedSchool,
   RecordedContribution,
+  RecordedRule,
   ResultsByRule,
   Top20Change,
   UnreadableInput,
 } from "./model";
 import { countsFrom } from "./counts";
 import { OTHER_GATES } from "./gates";
-import { isCopyRuleId } from "./rules";
+import { isCopyRuleId, rule } from "./rules";
 
 type Cohort = ListedRow["cohort"];
 const COHORT: Record<Cohort, CopyCohort> = {
@@ -168,8 +169,15 @@ function areaPartsFrom(a: DetailResult["area_parts"]): AreaParts {
   };
 }
 
-/** What the two combined-factors rules recorded for each input. Complete and interval schools always have all of it. */
-function recordedContribution(id: "additive_u" | "additive_no_u", r: DetailResult): RecordedContribution {
+/** The rules whose own contributions the copy reads. The others are worded from the school's parts and components. */
+const RECORDED: readonly RecordedRule[] = ["additive_u", "additive_no_u", "bottleneck_u", "bottleneck_no_u"];
+
+/**
+ * What a rule recorded for each input, as the API sent it for that rule (a largest-factor rule's figures already
+ * hold its 60% share of the weighted sum), and for a largest-factor rule the extra share it gives to its largest
+ * factor. Complete and interval schools always have all of it.
+ */
+function recordedContribution(id: RecordedRule, r: DetailResult): RecordedContribution {
   const at = (component: string) => {
     const found = r.contributions.find((c) => c.component === component);
     if (!found) throw new ParseError(`rules.${id}.result.contributions: no entry for component ${component}`);
@@ -181,7 +189,20 @@ function recordedContribution(id: "additive_u" | "additive_no_u", r: DetailResul
   const q = at("Q"),
     e = at("E"),
     l = at("L");
+  const largest = id.startsWith("bottleneck")
+    ? present(r.maximum_term, `rules.${id}.result.maximum_term`)
+    : null;
   return {
+    ...(largest
+      ? {
+          largest: {
+            factors: largest.attained_by,
+            value: largest.value,
+            share: largest.share,
+            contribution: largest.contribution,
+          },
+        }
+      : {}),
     components: {
       permanent_classroom_deficit: part("permanent_classroom_deficit"),
       teacher_housing_deficit: part("teacher_housing_deficit"),
@@ -189,7 +210,7 @@ function recordedContribution(id: "additive_u" | "additive_no_u", r: DetailResul
       service_deficit: part("service_deficit"),
       locality_disadvantage: part("locality_disadvantage"),
       area: at("A").lower,
-      ...(id === "additive_u" ? { urgency: at("U").lower } : {}),
+      ...(rule(id).usesUrgency ? { urgency: at("U").lower } : {}),
       reach: at("R").lower,
       aqi_lower: q.lower,
       aqi_upper: q.upper,
@@ -239,16 +260,14 @@ function buildSchool(
   const results: ResultsByRule = {};
   const contributions: NonNullable<CopySchool["contributions"]> = {};
   for (const [id, r] of entries) if (r.cohort !== "verification_queue") results[id] = toResult(id, r);
-  for (const id of ["additive_u", "additive_no_u"] as const) {
+  for (const id of RECORDED) {
     const r = entries.get(id);
     if (!r || r.cohort === "verification_queue") continue;
     try {
       contributions[id] = recordedContribution(id, r);
     } catch (error) {
-      // A broken part fails the rules built on it, not the whole card. The rule shown and the largest-factor rule
-      // built on this one need it; any other rule's card is unaffected.
-      const needed = view === id || view === (id === "additive_u" ? "bottleneck_u" : "bottleneck_no_u");
-      if (!(error instanceof ParseError) || needed) throw error;
+      // A broken part fails the rule it belongs to, not the whole card: only the rule shown needs its own.
+      if (!(error instanceof ParseError) || view === id) throw error;
     }
   }
 

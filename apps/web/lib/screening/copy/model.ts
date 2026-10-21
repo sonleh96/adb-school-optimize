@@ -107,7 +107,16 @@ export interface CopyResult {
 
 export type ResultsByRule = Partial<Record<CopyRuleId, CopyResult | null>>;
 
-/** What the two combined-factors rules recorded for each input, at the grain `contributions()` reads. */
+/** The factors a largest-factor rule picks its extra share from: school need, district context, urgency. */
+export type Largest = "N" | "A" | "U";
+
+/** The rules whose own recorded contributions the copy reads: the combined-factors and the largest-factor rules. */
+export type RecordedRule = "additive_u" | "additive_no_u" | "bottleneck_u" | "bottleneck_no_u";
+
+/**
+ * What a rule recorded for each input, at the grain `contributions()` reads, as the API sent it for that rule:
+ * a largest-factor rule's figures already hold its 60% share of the weighted sum.
+ */
 export interface RecordedContribution {
   readonly components: Readonly<
     Record<NeedField, number> & {
@@ -122,6 +131,16 @@ export interface RecordedContribution {
       land_upper: number;
     }
   >;
+  /**
+   * The extra share a largest-factor rule gives to its largest factor, with the factor or factors that attain it
+   * (more than one when they tie). Absent under the rules that have no such share.
+   */
+  readonly largest?: {
+    readonly factors: readonly Largest[];
+    readonly value: number;
+    readonly share: number;
+    readonly contribution: number;
+  };
 }
 
 /** What the place sentences, ties and names read. A school in the list has at least this. */
@@ -153,7 +172,7 @@ export interface CopySchool extends PlacedSchool {
    * reasons in the engine's order. Empty for a school that can be put in order.
    */
   readonly gate_failures: readonly GateKey[];
-  readonly contributions?: Partial<Record<"additive_u" | "additive_no_u", RecordedContribution>>;
+  readonly contributions?: Partial<Record<RecordedRule, RecordedContribution>>;
   /** The stored inputs that could not be read, in reading order. Absent when every input was read. */
   readonly unreadable?: readonly UnreadableInput[];
   readonly persistent_candidate_circulated?: boolean;

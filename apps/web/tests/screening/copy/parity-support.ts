@@ -228,11 +228,46 @@ export const DATASET_DIRS: [string, string][] = [
   ["huge", "data/worst-case/huge"],
 ];
 
+const LARGEST_RULES = ["bottleneck_u", "bottleneck_no_u"] as const;
+
+/**
+ * The record the API sends for a largest-factor rule, built from the design's combined-factors record and
+ * components: 60% of each figure, and the 40% share of the largest of school need, district context and (with
+ * urgency) the urgency value, naming every factor that ties for it. Undefined where the school lacks a part.
+ */
+export function largestRecord(s: any, id: (typeof LARGEST_RULES)[number]): any {
+  const base = s.contributions?.[id === "bottleneck_u" ? "additive_u" : "additive_no_u"];
+  if (!base || !s.components) return undefined;
+  const { N, A, U } = s.components;
+  const values: Record<string, number> = id === "bottleneck_u" ? { N, A, U } : { N, A };
+  if (Object.values(values).some((v) => typeof v !== "number")) return undefined;
+  const value = Math.max(...Object.values(values));
+  return {
+    components: Object.fromEntries(Object.entries(base.components).map(([k, v]) => [k, 0.6 * (v as number)])),
+    largest: {
+      factors: Object.keys(values).filter((k) => values[k] === value),
+      value,
+      share: 0.4,
+      contribution: 0.4 * value,
+    },
+  };
+}
+
+/** The design data holds the combined-factors records only; the API also sends one for each largest-factor rule. */
+export const withLargestRecords = (s: any): any => {
+  if (s.cohort === "queue" || !s.contributions) return s;
+  const added = LARGEST_RULES.flatMap((id) => {
+    const rec = largestRecord(s, id);
+    return rec ? [[id, rec]] : [];
+  });
+  return { ...s, contributions: { ...s.contributions, ...Object.fromEntries(added) } };
+};
+
 export function loadDatasets(): Dataset[] {
   return DATASET_DIRS.map(([name, dir]) => ({
     name,
     data: {
-      schools: read(`${dir}/schools.json`).schools,
+      schools: read(`${dir}/schools.json`).schools.map(withLargestRecords),
       pairwise: read(`${dir}/pairwise.json`),
       top20Changes: read(`${dir}/top20_changes.json`),
     },
