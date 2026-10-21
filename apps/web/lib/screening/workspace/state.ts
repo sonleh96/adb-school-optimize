@@ -359,4 +359,5 @@ export function searchWithState(search: string, state: WorkspaceState): string {
 }
 
 /** The rule on screen: the chosen one, or the API's default. */
-export const shownRule = (state: WorkspaceState, known: Known): RuleId => state.rule ?? known.defaultRule;
+export const shownRule = (state: WorkspaceState, known: Pick<Known, "defaultRule">): RuleId =>
+  state.rule ?? known.defaultRule;

@@ -96,7 +96,10 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
   const titles = ready ? views.map((view) => viewTitle(later.copy, view)) : [];
   const page = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}`;
   const items = ready
-    ? views.map((view, i) => ({ name: plainViewTitle(later.copy, view), link: linkOf(page, states[i]) }))
+    ? views.map((view, i) => ({
+        name: plainViewTitle(later.copy, view),
+        link: linkOf(page, states[i], known),
+      }))
     : [];
   const ruleOf = (state: WorkspaceState) => (state.rule ?? known.defaultRule) as CopyRuleId;
   const schoolName = (state: WorkspaceState): Segments | null => {
