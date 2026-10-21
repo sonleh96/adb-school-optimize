@@ -2009,8 +2009,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   }
 }
 
-/* A phone: the same closer rule area, and 2 px less around each switch label, so "Combined factors," fits on its line
-   at 360 px and the main rule's label takes two lines, not three. */
+/* A phone: the same closer rule area, and 2 px less around each switch label. From 400 px the two rules sit side by
+   side with their labels on two lines; the main rule's label then has at least 14% to spare on Linux, whose text sets
+   wider than macOS's. */
 @media (max-width: 479px) {
   .rule {
     padding-top: 10px;
@@ -2025,6 +2026,22 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     margin-top: 6px;
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+}
+
+/* Below 400 px, side by side, "Combined factors," would have too little room to keep to one line on every platform.
+   The two rules stack instead, the main rule first, each label on a line of its own. */
+@media (max-width: 399px) {
+  .ruleSeg {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ruleButton {
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+  .ruleButton .sym {
+    font-size: 19px;
+    line-height: 20px;
   }
 }
 
