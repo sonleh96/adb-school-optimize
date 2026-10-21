@@ -105,7 +105,11 @@ export const RULE = {
 
 export async function openWorkspace(page: Page, search = "") {
   await page.goto(`/screening${search}`);
-  await expect(page.getByRole("heading", { name: "RISE-PNG", level: 1 })).toBeVisible();
+  // Not the column's heading: a link that opens a card the list steps aside for hides the column. The controller's
+  // readiness holds in every layout: its hook is published after hydration, and `ready` resolves once the map has
+  // drawn, with or without marks.
+  await waitForWorkspaceHook(page);
+  await page.evaluate(() => window.__screeningWorkspace!.ready);
   await waitForMap(page);
   if (!search) await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 }
