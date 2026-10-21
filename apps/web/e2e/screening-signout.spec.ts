@@ -8,12 +8,18 @@
  *     -> "is reached and used with the keyboard, after the export button"
  *  4. The narrow layout hides Copy link in the Menu and forgets Sign out there
  *     -> "is in the Menu in the narrow layout"
+ *  5. Sign out takes the button ink the other actions use instead of its quieter ink, so it competes with Copy link,
+ *     or the quieter ink falls under 4.5:1 on the map behind it  -> "reads quieter than the other actions..."
+ *  6. The narrow Menu lists its choices in another order than the specification's ("Responsive layout"), or Sign out
+ *     is not last                                                -> "is last in the Menu..."
  * The mock app has no sign-in, so the tests that need a signed-in person answer `/auth/user` as the real route
  * does when sign-in is required; `/auth/sign-out` is the app's own route.
  */
 import type { Page } from "@playwright/test";
 
+import { contrastRatio } from "../lib/screening/contrast";
 import { LAYOUT } from "../lib/screening/copy";
+import { LAND_COLOUR, WATER_COLOUR } from "../lib/screening/marks";
 import { expect, openWorkspace, test } from "./screening-helpers";
 
 const signedIn = (page: Page) =>
@@ -65,6 +71,29 @@ test("is reached and used with the keyboard, after the export button", async ({ 
   await sentToSignIn(page);
 });
 
+test("reads quieter than the other actions, at 4.5:1 or more on the map behind it", async ({ page }) => {
+  await signedIn(page);
+  await openWorkspace(page);
+  await expect(signOut(page)).toBeVisible();
+  const hex = (rgb: string) =>
+    "#" +
+    (rgb.match(/\d+/g) ?? [])
+      .slice(0, 3)
+      .map((v) => Number(v).toString(16).padStart(2, "0"))
+      .join("");
+  const look = await signOut(page).evaluate((button) => {
+    const style = getComputedStyle(button);
+    return { color: style.color, weight: style.fontWeight, background: style.backgroundColor };
+  });
+  // The second ink (#4a4f57), not the button ink (#15181d) the other actions use, at the weight the action sets.
+  expect(hex(look.color)).toBe("#4a4f57");
+  expect(look.weight).toBe("500");
+  // It has no fill of its own, so the map shows behind it: land or water.
+  expect(look.background).toBe("rgba(0, 0, 0, 0)");
+  for (const map of [LAND_COLOUR, WATER_COLOUR])
+    expect(contrastRatio(hex(look.color), map)).toBeGreaterThanOrEqual(4.5);
+});
+
 test.describe("in the narrow layout", () => {
   test.use({ viewport: { width: 768, height: 1024 } });
 
@@ -76,5 +105,22 @@ test.describe("in the narrow layout", () => {
     await expect(signOut(page)).toBeVisible();
     await signOut(page).click();
     await sentToSignIn(page);
+  });
+
+  test("is last in the Menu, which lists its choices in the specification's order", async ({ page }) => {
+    await signedIn(page);
+    await openWorkspace(page);
+    await page.getByRole("button", { name: LAYOUT.menu, exact: true }).click();
+    const menu = page.getByRole("group", { name: LAYOUT.menu });
+    await expect(menu.getByRole("button", { name: LAYOUT.signOut, exact: true })).toBeVisible();
+    expect((await menu.getByRole("button").allTextContents()).map((text) => text.trim())).toEqual([
+      "Guides",
+      "Explain this screen",
+      "Glossary of terms",
+      "Show method details",
+      "Copy link",
+      "Download the top list",
+      "Sign out",
+    ]);
   });
 });

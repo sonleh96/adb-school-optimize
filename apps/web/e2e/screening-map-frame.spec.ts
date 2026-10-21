@@ -8,6 +8,11 @@
  *     out of view                                                        -> "a second pick made mid-pan..."
  *  4. With a list of over 700 schools the dots stop drawing, the key's bands do not come from the data, or the
  *     console reports a problem (R12)                                    -> "a list of over 700 schools..."
+ *  5. Opening the guide rail narrows the map without framing it again, or a school's pan overrides that framing, so
+ *     schools, the selected one among them, sit under the rail, the column or the card -> "with the rail and a pick..."
+ *  6. The place numbers paint over the column when the map moves them beneath it -> "the column covers a place number..."
+ *  7. A school picked while the country is being framed again pans at once, stops the fit halfway, and leaves schools
+ *     outside the clear part                                             -> "a school picked during a refit..."
  */
 import type { Page, Route } from "@playwright/test";
 
@@ -167,6 +172,204 @@ test.describe("at 1600 by 1000", () => {
     expect(point.x).toBeLessThan(clear.right);
     expect(point.y).toBeGreaterThan(clear.top);
     expect(point.y).toBeLessThan(clear.bottom);
+  });
+});
+
+/* ---------- the guide rail and a pick, in either order ---------- */
+
+/** The schools whose marks sit outside the part of the map that no panel, the key or the caveat covers. */
+async function outsideClear(page: Page, keys: readonly string[]) {
+  return page.evaluate((keys) => {
+    const box = (selector: string) => {
+      const el = document.querySelector(selector);
+      if (!el || getComputedStyle(el).visibility === "hidden") return null;
+      const r = el.getBoundingClientRect();
+      return r.width && r.height ? r : null;
+    };
+    const map = box("[data-testid=screening-map]")!;
+    const column = box("section[data-slot=column]:not([data-aside])");
+    const card = box("[data-slot=school-card]");
+    const key = box("[data-slot=legend]");
+    const caveat = box("[data-region=caveat]");
+    const clear = {
+      left: Math.max(map.left, column?.right ?? -Infinity),
+      right: Math.min(map.right, card?.left ?? Infinity),
+      top: map.top,
+      bottom: Math.min(map.bottom, key?.top ?? Infinity, caveat?.top ?? Infinity),
+    };
+    return keys.flatMap((key) => {
+      const p = window.__screeningMapTest?.project(key as never);
+      if (!p) return [`${key} is not on the map`];
+      const inside = p.x > clear.left && p.x < clear.right && p.y > clear.top && p.y < clear.bottom;
+      return inside ? [] : [`${key} at (${Math.round(p.x)}, ${Math.round(p.y)})`];
+    });
+  }, keys);
+}
+
+const MAPPED = rowsOf("additive_u")
+  .filter((r) => r.school.latitude !== null && r.school.longitude !== null)
+  .map((r) => r.school.school_key);
+
+/** The ordered school whose mark lies furthest right on the first view: the card will open over that side. */
+async function rightmost(page: Page) {
+  let best: { name: string; key: string; x: number } | null = null;
+  for (const row of rowsOf("additive_u").filter((r) => r.cohort !== "verification_queue")) {
+    const at = await markAt(page, row.school.school_key);
+    if (at && (!best || at.x > best.x))
+      best = { name: row.school.source_school_name, key: row.school.school_key, x: at.x };
+  }
+  return best!;
+}
+
+const openRail = (page: Page) => page.getByRole("toolbar").getByRole("button", { name: "Guides" }).click();
+
+for (const size of [
+  { width: 1280, height: 800 },
+  { width: 1024, height: 768 },
+]) {
+  test.describe(`with the rail and a pick at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    for (const order of ["rail then pick", "pick then rail"] as const) {
+      test(`with the rail and a pick at ${size.width} by ${size.height}, ${order}, every school and the selected one sit in the clear part of the map`, async ({
+        page,
+      }) => {
+        await page.goto("/screening");
+        await waitForMap(page);
+        await settled(page);
+        const school = await rightmost(page);
+        const pick = () => orderedRow(page, school.name).first().click();
+        if (order === "rail then pick") {
+          await openRail(page);
+          await expect(page.getByTestId("guide-rail")).toBeVisible();
+          await settled(page);
+          await pick();
+        } else {
+          await pick();
+          await settledMark(page, school.key);
+          await settled(page);
+          await openRail(page);
+          await expect(page.getByTestId("guide-rail")).toBeVisible();
+        }
+        await expect(page.locator("[data-slot=school-card]")).toBeVisible();
+        await settledMark(page, school.key);
+        await settled(page);
+        expect(await outsideClear(page, [school.key])).toEqual([]);
+        expect(await outsideClear(page, MAPPED)).toEqual([]);
+      });
+    }
+  });
+}
+
+test.describe("at 1600 by 1000, a pick during a refit", () => {
+  test.use({ viewport: { width: 1600, height: 1000 } });
+
+  test("a school picked during a refit waits for it, and the country and the school end in the clear part", async ({
+    page,
+  }) => {
+    const ordered = rowsOf("additive_u").filter(
+      (r) => r.cohort !== "verification_queue" && r.school.latitude !== null
+    );
+    const first = ordered[0].school.school_key;
+    await page.goto(`/screening?school=${first}`);
+    await waitForMap(page);
+    await settledMark(page, first);
+    await settled(page);
+    // Zoomed in, most schools lie outside the clear part, and framing the country again is a long move.
+    for (let step = 0; step < 2; step += 1) {
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      await page.waitForTimeout(400);
+    }
+    await settled(page);
+    let picked: string | null = null;
+    for (const row of ordered.slice(1)) {
+      if ((await outsideClear(page, [row.school.school_key])).length > 0) {
+        picked = row.school.school_key;
+        break;
+      }
+    }
+    expect(picked).not.toBeNull();
+
+    // Opening the rail steps the list aside for the card: the map frames the country again. While it moves, another
+    // school is chosen. Panning to it now would stop the fit halfway, zoomed in.
+    // The page picks the school itself, the moment the map starts moving: a check from outside can miss a 300 ms move.
+    const pickedMidFit = page.evaluate(
+      (key) =>
+        new Promise<void>((resolve, reject) => {
+          const map = document.querySelector("[data-testid=screening-map]")!;
+          const timer = setTimeout(
+            () => reject(new Error("the map never started framing the country")),
+            5000
+          );
+          const observer = new MutationObserver(() => {
+            if (map.getAttribute("data-map-moving") !== "true") return;
+            observer.disconnect();
+            clearTimeout(timer);
+            window.__screeningWorkspace!.setState({ school: key });
+            resolve();
+          });
+          observer.observe(map, { attributes: true, attributeFilter: ["data-map-moving"] });
+        }),
+      picked
+    );
+    await openRail(page);
+    await pickedMidFit;
+
+    await settledMark(page, picked!);
+    await settled(page);
+    expect(await outsideClear(page, [picked!])).toEqual([]);
+    expect(await outsideClear(page, MAPPED)).toEqual([]);
+  });
+});
+
+/* ---------- the place numbers stay under the panels ---------- */
+
+test.describe("at 1600 by 1000, the numbers and the column", () => {
+  test.use({ viewport: { width: 1600, height: 1000 } });
+
+  test("the column covers a place number the map has moved beneath it", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await settled(page);
+    const label = page.locator("[data-rank-label='1']");
+    // The numbers ignore the pointer, and hit testing skips what ignores it. For the check only, they take it, so the
+    // point at a number's centre names whatever is painted on top there.
+    const topAt = (locator: typeof label) =>
+      locator.evaluate((el) => {
+        const marker = el.closest<HTMLElement>(".maplibregl-marker")!;
+        el.style.pointerEvents = marker.style.pointerEvents = "auto";
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        el.style.pointerEvents = marker.style.pointerEvents = "";
+        if (!hit) return "nothing";
+        if (hit.closest(".maplibregl-marker") === marker) return "the number";
+        return hit.closest("section[data-slot=column]") ? "the column" : hit.outerHTML.slice(0, 80);
+      });
+    // On the first view the number is in the clear part of the map, so the check can see a number.
+    expect(await topAt(label)).toBe("the number");
+
+    // Drag the map, a stroke at a time inside its clear part (a drag let go over the column never ends), until the
+    // number sits in the middle of the column.
+    const column = (await page.locator("section[data-slot=column]").boundingBox())!;
+    const target = { x: column.x + column.width / 2, y: column.y + column.height / 2 };
+    const clearLeft = column.x + column.width + 40;
+    for (let stroke = 0; stroke < 6; stroke += 1) {
+      const at = (await label.boundingBox())!;
+      const dx = target.x - (at.x + at.width / 2);
+      const dy = target.y - (at.y + at.height / 2);
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) break;
+      const from = { x: 1150, y: 500 };
+      const step = { x: Math.max(dx, clearLeft - from.x, -500), y: Math.max(-200, Math.min(200, dy)) };
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + step.x, from.y + step.y, { steps: 12 });
+      await page.mouse.up();
+      await settled(page);
+    }
+    const moved = (await label.boundingBox())!;
+    expect(moved.x).toBeGreaterThan(column.x + 40);
+    expect(moved.x + moved.width).toBeLessThan(column.x + column.width - 40);
+    expect(await topAt(label)).toBe("the column");
   });
 });
 
