@@ -204,6 +204,8 @@ test("a pair without the circulated rule is compared from the pickers", async ({
     .getByRole("button", { name: /Largest-factor rule, with urgency/ })
     .click();
   expect(search(page)).toBe("?analyst=1&mode=compare&rule=bottleneck_u&compare=need_first_u");
+  // A choice closes the list and hands focus back to the picker, as Escape does.
+  await expect(page.getByRole("button", { name: /^Choose the rule to compare to:/ })).toBeFocused();
   const n = json("compare/need_first_u__bottleneck_u.json").common_cohort_count;
   await expect(page.locator("[data-region=compare-statement] p").first()).toContainText(
     `among the ${n} schools`
