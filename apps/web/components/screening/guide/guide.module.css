@@ -704,10 +704,22 @@
       transform: translateY(-8px);
     }
   }
-  /* The band can be short (160 px at 200 percent zoom), so the whole rail scrolls inside it, Back and Next pinned. */
+  /* The band can be short (160 px at 200 percent zoom), so the whole rail scrolls inside it, Back and Next pinned.
+     A shade at its top or bottom edge, there only while more lies that way, says it scrolls: each paper-coloured
+     cover scrolls with the content and hides its shade once the content reaches that end. */
   .railInner {
     overflow-y: auto;
     overscroll-behavior: contain;
+    background:
+      linear-gradient(var(--rail-bg) 30%, rgba(245, 243, 238, 0)) top / 100% 36px no-repeat local,
+      linear-gradient(rgba(245, 243, 238, 0), var(--rail-bg) 70%) bottom / 100% 36px no-repeat local,
+      linear-gradient(rgba(21, 24, 29, 0.12), rgba(21, 24, 29, 0)) top / 100% 10px no-repeat scroll,
+      linear-gradient(rgba(21, 24, 29, 0), rgba(21, 24, 29, 0.12)) bottom / 100% 10px no-repeat scroll;
+  }
+  /* The start has no Back and Next to keep in reach, so its foot scrolls with the guides instead of covering them. */
+  .rail:not([data-step]) .railFoot {
+    position: static;
+    background: none;
   }
   .railHead {
     padding: 12px 16px 8px;
