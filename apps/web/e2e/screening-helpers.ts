@@ -72,6 +72,11 @@ export async function waitForMap(page: Page) {
   });
 }
 
+/** WorkspaceProvider publishes `window.__screeningWorkspace` only after hydration, so wait for it before reading it. */
+export async function waitForWorkspaceHook(page: Page) {
+  await page.waitForFunction(() => window.__screeningWorkspace !== undefined);
+}
+
 /** The lists' accessible names, as the copy system words the tabs. */
 export const ORDERED = "ol[aria-label='The list']";
 export const INCOMPLETE = "ol[aria-label='Incomplete records']";
