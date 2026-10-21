@@ -611,3 +611,21 @@ test("no screen promises that a saved view keeps the map position", async ({ pag
   await open(page, "?guide=off&panel=export&pack=1");
   expect(promises((await sheet(page).innerText()) ?? "")).toEqual([]);
 });
+
+test("the pack's record describes its file: lists of the length it states, and each rule's own groups", async ({
+  page,
+}) => {
+  await open(page, "?guide=off&n=10&panel=export&pack=1");
+  const record = sheet(page).locator("[data-region=pack-record]");
+  await expect(record).toHaveAttribute("aria-busy", "false");
+  await expect(record.locator("dt", { hasText: "Length of the top list" })).toBeVisible();
+  await expect(record.locator("dt", { hasText: "Length of the top list" }).locator("+ dd")).toHaveText("20");
+  await expect(record).toContainText("so 21 schools can be put in order");
+  await expect(record).toContainText("so 22 schools can be put in order");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    sheet(page).getByRole("button", { name: "Download the saved views" }).click(),
+  ]);
+  const pack = JSON.parse(readFileSync((await download.path())!, "utf8"));
+  for (const lines of Object.values(pack.method_record) as string[][]) expect(lines).toContain("k: 20");
+});

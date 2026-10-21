@@ -22,6 +22,7 @@ import { fetchTopList, saveFile } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
 import type { RuleId } from "@/lib/screening/types";
 import {
+  PACK_LENGTH,
   droppedKeys,
   linkOf,
   linksText,
@@ -31,12 +32,13 @@ import {
   stateOf,
 } from "@/lib/screening/views/pack";
 import { plainViewTitle, viewTitle } from "@/lib/screening/views/step";
-import type { TopLength, WorkspaceState } from "@/lib/screening/workspace/state";
+import type { WorkspaceState } from "@/lib/screening/workspace/state";
 
 import { RuleSymbol } from "../RuleArea";
 import { Sentence } from "../Sentence";
 import { useWorkspaceStore } from "../WorkspaceProvider";
 import exportStyles from "../export/export.module.css";
+import { sourceValue } from "../export/source";
 import { useLater } from "../guide/useLater";
 import base from "../screening.module.css";
 import { useSavedViews } from "./useSavedViews";
@@ -47,8 +49,6 @@ export interface PackSheetInput {
   /** The method details' words, when they are on. */
   readonly method: Method | null;
   readonly schools: ReadonlyMap<string, CopySchool>;
-  /** The top list's length on screen, which each rule's record names. */
-  readonly n: TopLength;
   /** The tab is showing: only then are the rules' records fetched. */
   readonly enabled: boolean;
   readonly onNotify: (message: string) => void;
@@ -77,11 +77,12 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
   const known = workspace.known();
   const states = useMemo(() => (views ?? []).map((view) => stateOf(view, known)), [views, known]);
   const rules = useMemo(() => rulesUsed(states, known), [states, known]);
-  // Each rule's method record is the one the API writes into its top list: the same file the top list tab reads.
+  // Each rule's method record is the one the API writes into its top list, at the pack's own length (which the record
+  // states), not whatever length the top list tab was left at: the record says what the file holds.
   const records = useQueries({
     queries: rules.map((rule) => ({
-      queryKey: ["screening", "export", "top", rule, input.n, null],
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchTopList(rule, input.n, null, signal),
+      queryKey: ["screening", "export", "top", rule, PACK_LENGTH, null],
+      queryFn: ({ signal }: { signal: AbortSignal }) => fetchTopList(rule, PACK_LENGTH, null, signal),
       enabled,
       retry: (failures: number, error: Error) =>
         failures < 1 && ["server", "network"].includes(classifyFailure(error)),
@@ -129,7 +130,9 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
     ...new Map(files.filter((line) => line.key.endsWith("_sha256")).map((line) => [line.key, line])).values(),
   ];
   const bare = (label: string) => label.replace(/\s*\(\d+\)$/, "");
-  const firstRule = (rules[0] ?? known.defaultRule) as CopyRuleId;
+  // Each rule counts its own groups. One sentence when every rule's is the same; otherwise one line per rule.
+  const groups = rules.map((rule) => ({ rule, sentence: copy.groupsSentence(rule as CopyRuleId) }));
+  const oneGroups = new Set(groups.map((g) => g.sentence)).size <= 1;
 
   const plainList = (
     <ol className={styles.packList} data-region="pack-table" aria-busy={!ready}>
@@ -215,8 +218,18 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
 
   const shared = (
     <>
+      <dt>{TERMS.shortlist_size.label}</dt>
+      <dd>{PACK_LENGTH}</dd>
       <dt>{plain ? TERMS.rank.label : method.sheet.pointRanks}</dt>
-      <dd>{copy.groupsSentence(firstRule)}</dd>
+      <dd>
+        {oneGroups
+          ? groups[0]?.sentence
+          : groups.map(({ rule, sentence }) => (
+              <span key={rule} className={styles.ruleLine}>
+                {copy.ruleLabel(rule as CopyRuleId)}. {sentence}
+              </span>
+            ))}
+      </dd>
       <dt>{bare(TERMS.queue.label)}</dt>
       <dd>{STRINGS.queueIntro}</dd>
       <dt>{TERMS.tie_rule.label}</dt>
@@ -228,7 +241,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
         </>
       )}
       <dt>{TERMS.source.label}</dt>
-      <dd>{STRINGS.source}</dd>
+      <dd>{sourceValue(copy)}</dd>
     </>
   );
 
