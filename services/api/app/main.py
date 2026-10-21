@@ -12,20 +12,17 @@ from uuid import uuid4
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel
 
 from .db import close_pool, open_pool
 from .errors import register_exception_handlers
-from .models.api import HealthResponse
-from .routers.districts import router as districts_router
-from .routers.exports import router as exports_router
-from .routers.meta import router as meta_router
-from .routers.rasters import router as rasters_router
-from .routers.scenarios import router as scenarios_router
-from .routers.schools import router as schools_router
-from .routers.scoring import router as scoring_router
 from .routers.screening import router as screening_router
 from .security import require_authenticated_user
 from .settings import get_settings
+
+
+class HealthResponse(BaseModel):
+    status: str
 
 
 @asynccontextmanager
@@ -49,7 +46,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+    allow_methods=["GET", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
     # A browser script can read only the response headers named here. The screening client needs them all.
     expose_headers=[
@@ -95,13 +92,6 @@ async def request_context(request: Request, call_next):
 register_exception_handlers(app)
 
 protected = [Depends(require_authenticated_user)]
-app.include_router(meta_router, dependencies=protected)
-app.include_router(schools_router, dependencies=protected)
-app.include_router(districts_router, dependencies=protected)
-app.include_router(scenarios_router, dependencies=protected)
-app.include_router(scoring_router, dependencies=protected)
-app.include_router(exports_router, dependencies=protected)
-app.include_router(rasters_router, dependencies=protected)
 app.include_router(screening_router, dependencies=protected)
 
 
