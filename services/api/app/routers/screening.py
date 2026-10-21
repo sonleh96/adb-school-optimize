@@ -422,7 +422,12 @@ def get_results(
         else ResultsResponse(**parts)
     )
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -565,7 +570,12 @@ def get_school_by_key(
         (detail,) = _school_details(connection, name, found, package_version)
     body = SchoolDetailResponse(input_version=name, input_sha256=version.version.input_sha256, **dict(detail))
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -711,7 +721,12 @@ def get_compare(
         ],
     )
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
