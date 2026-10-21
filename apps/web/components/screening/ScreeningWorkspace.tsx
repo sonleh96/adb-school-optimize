@@ -490,6 +490,7 @@ function Workspace() {
       data-card-docked={layout.docked || undefined}
       data-instant={keyboard || undefined}
       data-gloss={guidance.glossary || undefined}
+      data-rail={guidance.rail > 0 || undefined}
       aria-label={copy.LAYOUT.workspaceAria}
       style={
         {

@@ -144,6 +144,9 @@
   align-items: baseline;
   gap: 12px;
 }
+.rail .headSkip {
+  display: none;
+}
 .guideName {
   min-width: 0;
   font: 500 13px/18px var(--sans);
@@ -407,17 +410,21 @@
   grid-template-columns: 1fr 1.7fr;
   gap: 8px;
 }
+/* Skip, Presentation mode and the key hint wrap rather than run past the rail. */
 .foot2 {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px 8px;
   margin-top: 12px;
 }
 .footRight {
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: baseline;
-  gap: 10px;
+  gap: 4px 10px;
 }
 .hint {
   font-size: 11px;
@@ -752,6 +759,36 @@
     margin: 0;
     font: 500 13px/17px var(--sans);
     overflow-wrap: anywhere;
+  }
+}
+
+/* A short narrow window (a laptop at 200 percent zoom): the band is about 160 px, so the head is one line and the
+   foot only Back and Next, and the step's words get the rest. */
+@media (max-width: 1023px) and (max-height: 599px) {
+  .rail[data-step] .progress {
+    display: none;
+  }
+  .rail[data-step] .railHead {
+    padding: 8px 16px 2px;
+  }
+  .rail[data-step] .counter {
+    margin-top: 2px;
+  }
+  .rail[data-step] .headRow .headSkip {
+    display: inline;
+    margin-left: auto;
+  }
+  .rail[data-step] .foot2,
+  .rail[data-step] .upNext {
+    display: none;
+  }
+  .rail[data-step] .railFoot {
+    padding: 6px 16px 8px;
+  }
+  .rail[data-step] .stepTitle {
+    margin: 2px 0 6px;
+    font-size: 19px;
+    line-height: 23px;
   }
 }
 
