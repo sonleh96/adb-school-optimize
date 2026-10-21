@@ -9,7 +9,7 @@ from dataclasses import asdict, replace
 
 import pytest
 from app import screening_store as store
-from school_scoring.screening import RULES, pairwise_metrics
+from school_scoring.screening import PACKAGE_VERSION, RULES, pairwise_metrics
 from screening_api_helpers import api_records, load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
 from screening_db_factories import record
@@ -728,6 +728,23 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
         .headers["cache-control"]
         .startswith("private, max-age=60")
     )
+
+
+def test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change(api, loaded):  # API38
+    school_id = loaded.school_ids[AWK[7]]
+    by_link = f"/api/v1/screening/schools/{school_id}"
+    both = {"input_version": loaded.input_version, "package_version": PACKAGE_VERSION}
+
+    pinned = api.get(by_link, params=both)
+    default = api.get(by_link)
+
+    assert pinned.status_code == 200 and default.status_code == 200
+    assert pinned.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
+    assert default.headers["cache-control"].startswith("private, max-age=60")
+    assert "immutable" not in pinned.headers["cache-control"]
+    # A 304 keeps the lifetime of the route, so a validator never turns it into an immutable answer.
+    again = api.get(by_link, params=both, headers={"If-None-Match": pinned.headers["etag"]})
+    assert again.status_code == 304 and "immutable" not in again.headers["cache-control"]
 
 
 # ---------------------------------------------------------------------------------------------
