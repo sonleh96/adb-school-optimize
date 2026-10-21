@@ -219,10 +219,50 @@
    }
   },
   {
-   "file": "exports/top_additive_u_20.csv",
+   "file": "compare/additive_no_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_20.csv",
    "headers": {
     "cache-control": "private, no-store",
-    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_u.csv\"",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_no_u.csv\"",
     "content-type": "text/csv; charset=utf-8",
     "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",
@@ -231,7 +271,7 @@
    "path": "/api/v1/screening/exports/top.csv",
    "query": {
     "k": "20",
-    "rule": "additive_u"
+    "rule": "additive_no_u"
    }
   }
  ]
