@@ -16,7 +16,7 @@ import {
   type Segments,
 } from "../copy";
 import type { LaterCopy } from "../copy/later";
-import type { Patch, StateKey } from "../workspace/state";
+import { DEFAULT_STATE, type Patch, type StateKey } from "../workspace/state";
 
 import type { GuideId } from "./machine";
 import { type Plan, type Roles, needReasons } from "./roles";
@@ -66,8 +66,6 @@ export interface GuideContext {
   readonly agreeK: number | null;
   /** The school What changed uses as its example between the two main rules. */
   readonly example: CopySchool | null;
-  /** The incomplete records can be filtered by what is missing (a method-details control). */
-  readonly filters: boolean;
 }
 
 /** The state every step starts from: the paper's main rule, the list, nothing selected, nothing compared. */
@@ -86,6 +84,19 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  // The method details are off, so a step shows the plain screen with nothing open.
+  analyst: false,
+  mode: "screen",
+  k: 20,
+  panel: null,
+  n: 20,
+  prov: null,
+  loc: null,
+  miss: null,
+  formula: false,
+  parts: false,
+  hide: DEFAULT_STATE.hide,
+  pop: null,
 });
 
 /** The keys a step owns, in `BASE`'s order. */
@@ -249,7 +260,8 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [para(TERMS.export.line), para(TERMS.shortlist_size.help), para(TERMS.manifest.line)],
-        targets: [[region("export-button")]],
+        // The narrow layout keeps Download the top list in its menu; a ring takes in whichever of the two shows.
+        targets: [[region("export-button"), '[aria-controls="screening-menu"]']],
       };
     case "q2.why":
       return {
@@ -350,8 +362,9 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [term("missing_all_but_remoteness"), term("missing_classrooms")],
-        // Its Try it is about the filter by what is missing, which arrives with the method details.
-        tryIt: ctx.filters ? base.tryIt : null,
+        // The guides stay in the plain layer. Its Try it is about the filter by what is missing, a method-details
+        // control, so it is not offered.
+        tryIt: null,
         patch: { view: "queue", qgroup: "evidence" },
         // Group by in the column (the card names its own chips `queue-missing` too), then the first group.
         targets: [

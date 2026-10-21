@@ -2,7 +2,8 @@
 
 /**
  * The guidance layers' mount point in the workspace. What ships with the page is small: the map bar (Guides,
- * Explain this screen, Glossary of terms), the rail's frame, the How this works link and the narrow layout's menu.
+ * Explain this screen, Glossary of terms, and the method details' Map layers at its end), the rail's frame, the How
+ * this works link and the narrow layout's menu.
  * The rail's contents, the page, help mode and the glossary load the first time they open, with the copy they need.
  *
  * Which guides the data can teach is decided here, from the loaded data (R13), so the Guides button can say how
@@ -35,7 +36,23 @@ const loadHowPage = () => import("../how/HowPage");
 const loadHelpLayer = () => import("../help/HelpLayer");
 const loadGlossary = () => import("../help/Glossary");
 
-export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: GuideData }) {
+/** The map bar's own classes, for buttons another layer puts at the end of the bar. */
+export interface MapBarClasses {
+  /** A bar button that keeps only its icon when the bar is tight. */
+  readonly button: string;
+  readonly label: string;
+}
+
+export function GuidanceLayer({
+  root,
+  data,
+  mapBarItems = null,
+}: {
+  root: HTMLElement | null;
+  data: GuideData;
+  /** Buttons for the end of the map bar: the method details' Map layers while they are on. */
+  mapBarItems?: ((classes: MapBarClasses) => ReactNode) | null;
+}) {
   const store = useLayerStore();
   const { state } = useLayers();
   const frame = useGuidanceFrame(data.width);
@@ -114,7 +131,7 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
   }, [railOpen, root]);
   return (
     <>
-      {data.mode !== "narrow" ? <MapBar root={root} data={data} /> : null}
+      {data.mode !== "narrow" ? <MapBar root={root} data={data} items={mapBarItems} /> : null}
       {railOpen ? (
         <div
           className={styles.rail}
@@ -156,7 +173,15 @@ export function GuidanceLayer({ root, data }: { root: HTMLElement | null; data: 
 
 /* ------------------------------------------------------------------ the map bar */
 
-function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
+function MapBar({
+  root,
+  data,
+  items,
+}: {
+  root: HTMLElement | null;
+  data: GuideData;
+  items: ((classes: MapBarClasses) => ReactNode) | null;
+}) {
   const store = useLayerStore();
   const { state, memory, catalog } = useLayers();
   const { copy } = data;
@@ -168,9 +193,12 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
   // button keeps only its icon. Its name stays in aria-label and title.
   const full = useRef(0);
   const school = useWorkspaceState().school;
+  const more = items !== null;
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element || !root) return;
+    // What the bar holds may have changed, so its full width is measured again before the check.
+    element.removeAttribute("data-bar-tight");
     const check = () => {
       if (!element.hasAttribute("data-bar-tight")) full.current = element.offsetWidth;
       const left = element.getBoundingClientRect().left;
@@ -199,7 +227,7 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [root, data.mode, data.ready, state.rail.kind, state.gloss.open, school]);
+  }, [root, data.mode, data.ready, state.rail.kind, state.gloss.open, school, more]);
   // The narrow layout has no map bar: its marks on the root go with it.
   useEffect(
     () => () => {
@@ -260,6 +288,7 @@ function MapBar({ root, data }: { root: HTMLElement | null; data: GuideData }) {
         <BookOpen size={14} aria-hidden />
         <span className={styles.barLabel}>{HELP.glossary}</span>
       </button>
+      {items?.({ button: `${styles.barButton} ${styles.squeezable}`, label: styles.barLabel })}
     </div>
   );
 }
@@ -291,9 +320,12 @@ export function HowLink({ copy }: { copy: BoundCopy }) {
   );
 }
 
+/** Wraps a menu choice so it closes the menu and hands focus back to the menu button if nothing else takes it. */
+export type MenuAct = (fn: () => void) => () => void;
+
 /**
  * The narrow layout's menu: Guides, Explain this screen and Glossary of terms, then the workspace's own actions.
- * Escape closes it and hands focus back to its button.
+ * Escape closes it and hands focus back to its button. Actions given as a function get the menu's own way to act.
  */
 export function GuideMenu({
   copy,
@@ -302,7 +334,7 @@ export function GuideMenu({
 }: {
   copy: BoundCopy;
   ready: boolean;
-  children?: ReactNode;
+  children?: ReactNode | ((act: MenuAct) => ReactNode);
 }) {
   const store = useLayerStore();
   const { state } = useLayers();
@@ -329,7 +361,7 @@ export function GuideMenu({
     };
   }, [open]);
   // A choice closes the menu; focus goes to what it opened, or back to the menu button.
-  const act = (fn: () => void) => () => {
+  const act: MenuAct = (fn) => () => {
     setOpen(false);
     fn();
     requestAnimationFrame(() => {
@@ -376,7 +408,7 @@ export function GuideMenu({
           >
             {HELP.glossary}
           </button>
-          {children}
+          {typeof children === "function" ? children(act) : children}
         </div>
       ) : null}
     </span>

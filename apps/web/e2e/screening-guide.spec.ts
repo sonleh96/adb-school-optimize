@@ -122,6 +122,12 @@ const SCRIPT: { guide: string; step: number; state: Record<string, unknown>; sho
   { guide: "q1", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=rule-identity]" },
   { guide: "q1", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend]" },
   {
+    guide: "q1",
+    step: 4,
+    state: { rule: "additive_u", school: null, panel: null },
+    shows: "[data-region=export-button]",
+  },
+  {
     guide: "q2",
     step: 1,
     state: { rule: "additive_u", view: "ranked" },
@@ -327,9 +333,9 @@ test("when the screen moves on from a step the rail says so, and puts it back", 
 test("presenting widens the rail, shows Up next and the key hints, and Page Down and Page Up cross guides", async ({
   page,
 }) => {
-  await ready(page, "?guide=q1&gstep=3");
+  await ready(page, "?guide=q1&gstep=4");
   // One counter, and no key hints, before presenting.
-  await expect(rail(page).getByText("Step 3 of 3", { exact: true })).toBeVisible();
+  await expect(rail(page).getByText("Step 4 of 4", { exact: true })).toBeVisible();
   await expect(rail(page).locator("kbd")).toHaveCount(0);
   await expect(rail(page).getByText("Page Down for next")).toHaveCount(0);
   await expect(rail(page).getByText(/Guide \d of \d/)).toHaveCount(0);
@@ -344,11 +350,11 @@ test("presenting widens the rail, shows Up next and the key hints, and Page Down
   await page.keyboard.press("PageDown");
   await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q2", step: 1 });
   await page.keyboard.press("PageUp");
-  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 3 });
+  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
   // Back crosses guides too while presenting.
   await page.keyboard.press("PageDown");
   await rail(page).getByRole("button", { name: "Back" }).click();
-  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 3 });
+  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
   await rail(page).getByRole("button", { name: "Leave presentation mode" }).click();
   expect((await rail(page).boundingBox())!.width).toBe(312);
 });
@@ -515,10 +521,25 @@ test.describe("in the narrow layout", () => {
     await expect(page.getByTestId("guide-compact")).toBeVisible();
     await expect(page.getByTestId("screening-map")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth === window.innerWidth)).toBe(true);
-    await page
-      .getByTestId("guide-compact")
-      .getByRole("button", { name: /Next guide/ })
-      .click();
+    await page.getByTestId("guide-compact").getByRole("button", { name: "Next", exact: true }).click();
+    // Guide 1 step 4 points at Download the top list, which the narrow layout keeps in its menu: the ring is round
+    // the menu's button.
+    await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
+    await ringed(page);
+    const menu = (await page.getByRole("button", { name: "Menu" }).boundingBox())!;
+    // The ring moves from the last step's place; once it settles it holds the whole button.
+    await expect
+      .poll(async () => {
+        const ring = (await page.locator("[data-testid=guide-rings] > div").first().boundingBox())!;
+        return (
+          ring.x <= menu.x &&
+          ring.y <= menu.y &&
+          ring.x + ring.width >= menu.x + menu.width &&
+          ring.y + ring.height >= menu.y + menu.height
+        );
+      })
+      .toBe(true);
+    await rail(page).getByRole("button", { name: "Next guide", exact: true }).click();
     await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q2", step: 1 });
   });
 });

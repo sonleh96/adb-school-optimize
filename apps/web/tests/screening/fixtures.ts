@@ -21,6 +21,8 @@ export interface FixtureRequest {
   file: string;
   /** Set when the API did not answer 200; the file then holds its error envelope. */
   status?: number;
+  /** Set for a download (the top list's CSV): the headers that describe the file. The file is the API's bytes. */
+  headers?: Record<string, string>;
 }
 
 export function fixtureIndex(dataset: Dataset = ""): { requests: FixtureRequest[] } {

@@ -11,6 +11,19 @@ export function ordinal(n: number): string {
 
 export const SMALL = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"] as const;
 export const capitalise = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+/**
+ * Text as a file name part: lowercase, accents dropped, a bracketed group (a rule's letter) dropped, anything else
+ * that is not a letter or digit a single hyphen, and no hyphen at either end.
+ */
+export const slug = (text: string): string =>
+  text
+    .replace(/\([^)]*\)/g, " ")
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 export const lowerFirst = (t: string): string => t.charAt(0).toLowerCase() + t.slice(1);
 
 /** Groups thousands with commas. */

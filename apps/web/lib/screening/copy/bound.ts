@@ -19,6 +19,7 @@ import {
 } from "./compare";
 import { buildIdeas } from "./ideas";
 import type { LaterCopy } from "./later";
+import type { Method } from "./method";
 import { retryable } from "./once";
 import {
   missingGroupLabel,
@@ -151,6 +152,8 @@ export function copyFor(data: CopyData = {}) {
   const loadLater = retryable(() =>
     import("./later").then((m) => m.laterFor({ counts: main, data: bound, countsByRule: data.countsByRule }))
   );
+  // The method details' words load apart from the guide, because only the method details read them.
+  const loadMethod = retryable(() => import("./method"));
   return Object.freeze({
     counts: c,
     TERMS: terms,
@@ -172,6 +175,12 @@ export function copyFor(data: CopyData = {}) {
     },
     /** What the groups of schools are under one rule: its counts and the inputs it reads. */
     scope: (ruleId: CopyRuleId) => buildScope(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
+    /**
+     * The method details' words for one rule: its group sizes and the inputs it reads. Loaded on first use, like the
+     * guide, so a plain view never ships them.
+     */
+    methodFor: (ruleId: CopyRuleId): Promise<Method> =>
+      loadMethod().then((m) => m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId) })),
     /** The terms worded for one rule: its group sizes and the inputs it reads. */
     termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId)),
     groupsSentence: (ruleId: CopyRuleId) => groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)),

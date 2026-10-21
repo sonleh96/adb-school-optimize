@@ -1,6 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { lowerFirst, plural } from "./format";
+import { lowerFirst, plural, slug } from "./format";
 import { RULE_IDS } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
@@ -57,13 +57,18 @@ export const LAYOUT = Object.freeze({
   savedViews: "Saved views for meetings",
   notComputedGroup: (name: string, n: number) => `Not computed under ${name} (${n})`,
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
+  // The plain download's name: the list's length and the rule's plain label, with no rule letters.
+  topListFileName: (n: number, ruleLabel: string) => `rise-png-top-${n}-${slug(ruleLabel)}.csv`,
+  // In the export sheet, when a remoteness filter is on screen: the API cannot cut the file by remoteness.
+  fileNotByRemoteness:
+    "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here.",
   rulesInPack: "Rules the saved views use",
-  sharedRecord: "Shared by every list in the pack",
+  sharedRecord: "Shared by every list in the saved views",
   fingerprints: (n: number) =>
     n === 1
       ? "1 source file. The downloaded file names it with its fingerprint."
       : `${n} source files. The downloaded file names each one with its fingerprint.`,
-  downloadPack: "Download the pack",
+  downloadPack: "Download the saved views",
   copyRecord: "Copy the method record",
   shares: "How the rule adds up",
   afterDownload: (what: string) => `Downloaded ${what}. The method record is in the first lines of the file.`,
@@ -101,6 +106,9 @@ export const LAYOUT = Object.freeze({
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
+  // A comparison of two rules, and the top-list file the export sheet reads.
+  loadingComparison: "Loading the comparison",
+  loadingTopList: "Loading the top list",
   mapLoading: "Loading the map",
   tooltipMissing: (labels: string) => `Missing: ${labels}`,
   tipNotComputed: (shortName: string) => `Not computed for this school under ${shortName}`,
@@ -126,6 +134,8 @@ export const LAYOUT = Object.freeze({
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
   retry: "Retry",
+  // The heading of the school column in the export table.
+  schoolHead: "School",
   retrying: "Trying again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.

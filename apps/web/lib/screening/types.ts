@@ -52,6 +52,9 @@ const rule = obj({
   label: str,
   policy_role: policyRole,
   uses_urgency: bool,
+  /** The rule as the paper writes it, and each input's share as a fraction and a number; method details only. */
+  formula: str,
+  weights: list(obj({ component: str, fraction: str, value: num })),
 });
 export type Rule = Infer<typeof rule>;
 
@@ -145,7 +148,7 @@ const resultParts = {
   need_parts: needParts,
   area_parts: areaParts,
   /** What each component adds to the score under this rule; empty for a school held back. */
-  contributions: list(obj({ component: str, lower: num, upper: num })),
+  contributions: list(obj({ component: str, lower: num, upper: num, weight: optional(num) })),
   need_part_contributions: nullable(needParts),
   /** The share a largest-factor rule gives to its largest factor; null under every other rule. */
   maximum_term: nullable(maximumTerm),
@@ -286,6 +289,8 @@ export const inputsResponse = obj({
 });
 export type InputsResponse = Infer<typeof inputsResponse>;
 
+/** A school's possible places under one rule of a comparison; null ends where that rule has no result for it. */
+const intervalBounds = obj({ rank_best: nullable(int), rank_worst: nullable(int) });
 const compared = obj({
   school: schoolIdentity,
   rank_a: int,
@@ -320,5 +325,9 @@ export const compareResponse = obj({
   exits: list(topChange),
   /** Schools the comparison leaves out, because they are not complete under both rules. */
   excluded_schools: list(obj({ school: schoolIdentity, reason: str })),
+  /** The range schools, with their possible places under each rule; compare mode shows them beside the chart. */
+  interval_schools: optional(
+    list(obj({ school: schoolIdentity, under_a: intervalBounds, under_b: intervalBounds }))
+  ),
 });
 export type CompareResponse = Infer<typeof compareResponse>;

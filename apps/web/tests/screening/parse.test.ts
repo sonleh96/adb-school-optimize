@@ -45,7 +45,9 @@ describe.each(DATASETS)("responses the API sent, dataset %j", (dataset) => {
     expect(requests.length).toBeGreaterThan(0);
   });
 
-  it.each(requests.map((r) => [r.file, r] as const))("%s parses", (_file, request) => {
+  // A download is not JSON; top-csv.test.ts reads those back.
+  const json = requests.filter((r) => !r.headers);
+  it.each(json.map((r) => [r.file, r] as const))("%s parses", (_file, request) => {
     const body = readFixture(request.file, dataset);
     if (request.status !== undefined) {
       // A failed read has no schema of its own: it is the API's error envelope, which the page shows in words.
