@@ -3,6 +3,8 @@
 Failure modes, each with its test:
 1. A health check needs a database or a token, or lacks the headers a platform probe and the logs rely on
    -> test_healthz, test_request_id_accepts_only_bounded_safe_values, test_request_log_is_structured
+1b. The request log goes through a logger whose formatter cannot take it, so the container prints a traceback
+   instead of the JSON line -> test_a_request_prints_one_json_line_under_uvicorns_logging_config
 2. A request from an origin that is not configured gets a cross-origin grant
    -> test_random_origin_preflight_is_rejected
 3. The email allowlist stops being enforced once the old routes that tested it are gone
@@ -15,11 +17,16 @@ from __future__ import annotations
 
 import json
 import logging
+import logging.config
 import time
 
 import jwt
 import pytest
+import uvicorn.config
+from app import main as app_main
+from app.main import app
 from app.settings import get_settings
+from fastapi.testclient import TestClient
 
 
 def test_healthz(client):
@@ -40,7 +47,7 @@ def test_request_id_accepts_only_bounded_safe_values(client):
 
 
 def test_request_log_is_structured(client, caplog):
-    caplog.set_level(logging.INFO, logger="uvicorn.access")
+    caplog.set_level(logging.INFO, logger="rise_png.http")
 
     response = client.get("/healthz", headers={"X-Request-ID": "trace-1"})
 
@@ -55,6 +62,30 @@ def test_request_log_is_structured(client, caplog):
         "duration_ms": records[-1]["duration_ms"],
     }
     assert isinstance(records[-1]["duration_ms"], float)
+
+
+def test_a_request_prints_one_json_line_under_uvicorns_logging_config(monkeypatch, capsys):
+    # The container runs uvicorn, which installs its own log config. The line must reach standard output whole,
+    # and no logging error (the ValueError of a record sent through `uvicorn.access`) may reach standard error.
+    logging.config.dictConfig(uvicorn.config.LOGGING_CONFIG)
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+
+    with TestClient(app) as test_client:
+        test_client.get("/healthz?token=secret", headers={"X-Request-ID": "trace-2"})
+
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.splitlines() if line.startswith("{")]
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert {key: record[key] for key in ("event", "request_id", "method", "path", "status")} == {
+        "event": "http_request",
+        "request_id": "trace-2",
+        "method": "GET",
+        "path": "/healthz",
+        "status": 200,
+    }
+    assert "secret" not in lines[0]
+    assert "Logging error" not in captured.err and "ValueError" not in captured.err
 
 
 def test_random_origin_preflight_is_rejected(client):

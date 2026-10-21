@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import sys
 from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
@@ -25,8 +26,25 @@ class HealthResponse(BaseModel):
     status: str
 
 
+# One JSON line per request, on standard output, where Cloud Run reads it. The app has its own logger: uvicorn's
+# `uvicorn.access` formats its records from five arguments (client, method, path, version, status), so a record
+# made from a ready-made message raises `ValueError` there and prints a traceback instead of the line.
+logger = logging.getLogger("rise_png.http")
+
+
+def _log_to_stdout() -> None:
+    """Send the request log to the current standard output as bare messages, once however often the app starts."""
+    for handler in list(logger.handlers):
+        logger.removeHandler(handler)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    _log_to_stdout()
     settings = get_settings()
     if settings.database_url:
         open_pool(settings)
@@ -38,7 +56,6 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="RISE-PNG API", version="0.1.0", lifespan=lifespan)
 settings = get_settings()
-logger = logging.getLogger("uvicorn.access")
 request_id_pattern = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
