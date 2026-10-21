@@ -441,6 +441,9 @@
   font: 500 13px/18px var(--sans);
   color: var(--ink-3);
 }
+.tab:disabled {
+  cursor: default;
+}
 .tabCount {
   margin-left: 5px;
   font-weight: 400;

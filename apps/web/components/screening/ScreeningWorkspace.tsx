@@ -136,7 +136,9 @@ function Workspace() {
   const scopeOpen = state.scope || mixed;
   const counts = shown?.copy.counts;
   const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
-  const tabOpen = () => ready;
+  // A tab with nothing in it cannot be chosen. The one showing stays enabled even when empty, as after a pasted link or
+  // a rule switch that emptied it, so it can always be left.
+  const tabOpen = (id: ListView) => ready && (tabCounts[id] !== 0 || state.view === id);
   // The ARIA tabs pattern: the shown tab is the one tab stop. The arrow keys, Home and End move between the tabs that
   // can be chosen and show the one they reach.
   const onTabKey = (event: KeyboardEvent<HTMLElement>) => {
@@ -167,7 +169,7 @@ function Workspace() {
       aria-controls="screening-list"
       tabIndex={state.view === id ? 0 : -1}
       data-region={region}
-      disabled={!tabOpen()}
+      disabled={!tabOpen(id)}
       onClick={() => showTab(id)}
     >
       {label}
@@ -314,8 +316,14 @@ function Workspace() {
                   <>
                     <header className={styles.listHead}>
                       <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
-                      <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
-                      <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
+                      {/* With no incomplete record, the lead would say some schools are here, and the order
+                          sentence would describe nothing. */}
+                      {incomplete.length > 0 ? (
+                        <>
+                          <p className={styles.queueLead}>{shown.copy.IDEAS.queue.short}</p>
+                          <p className={styles.scopeLine}>{shown.copy.STRINGS.queueOrder}</p>
+                        </>
+                      ) : null}
                     </header>
                     <IncompleteList
                       rows={incomplete}
