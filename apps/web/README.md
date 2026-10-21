@@ -1,40 +1,32 @@
-# Web App
+# Web app
 
-Planned `Next.js` frontend hosted on Vercel.
+The Next.js frontend, hosted on Vercel.
+The app is the screening workspace.
+`/` redirects to `/screening` and keeps the query string, so a link that carries a view opens that view.
+`/sign-in` and `/auth/*` handle Supabase magic-link sign-in, and `/healthz` answers health checks.
 
-Responsibilities:
+The frontend calls the FastAPI service for all data and scoring.
+It does not implement the screening rules itself.
 
-- school map and synced table
-- district choropleth
-- scoring scenario forms
-- shortlist export actions
-- methodology pages
+## Local setup
 
-The frontend should call the FastAPI service for all business logic and data access. It should not directly implement scoring logic.
+The app expects a running FastAPI backend.
 
-## Local Setup
-
-This app expects a running FastAPI backend.
-
-1. Install Node.js 20+.
+1. Install Node.js 20.9 or later.
 2. Copy `.env.example` to `.env.local`.
-3. Set `NEXT_PUBLIC_API_BASE_URL`, for example:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
-```
-
+3. Set `API_PROXY_TARGET` to the API origin, for example `http://127.0.0.1:8000`.
+   Browser calls go to the same origin under `/api/v1/` and Next forwards them.
 4. Install and run:
 
 ```bash
-cd /Users/sonle/Documents/work/ADB/adb-school-optimize/apps/web
 npm install
 npm run dev
 ```
 
-The current scaffold includes:
+## Checks
 
-- school explorer with map + synced table
-- district choropleth explorer
-- scenario runner scaffold
-- methodology panel
+- `npm run lint`, `npm run typecheck`, `npm run format:check` and `npm test` run without a browser.
+- `npm run test:e2e` builds against the mock API in `scripts/mock-api.mjs` and runs the Playwright tests.
+  `CI_APP_PORT` and `CI_MOCK_API_PORT` choose the ports, so two checkouts can run side by side.
+- `npm run bundle:check` fails when the workspace's first load goes over 250 KiB gzip.
+- `npm run lighthouse` runs desktop Lighthouse on `/screening` and `/sign-in`.

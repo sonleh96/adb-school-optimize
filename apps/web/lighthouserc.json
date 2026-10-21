@@ -3,11 +3,7 @@
     "collect": {
       "startServerCommand": "node scripts/launch-ci-app.mjs",
       "startServerReadyPattern": "CI_APP_READY",
-      "url": [
-        "http://127.0.0.1:3105/all-schools",
-        "http://127.0.0.1:3105/district-explorer",
-        "http://127.0.0.1:3105/screening"
-      ],
+      "url": ["http://127.0.0.1:3105/screening", "http://127.0.0.1:3105/sign-in"],
       "numberOfRuns": 3,
       "settings": {
         "preset": "desktop",

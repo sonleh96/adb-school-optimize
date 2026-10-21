@@ -27,8 +27,6 @@ jobs:
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run analyze
-        env:
-          NEXT_PUBLIC_WRITE_OPERATIONS_ENABLED: "true"
       - run: npm run bundle:check
 
       - uses: actions/upload-artifact@v4
