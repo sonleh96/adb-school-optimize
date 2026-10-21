@@ -593,3 +593,21 @@ test("a view whose school and rule are gone points at no card, and marks what it
     "rule school"
   );
 });
+
+/** A sentence that says a saved view keeps the map position, which no link can restore. */
+const PROMISE = /\bkeeps?\b[^.]*\bmap position\b/i;
+const promises = (text: string) => text.split(/(?<=\.)\s+/).filter((sentence) => PROMISE.test(sentence));
+
+test("no screen promises that a saved view keeps the map position", async ({ page }) => {
+  await startList(page);
+  expect(promises((await section(page).innerText()) ?? "")).toEqual([]);
+  await viewButtons(page).first().click();
+  await expect(counter(page)).toHaveText("Saved view 1 of 4");
+  expect(promises((await rail(page).innerText()) ?? "")).toEqual([]);
+  // The glossary entry, open, which carries the term's help.
+  await open(page, "?guide=off&gloss=1&gx=briefing_stops");
+  await expect(page.getByText("A saved view keeps").first()).toBeVisible();
+  expect(promises((await page.locator("body").innerText()) ?? "")).toEqual([]);
+  await open(page, "?guide=off&panel=export&pack=1");
+  expect(promises((await sheet(page).innerText()) ?? "")).toEqual([]);
+});
