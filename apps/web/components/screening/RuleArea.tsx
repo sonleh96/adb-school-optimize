@@ -155,6 +155,37 @@ export function RuleArea(props: RuleAreaProps) {
   );
 }
 
+const POP = { width: 320, gap: 6, edge: 16, roomBelow: 200 };
+
+/**
+ * Where Other rules opens: under its button, as wide as the window allows, and moved left as far as it must to keep
+ * its right edge 16 px inside the window (the narrow layout puts the button at the right). It opens upward only when
+ * the room below is short and there is more above; what does not fit scrolls inside it. It grows from the button.
+ */
+function popoverPlace(button: DOMRect, host: DOMRect): React.CSSProperties {
+  const width = Math.min(POP.width, host.width - 2 * POP.edge);
+  const left = Math.max(POP.edge, Math.min(button.left - host.left, host.width - POP.edge - width));
+  const below = host.bottom - button.bottom - POP.gap - POP.edge;
+  const above = button.top - host.top - POP.gap - POP.edge;
+  const down = below >= POP.roomBelow || below >= above;
+  const originX = `${Math.round(button.left + button.width / 2 - host.left - left)}px`;
+  return down
+    ? {
+        top: button.bottom - host.top + POP.gap,
+        left,
+        width,
+        maxHeight: below,
+        transformOrigin: `${originX} top`,
+      }
+    : {
+        bottom: host.bottom - button.top + POP.gap,
+        left,
+        width,
+        maxHeight: above,
+        transformOrigin: `${originX} bottom`,
+      };
+}
+
 interface OtherRulesProps {
   copy: BoundCopy;
   main: readonly RuleChoice[];
@@ -175,15 +206,12 @@ function OtherRules({ copy, main, other, requested, active, disabled, layer, onR
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState<{ keyboard: boolean } | null>(null);
-  const [at, setAt] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
+  const [at, setAt] = useState<React.CSSProperties | null>(null);
   const { LAYOUT, TERMS } = copy;
 
   useLayoutEffect(() => {
     if (!open || !button.current || !layer) return;
-    const b = button.current.getBoundingClientRect();
-    const host = layer.getBoundingClientRect();
-    const top = b.bottom - host.top + 6;
-    setAt({ top, left: b.left - host.left, maxHeight: host.height - top - 16 });
+    setAt(popoverPlace(button.current.getBoundingClientRect(), layer.getBoundingClientRect()));
   }, [open, layer]);
 
   // Focus moves in once the popover is placed (it is hidden while it is measured, and a hidden element takes no focus).
