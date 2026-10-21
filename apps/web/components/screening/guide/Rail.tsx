@@ -15,6 +15,7 @@ import { type CopySchool, DEFAULT_RULE, PROPOSED_RULE, pairwiseFromCompare } fro
 import type { LaterCopy } from "@/lib/screening/copy/later";
 import {
   BASE,
+  STEP_KEYS,
   type GuideContext,
   type StepView,
   follows,
@@ -166,9 +167,6 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
 
 /* ---------------------------------------------------------------- a step */
 
-/** The keys a step sets that a person can change; a difference on any of them means the screen has moved on. */
-const WATCHED = ["rule", "compare", "view", "school", "qgroup", "place"] as const;
-
 function Stepper({
   root,
   data,
@@ -276,8 +274,7 @@ function Stepper({
   const drift =
     !!expected &&
     landed === state.apply.seq &&
-    WATCHED.some((k) => {
-      if (!(k in expected)) return false;
+    STEP_KEYS.some((k) => {
       if (k === "school" && subject && current.school === subject.id) return false;
       return (expected as Record<string, unknown>)[k] !== current[k];
     });

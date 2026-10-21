@@ -188,6 +188,16 @@ test("a pasted link brings back help mode with its card, and the glossary with i
   await expect(page.getByRole("searchbox", { name: "Find a term" })).toHaveValue("remote");
 });
 
+test("a pasted link to a card the data does not hold drops it, and Escape then leaves help mode", async ({
+  page,
+}) => {
+  await openWorkspace(page, "?guide=off&help=1&card=place%3Anope");
+  await expect(page).not.toHaveURL(/card=/);
+  await expect(card(page)).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => (await layers(page)).help).toBe(false);
+});
+
 test("worst-case names stay inside the help cards, the glossary and the page", async ({ page, context }) => {
   await useMockDataset(context, "worst-names");
   await page.goto("/screening?guide=off&help=1");

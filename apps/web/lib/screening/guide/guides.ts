@@ -16,7 +16,7 @@ import {
   type Segments,
 } from "../copy";
 import type { LaterCopy } from "../copy/later";
-import type { Patch } from "../workspace/state";
+import type { Patch, StateKey } from "../workspace/state";
 
 import type { GuideId } from "./machine";
 import { type Plan, type Roles, needReasons } from "./roles";
@@ -69,7 +69,13 @@ export interface GuideContext {
 }
 
 /** The state every step starts from: the paper's main rule, the list, nothing selected, nothing compared. */
-export const BASE: Patch = Object.freeze({
+/**
+ * The state every step starts from, and the one list of keys a step owns: a step sets each of them, and a change
+ * to any of them later means the screen has moved on from the step. It names every key of the workspace's state, so
+ * a key the workspace gains (the method details' `analyst`, `mode`, `panel` and the rest) fails the typecheck here
+ * until it is given its starting value.
+ */
+export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   rule: DEFAULT_RULE,
   compare: null,
   view: "ranked",
@@ -77,7 +83,11 @@ export const BASE: Patch = Object.freeze({
   hover: null,
   qgroup: "province",
   place: "lower",
+  scope: false,
 });
+
+/** The keys a step owns, in `BASE`'s order. */
+export const STEP_KEYS = Object.keys(BASE) as StateKey[];
 
 const text = (value: string): Segments => [value];
 const para = (value: string | Segments, lead?: string): Paragraph => ({
