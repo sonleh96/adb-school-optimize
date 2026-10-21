@@ -43,12 +43,13 @@ export const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object
 });
 
 /**
- * A flagged school whose lowest frequency is within one standard error of the line, in one sentence. The margin is
- * the test's standard error from the provenance block of the list of the rule it was run for, as a fraction;
- * without it the sentence states no number.
+ * A flagged school whose lowest frequency is just above the line, in one sentence. The margin is how far above the
+ * line the rule's test counts as just above, as a fraction: its standard error times the number of standard errors
+ * its band spans, from the provenance block of the list of the rule the test was run for. Without it the sentence
+ * states no number.
  */
-export function persistentNearLine(standardError?: number): string {
-  const pts = marginPoints(standardError);
+export function persistentNearLine(margin?: number): string {
+  const pts = marginPoints(margin);
   return `In that test it stayed in the top 20 only just often enough to be flagged${pts === null ? "" : `, within ${pts} percentage points of the line`}, so another round of random changes to the shares could take the flag away.`;
 }
 

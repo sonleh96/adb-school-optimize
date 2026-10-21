@@ -162,13 +162,14 @@ export const fixtureResults = (rule: string, upper = false): ResultsResponse =>
 /**
  * A saved list with the persistence keys of one rule's stochastic test set, for a rule whose saved list has none: the
  * schools named in `flagged` are flagged (and adjacent where `adjacent` says so), every other school is not, and the
- * block carries `standardError` (or none). The saved responses hold the test for one rule only; the API now holds it
+ * block carries `standardError` (or none) and, when given, the number of standard errors its band spans. The saved responses hold the test for one rule only; the API now holds it
  * for two, each from its own experiment.
  */
 export function listWithFlags(
   rule: string,
   flagged: Readonly<Record<string, { adjacent?: boolean }>>,
-  standardError: number | null
+  standardError: number | null,
+  band?: number
 ): ResultsResponse {
   const body = structuredClone(readFixture(`results/${rule}.json`)) as {
     persistence?: unknown;
@@ -183,7 +184,10 @@ export function listWithFlags(
     row.persistent_candidate = !!f;
     row.threshold_adjacent = f?.adjacent === true;
   }
-  body.persistence = standardError === null ? null : { standard_error: standardError };
+  body.persistence =
+    standardError === null
+      ? null
+      : { standard_error: standardError, ...(band === undefined ? {} : { adjacency_standard_errors: band }) };
   return parseWith(resultsResponse, body, `results/${rule}`);
 }
 

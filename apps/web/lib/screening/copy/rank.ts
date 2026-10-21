@@ -491,18 +491,19 @@ export function tieNote(
  * a rule with no test in the data, or a school the data does not flag under the rule, says nothing. A flagged school
  * whose lowest frequency is only just above the line also says that another run could change it, with the size of
  * that margin when known. Under a rule where the data flags no school as adjacent, that sentence never appears.
- * `opts.standardError`: the test's standard error as a fraction, from that rule's list's provenance block.
+ * `opts.margin`: how far above the line counts as just above, as a fraction (`marginFromResults`), from that rule's
+ * list's provenance block.
  */
 export function persistenceNote(
   school: Pick<CopySchool, "persistence">,
   ruleId: CopyRuleId,
-  opts: { standardError?: number } = {}
+  opts: { margin?: number } = {}
 ): string[] {
   rule(ruleId);
   if (ruleId !== "additive_u" && ruleId !== "additive_no_u") return [];
   const flag = school.persistence?.[ruleId];
   if (!flag?.persistent) return [];
   const out: string[] = [STRINGS.persistentFlag[ruleId]];
-  if (flag.adjacent) out.push(persistentNearLine(opts.standardError));
+  if (flag.adjacent) out.push(persistentNearLine(opts.margin));
   return out;
 }

@@ -49,7 +49,7 @@ const openWithSheet = async (page: Page, link: string) => {
 
 /** The source row of a record, said once: its label, then the paper. */
 const SOURCE_VALUE =
-  'The research paper "Comparing approaches to screening existing school locations in Papua New Guinea", circulated on 12 October 2026.';
+  'The revised research paper "Comparing school inspection screening approaches under incomplete evidence in Papua New Guinea", which makes the rule without urgency its main rule.';
 const SOURCE_LINE = `Source: ${SOURCE_VALUE}`;
 
 test("the sheet previews the API's file and downloads that file byte for byte", async ({ page }) => {

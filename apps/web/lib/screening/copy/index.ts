@@ -9,6 +9,7 @@ export {
   placedFromResults,
   schoolFromDetail,
   schoolsFromLists,
+  marginFromResults,
   standardErrorFromResults,
   type ListedSchool,
 } from "./adapter";
