@@ -29,8 +29,8 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
 | API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
 | API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
-| API23 | Control characters cause a server error. | A control character in a query or path parameter reaches the database or an export and gives a 500, or text stored with such a character makes the XLSX writer raise. |
-| API24 | A CSV name is read as a formula, or the exact name is lost. | A name that starts with `=`, `+`, `-`, `@`, a tab or a carriage return has no guarded `display_name` column, or `source_school_name` is changed to guard it, or the XLSX turns a carriage return into a line feed. |
+| API23 | Control or invisible characters reach a filter or cause a server error. | A control character, a bidirectional control or other format character (Cf), or U+2028 or U+2029 in a query or path parameter is accepted or gives a 500, a letter with an accent is refused, or text stored with a control character makes the XLSX writer raise. |
+| API24 | A CSV text cell is read as a formula, or the exact name is lost. | A text cell of the CSV that starts with `=`, `+`, `-`, `@`, a tab or a carriage return (the school name, province, district or locality) has no apostrophe in front (also when whitespace or a line break comes first), a number is given one, the method record does not say so, the XLSX changes its exact name, or the XLSX turns a carriage return into a line feed. |
 | API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
 | API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
 | API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
@@ -39,10 +39,14 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API30 | A newer engine's stored fields break reading. | A run or result stored with a field the API does not know gives a 500 instead of being read, or the unknown field is passed on to clients. |
 | API31 | The bulk inputs differ from the per-school detail. | For some school or field, `/inputs` gives a value, a name, a key or an order that `/schools/by-key` and the stored version do not; a float is rounded, a negative zero or an unknown becomes zero, a name loses its spaces. |
 | API32 | A scope code is missing, wrong, or taken from the label. | A rank, a manifest, a detail entry or a comparison (ranks, entrants, exits, common cohort, interval bounds) lacks its code, a point rank carries the bounds' code, or the label no longer equals the engine's label for the count the same response states. |
-| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, or one input version shows the flag of another. |
-| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but the circulated one, or inside the school's inputs. |
-| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or circulated-results response omits the source file hash, the experiment, the draws, the settings, the threshold or the sentence that the numbers describe the urgency-included rule only. |
-| API36 | The margin of a persistent school is wrong or left to the reader. | A school less than one standard error above the threshold is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition. |
+| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, one input version shows the flag of another, or one rule shows the flag of the other rule's experiment. |
+| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but `additive_u` and `additive_no_u`, or inside the school's inputs. |
+| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or results response omits the source file hash, the experiment, the draws, the settings, the threshold or the rule's own limitation, gives one rule the other's limitation, or `/rules` does not say which experiment backs each rule. |
+| API40 | A run stored by an earlier engine breaks or lies. | The API answers 500 for a run whose provenance it no longer knows, or serves a stored role that contradicts `/rules` (two primary rules), instead of a 409 that names the run. |
+| API41 | Loading again does not repair a database an earlier engine loaded. | After a loader rerun the API still serves the old run, or the engine's package version is not above the one that stored it. |
+| API39 | A compared entrant or exit has the wrong scope code. | `rank_scope_code` of a top-20 entrant or exit in `/compare` is `complete_under_rule` or `eligible` instead of `common_complete_cohort`, and no test notices because the data has too few schools for the top 20 to change. |
+| API38 | The route by link is cached as immutable. | `GET /schools/{school_id}` with an input version and a package version is sent as `immutable`, so a client keeps it across a reload of `schools` that changes which schools the id links to. |
+| API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
 
 ## Test map
 
@@ -67,7 +71,10 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_the_queue_depends_on_the_rule_and_on_the_filters` | API16, API4 |
 | `test_every_gate_failure_has_a_plain_description` | API16 |
 | `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
-| `test_display_name_guards_formula_like_names_while_the_source_name_stays_exact` | API24 |
+| `test_the_csv_guards_every_text_cell_that_starts_with_a_formula_character` | API24 |
+| `test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_not` (6 characters) | API24 |
+| `test_the_csv_guards_a_cell_whose_first_visible_character_is_a_formula_character` (6 names) | API24 |
+| `test_a_negative_number_in_the_csv_is_not_guarded` | API24 |
 | `test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line` | API29 |
 | `test_urgency_has_no_column_and_no_missing_input_under_an_urgency_omitted_rule` | API27 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |
@@ -117,15 +124,31 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree` | API32 |
 | `test_a_label_and_a_code_that_disagree_are_caught_by_the_check` | API32 |
 | `test_the_codes_follow_the_engine_for_the_stored_runs` | API32 |
-| `test_the_circulated_list_flags_the_schools_of_the_experiment_and_leaves_the_rest_null` | API33 |
+| `test_each_list_flags_the_schools_of_its_own_experiment_and_leaves_the_rest_null` (2 rules) | API33 |
+| `test_the_two_rules_disagree_where_their_experiments_do` | API33 |
 | `test_no_other_rule_carries_the_flag_or_the_provenance_at_all` | API34 |
-| `test_the_school_detail_flags_only_the_circulated_rules_entry` | API34 |
-| `test_the_provenance_travels_with_the_flag_and_names_the_rule_and_the_limit` | API35 |
+| `test_the_school_detail_flags_the_entry_of_each_rule_with_that_rules_own_numbers` | API34 |
+| `test_each_rules_provenance_names_its_experiment_and_its_own_limit` | API35 |
+| `test_the_rules_list_says_which_experiment_backs_each_rule` | API35 |
 | `test_a_version_without_the_numbers_has_null_flags_and_no_provenance` | API33, API35 |
+| `test_a_version_with_one_set_serves_only_that_rules_provenance` | API35 |
 | `test_another_versions_numbers_are_not_lent_to_a_version_without_them` | API33 |
-| `test_the_flag_does_not_move_a_rank_or_a_score` | API12 |
+| `test_the_flag_does_not_move_a_rank_or_a_score` (2 rules) | API12 |
+| `test_the_record_names_the_experiment_behind_a_rules_persistence_and_its_own_limit` | API17, API35 |
+| `test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record` | API17, API34 |
 | `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
 | `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
-| `test_a_persistent_school_is_threshold_adjacent_when_it_is_less_than_one_standard_error_above` | API36 |
-| `test_the_detail_carries_the_same_margin_fields_on_the_circulated_rules_entry_only` | API36, API34 |
-| `test_the_provenance_states_the_margin_it_is_judged_by` | API36, API35 |
+| `test_every_entrant_and_exit_of_a_comparison_carries_the_common_cohort_scope_code` | API39 |
+| `test_the_engine_is_newer_than_the_one_that_stored_the_old_runs` | API40 |
+| `test_a_stale_run_answers_409_and_names_itself_never_500` (6 rules) | API40 |
+| `test_every_route_that_reads_a_run_refuses_a_stale_one_clearly` | API40 |
+| `test_a_run_whose_rule_metadata_is_unchanged_is_still_served` | API40 |
+| `test_loading_the_version_again_stores_the_current_runs_and_the_api_serves_them` | API41 |
+| `test_the_old_run_can_still_be_pinned_and_is_refused_by_name` | API41 |
+| `test_no_route_that_carries_the_links_is_cached_as_immutable` | API38 |
+| `test_a_wrong_scope_code_on_an_entrant_or_an_exit_is_caught_by_the_check` | API39 |
+| `test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change` | API38 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error` | API36 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors` | API36 |
+| `test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only` | API36, API34 |
+| `test_the_provenance_states_the_margin_each_rule_is_judged_by` | API36, API35 |

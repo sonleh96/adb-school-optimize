@@ -6,10 +6,12 @@ import json
 import re
 import uuid
 from dataclasses import asdict, replace
+from urllib.parse import quote
 
 import pytest
 from app import screening_store as store
-from school_scoring.screening import RULES, pairwise_metrics
+from app.screening_queries import school_key
+from school_scoring.screening import PACKAGE_VERSION, RULES, pairwise_metrics
 from screening_api_helpers import api_records, load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
 from screening_db_factories import record
@@ -54,7 +56,8 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
     assert [r["rule_id"] for r in body["rules"] if r["is_default"]] == ["additive_u"]
 
     circulated = rules["additive_u"]
-    assert circulated["provenance"] == "circulated_paper" and circulated["policy_role"] == "primary"
+    assert circulated["provenance"] == "circulated_paper"
+    assert circulated["policy_role"] == "urgency_sensitivity"
     assert circulated["score_kind"] == "additive score" and circulated["uses_urgency"] is True
     assert [(w["component"], w["fraction"], w["value"]) for w in circulated["weights"]] == [
         ("N", "3/5", 0.6),
@@ -67,7 +70,7 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
     ]
 
     omitted = rules["additive_no_u"]
-    assert omitted["provenance"] == "proposed_follow_up_pending_author_review"
+    assert (omitted["provenance"], omitted["policy_role"]) == ("revised_paper", "primary")
     assert omitted["uses_urgency"] is False
     assert [(w["component"], w["fraction"]) for w in omitted["weights"]] == [
         ("N", "12/19"),
@@ -78,6 +81,16 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
         ("L", "1/19"),
     ]
     assert omitted["weights"][0]["value"] == pytest.approx(12 / 19, abs=1e-15)
+
+    assert {rid: (r["provenance"], r["policy_role"]) for rid, r in rules.items()} == {
+        "additive_no_u": ("revised_paper", "primary"),
+        "need_first_no_u": ("revised_paper", "strict_alternative"),
+        "bottleneck_no_u": ("revised_paper", "policy_sensitivity"),
+        "additive_u": ("circulated_paper", "urgency_sensitivity"),
+        "need_first_u": ("circulated_paper", "urgency_sensitivity"),
+        "bottleneck_u": ("circulated_paper", "urgency_sensitivity"),
+        "benchmark": ("circulated_paper", "conventional_reference"),
+    }
 
     need_first = rules["need_first_no_u"]
     assert need_first["primary_sort_key"] == "N" and "N" not in [
@@ -667,11 +680,14 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
 
     pinned = api.get(path, params={"rule": "additive_u", "package_version": "0.9.0"}).json()
     assert pinned["run"]["package_version"] == "0.9.0" and pinned["run"]["run_id"] == older
-    original = api.get(path, params={"rule": "additive_u", "package_version": "0.1.0"}).json()
-    assert original["run"]["package_version"] == "0.1.0" and original["run"]["run_id"] not in (newer, older)
+    original = api.get(path, params={"rule": "additive_u", "package_version": PACKAGE_VERSION}).json()
+    assert original["run"]["package_version"] == PACKAGE_VERSION and original["run"]["run_id"] not in (
+        newer,
+        older,
+    )
 
     # Other rules have one run, which stays current; a pin to a version without a run is unknown.
-    assert api.get(path, params={"rule": "benchmark"}).json()["run"]["package_version"] == "0.1.0"
+    assert api.get(path, params={"rule": "benchmark"}).json()["run"]["package_version"] == PACKAGE_VERSION
     missing = api.get(path, params={"rule": "benchmark", "package_version": "0.9.0"})
     assert missing.status_code == 404 and missing.json()["error"]["code"] == "run_not_found"
     assert missing.json()["error"]["details"]["package_version"] == "0.9.0"
@@ -707,9 +723,10 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
             == 404
         )
 
-    # A request that names the input version and the package version is immutable; naming the version alone is not.
+    # The body carries each school's link to `schools`, which a reload changes, so naming both versions is not enough
+    # to make a list immutable. It gets the lifetime of a named version.
     both = api.get(path, params={"input_version": loaded.input_version, "package_version": "0.9.0"})
-    assert both.headers["cache-control"] == "private, max-age=31536000, immutable"
+    assert both.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     version_only = api.get(path, params={"input_version": loaded.input_version})
     assert version_only.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     assert (
@@ -717,6 +734,46 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
         .headers["cache-control"]
         .startswith("private, max-age=60")
     )
+
+
+def test_no_route_that_carries_the_links_is_cached_as_immutable(api, loaded):  # API38
+    both = {"input_version": loaded.input_version, "package_version": PACKAGE_VERSION}
+    key = quote(school_key(loaded.input_version, AWK[7]), safe="")
+    base = "/api/v1/screening"
+    routes = {
+        "results": (f"{base}/results", {**both, "rule": "additive_u"}),
+        "by key": (f"{base}/schools/by-key/{key}", both),
+        "by link": (f"{base}/schools/{loaded.school_ids[AWK[7]]}", both),
+        "compare": (f"{base}/compare", {**both, "a": "additive_u", "b": "benchmark"}),
+    }
+    for name, (url, params) in routes.items():
+        response = api.get(url, params=params)
+        assert response.status_code == 200, name
+        assert response.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600", name
+        revalidated = api.get(url, params=params, headers={"If-None-Match": response.headers["etag"]})
+        assert revalidated.status_code == 304 and "immutable" not in revalidated.headers["cache-control"], (
+            name
+        )
+    # The bulk inputs hold nothing from `schools`, so they stay immutable.
+    inputs = api.get(f"{base}/inputs", params={"input_version": loaded.input_version})
+    assert inputs.headers["cache-control"] == "private, max-age=31536000, immutable"
+
+
+def test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change(api, loaded):  # API38
+    school_id = loaded.school_ids[AWK[7]]
+    by_link = f"/api/v1/screening/schools/{school_id}"
+    both = {"input_version": loaded.input_version, "package_version": PACKAGE_VERSION}
+
+    pinned = api.get(by_link, params=both)
+    default = api.get(by_link)
+
+    assert pinned.status_code == 200 and default.status_code == 200
+    assert pinned.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
+    assert default.headers["cache-control"].startswith("private, max-age=60")
+    assert "immutable" not in pinned.headers["cache-control"]
+    # A 304 keeps the lifetime of the route, so a validator never turns it into an immutable answer.
+    again = api.get(by_link, params=both, headers={"If-None-Match": pinned.headers["etag"]})
+    assert again.status_code == 304 and "immutable" not in again.headers["cache-control"]
 
 
 # ---------------------------------------------------------------------------------------------

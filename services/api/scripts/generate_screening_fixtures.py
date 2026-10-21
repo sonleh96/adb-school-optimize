@@ -5,7 +5,7 @@
 
 The script starts from the synthetic factories of the API tests, creates a throwaway database on the server
 named by ``--database-url`` for each dataset below, applies every migration, loads invented records (and invented
-persistence numbers) through the real ingestion function and calls the real application with a test client.
+persistence numbers for both rules that can have them) through the real ingestion function and calls the real application with a test client.
 Each response it saves is exactly what the API sent, except for the volatile values listed in ``PINNED``,
 which are replaced by fixed ones so that a rerun writes identical files. Each throwaway database is dropped
 at the end.
@@ -63,6 +63,7 @@ VERSION = "synthetic-fixture-v1"
 API = "/api/v1/screening"
 MAIN_RULES = ("additive_u", "additive_no_u")
 CIRCULATED_RULE = "additive_u"
+REVISED_RULE = "additive_no_u"
 
 # What the web tests rely on in the default dataset, written down so a reviewer sees the shape of the data
 # without reading the loop.
@@ -163,8 +164,10 @@ class Dataset:
     name: str
     directory: str  # relative to the output folder; empty for the default dataset
     records: tuple[SchoolRecord, ...]
-    # Lower top-20 frequencies of the invented experiment, by school name, in the order of the three settings.
+    # Lower top-20 frequencies of the two invented experiments, by school name, in the order of the three settings:
+    # the one that included urgency (rule additive_u) and the one that left it out (rule additive_no_u).
     persistence: dict[str, tuple[float, float, float]]
+    persistence_no_u: dict[str, tuple[float, float, float]]
     without_coordinates: tuple[str, ...] = ()
     # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
     claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
@@ -374,6 +377,18 @@ def datasets() -> tuple[Dataset, ...]:
                 "Sample School 06": (0.8014, 0.9, 0.95),
                 "Sample School 17": (0.1, 0.1, 0.2),
             },
+            # The urgency-omitted experiment names other schools. 03 is persistent here and not above, 07 is one
+            # setting short, and 06 is 0.0105 above the line: inside two standard errors, which is the revised paper's
+            # band, and outside the one standard error of the circulated paper.
+            persistence_no_u={
+                "Sample School 01": (0.95, 0.97, 1.0),
+                "Sample School 02": (0.9, 0.9, 0.9),
+                "Sample School 03": (0.9, 0.9, 0.95),
+                "Sample School 04": (0.2, 0.3, 0.4),
+                "Sample School 06": (0.8105, 0.9, 0.95),
+                "Sample School 07": (0.9, 0.79, 0.9),
+                "Sample School 17": (0.1, 0.1, 0.2),
+            },
             without_coordinates=WITHOUT_COORDINATES,
             top_lists=tuple((rule_id, k) for rule_id in RULES for k in TOP_LENGTHS),
             every_pair=True,
@@ -384,6 +399,7 @@ def datasets() -> tuple[Dataset, ...]:
             directory="worst-names",
             records=worst_names_records(),
             persistence={NAME_72_WITH_DIACRITICS: (0.95, 0.96, 0.99), "Worst Case 01": (0.5, 0.5, 0.5)},
+            persistence_no_u={NAME_72_WITH_DIACRITICS: (0.9, 0.9, 0.9), "Worst Case 02": (0.4, 0.4, 0.4)},
             # Two names that differ only by spaces cannot be told apart by the school table, so neither is located.
             without_coordinates=SPACED_PAIR,
             claims=WORST_NAMES_CLAIMS,
@@ -393,6 +409,7 @@ def datasets() -> tuple[Dataset, ...]:
             directory="ties-and-ranges",
             records=ties_and_ranges_records(),
             persistence={"Ranked 01": (1.0, 1.0, 1.0), "Range Air": (0.3, 0.4, 0.5)},
+            persistence_no_u={"Ranked 01": (0.85, 0.9, 1.0), "Range Air": (0.2, 0.3, 0.4)},
             claims=TIES_CLAIMS,
         ),
         Dataset(
@@ -400,10 +417,11 @@ def datasets() -> tuple[Dataset, ...]:
             directory="one",
             records=one_record(),
             persistence={"Only School": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Only School": (1.0, 1.0, 1.0)},
             claims=ONE_CLAIMS,
         ),
         # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
-        Dataset(name="empty", directory="empty", records=(), persistence={}),
+        Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
     )
 
 
@@ -441,8 +459,16 @@ def create_database(admin: psycopg.Connection, url: str, ds: Dataset) -> str:
             return name
         add_schools(connection, ds)
         with tempfile.TemporaryDirectory() as folder:
-            relative = write_persistence_files(Path(folder), ds.persistence)
-            load(connection, ds.records, VERSION, read_persistence_source(Path(folder), relative))
+            root = Path(folder)
+            sources = [
+                read_persistence_source(root, write_persistence_files(root, ds.persistence), CIRCULATED_RULE),
+                read_persistence_source(
+                    root,
+                    write_persistence_files(root, ds.persistence_no_u, urgency_omitted=True),
+                    REVISED_RULE,
+                ),
+            ]
+            load(connection, ds.records, VERSION, sources)
     return name
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
 import psycopg
@@ -83,7 +84,7 @@ def load_synthetic(
     connection: psycopg.Connection,
     records: tuple[SchoolRecord, ...] | None = None,
     version: str = VERSION,
-    persistence: PersistenceSource | None = None,
+    persistence: Sequence[PersistenceSource] = (),
 ) -> Loaded:
     """Store schools, then load the records through the ingestion function. ``runs`` is the engine's own output."""
     records = records or api_records()

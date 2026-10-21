@@ -27,8 +27,8 @@ from ..http_cache import (
     conditional_json,
 )
 from ..models.screening import (
+    PERSISTENCE_LIMITATIONS,
     AreaPartsOut,
-    CirculatedResultsResponse,
     CommonRankOut,
     CompareResponse,
     ComponentsOut,
@@ -50,6 +50,7 @@ from ..models.screening import (
     NeedPartsOut,
     PairwiseMetricsOut,
     PersistenceOut,
+    PersistenceResultsResponse,
     PersistenceSettingOut,
     Placement,
     PointRankOut,
@@ -70,6 +71,7 @@ from ..models.screening import (
     TopChangeOut,
     TopKOut,
     WeightOut,
+    persistence_adjacent_rule,
 )
 from ..screening_export import (
     incomplete_table,
@@ -90,11 +92,20 @@ from ..screening_queries import (
     school_key,
 )
 
+# Characters that have no place in an id or a filter, because they break a spreadsheet or hide what a value says:
+#   Cc  control characters: newlines, NUL, escapes, tab
+#   Cf  format characters: the bidirectional overrides, embeddings and isolates, zero-width marks, the byte order mark
+#   Zl, Zp  the line separator U+2028 and the paragraph separator U+2029, which are line breaks that Cc does not cover
+REFUSED_CATEGORIES = frozenset({"Cc", "Cf", "Zl", "Zp"})
+
 
 def _no_control_characters(value: str) -> str:
-    """Control characters (newlines, NUL, escapes) have no place in an id or a filter, and break spreadsheets."""
-    if any(unicodedata.category(ch) == "Cc" for ch in value):
-        raise PydanticCustomError("control_characters", "must not contain control characters")
+    """Refuse control, format and line-separating characters; accents, spaces and other letters pass."""
+    if any(unicodedata.category(ch) in REFUSED_CATEGORIES for ch in value):
+        raise PydanticCustomError(
+            "control_characters",
+            "must not contain control, line-separator or invisible formatting characters",
+        )
     return value
 
 
@@ -147,6 +158,35 @@ def _version(connection, requested: str | None) -> VersionEntry:
     )
 
 
+def _require_current(run: store.StoredRun) -> store.StoredRun:
+    """A stored run must carry the provenance and policy role that the engine registry gives its rule today.
+
+    A run stored before the registry changed names a provenance this API cannot read, or a role that contradicts
+    ``/rules``. It is refused by name, and loading the input version again stores a current run beside it.
+    """
+    rule = RULES.get(run.rule_id)
+    if rule is not None and (run.provenance, run.policy_role) == (
+        rule.provenance.value,
+        rule.policy_role.value,
+    ):
+        return run
+    raise ApiError(
+        f"The stored run of rule {run.rule_id!r} for input version {run.input_version!r} was made by engine "
+        f"version {run.package_version} with rule metadata this API no longer serves. "
+        "Load the input version again with the current engine to store a current run.",
+        status_code=409,
+        code="stale_run",
+        details={
+            "rule": run.rule_id,
+            "input_version": run.input_version,
+            "package_version": run.package_version,
+            "stored_provenance": run.provenance,
+            "stored_policy_role": run.policy_role,
+            "run_id": str(run.run_id),
+        },
+    )
+
+
 def _run(connection, version: str, rule_id: str, package_version: str | None = None) -> store.StoredRun:
     run = current_runs(connection, version, package_version).get(rule_id)
     if run is None:
@@ -158,7 +198,7 @@ def _run(connection, version: str, rule_id: str, package_version: str | None = N
             code="run_not_found",
             details={"rule": rule_id, "input_version": version, "package_version": package_version},
         )
-    return run
+    return _require_current(run)
 
 
 def _filters(province: str | None, district: str | None) -> Filters:
@@ -231,11 +271,14 @@ def _persistence_out(found: store.PersistenceSet | None) -> PersistenceOut | Non
         threshold=found.threshold,
         settings=[PersistenceSettingOut(**asdict(s)) for s in found.settings],
         standard_error=found.standard_error,
+        adjacency_standard_errors=found.adjacency_standard_errors,
+        threshold_adjacent_rule=persistence_adjacent_rule(found.adjacency_standard_errors),
+        limitation=PERSISTENCE_LIMITATIONS[found.rule_id],
     )
 
 
 def _version_out(
-    entry: VersionEntry, is_default: bool, persistence: dict[str, store.PersistenceSet]
+    entry: VersionEntry, is_default: bool, persistence: dict[str, dict[str, store.PersistenceSet]]
 ) -> InputVersionOut:
     v = entry.version
     return InputVersionOut(
@@ -246,11 +289,15 @@ def _version_out(
         created_at=v.created_at,
         is_default=is_default,
         rules_available=list(entry.rules_available),
-        persistence=_persistence_out(persistence.get(v.input_version)),
+        persistence=[
+            _persistence_out(found) for _, found in sorted(persistence.get(v.input_version, {}).items())
+        ],
     )
 
 
-def _rule_out(rule: Rule, versions: list[VersionEntry]) -> RuleOut:
+def _rule_out(
+    rule: Rule, versions: list[VersionEntry], persistence: dict[str, dict[str, store.PersistenceSet]]
+) -> RuleOut:
     return RuleOut(
         rule_id=rule.rule_id,
         label=rule.label,
@@ -271,6 +318,11 @@ def _rule_out(rule: Rule, versions: list[VersionEntry]) -> RuleOut:
         available_input_versions=[
             e.version.input_version for e in versions if rule.rule_id in e.rules_available
         ],
+        persistence_by_input_version={
+            version: sets[rule.rule_id].experiment_id
+            for version, sets in persistence.items()
+            if rule.rule_id in sets
+        },
     )
 
 
@@ -282,7 +334,15 @@ def _json(
     package_version: Text | None = None,
     version: store.InputVersion | None = None,
     immutable_when_pinned: bool = False,
+    depends_on_links: bool = False,
 ) -> Response:
+    """A JSON response with the headers every screening route sends.
+
+    Naming the input version and the package version asks for one stored run, which never changes, so the response is
+    cached as immutable. A route whose body is built from the links to ``schools`` is the exception
+    (``depends_on_links``): a later load that links more schools, or a reload of ``schools``, changes it, so it is never
+    immutable, and a named input version gets the pinned lifetime like any other read of that version.
+    """
     headers = (
         {}
         if version is None
@@ -291,7 +351,11 @@ def _json(
             "X-Screening-Input-Sha256": version.input_sha256,
         }
     )
-    if input_version is not None and (package_version is not None or immutable_when_pinned):
+    if (
+        input_version is not None
+        and not depends_on_links
+        and (package_version is not None or immutable_when_pinned)
+    ):
         cache_control = SCREENING_IMMUTABLE_CACHE_CONTROL
     elif input_version is not None:
         cache_control = SCREENING_PINNED_CACHE_CONTROL
@@ -312,7 +376,7 @@ def get_rules(request: Request):
         persistence = store.read_persistence_sets(connection)
     body = RulesResponse(
         default_rule_id=DEFAULT_RULE_ID,
-        rules=[_rule_out(rule, versions) for rule in RULES.values()],
+        rules=[_rule_out(rule, versions, persistence) for rule in RULES.values()],
         input_versions=[_version_out(e, i == 0, persistence) for i, e in enumerate(versions)],
     )
     return _json(request, body)
@@ -351,8 +415,10 @@ def get_results(
         version = _version(connection, input_version)
         run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
-        circulated = rule == store.PERSISTENCE_RULE_ID
-        persistence = store.read_persistence(connection, run.input_version) if circulated else None
+        has_persistence = rule in store.PERSISTENCE_RULE_IDS
+        persistence = (
+            store.read_persistence(connection, run.input_version, rule).get(rule) if has_persistence else None
+        )
     listed = ordered_list(rule_, rows, placement)
     shown = [item for item in listed if filters.admits(item.row)]
 
@@ -363,7 +429,7 @@ def get_results(
             school=_identity_out(item.row.identity),
             **dict(_result_out(item.row.result, rule_.uses_urgency)),
         )
-        if not circulated:
+        if not has_persistence:
             return ListedRowOut(**fields_)
         return ListedRowWithPersistenceOut(**fields_, **_persistence_flags(persistence, item.row.name))
 
@@ -378,14 +444,19 @@ def get_results(
         rows=[listed_row(item) for item in shown],
     )
     body = (
-        CirculatedResultsResponse(
+        PersistenceResultsResponse(
             **parts, persistence=_persistence_out(None if persistence is None else persistence.set)
         )
-        if circulated
+        if has_persistence
         else ResultsResponse(**parts)
     )
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -428,7 +499,7 @@ def get_inputs(request: Request, input_version: Text | None = None):
 
 
 def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict:
-    """What the experiment says about one school: all null when there are no numbers or the school was not in it."""
+    """What a rule's experiment says about one school: all null when there are no numbers or the school was not in it."""
     if persistence is None:
         return {"persistent_candidate": None, "lowest_top20_frequency": None, "threshold_adjacent": None}
     return {
@@ -439,12 +510,14 @@ def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict
 
 
 def _rule_result_out(
-    persistence: store.Persistence | None, name: str, **fields
+    persistence: dict[str, store.Persistence], name: str, **fields
 ) -> SchoolRuleResultOut | SchoolRuleResultWithPersistenceOut:
-    """One rule's entry for one school. Only the circulated rule's entry carries the persistence flag."""
-    if fields["rule"].rule_id != store.PERSISTENCE_RULE_ID:
+    """One rule's entry for one school. Only the entry of a rule that can have persistence numbers carries the flag,
+    and it carries that rule's own."""
+    rule_id = fields["rule"].rule_id
+    if rule_id not in store.PERSISTENCE_RULE_IDS:
         return SchoolRuleResultOut(**fields)
-    return SchoolRuleResultWithPersistenceOut(**fields, **_persistence_flags(persistence, name))
+    return SchoolRuleResultWithPersistenceOut(**fields, **_persistence_flags(persistence.get(rule_id), name))
 
 
 def _school_details(
@@ -455,7 +528,10 @@ def _school_details(
     records = {
         r.school_name: r for r in store.read_inputs(connection, input_version) if r.school_name in wanted
     }
-    runs = current_runs(connection, input_version, package_version)
+    runs = {
+        rule_id: _require_current(run)
+        for rule_id, run in current_runs(connection, input_version, package_version).items()
+    }
     persistence = store.read_persistence(connection, input_version)
     results = {
         rule_id: {
@@ -526,7 +602,12 @@ def get_school_by_key(
         (detail,) = _school_details(connection, name, found, package_version)
     body = SchoolDetailResponse(input_version=name, input_sha256=version.version.input_sha256, **dict(detail))
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -548,8 +629,14 @@ def get_schools_by_link(
     body = LinkedSchoolsResponse(
         school_id=school_id, input_version=name, input_sha256=version.version.input_sha256, schools=details
     )
+    # Which schools this id links to is not part of a stored run: it follows ``schools``, which a reload changes.
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -666,7 +753,12 @@ def get_compare(
         ],
     )
     return _json(
-        request, body, input_version=input_version, package_version=package_version, version=version.version
+        request,
+        body,
+        input_version=input_version,
+        package_version=package_version,
+        version=version.version,
+        depends_on_links=True,
     )
 
 
@@ -702,6 +794,7 @@ def _top_export(
         version = _version(connection, input_version)
         run = _run(connection, version.version.input_version, rule, package_version)
         rows = read_school_rows(connection, run)
+        persistence = store.read_persistence(connection, run.input_version, rule).get(rule)
     manifest = ManifestOut.from_stored(run.manifest)
     selection = select_top(rows, k, include_ranges, filters)
     record = method_record(
@@ -712,6 +805,7 @@ def _top_export(
         filters=filters,
         generated_at=dt.datetime.now(dt.timezone.utc),
         top=selection,
+        persistence=None if persistence is None else persistence.set,
     )
     return record, top_table(selection, manifest, version.version.input_version)
 

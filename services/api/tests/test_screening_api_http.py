@@ -176,7 +176,26 @@ def test_errors_and_exports_are_not_cacheable(api, loaded):  # API10
 # Control characters.
 # ---------------------------------------------------------------------------------------------
 
-BAD_TEXT = ["North\x07", "a\nb", "\x00", "tab\there", "del\x7f", "\x1b[31m"]
+BAD_TEXT = [
+    "North\x07",
+    "a\nb",
+    "\x00",
+    "tab\there",
+    "del\x7f",
+    "\x1b[31m",
+    # Format characters (Cf): the bidirectional controls that reorder what a reader sees, and invisible marks.
+    "North\u202eProvince",  # right-to-left override
+    "\u202aNorth",  # left-to-right embedding
+    "North\u2066",  # left-to-right isolate
+    "North\u2069",  # pop directional isolate
+    "North\u200f",  # right-to-left mark
+    "Nor\u200bth",  # zero-width space
+    "No\u200drth",  # zero-width joiner
+    "\ufeffNorth",  # byte order mark
+    # The line and paragraph separators, which are line breaks that the control category does not cover.
+    "North\u2028Province",
+    "North\u2029Province",
+]
 
 
 @pytest.mark.parametrize("bad", BAD_TEXT)
@@ -208,6 +227,9 @@ def test_control_characters_in_any_text_parameter_are_a_422_not_a_500(api, loade
         api.get(base + "/results", params={"province": "North", "district": "North One"}).status_code == 200
     )
     assert api.get(base + "/results", params={"province": "Île de France"}).status_code == 200
+    # Other non-ASCII text is not touched: a combining accent, a space that is not a line break, other scripts.
+    for fine in ("Nord\u0301", "North\u00a0One", "\u5317\u4eac", "\u0645\u0635\u0631"):
+        assert api.get(base + "/results", params={"province": fine}).status_code == 200, fine
 
 
 def test_a_browser_script_may_read_the_screening_headers_and_the_filename(api, loaded):  # API25

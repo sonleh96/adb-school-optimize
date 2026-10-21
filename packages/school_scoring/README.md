@@ -21,12 +21,12 @@ run.to_frame()  # flat export, one row per input record, in input order
 
 | Id | Provenance | Policy role | Formula |
 | --- | --- | --- | --- |
-| `additive_u` | circulated paper | primary | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L` |
-| `additive_no_u` | proposed follow-up, pending author review | primary | `S0 = (S - 0.05U) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
-| `need_first_u` | circulated paper | strict alternative | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
-| `need_first_no_u` | proposed follow-up, pending author review | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
-| `bottleneck_u` | circulated paper | policy sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
-| `bottleneck_no_u` | proposed follow-up, pending author review | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
+| `additive_u` | circulated paper | urgency sensitivity | `S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, which is `0.95 S0 + 0.05U` |
+| `additive_no_u` | revised paper | primary | `S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95`, so 12/19 N, 3/19 A, 1/19 each for R, Q, E, L |
+| `need_first_u` | circulated paper | urgency sensitivity | N descending, then `0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L`, then name |
+| `need_first_no_u` | revised paper | strict alternative | N descending, then `(0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95`, then name |
+| `bottleneck_u` | circulated paper | urgency sensitivity | `T = 0.60S + 0.40 max(N, A, U)` |
+| `bottleneck_no_u` | revised paper | policy sensitivity | `T0 = 0.60S0 + 0.40 max(N, A)` |
 | `benchmark` | circulated paper | conventional reference | `B = 0.55N + 0.20A + 0.15U + 0.10R` |
 
 Weights are exact fractions in the registry and become floats once, at scoring.
@@ -138,7 +138,7 @@ Two limits are faithful to the study and should not be read as bugs:
 
 ### Reproduction check
 
-`tests/test_screening_reproduction.py` runs the engine from prepared inputs and compares it school by school with the frozen EXP-21 and comparison-package outputs.
+`tests/test_screening_reproduction.py` runs the engine from prepared inputs and compares it school by school with the frozen EXP-21, EXP-22 and comparison-package outputs.
 It is skipped unless the data is present.
 
 ```sh
@@ -161,12 +161,21 @@ What the frozen outputs cover:
 - For `additive_u`, `need_first_u` and `bottleneck_u`, scores, bounds and point ranks are compared against EXP-21.
 - For `additive_no_u`, the bounds and point ranks over the eligible cohort are compared against the comparison package.
 - `pairwise_metrics` is compared for every pair of rules against `pairwise_metrics.csv` (`n`, set sizes and overlaps exactly; correlations, discordance, shifts and Jaccard indices within 1e-12), and the top-20 entrants and exits against every row of `top20_changes.csv` (ranks exactly, scores and components within 1e-12).
-- For `need_first_no_u` and `bottleneck_no_u`, the eligible-scope bounds have no frozen reference. Unit tests cover them and nothing else does.
+- EXP-22, the run behind the revised paper, is compared for every rule it reports:
+  - `additive_no_u`, `need_first_no_u` and `bottleneck_no_u`: cohorts, scores, bounds, point ranks and the eligible-scope rank bounds, against `all_school_results.csv`, `need_first_results.csv` and `bottleneck_results.csv`.
+  - `benchmark`: `benchmark_replay.csv`.
+  - `additive_u`, the explicit-urgency reference: `reference_u_restoration.csv`, with its component values.
+  - The score contributions of `additive_no_u` (each need part and each component, lower and upper) and its weights: `recommended_score_contributions.csv` and `contribution_weights.csv`.
+  - The accepted deterministic replay (`accepted_no_u_replay.csv`): the engine against the comparison file the replay names, and the replay's own statement that it passed, for as many schools as the engine compared.
+  - The four matched-cohort comparisons and the per-school ranks and scores behind them: `matched120_comparisons.csv` and `rank_movements_matched120.csv`.
+  - The normalization anchors, with EXP-21's.
+- EXP-22 does not report `need_first_u` or `bottleneck_u`; they are reproduced from EXP-21, so every rule is compared school by school with an experiment's output.
 
 EXP-21 numbers each complete school's `need_first_rank_point` by its position among all eligible schools.
 The engine's point rank counts only the complete cohort, so the two differ for schools that sit below interval schools.
 The reproduction reports every such school in `need_first_scope_differences.csv`.
-It also checks that the EXP-21 position equals the engine's best rank wherever best equals worst.
+It also checks that the experiment's position equals the engine's best rank wherever best equals worst, and lies within the best and worst rank elsewhere.
+The same holds for EXP-22 and `need_first_no_u`.
 
 The EXP-15 prepared table stores component values that were read back from a CSV with pandas' default float parser.
 Those values sit up to 1.7e-16 from the exact result.
