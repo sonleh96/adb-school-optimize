@@ -67,16 +67,23 @@ export const isStarting = (entries: readonly Entry[] | null): boolean =>
     entries.every((entry, i) => "seed" in entry && entry.seed === SEED_KEYS[i]));
 
 /**
- * A typed name as it is kept: format characters removed (zero-width characters and bidirectional controls, which
- * make a name invisible or reorder the text after it), spaces trimmed and collapsed, at most `NAME_MAX` characters
- * (not UTF-16 units). A right-to-left name keeps its letters; the screen sets each name in its own direction.
+ * What a name loses: the zero-width space and byte-order mark, which make it invisible, and the bidirectional
+ * controls, which reorder the text after them. The joiners (U+200C, U+200D) stay: they are part of how Persian
+ * words and emoji sequences are written.
+ */
+const HIDDEN = /[\u200B\uFEFF\u200E\u200F\u202A-\u202E\u2066-\u2069]/gu;
+/** Nothing a person could read: spaces and zero-width characters only, as the copy system's `displayName` counts it. */
+const NOTHING = /^[\s\u200B-\u200D\u2060\uFEFF]*$/u;
+
+/**
+ * A typed name as it is kept: the hidden characters above removed, spaces trimmed and collapsed, at most `NAME_MAX`
+ * characters (not UTF-16 units). A name of nothing but spaces and zero-width characters is blank. A right-to-left
+ * name keeps its letters; the screen sets each name in its own direction.
  */
 export function cleanName(raw: string): string {
-  const name = raw
-    .replace(/\p{Cf}/gu, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return Array.from(name).slice(0, NAME_MAX).join("").trim();
+  const name = raw.replace(HIDDEN, "").replace(/\s+/g, " ").trim();
+  const kept = Array.from(name).slice(0, NAME_MAX).join("").trim();
+  return NOTHING.test(kept) ? "" : kept;
 }
 
 /**
