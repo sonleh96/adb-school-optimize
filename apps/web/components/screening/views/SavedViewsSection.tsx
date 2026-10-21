@@ -10,7 +10,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { LaterCopy } from "@/lib/screening/copy/later";
 import { canPresent } from "@/lib/screening/guide/layout";
 import { plainViewTitle, viewTitle } from "@/lib/screening/views/step";
-import { NAME_MAX, cleanName, viewQuery } from "@/lib/screening/views/views";
+import { NAME_MAX, cleanName, isStarting, viewQuery } from "@/lib/screening/views/views";
 
 import { Sentence } from "../Sentence";
 import { useWorkspaceStore } from "../WorkspaceProvider";
@@ -26,7 +26,9 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   const { views, store } = useSavedViews(data.copy, data.shown?.schools ?? null);
   const { LAYOUT, TERMS } = data.copy;
   const [name, setName] = useState("");
-  const [saved, setSaved] = useState<number | null>(null);
+  // What the status line under the form says: that a view was saved, or that the starting views are back.
+  const [status, setStatus] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const count = views?.length ?? null;
@@ -36,10 +38,10 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   }, [layers, count]);
   // "Saved as view n" stays a moment beside the form, then clears so it is not read again.
   useEffect(() => {
-    if (saved === null) return;
-    const timer = setTimeout(() => setSaved(null), 4000);
+    if (status === null) return;
+    const timer = setTimeout(() => setStatus(null), 4000);
     return () => clearTimeout(timer);
-  }, [saved]);
+  }, [status]);
 
   const save = (event: FormEvent) => {
     event.preventDefault();
@@ -49,17 +51,34 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
     }
     store.save(name, viewQuery(workspace.snapshot()));
     setName("");
-    setSaved(views.length + 1);
+    setStatus(LAYOUT.savedToast(views.length + 1));
   };
   // Removing a view hands focus to the row that takes its place, or the name field when none is left.
   const remove = (index: number) => {
     if (!views) return;
     store.remove(views[index].at);
-    setSaved(null);
+    setStatus(null);
     requestAnimationFrame(() => {
       const buttons = list.current?.querySelectorAll<HTMLButtonElement>("button[data-remove]") ?? [];
       (buttons[Math.min(index, buttons.length - 1)] ?? input.current)?.focus();
     });
+  };
+
+  // Back to the starting views. A view a person saved is only dropped after a second press; removing a starting
+  // view alone costs nothing that cannot be brought back, so it restores at once.
+  const kept = store.entries();
+  const hasOwn = !!kept?.some((entry) => "name" in entry);
+  const restore = () => {
+    if (hasOwn && !confirming) {
+      setConfirming(true);
+      return;
+    }
+    store.reset();
+    setConfirming(false);
+    setStatus(LAYOUT.viewsRestored);
+    requestAnimationFrame(() =>
+      (list.current?.querySelector<HTMLButtonElement>("button[data-view]") ?? input.current)?.focus()
+    );
   };
 
   const ready = data.ready && views !== null;
@@ -116,6 +135,33 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
           );
         })}
       </ol>
+      {ready && views.length === 0 ? (
+        <p className={styles.note} data-region="no-views">
+          {LAYOUT.noViews}
+        </p>
+      ) : null}
+      {ready && !isStarting(kept) ? (
+        <div className={styles.resetRow}>
+          <button
+            type="button"
+            className={`${rail.link} ${styles.reset}`}
+            data-region="reset-views"
+            onClick={restore}
+          >
+            {confirming ? LAYOUT.resetViewsConfirm : LAYOUT.resetViews}
+          </button>
+          {confirming ? (
+            <button
+              type="button"
+              className={`${rail.link} ${styles.reset}`}
+              data-region="keep-views"
+              onClick={() => setConfirming(false)}
+            >
+              {LAYOUT.keepViews}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <form className={styles.save} onSubmit={save} data-region="save-view">
         <input
           ref={input}
@@ -134,7 +180,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
         </button>
       </form>
       <p className={styles.saved} role="status">
-        {saved !== null ? LAYOUT.savedToast(saved) : ""}
+        {status ?? ""}
       </p>
     </section>
   );

@@ -94,7 +94,6 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
     const school = state.school ? input.schools.get(state.school) : undefined;
     return school ? [nameSegment(copy.distinctName(school))] : null;
   };
-  const tab = (state: WorkspaceState) => (state.view === "queue" ? LAYOUT.incompleteTab : LAYOUT.orderedTab);
 
   const copyLinks = async () => {
     try {
@@ -168,15 +167,22 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
               const state = states[i];
               const short = (id: RuleId | null) =>
                 copy.ruleShortName((id ?? known.defaultRule) as CopyRuleId);
+              const onMethod = state.analyst ? [method.sheet.showsMethod] : null;
               const shows =
                 state.mode === "compare" && state.compare
                   ? join([
                       [method.sheet.showsCompare(short(state.compare), short(state.rule))],
+                      onMethod,
                       schoolName(state),
                     ])
                   : join([
-                      [tab(state)],
+                      [
+                        state.view === "queue"
+                          ? method.sheet.showsQueue(state.qgroup)
+                          : method.sheet.showsRanked,
+                      ],
                       state.compare ? [method.sheet.comparedWith(short(state.compare))] : null,
+                      onMethod,
                       schoolName(state),
                     ]);
               return (
@@ -287,17 +293,18 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
 
   const body = (
     <>
-      {method ? (
-        <section className={exportStyles.sec}>
-          <p className={base.eyebrow}>{TERMS.briefing_stops.label}</p>
-          {methodTable}
-        </section>
-      ) : (
-        <section className={exportStyles.sec}>
-          <p className={base.eyebrow}>{TERMS.briefing_stops.label}</p>
-          {plainList}
-        </section>
-      )}
+      <section className={exportStyles.sec}>
+        <p className={base.eyebrow}>{method ? method.sheet.viewsH : TERMS.briefing_stops.label}</p>
+        {ready && views.length === 0 ? (
+          <p className={exportStyles.note} data-region="no-views">
+            {LAYOUT.noViews}
+          </p>
+        ) : method ? (
+          methodTable
+        ) : (
+          plainList
+        )}
+      </section>
       {method ? (
         <section className={exportStyles.sec}>
           <p className={base.eyebrow}>{method.sheet.contents}</p>

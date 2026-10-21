@@ -38,6 +38,12 @@ const QUERY_MAX = 2000;
 /** The seeds, in order: what nothing stored means, and what a first save starts from. */
 export const SEED_ENTRIES: readonly Entry[] = Object.freeze(SEED_KEYS.map((seed) => ({ seed })));
 
+/** Whether what is kept is the starting views alone, in order, so there is nothing to restore. */
+export const isStarting = (entries: readonly Entry[] | null): boolean =>
+  entries === null ||
+  (entries.length === SEED_KEYS.length &&
+    entries.every((entry, i) => "seed" in entry && entry.seed === SEED_KEYS[i]));
+
 /** A typed name as it is kept: spaces trimmed and collapsed, at most `NAME_MAX` characters (not UTF-16 units). */
 export function cleanName(raw: string): string {
   const name = raw.replace(/\s+/g, " ").trim();

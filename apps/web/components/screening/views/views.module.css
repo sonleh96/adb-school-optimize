@@ -163,6 +163,22 @@
   flex: none;
   height: 36px;
 }
+.resetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 10px;
+}
+/* The label may be long; it wraps in the narrow rail instead of pushing past it. */
+.section .resetRow .reset {
+  white-space: normal;
+  text-align: left;
+}
+.reset:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .saved {
   min-height: 17px;
   margin: 6px 0 0;

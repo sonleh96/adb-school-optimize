@@ -126,6 +126,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.sheet.possible": [[20]],
   "METHOD.sheet.possibleNone": [[20]],
   "METHOD.sheet.normalizationV": [[25], [undefined]],
+  "METHOD.sheet.showsQueue": [["province"], ["evidence"]],
   "METHOD.sheet.showsCompare": [["S", "B"]],
   "METHOD.sheet.comparedWith": [["the benchmark"]],
   "METHOD.sheet.generatedAt": [["2026-10-21"]],

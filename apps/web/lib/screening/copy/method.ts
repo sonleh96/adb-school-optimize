@@ -279,13 +279,19 @@ export function buildMethod(ctx: MethodContext = {}) {
       limitsV: `${S.caveat} The project's own checks are not an outside reproduction.`,
       savedViewsLede:
         "Your saved views for meetings are listed in order with the rule of each, so another person can replay the meeting from the links.",
+      viewsH: "Saved views, in order",
       stop: "Saved view",
       shows: "Shows",
+      // What a saved view opens on: the list in order, or the incomplete records and how they are grouped.
+      showsRanked: "Schools in order",
+      showsQueue: (grouping: "province" | "evidence") =>
+        `Incomplete records, grouped by ${grouping === "evidence" ? "what is missing" : "province"}`,
+      showsMethod: "method details on",
       showsCompare: (a: string, b: string) => `Comparing ${a} with ${b}`,
       comparedWith: (s: string) => `compared with ${s}`,
       contents: "Contents",
       links: "Links",
-      linksV: "One link per saved view that reopens it exactly",
+      linksV: "One link per saved view that reopens it",
       shortlistV: "The top list and its method record for the rule of each saved view",
       generatedAt: (date: string) => `${date} UTC`,
     }),
