@@ -24,8 +24,8 @@ export interface LayerSnapshot {
   readonly state: LayerState;
   readonly memory: Memory;
   readonly catalog: Catalog | null;
-  /** How many saved views for meetings there are, once their store has read them. */
-  readonly views: number | null;
+  /** Each saved view's id, in order, once their store has read them. */
+  readonly views: readonly string[] | null;
   /** The URL and the memory have been read; until then the page's boot script decides the rail's width. */
   readonly attached: boolean;
 }
@@ -36,8 +36,8 @@ export interface LayerStore {
   dispatch(event: LayerEvent): void;
   /** What the data can teach. Revalidates a pasted link against it. */
   setCatalog(catalog: Catalog): void;
-  /** How many saved views there are. Revalidates a pasted link to one of them. */
-  setViews(views: number): void;
+  /** The saved views' ids, in order. Revalidates a pasted link to one of them. */
+  setViews(views: readonly string[]): void;
   /** Read the URL and the memory once, before the first paint, and keep the URL in step from then on. */
   attach(
     location: Pick<Location, "search" | "pathname" | "hash">,
@@ -109,7 +109,7 @@ export function createLayerStore(): LayerStore {
       commit({ ...snap, catalog, state: revalidate(snap.state, catalog) });
     },
     setViews(views) {
-      if (snap.views === views) return;
+      if (snap.views && snap.views.join(" ") === views.join(" ")) return;
       commit({ ...snap, views, state: revalidateViews(snap.state, views) });
     },
     attach(location, history, storage) {
@@ -122,15 +122,13 @@ export function createLayerStore(): LayerStore {
         text = null;
       }
       const memory = parseMemory(text);
-      const state = stateFromSearch(location.search, memory);
+      const read = stateFromSearch(location.search, memory);
+      const state = snap.catalog ? revalidate(read, snap.catalog) : read;
       commit({
         ...snap,
         attached: true,
         memory,
-        state: revalidateViews(
-          snap.catalog ? revalidate(state, snap.catalog) : state,
-          snap.views ?? Number.POSITIVE_INFINITY
-        ),
+        state: snap.views ? revalidateViews(state, snap.views) : state,
       });
     },
   };

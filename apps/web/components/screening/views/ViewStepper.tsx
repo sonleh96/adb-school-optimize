@@ -41,13 +41,16 @@ export function ViewStepper({
   const acted = useActed();
   const ringStores = useMemo(() => [workspace, layers], [workspace, layers]);
   const { views } = useSavedViews(data.copy, data.shown?.schools ?? null);
-  const count = views?.length ?? null;
+  // The guidance store steps through the views by id; the ids change only when the list does.
+  const ids = views ? views.map((view) => view.id).join(" ") : null;
   useEffect(() => {
-    if (count !== null) layers.setViews(count);
-  }, [layers, count]);
+    if (ids !== null) layers.setViews(ids ? ids.split(" ") : []);
+  }, [layers, ids]);
 
   const rail = state.rail.kind === "view" ? state.rail : null;
-  const view = views && rail ? (views[rail.step - 1] ?? null) : null;
+  // Where the view sits in this person's list, counting from 1; 0 until the views are known.
+  const position = views && rail ? views.findIndex((v) => v.id === rail.id) + 1 : 0;
+  const view = views && position > 0 ? views[position - 1] : null;
   const { shown } = data;
   const ctx = useMemo(
     () =>
@@ -93,7 +96,7 @@ export function ViewStepper({
   const [said, setSaid] = useState("");
   const name = view ? plainViewTitle(later, view) : "";
   const n = views?.length ?? 0;
-  const counter = rail ? data.copy.LAYOUT.viewOf(rail.step, n) : "";
+  const counter = rail ? data.copy.LAYOUT.viewOf(position, n) : "";
   useEffect(() => {
     if (name) setSaid(`${counter}. ${name}`);
   }, [counter, name]);
@@ -106,10 +109,10 @@ export function ViewStepper({
   if (!rail) return null;
   const { GUIDE } = later;
   const { LAYOUT, KEYS } = data.copy;
-  const last = rail.step >= n;
+  const last = position >= n;
   const presentable = canPresent(data.width);
   const presenting = state.present && presentable;
-  const next = views?.[rail.step];
+  const next = views?.[position];
   const upNext = presenting && next ? plainViewTitle(later, next) : null;
   const close = last ? GUIDE.finishClose : GUIDE.close;
 
@@ -138,7 +141,7 @@ export function ViewStepper({
         </div>
         <div className={styles.progress} aria-hidden="true">
           {Array.from({ length: n }, (_, i) => (
-            <i key={i} data-at={i + 1 < rail.step ? "done" : i + 1 === rail.step ? "current" : undefined} />
+            <i key={i} data-at={i + 1 < position ? "done" : i + 1 === position ? "current" : undefined} />
           ))}
         </div>
         <p className={styles.counter} data-testid="view-counter">
@@ -206,7 +209,7 @@ export function ViewStepper({
           <button
             type="button"
             className={styles.quiet}
-            disabled={rail.step === 1}
+            disabled={position <= 1}
             onClick={() => layers.dispatch({ type: "back" })}
           >
             {GUIDE.back}

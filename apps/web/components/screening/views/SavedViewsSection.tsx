@@ -31,11 +31,11 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   const [confirming, setConfirming] = useState(false);
   const list = useRef<HTMLOListElement>(null);
   const input = useRef<HTMLInputElement>(null);
-  const count = views?.length ?? null;
-
+  // The guidance store steps through the views by id; the ids change only when the list does.
+  const ids = views ? views.map((view) => view.id).join(" ") : null;
   useEffect(() => {
-    if (count !== null) layers.setViews(count);
-  }, [layers, count]);
+    if (ids !== null) layers.setViews(ids ? ids.split(" ") : []);
+  }, [layers, ids]);
   // "Saved as view n" stays a moment beside the form, then clears so it is not read again.
   useEffect(() => {
     if (status === null) return;
@@ -95,7 +95,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
             type="button"
             className={`${rail.link} ${styles.present}`}
             data-region="present-views"
-            onClick={() => layers.dispatch({ type: "openView", step: 1, present: true })}
+            onClick={() => layers.dispatch({ type: "openView", id: views[0].id, present: true })}
           >
             {LAYOUT.presentationMode}
           </button>
@@ -108,13 +108,13 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
         {(views ?? []).map((view, index) => {
           const title = viewTitle(later, view);
           return (
-            <li key={`${view.at}:${view.seed ?? view.name}`} className={styles.row}>
+            <li key={view.id} className={styles.row}>
               <button
                 type="button"
                 className={styles.go}
                 disabled={!ready}
                 data-view={index + 1}
-                onClick={() => layers.dispatch({ type: "openView", step: index + 1 })}
+                onClick={() => layers.dispatch({ type: "openView", id: view.id })}
               >
                 <span className={styles.n} aria-hidden="true">
                   {index + 1}

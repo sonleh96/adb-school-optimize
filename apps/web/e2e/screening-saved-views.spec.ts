@@ -147,7 +147,7 @@ test("the seeds open as rail steps with one counter, each on its own screen, thr
     await expect(counter(page)).toHaveText(`Saved view ${i + 1} of 4`);
     await expect(stepTitle(page)).toHaveText(SEEDS[i]);
     await expect.poll(() => workspace(page)).toMatchObject(state);
-    await expect(page).toHaveURL(new RegExp(`guide=views&gstep=${i + 1}`));
+    await expect(page).toHaveURL(/guide=views&gview=[0-9a-z]+(&|$)/);
     await expect(page.locator("[data-testid=guide-rings] > div").first()).toBeAttached();
     await expect(drift(page)).toHaveCount(0);
     await rail(page)
@@ -158,16 +158,22 @@ test("the seeds open as rail steps with one counter, each on its own screen, thr
 });
 
 test("a pasted link to a saved view reproduces its screen, presenting", async ({ page }) => {
-  await open(page, "?guide=views&gstep=3&present=1");
+  await startList(page);
+  await viewButtons(page).nth(2).click();
+  await expect(counter(page)).toHaveText("Saved view 3 of 4");
+  const link = new URL(page.url());
+  link.searchParams.set("present", "1");
+  await page.evaluate(() => window.__screeningWorkspace!.setState({ school: null }));
+  await open(page, link.search);
   await expect(counter(page)).toHaveText("Saved view 3 of 4");
   await expect.poll(() => workspace(page)).toMatchObject({ school: RANGE_KEY });
   await expect(page.locator("[data-region=inspector-place]")).toBeVisible();
-  expect((await rail(page).boundingBox())!.width).toBe(400);
+  await expect.poll(async () => Math.round((await rail(page).boundingBox())!.width)).toBe(400);
   await expect(rail(page).getByText("Up next")).toBeVisible();
   await expect(rail(page).getByText(SEEDS[3])).toBeVisible();
-  // A link to a view past the last one lands on the last.
-  await page.goto("/screening?guide=views&gstep=9");
-  await expect(counter(page)).toHaveText("Saved view 4 of 4");
+  // A link to a view this list does not hold shows the start, not another view.
+  await open(page, "?guide=views&gview=zz9");
+  await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeVisible();
 });
 
 test("presenting starts at view 1, and Page Down and Page Up step through the views without leaving them", async ({
@@ -176,18 +182,18 @@ test("presenting starts at view 1, and Page Down and Page Up step through the vi
   await startList(page);
   await section(page).getByRole("button", { name: "Presentation mode" }).click();
   await expect(counter(page)).toHaveText("Saved view 1 of 4");
-  await expect(page).toHaveURL(/guide=views&gstep=1&present=1/);
+  await expect(page).toHaveURL(/guide=views&gview=[0-9a-z]+&present=1/);
   await expect(rail(page).locator("kbd")).toHaveText("PgDn");
   await expect(rail(page).getByText("Page Down for next")).toBeVisible();
   await expect(rail(page).locator("p", { hasText: "Up next" })).toContainText(SEEDS[1]);
 
   await page.keyboard.press("PageUp");
-  await expect.poll(() => railState(page)).toEqual({ kind: "view", step: 1 });
+  await expect(counter(page)).toHaveText("Saved view 1 of 4");
   await page.keyboard.press("PageDown");
-  await expect.poll(() => railState(page)).toEqual({ kind: "view", step: 2 });
+  await expect(counter(page)).toHaveText("Saved view 2 of 4");
   await expect.poll(() => workspace(page)).toMatchObject({ rule: "additive_no_u", compare: "additive_u" });
   await page.keyboard.press("PageUp");
-  await expect.poll(() => railState(page)).toEqual({ kind: "view", step: 1 });
+  await expect(counter(page)).toHaveText("Saved view 1 of 4");
   await rail(page).getByRole("button", { name: "Leave presentation mode" }).click();
   expect((await rail(page).boundingBox())!.width).toBe(312);
   await expect(rail(page).locator("kbd")).toHaveCount(0);
@@ -322,7 +328,10 @@ test("on data with one school only the seeds it can show are offered, and they r
   expect(names.join("|")).not.toContain(SEEDS[3]);
   expect(names[0]).toBe(`1${SEEDS[0]}`);
   for (let i = 1; i <= names.length; i += 1) {
-    await page.goto(`/screening?guide=views&gstep=${i}`);
+    await page.goto("/screening?guide=start");
+    await viewButtons(page)
+      .nth(i - 1)
+      .click();
     await expect(counter(page)).toHaveText(`Saved view ${i} of ${names.length}`);
     await expect(drift(page)).toHaveCount(0);
   }
@@ -628,4 +637,36 @@ test("the pack's record describes its file: lists of the length it states, and e
   ]);
   const pack = JSON.parse(readFileSync((await download.path())!, "utf8"));
   for (const lines of Object.values(pack.method_record) as string[][]) expect(lines).toContain("k: 20");
+});
+
+test("a link to a view reopens it for its sender, and gives a colleague the sender's screen", async ({
+  page,
+  browser,
+}) => {
+  await startList(page);
+  const name = orderedNames("additive_u")[6];
+  await orderedRow(page, name).click();
+  await page.evaluate(() => window.__screeningWorkspace!.setState({ rule: "need_first_u" }));
+  await section(page).getByRole("textbox", { name: "Name this view" }).fill("Board");
+  await section(page).getByRole("button", { name: "Save this view" }).click();
+  await page.evaluate(() => window.__screeningWorkspace!.setState({ school: null, rule: null }));
+  await viewButtons(page).nth(4).click();
+  await expect(counter(page)).toHaveText("Saved view 5 of 5");
+  const link = page.url();
+  const sent = await workspace(page);
+  expect(sent).toMatchObject({ rule: "need_first_u", school: keyOf("additive_u", name) });
+
+  // The sender reloads: the same view.
+  await page.reload();
+  await waitForMap(page);
+  await expect(counter(page)).toHaveText("Saved view 5 of 5");
+
+  // A colleague with only the starting views gets the sender's screen and the rail's start, not their own view 5.
+  const other = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+  const colleague = await other.newPage();
+  await colleague.goto(link);
+  await waitForMap(colleague);
+  await expect(rail(colleague).getByRole("heading", { name: "What do you want to find out?" })).toBeVisible();
+  await expect.poll(() => workspace(colleague)).toMatchObject({ rule: sent.rule, school: sent.school });
+  await other.close();
 });
