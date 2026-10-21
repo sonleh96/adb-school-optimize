@@ -3,19 +3,20 @@
 import { ChevronRight } from "lucide-react";
 import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
 
-import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
-import { type OrderedRow, groupByProvince, incompleteInDisplayOrder, neighbour } from "@/lib/screening/list";
+import type { BoundCopy, CopyRuleId, CopySchool } from "@/lib/screening/copy";
+import { type OrderedRow, neighbour } from "@/lib/screening/list";
 import type { ListedRow, QueuedRow, SchoolKey } from "@/lib/screening/types";
-import { firstRangeIndex, placeForm, tieNoteAfter } from "@/lib/screening/workspace/rows";
+import type { QueueGrouping } from "@/lib/screening/workspace/state";
+import { firstRangeIndex, groupRows, placeForm, tieNoteAfter } from "@/lib/screening/workspace/rows";
 
-import { COPY } from "./copy";
 import { PlaceText } from "./PlaceText";
+import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
 
 interface ListProps<Row extends ListedRow> {
   rows: readonly Row[];
-  /** The list's schools by key, as the copy reads them. */
-  schools: ReadonlyMap<string, ListedSchool>;
+  /** The list's schools by key: whole records, from every school's stored inputs. */
+  schools: ReadonlyMap<string, CopySchool>;
   copy: BoundCopy;
   selected: SchoolKey | null;
   hovered: SchoolKey | null;
@@ -68,34 +69,16 @@ function NameLine({ name, place }: { name: string; place: string | null }) {
   );
 }
 
-function Place({
-  row,
-  school,
-  copy,
-  rule,
-}: {
-  row: OrderedRow;
-  school: ListedSchool;
-  copy: BoundCopy;
-  rule: CopyRuleId;
-}) {
-  const form = placeForm(row);
-  switch (form.kind) {
-    case "point":
-      return (
-        <span className={styles.place} data-place="point">
-          <PlaceText text={copy.ordinal(form.rank)} />
-        </span>
-      );
-    // A range school's place is the copy's headline, which always carries its range or its scope, stacked.
-    case "range":
-    case "scoped":
-      return (
-        <span className={`${styles.place} ${styles.placeRange}`} data-place={form.kind}>
-          <PlaceText text={copy.placeHeadline(school, rule)} />
-        </span>
-      );
-  }
+const cleaned = (copy: BoundCopy, value: string | null) => (value?.trim() ? copy.cleanName(value) : null);
+
+/**
+ * Why a school sits where it does, in one line: the input that adds most for a school with one place; for a range
+ * school, why it shows a range, naming every reading it lacks when it lacks more than one.
+ */
+function whyLine(copy: BoundCopy, school: CopySchool, rule: CopyRuleId): string {
+  const unread = school.cohort === "interval" ? copy.rangeRowWhy(school) : null;
+  if (unread) return unread;
+  return copy.topDrivers(school, rule)[0]?.sentence ?? copy.reasonSentence(school, rule);
 }
 
 export function OrderedList({
@@ -115,9 +98,14 @@ export function OrderedList({
   useScrollToSelected(list, selected);
 
   const all = [...schools.values()];
-  const ties = rows.map((row) => copy.tieNote(schools.get(row.school.school_key)!, rule, all, "row"));
+  const ties = rows.map((row) =>
+    copy.segments.tieNote(schools.get(row.school.school_key)!, rule, all, "row")
+  );
   const rangeAt = firstRangeIndex(rows);
-  const tieAt = tieNoteAfter(ties.map(Boolean));
+  // The tie rule ("the name decides") holds for exact ties of the screening score. Under a need-first rule a row's
+  // marker means the same school need, which the other inputs settle, so the sentence would mislead there.
+  const needFirst = rule === "need_first_u" || rule === "need_first_no_u";
+  const tieAt = needFirst ? -1 : tieNoteAfter(ties.map(Boolean));
 
   return (
     <ol
@@ -131,6 +119,7 @@ export function OrderedList({
       {rows.map((row, index) => {
         const key = row.school.school_key;
         const school = schools.get(key)!;
+        const form = placeForm(row);
         return (
           <Fragment key={key}>
             {index === rangeAt ? (
@@ -148,13 +137,22 @@ export function OrderedList({
                 aria-pressed={key === selected}
                 onClick={() => onSelect(key)}
               >
-                <Place row={row} school={school} copy={copy} rule={rule} />
+                <span
+                  className={`${styles.place} ${form.kind === "point" ? "" : styles.placeRange}`}
+                  data-place={form.kind}
+                >
+                  <PlaceText text={copy.rowPlace(school, rule)} />
+                </span>
                 <span className={styles.rowText}>
-                  <NameLine
-                    name={copy.distinctName(school)}
-                    place={school.province?.trim() ? copy.cleanName(school.province) : null}
-                  />
-                  {ties[index] ? <span className={styles.tie}>{ties[index]}</span> : null}
+                  <NameLine name={copy.distinctName(school)} place={cleaned(copy, school.province)} />
+                  {ties[index] ? (
+                    <span className={styles.tie}>
+                      <Sentence segments={ties[index]!} />
+                    </span>
+                  ) : null}
+                  <span className={styles.rowWhy} data-region="row-why">
+                    <b className={styles.rowWhyKey}>{copy.LAYOUT.whyKey}</b> {whyLine(copy, school, rule)}
+                  </span>
                 </span>
                 <ChevronRight className={styles.chevron} size={14} aria-hidden />
               </button>
@@ -171,19 +169,37 @@ export function OrderedList({
   );
 }
 
+/** The incomplete records, grouped as asked, in the order the arrow keys follow. */
+export function incompleteGroups(
+  rows: readonly QueuedRow[],
+  schools: ReadonlyMap<string, CopySchool>,
+  copy: BoundCopy,
+  grouping: QueueGrouping
+) {
+  return grouping === "evidence"
+    ? groupRows(rows, (row) => copy.missingGroupLabel(schools.get(row.school.school_key)!), true)
+    : groupRows(rows, (row) => copy.provinceHeading(row.school.province), false);
+}
+
 export function IncompleteList({
   rows,
   schools,
   copy,
+  grouping,
   selected,
   hovered,
   onSelect,
   busy,
   label,
-}: ListProps<QueuedRow>) {
+}: ListProps<QueuedRow> & { grouping: QueueGrouping }) {
   const list = useRef<HTMLOListElement>(null);
+  const groups = incompleteGroups(rows, schools, copy, grouping);
   // The keys follow the grouped order on screen, whatever order the rows arrived in.
-  const onKeyDown = arrowKeyHandler(incompleteInDisplayOrder(rows), selected, onSelect);
+  const onKeyDown = arrowKeyHandler(
+    groups.flatMap((group) => group.rows),
+    selected,
+    onSelect
+  );
   useScrollToSelected(list, selected);
   return (
     <ol
@@ -194,17 +210,19 @@ export function IncompleteList({
       data-region="queue-list"
       onKeyDown={onKeyDown}
     >
-      {groupByProvince(rows).map((group) => (
-        <li key={group.province ?? ""}>
+      {groups.map((group) => (
+        <li key={group.heading}>
           <div className={styles.groupHead}>
-            <span>{group.province ?? COPY.provinceUnknown}</span>
+            <span>{group.heading}</span>
             <span className={styles.groupCount}>{copy.formatCount(group.rows.length)}</span>
           </div>
           <ol className={styles.groupRows}>
             {group.rows.map((row) => {
               const key = row.school.school_key;
               const school = schools.get(key)!;
-              const district = row.school.district?.trim() ? copy.cleanName(row.school.district) : null;
+              // Grouped by what is missing, the row names its place instead, since the heading names the gap.
+              const where =
+                grouping === "evidence" ? copy.locationLine(school) : cleaned(copy, row.school.district);
               return (
                 <li key={key}>
                   <button
@@ -217,8 +235,14 @@ export function IncompleteList({
                     onClick={() => onSelect(key)}
                   >
                     <span className={styles.rowText}>
-                      <NameLine name={copy.distinctName(school)} place={district} />
-                      {/* What is missing from the record goes here once every school's inputs load in one read. */}
+                      <NameLine name={copy.distinctName(school)} place={where} />
+                      <span className={styles.rowChips} data-region="queue-chips">
+                        {copy.missingLabels(school).map((chip) => (
+                          <span key={chip} className={styles.rowChip}>
+                            {chip}
+                          </span>
+                        ))}
+                      </span>
                     </span>
                     <ChevronRight className={styles.chevron} size={14} aria-hidden />
                   </button>

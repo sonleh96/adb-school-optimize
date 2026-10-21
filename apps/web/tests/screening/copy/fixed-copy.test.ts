@@ -100,6 +100,7 @@ describe("every fixed string follows the writing rules", () => {
     const corpus = new Corpus();
     const LAYOUT_ARGS: Record<string, unknown[]> = {
       otherRulesCount: [5],
+      addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],
       notComputedGroup: ["Need first, no urgency", 4],
       listTitle: [20, "the combined-factors rule with urgency (S)"],
@@ -130,6 +131,10 @@ describe("every fixed string follows the writing rules", () => {
       "emptyData",
       "loadFailed",
       "availableAfterLoad",
+      "mapKeyboard",
+      "basemapUnavailable",
+      "refreshFailed",
+      "sessionEnded",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
@@ -516,7 +521,7 @@ describe("counts belong to the data they came from", () => {
 
   it("differs from copy bound to empty data, which counts zero schools", () => {
     expect(copyFor({}).scope("additive_u").groups).toBe(
-      "0 schools have every input recorded, so 0 schools can be put in order."
+      "No school has every input recorded, so no school can be put in order."
     );
     expect(copy.TERMS.cohort_complete.label).toBe("Every input recorded");
     expect(copy.TERMS.cohort_ranked.label).toBe("Can be put in order");

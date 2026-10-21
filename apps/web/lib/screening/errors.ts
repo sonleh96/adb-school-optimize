@@ -66,3 +66,13 @@ export function listView(rules: ReadState, results: ReadState, speculative = fal
   const awaitingRules = speculative && !rules.hasData && !rules.error;
   return error && !awaitingRules ? { kind: "failed", failure: classifyFailure(error) } : { kind: "loading" };
 }
+
+/**
+ * The API holds no data at all yet: it answers a list or the inputs with a 404 whose code says so. That is the
+ * empty state (one sentence and Retry), not a failure.
+ */
+export function isEmptyStore(error: unknown): boolean {
+  return (
+    error instanceof ApiRequestError && error.status === 404 && error.message.includes('"no_input_versions"')
+  );
+}

@@ -92,6 +92,8 @@ function toResult(id: CopyRuleId, r: Placed): CopyResult {
     rank_best: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.best : null,
     rank_worst: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.worst : null,
     rank_bounds_scope: r.rank_bounds.scope_code === "eligible" ? "eligible124" : null,
+    score_lower: r.scores.lower,
+    score_upper: r.scores.upper,
   };
   // Under the need-first rules the primary sort key is school need and the score is the secondary one.
   return isNeedFirstRule(id)

@@ -105,6 +105,8 @@ const components = obj({
 });
 const scores = obj({
   lower: nullable(num),
+  /** The highest screening score a school could have: the lower one for a school with every input. */
+  upper: nullable(num),
   point: nullable(num),
   sort_key_primary: nullable(num),
 });

@@ -11,13 +11,14 @@ import { MapLibreOverlay, type MapLibreOverlayProps } from "@deck.gl/maplibre";
 import type { PickingInfo } from "@deck.gl/core";
 import { Map as MapView, NavigationControl, useControl, type MapRef } from "@vis.gl/react-maplibre";
 import { setWorkerUrl, type Map as MapLibreMap, type StyleSpecification } from "maplibre-gl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { LAND_COLOUR, type MapSchool, WATER_COLOUR, boundsOf } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 
-import { COPY } from "./copy";
+import { LAYOUT } from "@/lib/screening/copy";
 import { buildMarkLayers, buildRingLayers } from "./map-layers";
+import { MapTooltip, type TipContent } from "./MapTooltip";
 import { RankLabels } from "./RankLabels";
 import styles from "./screening.module.css";
 
@@ -57,12 +58,21 @@ export interface MapCanvasProps {
   stale: boolean;
   /** Called after every frame; the first one drew the schools' marks, or the map alone when there are none. */
   onDrawn?: () => void;
-}
-
-interface Hover {
-  school: MapSchool;
-  x: number;
-  y: number;
+  /** A school shown as if the pointer were on it (the workspace's `hover`, which the guides set). */
+  hoverKey: SchoolKey | null;
+  /** The school under the pointer, or null, so the list can mark its row. */
+  onHoverChange: (key: SchoolKey | null) => void;
+  /** What the tooltip says about a school, in the copy's words. */
+  tipFor: (key: SchoolKey) => TipContent | null;
+  /** Which marks carry the screen: all of them, or the incomplete records while their tab is open. */
+  emphasis: "all" | "incomplete";
+  /** Changes whenever the clear part of the map changes shape (the list steps aside or returns): frame it again. */
+  frame: number;
+  /** The last action came from the keyboard, or motion is reduced: move the map without animating. */
+  instant: boolean;
+  /** The map's accessible name and the basemap's credit, from the copy. */
+  label: string;
+  attribution: string;
 }
 
 declare global {
@@ -165,6 +175,14 @@ export default function MapCanvas({
   padding,
   stale,
   onDrawn,
+  hoverKey,
+  onHoverChange,
+  tipFor,
+  emphasis,
+  frame,
+  instant,
+  label,
+  attribution,
 }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,13 +190,16 @@ export default function MapCanvas({
   const [ready, setReady] = useState(false);
   const [moving, setMoving] = useState(false);
   const [basemapFailed, setBasemapFailed] = useState(false);
-  const [hover, setHover] = useState<Hover | null>(null);
+  const [pointer, setPointer] = useState<SchoolKey | null>(null);
+  const pointerKey = useRef<SchoolKey | null>(null);
 
   const byKey = useMemo(() => new Map(schools.map((s) => [s.key, s])), [schools]);
   const selected = selectedKey ? (byKey.get(selectedKey) ?? null) : null;
 
-  const markLayers = useMemo(() => buildMarkLayers(schools, stale), [schools, stale]);
-  const hovered = stale ? null : (hover?.school ?? null);
+  const markLayers = useMemo(() => buildMarkLayers(schools, stale, emphasis), [schools, stale, emphasis]);
+  // The pointer wins over the workspace's hover; while another rule's rows show, nothing is hovered.
+  const hoveredKey = stale ? null : (pointer ?? hoverKey);
+  const hovered = hoveredKey ? (byKey.get(hoveredKey) ?? null) : null;
   const ringLayers = useMemo(() => buildRingLayers(selected, hovered), [selected, hovered]);
   const layers = useMemo(() => [...markLayers, ...ringLayers], [markLayers, ringLayers]);
 
@@ -196,26 +217,65 @@ export default function MapCanvas({
     setFitted(true);
   }, [schools, padding, fitted]);
 
-  // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
+  const still = useCallback(() => instant || prefersReducedMotion(), [instant]);
+
+  // Where the tooltip points: the hovered mark, measured once the map has settled.
+  const [tipAt, setTipAt] = useState<{ x: number; y: number; width: number } | null>(null);
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selected) return;
-    const point = map.project([selected.lon, selected.lat]);
-    const { width, height } = map.getContainer().getBoundingClientRect();
-    const inside =
-      point.x >= padding.left &&
-      point.x <= width - padding.right &&
-      point.y >= padding.top &&
-      point.y <= height - padding.bottom;
-    if (!inside) {
-      map.easeTo({
-        center: [selected.lon, selected.lat],
-        padding,
-        duration: prefersReducedMotion() ? 0 : 400,
-      });
+    if (!map || !ready || !hovered || moving) {
+      setTipAt(null);
+      return;
     }
+    const point = map.project([hovered.lon, hovered.lat]);
+    setTipAt({ x: point.x, y: point.y, width: map.getContainer().clientWidth });
+  }, [hovered, ready, moving]);
+
+  // When the clear part of the map changes shape, the country is framed in it again.
+  const framed = useRef(frame);
+  useEffect(() => {
+    const map = mapRef.current;
+    const bounds = boundsOf(schools);
+    if (framed.current === frame || !map || !bounds) return;
+    framed.current = frame;
+    map.fitBounds(bounds, { padding, maxZoom: 9, duration: still() ? 0 : 300 });
+  }, [frame, schools, padding, still]);
+
+  // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
+  // It runs when the selected school changes, and only then: a map the user has panned since stays where they left
+  // it when the rows, the clear part or the last input change. Opening the card can restack the key, and the clear
+  // part is measured after that render, so the check waits two frames and reads the latest padding. While the map is
+  // still moving to an earlier choice, where a mark sits says nothing about where it will settle, so the new school
+  // is gone to whatever its position mid-pan.
+  const latest = useRef({ padding, still, selected });
+  useLayoutEffect(() => {
+    latest.current = { padding, still, selected };
+  });
+  const selectedId = selected?.key ?? null;
+  useEffect(() => {
+    const map = mapRef.current;
+    const chosen = latest.current.selected;
+    if (!map || !chosen || chosen.key !== selectedId) return;
+    const midPan = map.isMoving();
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => {
+        const { padding: clear, still: instant } = latest.current;
+        const point = map.project([chosen.lon, chosen.lat]);
+        const { width, height } = map.getContainer().getBoundingClientRect();
+        const inside =
+          !midPan &&
+          point.x >= clear.left &&
+          point.x <= width - clear.right &&
+          point.y >= clear.top &&
+          point.y <= height - clear.bottom;
+        if (!inside) {
+          map.easeTo({ center: [chosen.lon, chosen.lat], padding: clear, duration: instant() ? 0 : 400 });
+        }
+      });
+    });
+    return () => cancelAnimationFrame(frame);
     // Panning on a click would be redundant: the mark is already inside, so this only runs for list picks.
-  }, [selected, padding]);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!TEST_HOOKS) return;
@@ -235,11 +295,19 @@ export default function MapCanvas({
     };
   }, [byKey]);
 
-  const onHover = useCallback((info: PickingInfo<MapSchool>) => {
-    const canvas = mapRef.current?.getCanvas();
-    if (canvas) canvas.style.cursor = info.object ? "pointer" : "";
-    setHover(info.object ? { school: info.object, x: info.x, y: info.y } : null);
-  }, []);
+  const onHover = useCallback(
+    (info: PickingInfo<MapSchool>) => {
+      const canvas = mapRef.current?.getCanvas();
+      if (canvas) canvas.style.cursor = info.object ? "pointer" : "";
+      const key = info.object?.key ?? null;
+      // The parent hears of a change once, here in the event, never from inside a state update.
+      if (pointerKey.current === key) return;
+      pointerKey.current = key;
+      setPointer(key);
+      onHoverChange(key);
+    },
+    [onHoverChange]
+  );
 
   // deck.gl calls this after every frame. The map is created only once the list, or its failure, is on screen, so
   // its first frame holds every mark the list has: none, for an empty or failed list. The controller waits for it.
@@ -269,7 +337,8 @@ export default function MapCanvas({
         mapLib={import("maplibre-gl")}
         mapStyle={basemapFailed ? BLANK_STYLE : BASEMAP_STYLE}
         initialViewState={initialView}
-        minZoom={3.5}
+        // Low enough that the whole country fits the narrow layout's shortest map band (160 px at 200 percent zoom).
+        minZoom={2.5}
         maxZoom={13}
         renderWorldCopies={false}
         dragRotate={false}
@@ -288,7 +357,7 @@ export default function MapCanvas({
           loaded.current = true;
           calmBasemap(event.target);
           // The canvas is the one stop on the map: name it, and point to the list as the keyboard route.
-          event.target.getCanvas().setAttribute("aria-label", COPY.mapLabel);
+          event.target.getCanvas().setAttribute("aria-label", `${label}. ${LAYOUT.mapKeyboard}`);
           setReady(true);
         }}
       >
@@ -304,30 +373,38 @@ export default function MapCanvas({
       </MapView>
       {basemapFailed ? (
         <p className={styles.notice} role="status" data-testid="basemap-notice">
-          {COPY.basemapUnavailable}
+          {LAYOUT.basemapUnavailable}
         </p>
       ) : null}
-      {hover && !stale ? (
-        <div className={styles.tooltip} style={{ left: hover.x + 14, top: hover.y + 14 }} role="status">
-          <strong>{hover.school.name}</strong>
-          {hover.school.scope ? (
-            <span>{COPY.placeAmong(hover.school.place, hover.school.scope)}</span>
-          ) : (
-            <span>{COPY.cardNoPlace}</span>
-          )}
-          {hover.school.exact ? <span>{COPY.exactRange}</span> : null}
-          {hover.school.province ? <span>{hover.school.province}</span> : null}
-        </div>
+      {hovered && tipAt && !moving ? (
+        <MapTooltip
+          content={tipFor(hovered.key)}
+          at={tipAt}
+          width={tipAt.width}
+          selected={hovered.key === selectedKey}
+        />
       ) : null}
-      <p className={styles.attribution} data-testid="attribution">
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          {COPY.attribution.osm}
-        </a>
-        ,{" "}
-        <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">
-          {COPY.attribution.carto}
-        </a>
-      </p>
+      <Attribution text={attribution} />
     </div>
+  );
+}
+
+/** The basemap's credit, as its licence requires it: each holder's name links to its terms. */
+function Attribution({ text }: { text: string }) {
+  const [osm, carto] = text.split(", ");
+  return (
+    <p className={styles.attribution} data-testid="attribution">
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+        {osm}
+      </a>
+      {carto ? (
+        <>
+          ,{" "}
+          <a href="https://carto.com/attributions" target="_blank" rel="noreferrer">
+            {carto}
+          </a>
+        </>
+      ) : null}
+    </p>
   );
 }

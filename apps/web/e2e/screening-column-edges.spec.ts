@@ -24,7 +24,6 @@ import {
   ORDERED,
   ORDERED_COUNT,
   RULE,
-  allowUncapturedComparisons,
   expect,
   mainRule,
   openWorkspace,
@@ -117,11 +116,9 @@ test("a comparison that fails to load says so and offers Retry, never that the s
 
 test("the statement keeps the main rules' figures while What changed reads another pair", async ({
   page,
-  problems,
 }) => {
   await openWorkspace(page, "?compare=need_first_u&view=queue");
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithout}`);
-  allowUncapturedComparisons(problems);
 });
 
 test("while the rule just pressed loads, neither the statement nor a rule line speaks for the previous rule", async ({
@@ -168,7 +165,6 @@ test("a rule left before its list loaded is not the one What changed compares wi
 
 test("each column control that removes itself on use hands focus to the rule's own control", async ({
   page,
-  problems,
 }) => {
   await openWorkspace(page);
   const other = page.getByRole("button", { name: "Other rules (5)" });
@@ -196,7 +192,6 @@ test("each column control that removes itself on use hands focus to the rule's o
   await expect(page.locator("#screening-other-rules")).toHaveCount(0);
   await expect(other).toBeFocused();
   await waitForMap(page);
-  allowUncapturedComparisons(problems);
 });
 
 test("the arrow keys move between the tabs and show the one they reach, with one tab stop", async ({

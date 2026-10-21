@@ -103,29 +103,6 @@ export const mainRule = (page: Page, label: string) =>
   page.getByRole("group", { name: "The two main rules" }).getByRole("button", { name: label });
 export const tab = (page: Page, name: RegExp) => page.getByRole("tab", { name });
 
-/**
- * The saved fixtures hold the recorded comparison of the two main rules only. Choosing any other rule asks for its
- * comparison with the previous one, which the mock API answers with 501 until the fixtures capture every pair.
- * A test that chooses another rule calls this at its end; it removes those answers and nothing else.
- */
-export function allowUncapturedComparisons(problems: string[]) {
-  const answers = problems.filter((p) => /^501: .*\/api\/v1\/screening\/compare\?/.test(p)).length;
-  let notes = answers;
-  const kept = problems.filter((p) => {
-    if (/^501: .*\/api\/v1\/screening\/compare\?/.test(p)) return false;
-    // The browser's own console line for each of those answers, which carries no address.
-    if (
-      notes > 0 &&
-      p.startsWith("error: Failed to load resource: the server responded with a status of 501")
-    ) {
-      notes -= 1;
-      return false;
-    }
-    return true;
-  });
-  problems.splice(0, problems.length, ...kept);
-}
-
 export const markAt = (page: Page, key: string) =>
   page.evaluate((k) => window.__screeningMapTest?.project(k as never) ?? null, key);
 

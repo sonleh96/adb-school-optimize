@@ -78,10 +78,14 @@ export function useScreeningResults(query: ResultsQuery | null) {
   });
 }
 
+/**
+ * One school's whole record, for its card. A read that has started is never cancelled: stepping through the list
+ * with the arrow keys leaves each school's record in the cache, so stepping back shows it at once.
+ */
 export function useScreeningSchool(key: SchoolKey | null, pin: Pin = {}) {
   return useQuery({
     queryKey: screeningKeys.school(key, pin),
-    queryFn: key ? ({ signal }) => fetchScreeningSchool(key, pin, signal) : skipToken,
+    queryFn: key ? () => fetchScreeningSchool(key, pin) : skipToken,
     ...transient,
   });
 }

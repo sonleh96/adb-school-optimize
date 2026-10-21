@@ -100,6 +100,9 @@ export interface CopyResult {
   /** `eligible124` when the bounds count all the schools that can be put in order. */
   readonly rank_bounds_scope?: string | null;
   readonly score_point?: number | null;
+  /** The engine's own lowest and highest score for the school, under every rule; a school with a range has both. */
+  readonly score_lower?: number | null;
+  readonly score_upper?: number | null;
   /** Only under the two need-first rules. */
   readonly school_need?: number | null;
   readonly secondary_score_lower?: number | null;

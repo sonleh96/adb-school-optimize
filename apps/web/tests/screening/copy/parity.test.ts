@@ -544,6 +544,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
         one("locationLine", (api) => api.locationLine(s));
         one("missingLabels", (api) => api.missingLabels(s));
         one("missingGroupLabel", (api) => api.missingGroupLabel(s));
+        one("rangeRowWhy", (api) => api.rangeRowWhy(s));
         one("provinceHeading", (api) => api.provinceHeading(s.province));
         for (const k of keys) {
           one(`missingValueKind(${k})`, (api) => api.missingValueKind(s, k));
