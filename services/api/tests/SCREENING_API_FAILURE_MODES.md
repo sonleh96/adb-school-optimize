@@ -13,7 +13,6 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API3 | Urgency appears under an urgency-omitted rule. | `U`, a `U` contribution or a maximum term that names `U` is shown for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`, or a rule's `uses_urgency` is wrong. |
 | API4 | A filter changes ranks or anchors, or does not say so. | A province or district filter renumbers the remaining rows, changes a bound, or the response does not state that filters only hide rows. |
 | API5 | The list is in the wrong order. | Complete schools are not in point-rank order; an interval school is not at its lower-score position by default, or `placement=upper` does not move it to its upper-score position; the placement of a row is not stated; the queue is not ordered by province, district and name; equal scores are not separated by school name in code point order; a need-first rule orders interval schools by score without N first. |
-| API6 | A stale priority from the old model is used. | A screening response changes when `school_scores.rank_priority` or any other old-model value changes, or carries an old-model field. |
 | API7 | An export cannot rebuild the list. | Re-sorting the exported rows by the declared keys and the name tie-break does not give the listed point ranks; the method record omits a key needed to read the file; the file cannot be parsed after the `#` block. |
 | API8 | An export names the wrong rule. | The method record, the row `rule_id`, the filename or the sheet name disagree with the requested rule, or `_u` and `_no_u` rules are confused, or a proposed rule is labelled as circulated. |
 | API9 | A new route is reachable without authentication. | Any route under `/api/v1/screening` answers 200 without a bearer token when authentication is required. |
@@ -90,7 +89,6 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_identity_carries_the_exact_source_name_the_place_and_the_coordinates_of_the_school` | API12 |
 | `test_interval_and_queued_schools_never_carry_a_point_rank_or_point_score` | API2 |
 | `test_urgency_never_appears_in_an_urgency_omitted_rule` | API3 |
-| `test_old_model_priorities_do_not_reach_the_screening_responses` | API6 |
 | `test_unknown_ids_are_404_in_the_apis_error_envelope` | API11 |
 | `test_nothing_loaded_is_404_not_a_server_error` | API11 |
 | `test_malformed_arguments_are_validation_errors_in_the_same_envelope` | API11 |

@@ -7,12 +7,12 @@ No. It is not just a matter of providing API keys.
 For this stack, the clean setup is:
 - frontend uses the Supabase `anon` key only if it needs direct Supabase features later
 - FastAPI uses either a direct Postgres connection string to Supabase Postgres, or the Supabase service-role key for specific Supabase APIs
-- Cloud Run gets its own environment variables for database access, Supabase project metadata, and GCS access
+- Cloud Run gets its own environment variables for database access and Supabase project metadata
 
 For the current architecture, the recommended backend pattern is:
 - FastAPI talks directly to Supabase Postgres/PostGIS for application data
 - FastAPI uses the service-role key only when it needs Supabase-specific APIs
-- frontend calls FastAPI, not Supabase, for scoring/business logic
+- frontend calls FastAPI, not Supabase, for screening results and exports
 
 ## Recommended Integration Steps
 
@@ -20,7 +20,7 @@ For the current architecture, the recommended backend pattern is:
 
 - Create a Supabase project
 - Enable the PostGIS extension in the database
-- Run [001_core_schema.sql](/Users/sonle/Documents/work/ADB/adb-school-optimize/infra/sql/001_core_schema.sql)
+- Apply the files in [infra/sql](../../infra/sql) in order
 
 ### 2. Decide how FastAPI will access Supabase
 
@@ -28,10 +28,8 @@ Recommended:
 - direct Postgres connection from FastAPI to Supabase Postgres
 
 Use direct DB access for:
-- school and district queries
-- saving scenarios
-- writing score outputs
-- spatial queries
+- reading the stored screening runs
+- loading schools and screening input versions
 
 Use Supabase service APIs only if needed for:
 - storage
@@ -45,8 +43,6 @@ At minimum you should collect:
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DATABASE_URL`
-- `GCS_BUCKET`
-- `GOOGLE_APPLICATION_CREDENTIALS` or workload identity configuration
 
 Notes:
 - `SUPABASE_ANON_KEY` is for browser-safe public access patterns, not privileged backend writes
@@ -62,17 +58,9 @@ DATABASE_URL=postgresql://postgres:<password>@<host>:5432/postgres
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-GCS_BUCKET=<bucket-name>
-GCS_FLOOD_RASTER_PATH=rise-png/rasters/flood
-GCS_LANDCOVER_RASTER_PATH=rise-png/rasters/landcover
 ```
 
 The API now auto-loads `.env` and `.env.local` from both the repo root and `services/api`, so shell `export` is no longer required for normal local development.
-
-For Google Cloud auth:
-- local development can use `GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json`
-- or Application Default Credentials if you have already authenticated locally
-- Cloud Run should use workload identity instead of a JSON key file
 
 ### 5. Configure Cloud Run
 
@@ -80,20 +68,14 @@ In Cloud Run, set:
 - `DATABASE_URL`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `GCS_BUCKET`
 
 Do not expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend.
 
 ### 6. Load the data
 
-You then need an ingestion step to:
-- normalize join keys
-- insert districts
-- insert schools
-- insert auxiliary vector layers
-- register raster layers
-- create the default scoring scenario
-- persist the default scored results
+You then need two ingestion steps:
+- insert schools, which the screening API reads for each school's id and coordinates
+- load a screening input version, which runs the rules and stores the results (see `README.md`)
 
 From this repo, the intended order is:
 
@@ -102,7 +84,7 @@ cd services/api
 pip install -e .
 pip install -e ../../packages/school_scoring
 python -m app.ingestion.load_core_data
-python -m app.ingestion.seed_default_scenario
+python -m app.ingestion.load_screening_inputs --help
 uvicorn app.main:app --reload
 ```
 
@@ -110,10 +92,7 @@ uvicorn app.main:app --reload
 
 Your FastAPI app will typically need:
 - database session setup
-- repository/query layer
-- scenario CRUD
-- export endpoints
-- raster overlay endpoints
+- the screening query and export routes
 
 ### 8. Handle security correctly
 

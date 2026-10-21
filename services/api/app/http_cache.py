@@ -6,17 +6,6 @@ import hashlib
 
 from fastapi import Request, Response
 
-# Immutable-ish catalog data (layers, districts list, indicators).
-META_CACHE_CONTROL = "public, max-age=300, stale-while-revalidate=600"
-
-# School lists keyed by scenario; short private cache avoids hammering on remounts.
-SCHOOLS_CACHE_CONTROL = "private, max-age=60, stale-while-revalidate=120"
-
-
-def set_cache_control(response: Response, value: str) -> None:
-    response.headers["Cache-Control"] = value
-
-
 # Screening results are stored runs. A request that names its input version is stable until the links to `schools` change,
 # so it may be reused longer than a request for the default version, which moves when a newer version is loaded.
 SCREENING_PINNED_CACHE_CONTROL = "private, max-age=300, stale-while-revalidate=600"

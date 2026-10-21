@@ -94,6 +94,8 @@ export const LAYOUT = Object.freeze({
   productName: "RISE-PNG",
   productSub: "Screening of secondary schools",
   logoAria: "ADB logo",
+  /** The letters in the logo. */
+  logoMark: "ADB",
   mapAria: "Map of secondary schools in Papua New Guinea",
   workspaceAria: "Screening workspace",
   tabsAria: "List",
@@ -173,6 +175,7 @@ export const LAYOUT = Object.freeze({
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
   sessionEnded: "Your session has ended.",
   signIn: "Sign in again",
+  signOut: "Sign out",
   // The guide, How this works and the glossary while their copy loads. A failed load says loadFailed, with Retry.
   loadingGuide: "Loading the guide",
   loadingHow: "Loading How this works",

@@ -40,6 +40,31 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
   return allowedEmails.has(normalized) || allowedDomains.has(domain);
 }
 
+// A backslash (a browser reads `/\evil.com` as `//evil.com`) and the control characters the URL parser strips
+// (a tab or line feed turns `/<tab>/evil.com` into `//evil.com`) can all hide a second slash.
+const HIDES_A_HOST = /[\\\u0000-\u001f\u007f]/;
+
+/**
+ * Where to go after signing in: a path on this origin, or `/`. The value comes from the address, so it must not
+ * start a second slash or hold a backslash or control character, written plainly or percent-encoded (checked after
+ * each of up to five decodings, which is more than a hop through the sign-in form and the callback makes). A value
+ * still changing after the fifth decoding is refused, because a later decoding could reveal a host the check missed.
+ */
 export function safeNextPath(value: string | null | undefined): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/all-schools";
+  if (!value) return "/";
+  let form = value;
+  let settled = false;
+  for (let pass = 0; pass < 5 && !settled; pass += 1) {
+    if (!form.startsWith("/") || form.startsWith("//") || HIDES_A_HOST.test(form)) return "/";
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(form);
+    } catch {
+      return "/";
+    }
+    if (decoded === form) settled = true;
+    else form = decoded;
+  }
+  if (!settled) return "/";
+  return new URL(value, "http://origin.invalid").origin === "http://origin.invalid" ? value : "/";
 }

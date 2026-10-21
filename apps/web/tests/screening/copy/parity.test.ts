@@ -86,6 +86,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "FIRST_QUESTIONS",
       "GUIDE",
       "BANNED",
+      "SIGN_IN",
     ]) {
       same(k, prototypeValue(k, proto[k]), (everything as Api)[k]);
     }

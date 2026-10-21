@@ -1,7 +1,6 @@
 """Screening API: rules, input versions, ranked results, school detail, rule comparison and exports.
 
 Everything is read from the stored runs (see ``screening_store``); no score is recomputed here.
-The old Need/Priority endpoints are untouched and share nothing with these routes.
 """
 
 from __future__ import annotations
@@ -90,7 +89,6 @@ from ..screening_queries import (
     read_school_rows,
     school_key,
 )
-from .exports import RESEARCH_EXPORT_HEADERS
 
 
 def _no_control_characters(value: str) -> str:
@@ -110,6 +108,8 @@ DEFAULT_RULE_ID = "additive_u"
 K_MAX = 10_000
 CSV_TYPE = "text/csv; charset=utf-8"
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+# Every download says the list is for research, not for a decision.
+RESEARCH_EXPORT_HEADERS = {"X-RISE-PNG-Decision-Use": "research-prototype-only"}
 
 
 # ---------------------------------------------------------------------------------------------

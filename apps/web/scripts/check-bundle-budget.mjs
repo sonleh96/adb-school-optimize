@@ -2,14 +2,8 @@ import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 
 const budgetBytes = 250 * 1024;
-const routes = [
-  "/all-schools/page",
-  "/school-explorer/page",
-  "/district-explorer/page",
-  "/scenario-lab/page",
-  "/methodology-lab/page",
-  "/screening/page",
-];
+// "/" redirects to the workspace and ships no script of its own.
+const routes = ["/screening/page"];
 const report = {};
 
 function routeChunks(route) {
