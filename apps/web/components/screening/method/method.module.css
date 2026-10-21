@@ -470,7 +470,7 @@
 }
 /* The narrow layout has no map bar; its menu, when it comes, holds the layers. */
 @media (max-width: 1023px) {
-  .mapBar {
+  .mapBar.mapBar {
     display: none;
   }
 }
