@@ -100,6 +100,7 @@ describe("every fixed string follows the writing rules", () => {
     const corpus = new Corpus();
     const LAYOUT_ARGS: Record<string, unknown[]> = {
       otherRulesCount: [5],
+      addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],
       notComputedGroup: ["Need first, no urgency", 4],
       listTitle: [20, "the combined-factors rule with urgency (S)"],

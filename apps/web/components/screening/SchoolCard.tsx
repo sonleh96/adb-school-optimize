@@ -336,7 +336,11 @@ function InNumbers({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; 
   const range = scoreRangeOf(own);
 
   const row = (key: InputKey, part: boolean) => {
-    const label = TERMS[TERM_OF[key]].label;
+    // A part of school need keeps its own name, under the row for school need or under "Parts of school need"; every
+    // other row says it is what the input adds to the score, so it is not taken for the input's own value.
+    const label = NEED_KEYS.includes(key as NeedKey)
+      ? TERMS[TERM_OF[key]].label
+      : LAYOUT.addedBy(TERMS[TERM_OF[key]].label);
     if (key === "urgency" && !copy.ruleUsesUrgency(rule)) {
       return (
         <div key={key} className={`${styles.numRow} ${styles.numNote}`}>
@@ -390,7 +394,7 @@ function InNumbers({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; 
       <div className={styles.numTable}>
         {needFirst ? null : (
           <div className={`${styles.numRow} ${styles.numHead}`}>
-            <span className={styles.numLabel}>{TERMS.school_need.label}</span>
+            <span className={styles.numLabel}>{LAYOUT.addedBy(TERMS.school_need.label)}</span>
             <Bar value={needSum} max={Math.max(scale, needSum)} width={64} />
             <span className={styles.numValue}>{f3(needSum)}</span>
           </div>
