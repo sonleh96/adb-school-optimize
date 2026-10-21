@@ -62,7 +62,7 @@
 
 .table {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) 64px 50px 58px;
+  grid-template-columns: 10px minmax(0, 1fr) 64px 50px minmax(58px, auto);
   column-gap: 8px;
   row-gap: 6px;
   align-items: center;

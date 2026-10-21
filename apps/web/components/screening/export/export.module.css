@@ -59,7 +59,6 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  margin-right: -8px;
   border: 0;
   border-radius: 6px;
   background: none;
@@ -166,6 +165,9 @@
   padding: 8px 8px 8px 0;
   border-top: 1px solid var(--hair-2);
   vertical-align: top;
+}
+.table thead td {
+  border-top: 0;
 }
 .table th:last-child,
 .table td:last-child {
