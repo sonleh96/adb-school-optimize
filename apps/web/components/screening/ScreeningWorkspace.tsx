@@ -576,7 +576,6 @@ function Workspace() {
           {copyLink(false)}
           {method.exportButton}
         </div>
-        {method.mapBar}
 
         {!cardOpen && ready && !guidance.glossary && !guidance.page && !method.on ? (
           <p className={`${styles.panel} ${styles.slotHint}`} id="slot-hint" data-region="slot-hint">
@@ -811,7 +810,7 @@ function Workspace() {
           />
         ) : null}
       </div>
-      <GuidanceLayer root={rootElement} data={guideData} />
+      <GuidanceLayer root={rootElement} data={guideData} mapBarItems={method.mapBar} />
       {method.exportSheet}
       <div ref={setLayer} className={styles.layer} />
       <p className={styles.toast} role="status" aria-live="polite" data-on={toast ? "" : undefined}>

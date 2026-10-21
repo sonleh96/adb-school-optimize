@@ -21,6 +21,7 @@ import base from "../screening.module.css";
 import { CompareLegend, MethodLegend } from "./MethodLegend";
 import { MethodList, MethodListHead } from "./MethodList";
 import { MethodCard } from "./MethodCard";
+import type { MapBarClasses } from "../guide/GuidanceLayer";
 import { FilterPanel, LayersPanel } from "./MapOptions";
 import { MethodRuleArea } from "./MethodRuleArea";
 import { Popover } from "./Popover";
@@ -63,7 +64,7 @@ export interface Built {
   rankedList: ReactNode;
   compareColumn: ReactNode | null;
   legend: ReactNode;
-  mapBar: ReactNode;
+  mapBar: (classes: MapBarClasses) => ReactNode;
   rootClassName: string;
   cardLayer: (input: { record: CopySchool; detail: SchoolDetailResponse }) => ReactNode;
 }
@@ -176,18 +177,23 @@ export function buildMounts(input: BuildInput): Built {
     );
 
   const hidden = state.hide;
-  const mapBar = (
-    <div className={`${base.panel} ${styles.mapBar}`} data-region="layers">
+  // Map layers, at the end of the guidance map bar, after a rule.
+  const mapBar = (classes: MapBarClasses) => (
+    <>
+      <span className={styles.barSep} aria-hidden />
       <button
         ref={input.layersButton}
         type="button"
-        className={styles.barButton}
+        className={classes.button}
+        data-region="layers"
+        aria-label={copy.TERMS.layers.label}
+        title={copy.TERMS.layers.label}
         aria-expanded={state.pop === "layers"}
         aria-controls="screening-layers"
         onClick={() => setPop("layers")}
       >
         <Layers size={14} aria-hidden />
-        {copy.TERMS.layers.label}
+        <span className={classes.label}>{copy.TERMS.layers.label}</span>
       </button>
       {state.pop === "layers" ? (
         <Popover
@@ -213,7 +219,7 @@ export function buildMounts(input: BuildInput): Built {
           />
         </Popover>
       ) : null}
-    </div>
+    </>
   );
 
   const names = new Map(
