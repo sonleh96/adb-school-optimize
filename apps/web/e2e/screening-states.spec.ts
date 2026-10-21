@@ -43,8 +43,11 @@ const RESULTS = (rule: string) => new RegExp(`/api/v1/screening/results\\?rule=$
 test("while the next rule loads, everything on screen is labelled by the rows it shows and is dimmed together", async ({
   page,
 }) => {
+  // The page may ask for this list before the switch (it reads both main rules); it is held until the test lets go.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
   await page.route(RESULTS("additive_no_u"), async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await held;
     await route.continue();
   });
   await openWorkspace(page);
@@ -75,6 +78,7 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "false");
 
   // Then the new rule's rows arrive and everything is relabelled together.
+  release();
   await expect(page.getByTestId("legend-rule")).toContainText("Additive, urgency omitted");
   await expect(page.getByTestId("card-rule")).toHaveText(COPY.cardRule("Additive, urgency omitted"));
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
