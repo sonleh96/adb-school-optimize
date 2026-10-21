@@ -2009,6 +2009,25 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   }
 }
 
+/* A phone: the same closer rule area, and 2 px less around each switch label, so "Combined factors," fits on its line
+   at 360 px and the main rule's label takes two lines, not three. */
+@media (max-width: 479px) {
+  .rule {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .ruleButton {
+    padding-left: 8px;
+    padding-right: 8px;
+    column-gap: 6px;
+  }
+  .statement {
+    margin-top: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
 .barButton {
   display: inline-flex;
   align-items: center;
