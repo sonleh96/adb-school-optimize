@@ -4,7 +4,8 @@
  * next school of the same role stands in, so a card never repeats a sentence the screen already shows.
  */
 import type { BoundCopy, CopyRuleId, CopySchool, InputKey, Segments, TermKey } from "../copy";
-import { DEFAULT_RULE, PROPOSED_RULE, isCopyRuleId } from "../copy";
+import { isCopyRuleId } from "../copy";
+import { RULE_PAIR } from "../rule-pair";
 
 import type { CardId } from "./machine";
 import { type Roles, besides, onlyRemoteness } from "./roles";
@@ -196,7 +197,7 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
         examples: s
           ? [
               ...about(s, (x) => copy.inputSentence(x, "urgency")),
-              ...[DEFAULT_RULE, PROPOSED_RULE].map((id) => ({
+              ...RULE_PAIR.map((id) => ({
                 label: copy.ruleShortName(id),
                 text: plain(copy.rankSentence(s, id)),
               })),
@@ -234,7 +235,7 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
       };
     case "rule_roles":
       return {
-        examples: [DEFAULT_RULE, PROPOSED_RULE].map((id) => ({
+        examples: RULE_PAIR.map((id) => ({
           label: copy.ruleLabel(id),
           text: plain(copy.ruleRelation(id)),
         })),
@@ -362,7 +363,7 @@ export function cardModel(ctx: CardContext, id: CardId): CardModel | null {
       examples: s
         ? [
             { who: copy.distinctName(s), text: plain(copy.inputSentence(s, "urgency")) },
-            ...[DEFAULT_RULE, PROPOSED_RULE].map((r) => ({
+            ...RULE_PAIR.map((r) => ({
               label: copy.ruleShortName(r),
               text: plain(copy.rankSentence(s, r)),
             })),

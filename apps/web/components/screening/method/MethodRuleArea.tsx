@@ -40,8 +40,8 @@ export function MethodRuleArea({
   onFormula: () => void;
   onCompare: () => void;
 }) {
-  const main = rules.filter((r) => r.primary);
-  const other = rules.filter((r) => !r.primary);
+  const main = rules.filter((r) => r.inPair);
+  const other = rules.filter((r) => !r.inPair);
   const [othersOpen, setOthersOpen] = useState(false);
   const showOthers = othersOpen || other.some((r) => r.id === requested);
   const { TERMS, LAYOUT } = copy;

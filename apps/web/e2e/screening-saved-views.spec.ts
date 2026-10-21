@@ -64,7 +64,7 @@ const SEEDS = [
   "Schools with incomplete records",
 ];
 /** The range school the seed chooses by role: the best possible place, then the worst. */
-const RANGE_KEY = rowsOf("additive_u")
+const RANGE_KEY = rowsOf("additive_no_u")
   .filter((row) => row.cohort === "interval")
   .map(
     (row) =>
@@ -138,10 +138,10 @@ test("the seeds open as rail steps with one counter, each on its own screen, thr
   await expect(rail(page).locator("kbd")).toHaveCount(0);
 
   const expected = [
-    { rule: "additive_u", compare: null, school: null, view: "ranked", qgroup: "province" },
+    { rule: "additive_no_u", compare: null, school: null, view: "ranked", qgroup: "province" },
     { rule: "additive_no_u", compare: "additive_u", school: null, view: "ranked", qgroup: "province" },
-    { rule: "additive_u", compare: null, school: RANGE_KEY, view: "ranked", qgroup: "province" },
-    { rule: "additive_u", compare: null, school: null, view: "queue", qgroup: "evidence" },
+    { rule: "additive_no_u", compare: null, school: RANGE_KEY, view: "ranked", qgroup: "province" },
+    { rule: "additive_no_u", compare: null, school: null, view: "queue", qgroup: "evidence" },
   ];
   for (const [i, state] of expected.entries()) {
     await expect(counter(page)).toHaveText(`Saved view ${i + 1} of 4`);
@@ -201,8 +201,8 @@ test("presenting starts at view 1, and Page Down and Page Up step through the vi
 
 test("save a fifth view of the screen, open it after a reload, and remove it", async ({ page }) => {
   await startList(page);
-  const name = orderedNames("additive_u")[4];
-  const key = keyOf("additive_u", name);
+  const name = orderedNames("additive_no_u")[4];
+  const key = keyOf("additive_no_u", name);
   await orderedRow(page, name).click();
   await section(page).getByRole("textbox", { name: "Name this view" }).fill("  Provincial   board ");
   await section(page).getByRole("button", { name: "Save this view" }).click();
@@ -220,8 +220,10 @@ test("save a fifth view of the screen, open it after a reload, and remove it", a
   await page.evaluate(() => window.__screeningWorkspace!.setState({ school: null }));
   await viewButtons(page).nth(4).click();
   await expect(counter(page)).toHaveText("Saved view 5 of 5");
-  await expect.poll(() => workspace(page)).toMatchObject({ school: key, rule: "additive_u", view: "ranked" });
-  await expect(page.getByTestId("guide-step-body")).toContainText("Rule: Combined factors, with urgency.");
+  await expect
+    .poll(() => workspace(page))
+    .toMatchObject({ school: key, rule: "additive_no_u", view: "ranked" });
+  await expect(page.getByTestId("guide-step-body")).toContainText("Rule: Combined factors, without urgency.");
   await expect(rail(page).getByText("The list, the map and the school card")).toBeVisible();
   await expect(drift(page)).toHaveCount(0);
 
@@ -356,11 +358,11 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("Rules the saved views use");
   await expect(record).toContainText(
-    "Combined factors, with urgency. A sensitivity check that puts the urgency value back, from the circulated paper."
+    "Combined factors, without urgency. The main rule of the revised paper, which leaves urgency out."
   );
   await expect(record).toContainText(/\d+ source files?\./);
   const plain = (await sheet(page).innerText()) ?? "";
-  for (const word of ["additive_u", "sha256", "Formula", "Briefing", "Dirichlet", "×", "—"])
+  for (const word of ["additive_no_u", "additive_u", "sha256", "Formula", "Briefing", "Dirichlet", "×", "—"])
     expect(plain, `the plain tab says "${word}"`).not.toContain(word);
 
   await sheet(page).getByRole("button", { name: "Copy all links" }).click();
@@ -370,7 +372,7 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   expect(copied).toBe(
     [
       `1. ${SEEDS[0]}\n${origin}/screening`,
-      `2. ${SEEDS[1]}\n${origin}/screening?rule=additive_no_u&compare=additive_u`,
+      `2. ${SEEDS[1]}\n${origin}/screening?compare=additive_u`,
       `3. ${SEEDS[2]}\n${origin}/screening?school=${RANGE_KEY}`,
       `4. ${SEEDS[3]}\n${origin}/screening?view=queue&qgroup=evidence`,
     ].join("\n\n")
@@ -385,8 +387,8 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   expect(pack.saved_views.map((v: { order: number; name: string }) => [v.order, v.name])).toEqual(
     SEEDS.map((n, i) => [i + 1, n])
   );
-  expect(Object.keys(pack.method_record)).toEqual(["additive_u", "additive_no_u"]);
-  expect(pack.method_record.additive_u).toContain("rule_id: additive_u");
+  expect(Object.keys(pack.method_record)).toEqual(["additive_no_u"]);
+  expect(pack.method_record.additive_no_u).toContain("rule_id: additive_no_u");
   await expect(
     page.getByRole("status").filter({ hasText: "Downloaded the saved views for meetings." })
   ).toBeVisible();
@@ -594,7 +596,7 @@ test("a view whose school and rule are gone points at no card, and marks what it
   await expect(counter(page)).toHaveText("Saved view 1 of 1");
   await expect
     .poll(() => workspace(page))
-    .toMatchObject({ school: null, rule: "additive_u", place: "upper" });
+    .toMatchObject({ school: null, rule: "additive_no_u", place: "upper" });
   const onScreen = rail(page).locator("p", { hasText: "On screen" });
   await expect(onScreen).not.toContainText("school card");
   await expect(page.getByTestId("guide-step-body")).toHaveAttribute("data-dropped", "rule school");
@@ -660,7 +662,16 @@ test("no screen promises that a saved view keeps the map position", async ({ pag
 
 test("the pack's record describes its file: lists of the length it states, and each rule's own groups", async ({
   page,
+  context,
 }) => {
+  // The seeds all show the main rule; a view of the rule with urgency adds a second rule with groups of its own.
+  await store(
+    context,
+    JSON.stringify({
+      v: 1,
+      views: [{ seed: "top" }, { seed: "urgency" }, { name: "With urgency", q: "rule=additive_u" }],
+    })
+  );
   await open(page, "?guide=off&n=10&panel=export&pack=1");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
@@ -681,7 +692,7 @@ test("a link to a view reopens it for its sender, and gives a colleague the send
   browser,
 }) => {
   await startList(page);
-  const name = orderedNames("additive_u")[6];
+  const name = orderedNames("additive_no_u")[6];
   await orderedRow(page, name).click();
   await page.evaluate(() => window.__screeningWorkspace!.setState({ rule: "need_first_u" }));
   await section(page).getByRole("textbox", { name: "Name this view" }).fill("Board");
@@ -691,7 +702,7 @@ test("a link to a view reopens it for its sender, and gives a colleague the send
   await expect(counter(page)).toHaveText("Saved view 5 of 5");
   const link = page.url();
   const sent = await workspace(page);
-  expect(sent).toMatchObject({ rule: "need_first_u", school: keyOf("additive_u", name) });
+  expect(sent).toMatchObject({ rule: "need_first_u", school: keyOf("additive_no_u", name) });
 
   // The sender reloads: the same view.
   await page.reload();

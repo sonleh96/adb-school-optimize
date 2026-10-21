@@ -173,17 +173,17 @@ describe("seeds, by role", () => {
       [queued, first, early, second, wide],
     ])
       expect(seedsOf(rolesOf(order, copy)!, true)).toEqual({
-        top: "rule=additive_u",
+        top: "rule=additive_no_u",
         urgency: "rule=additive_no_u&compare=additive_u",
         range: "school=r1",
         queue: "view=queue&qgroup=evidence",
       });
   });
 
-  it("offers only what the data holds: one complete school, and no proposed revision (6)", () => {
-    expect(seedsOf(rolesOf([first], copy)!, false)).toEqual({ top: "rule=additive_u" });
+  it("offers only what the data holds: one complete school, and no rule with urgency (6)", () => {
+    expect(seedsOf(rolesOf([first], copy)!, false)).toEqual({ top: "rule=additive_no_u" });
     expect(seedsOf(rolesOf([first, queued], copy)!, true)).toEqual({
-      top: "rule=additive_u",
+      top: "rule=additive_no_u",
       urgency: "rule=additive_no_u&compare=additive_u",
       queue: "view=queue&qgroup=evidence",
     });

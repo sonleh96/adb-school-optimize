@@ -56,12 +56,12 @@ test("the sheet previews the API's file and downloads that file byte for byte", 
   await openWorkspace(page);
   await openSheet(page);
   await expect(sheet(page).getByRole("heading")).toHaveText(
-    "Top list: the first 20 under the combined-factors rule with urgency (S)"
+    "Top list: the first 20 under the combined-factors rule without urgency (S0)"
   );
-  const counts = listed("exports/top_additive_u_20.csv");
+  const counts = listed("exports/top_additive_no_u_20.csv");
   const table = sheet(page).locator("[data-region=export-table] tbody tr");
   await expect(table).toHaveCount(counts.point);
-  await expect(table.first()).toHaveText("1stSample School 08 · South Province0.683");
+  await expect(table.first()).toHaveText("1stSample School 08 · South Province0.708");
   await expect(sheet(page).locator("table").nth(1).locator("tbody tr")).toHaveCount(counts.range);
   await expect(sheet(page).locator("[data-region=method-record]")).toContainText("Method record");
   expect(search(page)).toBe("?panel=export");
@@ -71,9 +71,9 @@ test("the sheet previews the API's file and downloads that file byte for byte", 
     sheet(page).getByRole("button", { name: "Download the top list" }).click(),
   ]);
   // The plain sheet names the file in plain words; the bytes are still the API's file.
-  expect(download.suggestedFilename()).toBe("rise-png-top-20-combined-factors-with-urgency.csv");
+  expect(download.suggestedFilename()).toBe("rise-png-top-20-combined-factors-without-urgency.csv");
   const saved = readFileSync((await download.path())!);
-  expect(saved.equals(file("exports/top_additive_u_20.csv"))).toBe(true);
+  expect(saved.equals(file("exports/top_additive_no_u_20.csv"))).toBe(true);
   await expect(page.getByRole("status").filter({ hasText: "Downloaded the top list" })).toHaveText(
     "Downloaded the top list. The method record is in the first lines of the file."
   );
@@ -82,12 +82,12 @@ test("the sheet previews the API's file and downloads that file byte for byte", 
 test("the length changes the list, the file and the link", async ({ page }) => {
   await openWithSheet(page, "?panel=export");
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(
-    listed("exports/top_additive_u_20.csv").point
+    listed("exports/top_additive_no_u_20.csv").point
   );
   await sheet(page).getByRole("button", { name: "10", exact: true }).click();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(10);
   await expect(sheet(page).getByRole("heading")).toHaveText(
-    "Top list: the first 10 under the combined-factors rule with urgency (S)"
+    "Top list: the first 10 under the combined-factors rule without urgency (S0)"
   );
   expect(search(page)).toBe("?panel=export&n=10");
 });
@@ -98,7 +98,7 @@ test("Copy the method record in the method sheet copies the file's own record", 
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Method record copied" })).toBeVisible();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  const record = lines("exports/top_additive_u_20.csv")
+  const record = lines("exports/top_additive_no_u_20.csv")
     .filter((l) => l.startsWith('"# '))
     .map((l) => l.slice(3, -1).replace(/""/g, '"').replace(/: ?/, ": "));
   expect(copied.split("\n")).toEqual(record);
@@ -123,7 +123,7 @@ test("the plain sheet keeps method words out, and the method sheet keeps the for
 }) => {
   await openWithSheet(page, "?panel=export");
   const plain = await sheet(page).innerText();
-  for (const word of ["additive_u", "sha256", "×", "Formula", "S = 0.60N"])
+  for (const word of ["additive_no_u", "additive_u", "sha256", "×", "Formula", "S0 = "])
     expect(plain, `plain sheet shows "${word}"`).not.toContain(word);
   await expect(sheet(page)).toContainText(
     "2 source files. The downloaded file names each one with its fingerprint."
@@ -131,10 +131,12 @@ test("the plain sheet keeps method words out, and the method sheet keeps the for
 
   await page.goto("/screening?panel=export&analyst=1");
   await waitForMap(page);
-  await expect(sheet(page).getByRole("heading")).toHaveText("First 20, Combined");
+  await expect(sheet(page).getByRole("heading")).toHaveText("First 20, Combined, no urgency");
   const record = sheet(page).locator("[data-region=method-record]");
-  await expect(record).toContainText("additive_u");
-  await expect(record).toContainText("S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L");
+  await expect(record).toContainText("additive_no_u");
+  await expect(record).toContainText(
+    "S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
+  );
   await expect(record).toContainText("input_sha256");
 });
 
@@ -239,7 +241,7 @@ test("the method sheet follows the province on screen, and says when a filter is
   page,
 }) => {
   await openWithSheet(page, "?analyst=1&prov=South+Province&panel=export");
-  const south = lines("exports/top_additive_u_20_south.csv").filter((l) => l.startsWith("point,")).length;
+  const south = lines("exports/top_additive_no_u_20_south.csv").filter((l) => l.startsWith("point,")).length;
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(south);
   await expect(sheet(page).locator("[data-region=export-filters]")).toContainText("Province: South Province");
   await expect(sheet(page).locator("[data-region=export-filters]")).not.toContainText("None.");
@@ -263,14 +265,14 @@ test("the plain sheet copies its record in plain words, and the method sheet kee
   await openWithSheet(page, "?panel=export");
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
   const plain = await page.evaluate(() => navigator.clipboard.readText());
-  expect(plain).toContain("Combined factors, with urgency");
+  expect(plain).toContain("Combined factors, without urgency");
   expect(plain.split("\n").filter((line) => line.includes("Source"))).toEqual([SOURCE_LINE]);
   await expect(
     sheet(page)
       .locator("dt", { hasText: /^Source$/ })
       .locator("+ dd")
   ).toHaveText(SOURCE_VALUE);
-  for (const word of ["additive_u", "sha256", "formula", "run_id", "S = 0.60N"])
+  for (const word of ["additive_no_u", "additive_u", "sha256", "formula", "run_id", "S0 = "])
     expect(plain, `plain record carries "${word}"`).not.toContain(word);
 
   await page.goto("/screening?analyst=1&panel=export");
@@ -282,12 +284,12 @@ test("the plain sheet copies its record in plain words, and the method sheet kee
       .locator("+ dd")
   ).toHaveText(SOURCE_VALUE);
   await sheet(page).getByRole("button", { name: "Copy the method record" }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("rule_id: additive_u");
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("rule_id: additive_no_u");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     sheet(page).getByRole("button", { name: "Download the top list" }).click(),
   ]);
-  expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_u.csv");
+  expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_no_u.csv");
 });
 
 test("a failed load of the sheet's code says so and loads it again on Retry", async ({ context }) => {

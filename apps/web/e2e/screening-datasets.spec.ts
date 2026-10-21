@@ -146,7 +146,7 @@ test("blank and unbroken names render as words, stay inside their rows and keep 
   const text = await column(page).innerText();
   expect(text).not.toMatch(/\bnull\b|undefined|NaN/);
   // A name with nothing printable in it is the copy's unnamed school, with its province.
-  await expect(orderedRow(page, "Unnamed school")).toContainText("17thUnnamed school · North Province");
+  await expect(orderedRow(page, "Unnamed school")).toContainText("16thUnnamed school · North Province");
 
   const report = await page.locator(`${ORDERED} button`).evaluateAll((rows) =>
     rows.map((row) => {

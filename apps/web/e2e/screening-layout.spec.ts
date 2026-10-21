@@ -18,7 +18,7 @@ import { ORDERED, expect, keyOf, orderedRow, test, waitForMap } from "./screenin
 
 test.describe.configure({ timeout: 60_000 });
 
-const SCHOOL = keyOf("additive_u", "Sample School 08");
+const SCHOOL = keyOf("additive_no_u", "Sample School 08");
 
 interface Box {
   name: string;

@@ -333,7 +333,7 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
             );
         }
       })}
-      {/* The paper's flag, under the circulated rule only; a flag only just over the line says so (copy owns both). */}
+      {/* The paper's flag, under each rule the test ran for in that rule's words; near the line only by its own band. */}
       {persistence.length ? (
         <p className={styles.flag} data-region="persistent-flag">
           {persistence.join(" ")}

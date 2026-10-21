@@ -378,8 +378,13 @@ function Record({
         </span>
       </div>
       {persistent.map((id) => (
-        <p key={id} className={styles.flag}>
+        <p key={id} className={styles.flag} data-persistence={id}>
           {method.insp.persistent(id)}
+          {/* The near-line sentence, only where this rule's own band puts the school, with this rule's margin. */}
+          {copy
+            .persistenceNote(school, id)
+            .slice(1)
+            .map((sentence) => ` ${sentence}`)}
         </p>
       ))}
       <dl className={styles.cond}>

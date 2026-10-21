@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 import { RuleId } from "@/lib/screening/types";
 import { DEFAULT_STATE, type WorkspaceState } from "@/lib/screening/workspace/state";
 import {
@@ -19,11 +20,11 @@ import {
 } from "@/lib/screening/workspace/store";
 
 /**
- * The rule the API lists first. Its list is asked for at the same time as the rules, so the first list does not
- * wait a round trip for them. If the API's default turns out to be another rule, the rules say so and the store
- * follows.
+ * The rule the API names as its default: the revised paper's main rule. Its list is asked for at the same time as
+ * the rules, so the first list does not wait a round trip for them. If the API's default turns out to be another
+ * rule, the rules say so and the store follows.
  */
-export const EXPECTED_DEFAULT_RULE = RuleId.parse("additive_u", "expected default rule");
+export const EXPECTED_DEFAULT_RULE = RuleId.parse(PRIMARY_RULE, "expected default rule");
 
 const TEST_HOOKS = process.env.NEXT_PUBLIC_SCREENING_TEST_HOOKS === "true";
 

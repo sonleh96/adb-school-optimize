@@ -19,6 +19,9 @@ interface Row {
     longitude: number | null;
   };
 }
+/** The rule the screen opens on, the revised paper's main rule, and the circulated rule beside it in the switch. */
+export const MAIN_RULE = "additive_no_u";
+export const URGENCY_RULE = "additive_u";
 export const rowsOf = (rule: string): Row[] => fixture(`results/${rule}.json`).rows;
 export const orderedNames = (rule: string) =>
   rowsOf(rule)
@@ -30,7 +33,7 @@ export const queuedNames = (rule: string) =>
     .map((r) => r.school.source_school_name);
 export const keyOf = (rule: string, name: string) =>
   rowsOf(rule).find((r) => r.school.source_school_name === name)!.school.school_key;
-export const ORDERED_COUNT = orderedNames("additive_u").length;
+export const ORDERED_COUNT = orderedNames(MAIN_RULE).length;
 /** The dots that carry their place as a number on the map: the first ten complete schools that have coordinates. */
 export const numberedPlaces = (rule: string) =>
   rowsOf(rule)
@@ -97,9 +100,10 @@ export async function waitForWorkspaceHook(page: Page) {
 /** The lists' accessible names, as the copy system words the tabs. */
 export const ORDERED = "ol[aria-label='The list']";
 export const INCOMPLETE = "ol[aria-label='Incomplete records']";
+/** The two rules of the switch by their labels: the main rule, which the screen opens on, then the urgency sensitivity. */
 export const RULE = {
-  main: "Combined factors, with urgency",
-  proposed: "Combined factors, without urgency",
+  main: "Combined factors, without urgency",
+  urgency: "Combined factors, with urgency",
   needFirst: "Need-first rule, with urgency",
 };
 

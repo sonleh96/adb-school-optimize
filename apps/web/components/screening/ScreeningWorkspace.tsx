@@ -15,9 +15,10 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { type BoundCopy, type CopyRuleId, DEFAULT_RULE, PROPOSED_RULE, copyFor } from "@/lib/screening/copy";
+import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
 import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
+import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
@@ -369,8 +370,10 @@ function Workspace() {
     // never on screen, so it is not the one compared with.
     store.setState({ rule, compare: shown?.rule ?? data.requested });
   };
-  const seeWithout = () => {
-    store.setState({ rule: PROPOSED_RULE, compare: DEFAULT_RULE, view: "ranked" });
+  // What changed for the main rule, against the rule that puts the urgency value back: the list stays on the main
+  // rule, as guide 5 and the saved view "With and without urgency" show it.
+  const seeWithUrgency = () => {
+    store.setState({ rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, view: "ranked" });
     list.current?.scrollTo({ top: 0 });
   };
   const backToMain = () => store.setState({ rule: null, compare: null });
@@ -518,7 +521,7 @@ function Workspace() {
       shown,
       ordered: ordered.map((row) => row.school.school_key),
       ready,
-      proposed: !!data.rules?.some((r) => r.id === PROPOSED_RULE),
+      urgencyRule: !!data.rules?.some((r) => r.id === SENSITIVITY_RULE),
       // Set each to true when the workspace shows the region the guide step points at.
       features: GUIDE_FEATURES,
       mode: layout.mode,
@@ -630,7 +633,7 @@ function Workspace() {
                   disabled={!ready}
                   layer={layer}
                   onRule={changeRule}
-                  onSeeWithout={seeWithout}
+                  onSeeWithUrgency={seeWithUrgency}
                   onBack={backToMain}
                 />
               ) : (
