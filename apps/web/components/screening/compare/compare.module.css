@@ -380,6 +380,51 @@
   }
 }
 
+/* The chart's text: out of sight until focus enters it, then a plain table under the chart. */
+.chartTable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.chartTable:focus-within {
+  position: static;
+  width: 100%;
+  height: auto;
+  margin-top: 12px;
+  clip-path: none;
+  white-space: normal;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  line-height: 17px;
+}
+.chartTable th,
+.chartTable td {
+  padding: 4px 8px 4px 0;
+  border-top: 1px solid var(--hair-2);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+.chartTable thead th {
+  border-top: 0;
+  color: var(--ink-3);
+}
+.chartTable button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 12.5px/17px var(--sans);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.chartTable tr[data-on] button {
+  color: var(--navy);
+}
+
 /* The workspace sets every button's colour to inherit; these keep their own. */
 .kSeg.kSeg button[aria-pressed="true"] {
   color: #fff;

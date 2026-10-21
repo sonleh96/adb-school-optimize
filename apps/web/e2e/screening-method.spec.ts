@@ -17,6 +17,8 @@
  *     is turned off                                                                             -> "a plain screen..."
  * 13. The compare card states a rule's own place under a label that counts the schools both rules put in order, so
  *     it contradicts the chart                                                                  -> "the compare card's places..."
+ * 14. Compare mode's chart is a picture only: no keyboard or screen-reader way to each school's
+ *     two places                                                                                -> "the chart has a table..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -316,4 +318,27 @@ test("the compare card's places are the ones the chart draws, among the schools 
   await expect(blocks.nth(0)).toContainText(String(row.rank_a));
   await expect(blocks.nth(1)).toContainText(String(row.rank_b));
   await expect(blocks.nth(1)).not.toContainText("14");
+});
+
+test("the chart has a table a keyboard and a screen reader can use", async ({ page }) => {
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  const pair = json("compare/additive_u__additive_no_u.json");
+  const table = page.getByRole("table", {
+    name: "Places in the list under the two rules, joined by a line per school",
+  });
+  await expect(table.getByRole("row")).toHaveCount(pair.ranks.length + 1);
+  const first = pair.ranks[0];
+  await expect(table.getByRole("row").nth(1)).toContainText(String(first.rank_a));
+  await expect(table.getByRole("row").nth(1)).toContainText(String(first.rank_b));
+  // The chart itself is hidden from assistive technology; the table says what it shows.
+  await expect(page.locator("[data-region=slope-chart] svg")).toHaveAttribute("aria-hidden", "true");
+
+  // Every school is reachable from the keyboard, and choosing one opens its card as a click on the chart does.
+  await table.getByRole("button").first().focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(card(page)).toBeVisible();
+  await expect(card(page).getByRole("heading", { level: 2 })).toHaveText(
+    await table.getByRole("button").nth(1).innerText()
+  );
 });
