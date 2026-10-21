@@ -95,7 +95,16 @@ test("with sign-in required, the manifest and the icon are public and the sign-i
 test("with sign-in required, the workspace and the API still send a signed-out person to sign in", async ({
   request,
 }) => {
-  for (const file of ["/screening", "/api/v1/screening/rules", "/screening/manifest.webmanifest"]) {
+  // A static file's extension exempts it only at the root: under the API or a page, it is checked like the rest.
+  for (const file of [
+    "/screening",
+    "/api/v1/screening/rules",
+    "/api/v1/x.ico",
+    "/api/v1/x.png",
+    "/api/v1/screening/schools/a.svg",
+    "/screening/manifest.webmanifest",
+    "/screening/x.png",
+  ]) {
     const response = await request.get(`${ORIGIN}${file}`, { maxRedirects: 0 });
     expect(response.status(), file).toBe(307);
     expect(new URL(response.headers()["location"], ORIGIN).pathname, file).toBe("/sign-in");
