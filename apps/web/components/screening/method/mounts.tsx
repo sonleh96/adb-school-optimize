@@ -1,34 +1,36 @@
 "use client";
 
 /**
- * Where the method details meet the workspace. The workspace calls `useMethodMounts` once and puts each returned
- * piece where its plain counterpart goes; a piece is null while the method details are off (or still loading), and
- * the plain one shows. The method layer's code (`layer.ts`) and words (`methodFor`) load on first use, in parallel.
+ * Where the method details and the export sheet meet the workspace. The workspace calls `useMethodMounts` once and puts
+ * each returned piece where its plain counterpart goes; a method piece is null while the method details are off (or
+ * still loading), and the plain one shows. This file is in the workspace's up-front script, so it holds only hooks and
+ * the two buttons that are always on screen: the method layer (`layer.ts`, built by `build.tsx`), compare mode and
+ * the export sheet each load in their own chunk on first use, and the method words through the copy's `methodFor`.
  * Every change goes through the workspace controller, so a guide, a pasted link and a click land on the same screen.
  */
-import { Download, Layers } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Download } from "lucide-react";
+import { type ReactNode, createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { type BoundCopy, type CopyRuleId, type ListedSchool, RULE_IDS } from "@/lib/screening/copy";
+import {
+  type BoundCopy,
+  type CopyRuleId,
+  type CopySchool,
+  type ListedSchool,
+  RULE_IDS,
+} from "@/lib/screening/copy";
 import { type RulePair, useScreeningCompare, useScreeningRules } from "@/lib/screening/hooks";
 import type { OrderedRow } from "@/lib/screening/list";
-import { LABELLED_PLACES } from "@/lib/screening/marks";
-import { type Compared, MOVE_EDGES, compareFor } from "@/lib/screening/method/compare";
-import { admits, filterOptions, filtering } from "@/lib/screening/method/filters";
-import { type MarkPaint, type Move, NO_PAINT, moveHex } from "@/lib/screening/method/paint";
-import type { CopySchool } from "@/lib/screening/copy";
+import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
 import type { ListedRow, SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
 import type { Band } from "@/lib/screening/workspace/bands";
 import type { Layout } from "@/lib/screening/workspace/layout";
-import type { MapLayer, WorkspaceState } from "@/lib/screening/workspace/state";
+import type { WorkspaceState } from "@/lib/screening/workspace/state";
 import type { WorkspaceStore } from "@/lib/screening/workspace/store";
 
 import type { RuleChoice } from "../useScreeningData";
-import base from "../screening.module.css";
+import styles from "./actions.module.css";
 import { MethodSwitch } from "./MethodSwitch";
 import { useMethod } from "./useMethod";
-import exportStyles from "../export/export.module.css";
-import styles from "./method.module.css";
 
 /** Loads a chunk once; a failed load is tried again on the next call. */
 function once<T>(load: () => Promise<T>): () => Promise<T> {
@@ -111,70 +113,49 @@ export interface Mounts {
   cardLayer: ((input: { record: CopySchool; detail: SchoolDetailResponse }) => ReactNode) | null;
 }
 
-/** The layers the screen has data for. Boundary outlines need an outlines read the screening API does not have. */
-const AVAILABLE: readonly MapLayer[] = ["ranked", "numerals", "range", "queue"];
-
 export function useMethodMounts(input: MountInput): Mounts {
-  const { store, state, copy, rule, requested, rules, ready, stale, ordered, schools, layer, keyboard } =
-    input;
-  const { mod, load } = useChunk(loadLayer, state.analyst);
+  const { store, state, copy, rule, ready } = input;
   const comparing = state.mode === "compare";
-  const { mod: compareMod } = useChunk(loadCompare, comparing);
   const exporting = state.panel === "export" && ready && rule !== null;
+  const { mod, load } = useChunk(loadLayer, state.analyst);
+  const { mod: compareMod } = useChunk(loadCompare, comparing);
   const { mod: exportMod, load: loadSheet } = useChunk(loadExport, exporting);
   const { method } = useMethod(copy, rule, state.analyst && ready);
   const on = state.analyst && ready && mod !== null && method !== null && rule !== null;
+  const detail = useScreeningRules().data?.rules ?? null;
+  // Held in state, not useRef: they go to the method chunk's builder as plain objects for its buttons to fill.
+  const [filterButton] = useState(() => createRef<HTMLButtonElement>());
+  const [layersButton] = useState(() => createRef<HTMLButtonElement>());
+  const exportOpener = useRef<HTMLButtonElement>(null);
+
+  // The filters can only hold a province or remoteness class the list has.
+  const { rows } = input;
+  useEffect(() => {
+    if (!mod || rows.length === 0) return;
+    const options = mod.filterOptions(rows);
+    store.setKnown({ provinces: new Set(options.provinces), localities: new Set(options.localities) });
+  }, [store, mod, rows]);
 
   // Compare mode: the rule compared with (`compare`) and the rule on screen, from the API's comparison of the two.
   const a = (state.compare ?? null) as CopyRuleId | null;
   const pair = comparing && a && rule && a !== rule ? canonicalPair(a, rule) : null;
   const comparison = useScreeningCompare(pair);
-  const compared = useMemo((): Compared | null => {
-    if (!comparison.data || !a || !rule) return null;
-    try {
-      return compareFor(comparison.data, a as never, rule as never, state.k);
-    } catch {
-      // The comparison on hand is of the previous pair; the next one is on its way.
-      return null;
-    }
-  }, [comparison.data, a, rule, state.k]);
-  const moves = useMemo((): ReadonlyMap<SchoolKey, Move> | null => {
-    if (!compared) return null;
-    return new Map(
-      compared.rows.map((r) => [
-        r.key,
-        { hex: moveHex(r.d, MOVE_EDGES), top: r.a <= compared.k || r.b <= compared.k },
-      ])
-    );
-  }, [compared]);
-  const detail = useScreeningRules().data?.rules ?? null;
-  const filterButton = useRef<HTMLButtonElement>(null);
-  const layersButton = useRef<HTMLButtonElement>(null);
-  const exportOpener = useRef<HTMLButtonElement>(null);
-
-  // The filters can only hold a province or remoteness class the list has.
-  const options = useMemo(() => filterOptions(input.rows), [input.rows]);
-  useEffect(() => {
-    if (input.rows.length === 0) return;
-    store.setKnown({ provinces: new Set(options.provinces), localities: new Set(options.localities) });
-  }, [store, options, input.rows.length]);
-
-  const filters = useMemo(() => ({ prov: state.prov, loc: state.loc }), [state.prov, state.loc]);
-  const visible = useMemo(
-    () => (filtering(filters) ? ordered.filter((row) => admits(row, filters)) : ordered),
-    [ordered, filters]
+  const compared = useMemo(
+    () => (mod && comparison.data && a && rule ? mod.comparedOf(comparison.data, a, rule, state.k) : null),
+    [mod, comparison.data, a, rule, state.k]
   );
-  const faint = useMemo(() => {
-    if (!on || !filtering(filters)) return null;
-    return new Set(input.rows.filter((row) => !admits(row, filters)).map((row) => row.school.school_key));
-  }, [on, filters, input.rows]);
   const paint = useMemo(
-    (): MarkPaint => (on ? { hidden: state.hide, faint, moves: comparing ? moves : null } : NO_PAINT),
-    [on, state.hide, faint, comparing, moves]
+    (): MarkPaint =>
+      on && mod
+        ? mod.paintFor({
+            hide: state.hide,
+            rows,
+            filters: { prov: state.prov, loc: state.loc },
+            compared: comparing ? compared : null,
+          })
+        : NO_PAINT,
+    [on, mod, state.hide, state.prov, state.loc, rows, comparing, compared]
   );
-
-  const setPop = (pop: WorkspaceState["pop"]) => store.setState({ pop: state.pop === pop ? null : pop });
-  const closePop = () => store.setState({ pop: null });
 
   const methodSwitch = (
     <MethodSwitch
@@ -192,7 +173,7 @@ export function useMethodMounts(input: MountInput): Mounts {
     <button
       ref={exportOpener}
       type="button"
-      className={exportStyles.open}
+      className={styles.open}
       data-region="export-button"
       disabled={!ready}
       title={ready ? undefined : copy.LAYOUT.availableAfterLoad}
@@ -208,7 +189,7 @@ export function useMethodMounts(input: MountInput): Mounts {
   const exportIcon = (
     <button
       type="button"
-      className={`${exportStyles.open} ${exportStyles.openIcon}`}
+      className={`${styles.open} ${styles.openIcon}`}
       disabled={!ready}
       aria-label={copy.TERMS.export.label}
       title={copy.TERMS.export.label}
@@ -226,9 +207,9 @@ export function useMethodMounts(input: MountInput): Mounts {
         rule={rule}
         comparedWith={comparing && on ? a : null}
         n={state.n}
-        schools={schools}
-        layer={layer}
-        instant={keyboard}
+        schools={input.schools}
+        layer={input.layer}
+        instant={input.keyboard}
         onLength={(n) => store.setState({ n })}
         onClose={() => {
           store.setState({ panel: null });
@@ -239,232 +220,52 @@ export function useMethodMounts(input: MountInput): Mounts {
       />
     ) : null;
 
+  const common = { on, methodSwitch, exportButton, exportIcon, exportSheet, paint };
   if (!on || !mod || !method || !rule) {
     return {
+      ...common,
       on: false,
-      methodSwitch,
-      exportButton,
-      exportIcon,
-      exportSheet,
       ruleArea: null,
       rankedList: null,
       compareColumn: null,
       legend: null,
       mapBar: null,
-      paint,
       rootClassName: "",
       cardLayer: null,
     };
   }
 
-  const ruleArea = rules ? (
-    <mod.MethodRuleArea
-      copy={copy}
-      method={method}
-      rules={rules}
-      detail={detail}
-      requested={requested}
-      formula={state.formula}
-      disabled={!ready}
-      onRule={input.onRule}
-      onFormula={() => store.setState({ formula: !state.formula })}
-      onCompare={() => store.setState({ mode: "compare" })}
-    />
-  ) : null;
-
-  const rankedList = (
-    <>
-      <mod.MethodListHead
-        copy={copy}
-        method={method}
-        rule={rule}
-        shown={visible.length}
-        total={ordered.length}
-        hasRanges={ordered.some((row) => row.cohort === "interval")}
-        upper={state.place === "upper"}
-        filters={filters}
-        filterOpen={state.pop === "filter"}
-        filterButton={filterButton}
-        onFilter={() => setPop("filter")}
-        onClear={(key) => store.setState({ [key]: null })}
-        onPlace={() => store.setState({ place: state.place === "upper" ? "lower" : "upper" })}
-      />
-      {state.pop === "filter" ? (
-        <mod.Popover
-          id="screening-filters"
-          anchor={filterButton}
-          layer={layer}
-          label={copy.TERMS.filters.label}
-          align="end"
-          width={300}
-          instant={keyboard}
-          onClose={closePop}
-        >
-          <mod.FilterPanel
-            copy={copy}
-            method={method}
-            provinces={options.provinces}
-            localities={options.localities}
-            prov={state.prov}
-            loc={state.loc}
-            onChange={(patch) => store.setState(patch)}
-          />
-        </mod.Popover>
-      ) : null}
-      {visible.length === 0 ? (
-        <p className={base.state}>{copy.LAYOUT.emptyFiltered}</p>
-      ) : (
-        <mod.MethodList
-          rows={visible}
-          count={ordered.length}
-          schools={schools}
+  const built = mod.buildMounts({
+    ...input,
+    method,
+    rule,
+    detail,
+    compared,
+    filterButton,
+    layersButton,
+    compareColumn: ({ compared: data, names }) =>
+      compareMod && a && input.rules ? (
+        <compareMod.CompareColumn
           copy={copy}
-          method={method}
-          rule={rule}
+          words={method}
+          a={a}
+          b={rule}
+          rules={input.rules}
+          data={data}
+          failed={comparison.isError}
+          onRetry={() => void comparison.refetch()}
+          names={names}
+          count={input.ordered.length}
+          pop={state.pop}
+          layer={input.layer}
+          keyboard={input.keyboard}
           selected={input.selectedKey}
           hovered={input.hovered}
-          busy={stale}
-          label={copy.LAYOUT.orderedTab}
+          onState={(patch) => store.setState(patch)}
           onSelect={input.onSelect}
+          onHover={input.onPointerHover}
         />
-      )}
-    </>
-  );
-
-  const complete = ordered.filter((row) => row.cohort === "complete").length;
-  const legend = (
-    <mod.MethodLegend
-      copy={copy}
-      method={method}
-      rule={rule}
-      bands={input.bands}
-      numbered={Math.min(LABELLED_PLACES, complete)}
-      collapsed={input.layout.keyCollapsed}
-      stale={stale}
-      ranges={ordered.length - complete}
-      incomplete={input.rows.length - ordered.length}
-    />
-  );
-
-  const hidden = state.hide;
-  const mapBar = (
-    <div className={`${base.panel} ${styles.mapBar}`} data-region="layers">
-      <button
-        ref={layersButton}
-        type="button"
-        className={styles.barButton}
-        aria-expanded={state.pop === "layers"}
-        aria-controls="screening-layers"
-        onClick={() => setPop("layers")}
-      >
-        <Layers size={14} aria-hidden />
-        {copy.TERMS.layers.label}
-      </button>
-      {state.pop === "layers" ? (
-        <mod.Popover
-          id="screening-layers"
-          anchor={layersButton}
-          layer={layer}
-          label={copy.TERMS.layers.label}
-          width={320}
-          instant={keyboard}
-          onClose={closePop}
-        >
-          <mod.LayersPanel
-            copy={copy}
-            method={method}
-            numerals={Math.min(LABELLED_PLACES, complete)}
-            hidden={hidden}
-            available={AVAILABLE}
-            onToggle={(name) =>
-              store.setState({
-                hide: hidden.includes(name) ? hidden.filter((h) => h !== name) : [...hidden, name],
-              })
-            }
-          />
-        </mod.Popover>
-      ) : null}
-    </div>
-  );
-
-  const names = new Map([...schools.values()].map((school) => [school.id, copy.distinctName(school)]));
-  const compareColumn =
-    comparing && compareMod && a && rules ? (
-      <compareMod.CompareColumn
-        copy={copy}
-        words={method}
-        a={a}
-        b={rule}
-        rules={rules}
-        data={compared}
-        failed={comparison.isError}
-        onRetry={() => void comparison.refetch()}
-        names={names}
-        count={ordered.length}
-        pop={state.pop}
-        layer={layer}
-        keyboard={keyboard}
-        selected={input.selectedKey}
-        hovered={input.hovered}
-        onState={(patch) => store.setState(patch)}
-        onSelect={input.onSelect}
-        onHover={input.onPointerHover}
-      />
-    ) : null;
-  const compareLegend =
-    comparing && compared && a ? (
-      <mod.CompareLegend
-        copy={copy}
-        method={method}
-        a={a}
-        b={rule}
-        k={compared.k}
-        n={compared.n}
-        collapsed={input.layout.keyCollapsed}
-        stale={stale}
-        ranges={ordered.filter((row) => row.cohort === "interval").length}
-        incomplete={input.rows.length - ordered.length}
-      />
-    ) : null;
-
-  const cardLayer = ({ record, detail: school }: { record: CopySchool; detail: SchoolDetailResponse }) => (
-    <mod.MethodCard
-      copy={copy}
-      method={method}
-      rule={rule}
-      school={record}
-      detail={school}
-      rules={detail}
-      parts={state.parts}
-      onParts={() => store.setState({ parts: !state.parts })}
-      compare={
-        comparing && compared && a
-          ? {
-              a,
-              b: rule,
-              k: compared.k,
-              n: compared.n,
-              edges: MOVE_EDGES,
-              row: compared.rows.find((r) => r.key === record.id) ?? null,
-            }
-          : null
-      }
-    />
-  );
-
-  return {
-    on: true,
-    exportButton,
-    exportIcon,
-    exportSheet,
-    cardLayer,
-    methodSwitch,
-    ruleArea,
-    rankedList,
-    compareColumn,
-    legend: compareLegend ?? legend,
-    mapBar,
-    paint,
-    rootClassName: `${styles.methodRoot} ${state.mode === "compare" ? styles.compareRoot : ""}`,
-  };
+      ) : null,
+  });
+  return { ...common, ...built };
 }

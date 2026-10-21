@@ -6,7 +6,7 @@ import { useId, useState } from "react";
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
 import { RAMP_HEX } from "@/lib/screening/marks";
-import { MOVE_HEX } from "@/lib/screening/method/paint";
+import { MOVE_HEX } from "@/lib/screening/method/moves";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import { RuleSymbol } from "../RuleArea";

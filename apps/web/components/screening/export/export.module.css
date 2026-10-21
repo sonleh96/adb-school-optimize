@@ -329,37 +329,6 @@
   cursor: default;
 }
 
-/* The button in the actions that opens the sheet. */
-.open {
-  height: 34px;
-  padding: 0 14px;
-  border: 1px solid var(--navy);
-  border-radius: 6px;
-  background: var(--navy);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  white-space: nowrap;
-  font: 500 13px/1 var(--sans);
-  color: #fff;
-  transition: transform 160ms var(--ease-out);
-}
-.open:not(:disabled):active {
-  transform: scale(0.97);
-}
-.open:disabled {
-  background: var(--panel);
-  border-color: var(--hair);
-  color: var(--ink-3);
-  box-shadow: none;
-  cursor: default;
-}
-.openIcon {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-}
 .sr {
   position: absolute;
   width: 1px;
@@ -409,7 +378,6 @@
   }
   .seg button,
   .closeButton,
-  .open,
   .quietButton,
   .primary {
     transition: none;
@@ -417,8 +385,7 @@
 }
 
 /* The workspace sets every button's colour to inherit; these keep their own. */
-.primary.primary,
-.open.open:not(:disabled) {
+.primary.primary {
   color: #fff;
 }
 .closeButton.closeButton {

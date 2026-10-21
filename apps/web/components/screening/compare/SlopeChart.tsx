@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { Compared, ComparedSchool, MoveEdges } from "@/lib/screening/method/compare";
 import { moveStep } from "@/lib/screening/method/compare";
-import { moveHex } from "@/lib/screening/method/paint";
+import { moveHex } from "@/lib/screening/method/moves";
 import {
   type Measure,
   type Suffixes,
