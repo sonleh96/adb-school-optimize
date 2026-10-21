@@ -412,6 +412,15 @@ describe("the first schools of a list", () => {
     );
   });
 
+  it("falls back to the main rule, not the circulated one, when no rule is given", () => {
+    const rows = placedFromResults(fixtureResults(B), fixtureResults(A));
+    const P = copyFor({ schools: rows, counts: { complete: 17 }, countsByRule: "shared" });
+    expect(P.listStartsSentence()).toBe(P.listStartsSentence(rows, B));
+    expect(P.listStartsSentence()).toContain("the combined-factors rule without urgency (S0)");
+    expect(P.scopesMix()).toBe(P.scopesMix(rows, B));
+    expect(P.segments.listStartsSentence().length).toBe(P.segments.listStartsSentence(rows, B).length);
+  });
+
   it("says the first of one school, and the first two of two", () => {
     expect(copy.listStartsSentence(places("Solo"), A)).toBe(
       "Under the combined-factors rule with urgency (S), the first of the one school with every input recorded is Solo."
