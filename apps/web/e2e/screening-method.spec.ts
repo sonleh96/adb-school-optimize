@@ -19,6 +19,7 @@
  *     it contradicts the chart                                                                  -> "the compare card's places..."
  * 14. Compare mode's chart is a picture only: no keyboard or screen-reader way to each school's
  *     two places                                                                                -> "the chart has a table..."
+ * 15. A chart line has its path only in CSS, which some browsers do not read                    -> "every chart line..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -341,4 +342,15 @@ test("the chart has a table a keyboard and a screen reader can use", async ({ pa
   await expect(card(page).getByRole("heading", { level: 2 })).toHaveText(
     await table.getByRole("button").nth(1).innerText()
   );
+});
+
+test("every chart line carries its path as an attribute, for browsers that do not read it from CSS", async ({
+  page,
+}) => {
+  await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_no_u&compare=additive_u");
+  const pair = json("compare/additive_u__additive_no_u.json");
+  const lines = page.locator("[data-region=slope-chart] svg path[stroke]");
+  await expect(lines).toHaveCount(pair.ranks.length);
+  for (const d of await lines.evaluateAll((paths) => paths.map((p) => p.getAttribute("d"))))
+    expect(d).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
 });
