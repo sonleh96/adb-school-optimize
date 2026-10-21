@@ -99,7 +99,7 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
     filterNote: `Filtered view. Places in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
     // A rule that reads no air-quality, emissions or land-cover figure shows no range, so it has nothing to place.
     listOrder: !readsReadings
-      ? "No school shows a range under this rule, because it does not read the air-quality, emissions or land-cover figures."
+      ? "No school shows a range under this rule, because it does not use the air-quality, emissions or land-cover figures."
       : noRange
         ? "No school shows a range in this list."
         : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,

@@ -100,7 +100,7 @@ describe("the missing-input sentences of a school that lacks a reading", () => {
 
   it("say the rule's inputs are recorded and name the reading it does not read", () => {
     expect(P.missingSentence(s17, "benchmark")).toBe(
-      "All of the inputs this rule uses are recorded. Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not read it."
+      "All of the inputs this rule uses are recorded. Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not use it."
     );
   });
 });

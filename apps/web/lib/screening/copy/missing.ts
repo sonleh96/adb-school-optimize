@@ -328,7 +328,7 @@ export function missingSentences(school: CopySchool, ruleId: CopyRuleId): string
 
 function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   // A rule that leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order
-  // without them, so "recorded" is said of the inputs the rule reads and any figure it does not read is named.
+  // without them, so "recorded" is said of the inputs the rule reads and any figure it does not use is named.
   const reads = ruleReads(ruleId);
   const all = reads.urgency && reads.readings;
   const notRead = (): string[] => {
@@ -336,7 +336,7 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
     const readings = reads.readings ? [] : missingReadings(school);
     if (readings.length)
       out.push(
-        `${missingReadingsClause(school)}, but this rule does not read ${readings.length === 1 ? "it" : "them"}.`
+        `${missingReadingsClause(school)}, but this rule does not use ${readings.length === 1 ? "it" : "them"}.`
       );
     if (!reads.urgency && school.components.U === null)
       out.push("Its urgency value is not recorded, but this rule does not use it.");
