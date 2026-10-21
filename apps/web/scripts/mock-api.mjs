@@ -1,4 +1,6 @@
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
 
 const port = Number(process.env.CI_MOCK_API_PORT ?? 4100);
 let scenario = {
@@ -87,6 +89,22 @@ const districtFeatures = [
   },
 ];
 
+// Screening responses come from e2e/fixtures/screening, which services/api/scripts/generate_screening_fixtures.py
+// saved from the real API. Only a request that was captured is answered; any other screening request fails loudly,
+// so a test cannot pass on a response the API never gave (for example a filter the fixtures do not cover).
+const screeningDir = fileURLToPath(new URL("../e2e/fixtures/screening/", import.meta.url));
+const screeningRequests = JSON.parse(readFileSync(`${screeningDir}index.json`, "utf8")).requests;
+const sameQuery = (a, b) =>
+  JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+
+function screeningFixture(url) {
+  const path = decodeURIComponent(url.pathname);
+  const query = Object.fromEntries(url.searchParams);
+  return screeningRequests.find(
+    (entry) => decodeURIComponent(entry.path) === path && sameQuery(entry.query, query)
+  );
+}
+
 function json(response, value, status = 200) {
   response.writeHead(status, {
     "Content-Type": "application/json",
@@ -104,6 +122,26 @@ async function readJson(request) {
 async function route(request, response) {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${port}`);
   if (url.pathname === "/healthz") return json(response, { status: "ok" });
+  if (url.pathname === "/api/v1/test/basemap-style.json") {
+    // A tile-less basemap, so the browser tests never depend on CARTO.
+    return json(response, {
+      version: 8,
+      sources: {},
+      layers: [{ id: "background", type: "background", paint: { "background-color": "#ece9e2" } }],
+    });
+  }
+  if (url.pathname.startsWith("/api/v1/screening/")) {
+    const entry = screeningFixture(url);
+    if (!entry) {
+      return json(
+        response,
+        { error: { code: "fixture_not_captured", message: `No saved response for ${request.url}` } },
+        501
+      );
+    }
+    response.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    return response.end(readFileSync(`${screeningDir}${entry.file}`));
+  }
   if (url.pathname === "/api/v1/meta/indicators") {
     return json(response, { default: "Average AQI", items: ["Average AQI", "Conflict Events"] });
   }
