@@ -8,6 +8,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -135,6 +136,33 @@ function useViewport(): { width: number; height: number } {
   );
   const [width, height] = size.split("x").map(Number);
   return { width, height };
+}
+
+/**
+ * How far the map's foot reaches up from the bottom of the stage: the caveat, and the key that hangs above it. The map
+ * keeps its marks above this line. It is measured, because the key's height follows its title, its bands and how its
+ * lines stack, and the caveat wraps with the width left to it; it is measured again whenever either changes size.
+ */
+function useFootHeight(foot: React.RefObject<HTMLElement | null>, deps: readonly unknown[]): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const element = foot.current;
+    const stage = element?.parentElement;
+    if (!element || !stage) return;
+    const measure = () => {
+      const parts = [element, ...element.children].map((part) => part.getBoundingClientRect());
+      const top = Math.min(...parts.filter((r) => r.height > 0).map((r) => r.top));
+      const next = Number.isFinite(top) ? Math.ceil(stage.getBoundingClientRect().bottom - top) : null;
+      setHeight((previous) => (previous === next ? previous : next));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const part of element.children) observer.observe(part);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the caller names what changes the foot's parts.
+  }, deps);
+  return height;
 }
 
 /**
@@ -273,10 +301,12 @@ function Workspace() {
   const layout = layoutOf({ width: viewport.width, height: viewport.height, cardOpen });
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
+  const foot = useRef<HTMLDivElement>(null);
+  const footHeight = useFootHeight(foot, [ready, layout.keyCollapsed, layout.keyStacked, mode, cardOpen]);
   const padding = useMemo(
-    () => mapPadding(layout, cardOpen),
+    () => mapPadding(layout, cardOpen, footHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `layout` is rebuilt each render; its fields are the key.
-    [mode, docked, column, card, cardOpen]
+    [mode, docked, column, card, cardOpen, footHeight]
   );
   // Each time the clear part of the map changes shape, the map frames the country in it again.
   const [frame, setFrame] = useState(0);
@@ -650,7 +680,7 @@ function Workspace() {
           )}
         </section>
 
-        <div className={styles.foot} data-stale={stale || undefined}>
+        <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
           {ready ? (
             <Legend
               copy={copy}

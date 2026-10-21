@@ -96,10 +96,17 @@ export interface Padding {
   left: number;
 }
 
-/** The part of the map no panel covers, as padding for framing and panning. */
-export function mapPadding(layout: Layout, cardOpen: boolean): Padding {
+/** Room kept at the map's foot before the key and the caveat have been measured. */
+const FOOT_GUESS = 140;
+
+/**
+ * The part of the map no panel covers, as padding for framing and panning. `foot` is the height the key and the
+ * caveat take from the map's bottom edge, measured on screen: the key's height follows its rule's title, its bands
+ * and how its lines stack, and the caveat wraps with the width left to it.
+ */
+export function mapPadding(layout: Layout, cardOpen: boolean, foot: number | null = null): Padding {
   if (layout.mode === "narrow") return { top: 24, right: 24, bottom: 48, left: 24 };
   const left = layout.docked ? GAP + 40 : GAP + layout.column + 40;
   const right = cardOpen ? GAP + layout.card + 40 : 64;
-  return { top: 80, right, bottom: 140, left };
+  return { top: 80, right, bottom: foot === null ? FOOT_GUESS : foot + GAP, left };
 }
