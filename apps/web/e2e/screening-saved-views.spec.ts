@@ -544,3 +544,28 @@ test("thousands of stored views are read up to the cap, and saving stops there",
   await expect(viewButtons(page)).toHaveCount(50, { timeout: 5000 });
   await expect(section(page).getByRole("button", { name: "Save this view" })).toBeDisabled();
 });
+
+test("two tabs keep each other's views, and each tab's rail shows the other's at once", async ({
+  context,
+}) => {
+  const a = await context.newPage();
+  const b = await context.newPage();
+  for (const page of [a, b]) await startList(page);
+  await section(a).getByRole("textbox", { name: "Name this view" }).fill("From A");
+  await section(a).getByRole("button", { name: "Save this view" }).click();
+  await expect(viewButtons(b)).toHaveCount(5);
+  await section(b).getByRole("textbox", { name: "Name this view" }).fill("From B");
+  await section(b).getByRole("button", { name: "Save this view" }).click();
+  await expect(viewButtons(a)).toHaveText([...SEEDS, "From A", "From B"].map((n, i) => `${i + 1}${n}`));
+  const kept = await a.evaluate((k) => JSON.parse(window.localStorage.getItem(k)!), VIEWS_KEY);
+  expect(kept.views.map((e: { name?: string }) => e.name ?? "seed")).toEqual([
+    "seed",
+    "seed",
+    "seed",
+    "seed",
+    "From A",
+    "From B",
+  ]);
+  await a.close();
+  await b.close();
+});

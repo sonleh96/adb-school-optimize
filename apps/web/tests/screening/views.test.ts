@@ -28,10 +28,12 @@ import { rolesOf } from "@/lib/screening/guide/roles";
 import type { RuleId } from "@/lib/screening/types";
 import { linkOf, linksText, packFileName, packText, rulesUsed, stateOf } from "@/lib/screening/views/pack";
 import { seedsOf } from "@/lib/screening/views/seeds";
+import { createViewsStore } from "@/lib/screening/views/store";
 import {
   NAME_MAX,
   SEED_ENTRIES,
   type Seeds,
+  VIEWS_KEY,
   VIEWS_MAX,
   canSave,
   cleanName,
@@ -113,7 +115,7 @@ describe("the list a person sees", () => {
     const kept = [{ seed: "top" as const }, { seed: "range" as const }, { name: "Board", q: "b" }];
     const views = resolve(kept, noRange);
     expect(views.map((v) => v.seed ?? v.name)).toEqual(["top", "Board"]);
-    expect(withRemoved(kept, views[1].at)).toEqual([{ seed: "top" }, { seed: "range" }]);
+    expect(withRemoved(kept, views[1].entry)).toEqual([{ seed: "top" }, { seed: "range" }]);
     expect(resolve(null, noRange).map((v) => v.seed)).toEqual(["top", "queue"]);
   });
 
@@ -218,8 +220,79 @@ describe("when the starting views are what is kept", () => {
   });
   it("is false once a seed is removed, the order changes, or a view is saved", () => {
     expect(isStarting([])).toBe(false);
-    expect(isStarting(withRemoved(seeds, 1))).toBe(false);
+    expect(isStarting(withRemoved(seeds, seeds[1]))).toBe(false);
     expect(isStarting([seeds[1], seeds[0], seeds[2], seeds[3]])).toBe(false);
     expect(isStarting(withSaved(null, "Board", "view=queue"))).toBe(false);
+  });
+});
+
+describe("two tabs on the same storage", () => {
+  /** One browser's local storage, shared by two tabs, and the storage event the browser sends the other tab. */
+  function browser() {
+    const data = new Map<string, string>();
+    const tabs: ((event: { key: string | null }) => void)[] = [];
+    const storage = {
+      getItem: (k: string) => data.get(k) ?? null,
+      setItem: (k: string, v: string) => {
+        data.set(k, v);
+      },
+      removeItem: (k: string) => {
+        data.delete(k);
+      },
+    };
+    const tab = () => {
+      let listener: ((event: { key: string | null }) => void) | null = null;
+      const events = {
+        addEventListener: (_: "storage", fn: (event: { key: string | null }) => void) => {
+          listener = fn;
+          tabs.push(fn);
+        },
+        removeEventListener: () => undefined,
+      };
+      const store = createViewsStore(storage, events);
+      // The browser tells every other tab after a write.
+      const write = (fn: () => void) => {
+        fn();
+        for (const other of tabs) if (other !== listener) other({ key: VIEWS_KEY });
+      };
+      return { store, write };
+    };
+    return { tab, data };
+  }
+
+  it("keeps both tabs' saves, whatever each read at load (13)", () => {
+    const { tab, data } = browser();
+    const a = tab();
+    const b = tab();
+    a.write(() => a.store.save("From A", "view=queue"));
+    b.write(() => b.store.save("From B", "school=k1"));
+    const names = (JSON.parse(data.get(VIEWS_KEY)!).views as { name?: string }[]).map(
+      (e) => e.name ?? "seed"
+    );
+    expect(names).toEqual(["seed", "seed", "seed", "seed", "From A", "From B"]);
+  });
+
+  it("removes the view chosen, not the one the other tab moved to its place (13)", () => {
+    const { tab, data } = browser();
+    const a = tab();
+    const b = tab();
+    a.write(() => a.store.save("Board", "view=queue"));
+    const board = a.store.entries()!.find((e) => "name" in e)!;
+    // The other tab removes the first starting view, so every view moves up one place.
+    b.write(() => b.store.remove(b.store.entries()![0]));
+    a.write(() => a.store.remove(board));
+    const left = JSON.parse(data.get(VIEWS_KEY)!).views;
+    expect(left).toEqual([{ seed: "urgency" }, { seed: "range" }, { seed: "queue" }]);
+  });
+
+  it("tells the other tab's rail about a change (13)", () => {
+    const { tab } = browser();
+    const a = tab();
+    const b = tab();
+    let heard = 0;
+    b.store.subscribe(() => (heard += 1));
+    a.write(() => a.store.save("Board", ""));
+    expect(heard).toBe(1);
+    expect(b.store.entries()!.some((e) => "name" in e && e.name === "Board")).toBe(true);
   });
 });
