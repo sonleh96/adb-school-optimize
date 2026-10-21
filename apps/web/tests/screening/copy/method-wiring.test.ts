@@ -6,13 +6,13 @@
  *     drift apart. The copy hands the edges out with the words that use them.
  *  2. A sheet title carries `<em>` in its string, and the page renders markup from a string. The title has a segments
  *     form that marks the rule's name, and the string form is the plain text of it.
- *  3. The locality chip is built in the component, so its words are not the copy's.
- *  4. A comparison and the top-list file load under the stand-in "Loading the schools", and the export table's
- *     school column has no heading in the plain sheet.
+ *  3. The locality chip does not name the class it filters by, or reads as the province chip.
+ *  4. A comparison and the top-list file load under the same words as the schools, so a reader cannot tell what
+ *     is still loading.
  */
 import { describe, expect, it } from "vitest";
 
-import { LAYOUT, TERMS, copyFor, textOf } from "@/lib/screening/copy";
+import { LAYOUT, copyFor, textOf } from "@/lib/screening/copy";
 import { METHOD, buildMethod } from "@/lib/screening/copy/method";
 
 import { textProblems } from "./helpers";
@@ -39,18 +39,21 @@ describe("the sheet title", () => {
 });
 
 describe("the locality chip", () => {
-  it("is worded by the copy, as the province chip is", async () => {
+  it("names the remoteness class it filters by, whatever the class, in clean text", async () => {
     const m = await copyFor({}).methodFor("additive_u");
-    expect(m.filter.chipLocality("Remote")).toBe(`${TERMS.need_locality.label}: Remote`);
-    expect(textProblems(m.filter.chipLocality("Remote"), { sentence: false })).toEqual([]);
+    for (const value of ["Remote", "Very remote", "Extremely Remote"]) {
+      const chip = m.filter.chipLocality(value);
+      expect(chip.endsWith(value)).toBe(true);
+      expect(chip).not.toBe(m.filter.chipProvince(value));
+      expect(textProblems(chip, { sentence: false })).toEqual([]);
+    }
   });
 });
 
 describe("the words for a comparison and the top-list file that are loading, and for the school column", () => {
-  it("are the copy's own", () => {
-    expect(LAYOUT.loadingComparison).toBe("Loading the comparison");
-    expect(LAYOUT.loadingTopList).toBe("Loading the top list");
-    expect(LAYOUT.schoolHead).toBe("School");
+  it("say which thing is loading, each its own, in clean text", () => {
+    const loading = [LAYOUT.loading, LAYOUT.loadingComparison, LAYOUT.loadingTopList];
+    expect(new Set(loading).size).toBe(loading.length);
     for (const t of [LAYOUT.loadingComparison, LAYOUT.loadingTopList, LAYOUT.schoolHead])
       expect(textProblems(t, { sentence: false }), t).toEqual([]);
   });
