@@ -41,5 +41,5 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
 }
 
 export function safeNextPath(value: string | null | undefined): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/all-schools";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
 }

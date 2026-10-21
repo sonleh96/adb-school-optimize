@@ -3,8 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { shouldEnforceAuth } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
-const ALLOWED_ASSET_PATH =
-  /^(?:exports\/(?:ranked\.(?:csv|xlsx)|scores\.xlsx|full\.xlsx)|rasters\/(?:flood|landcover|luminosity|elevation)\/overlay)$/;
+const ALLOWED_ASSET_PATH = /^screening\/exports\/(?:top\.(?:csv|xlsx)|incomplete\.csv)$/;
 const FORWARDED_HEADERS = ["cache-control", "content-disposition", "content-length", "content-type", "etag"];
 
 export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
