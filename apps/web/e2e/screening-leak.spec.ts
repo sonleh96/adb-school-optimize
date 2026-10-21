@@ -49,7 +49,7 @@ test("route round trips do not leave WebGL contexts behind", async ({ page }) =>
   for (let cycle = 0; cycle < 6; cycle += 1) {
     await push("/sign-in");
     await expect(page).toHaveURL(/\/sign-in/);
-    await expect(page.getByRole("heading", { name: "Sign in to the decision workspace" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Sign in to see the school screening" })).toBeVisible();
     await expect(page.locator("[data-testid=screening-map]")).toHaveCount(0);
     await push("/screening");
     await expect(page).toHaveURL(/\/screening$/);

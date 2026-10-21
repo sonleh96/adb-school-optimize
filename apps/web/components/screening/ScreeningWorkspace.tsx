@@ -221,7 +221,7 @@ function Masthead({
       <svg className={styles.logo} viewBox="0 0 108 108" role="img" aria-label={LAYOUT.logoAria}>
         <rect width="108" height="108" fill="#0a2e73" />
         <text x="54" y="68" fill="#fff" fontSize="48" textAnchor="middle">
-          ADB
+          {LAYOUT.logoMark}
         </text>
       </svg>
       <h1 className={styles.mastName}>{LAYOUT.productName}</h1>
