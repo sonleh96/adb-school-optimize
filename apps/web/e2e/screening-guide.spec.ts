@@ -212,6 +212,25 @@ test("rings follow a scrolled panel at once and ease only between steps", async 
   await expect(ring).not.toHaveAttribute("data-moving", /.*/);
 });
 
+test("a step left on screen stops measuring once its rings have settled", async ({ page }) => {
+  await ready(page, "?guide=q1&gstep=2");
+  await ringed(page);
+  await page.waitForTimeout(800);
+  // Every layout read on the page for one idle second: a ring that measures each frame would read about sixty times.
+  const reads = await page.evaluate(async () => {
+    let count = 0;
+    const read = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      count += 1;
+      return read.call(this);
+    };
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    Element.prototype.getBoundingClientRect = read;
+    return count;
+  });
+  expect(reads).toBeLessThan(5);
+});
+
 test("a pasted link to a step reproduces its screen", async ({ page }) => {
   await ready(page, "?guide=q4&gstep=2");
   await expect(stepTitle(page)).toContainText("What");

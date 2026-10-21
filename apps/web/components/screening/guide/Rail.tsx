@@ -32,7 +32,7 @@ import type { RuleId } from "@/lib/screening/types";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "../Sentence";
-import { useWorkspace, useWorkspaceState } from "../WorkspaceProvider";
+import { useWorkspace, useWorkspaceState, useWorkspaceStore } from "../WorkspaceProvider";
 import { scrollIntoPanel, scrollPanelToTop, whenPresent } from "./dom";
 import { useActed, useKeyboardRef, useLayerStore, useLayers } from "./GuidanceProvider";
 import { Rings } from "./Rings";
@@ -186,6 +186,8 @@ function Stepper({
   const wsState = useWorkspaceState();
   const keyboard = useKeyboardRef();
   const acted = useActed();
+  const workspaceStore = useWorkspaceStore();
+  const ringStores = useMemo(() => [workspaceStore, store], [workspaceStore, store]);
   const compare = useScreeningCompare(data.proposed ? MAIN_PAIR : null);
 
   const ctx = useMemo((): GuideContext | null => {
@@ -448,7 +450,9 @@ function Stepper({
           </div>
         </>
       )}
-      {root && view && !state.page ? <Rings root={root} targets={view.targets} keyboard={keyboard} /> : null}
+      {root && view && !state.page ? (
+        <Rings root={root} targets={view.targets} keyboard={keyboard} stores={ringStores} />
+      ) : null}
     </>
   );
 }

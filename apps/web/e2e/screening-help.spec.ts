@@ -67,7 +67,9 @@ test("Escape closes the card, then the glossary, then help mode, and focus retur
   await openWorkspace(page);
   await page.keyboard.press("?");
   await expect.poll(async () => (await layers(page)).help).toBe(true);
+  // Help mode's code loads on first use; a person presses Enter on a mark they can see.
   const tabMark = page.getByRole("tab", { name: /The list/ });
+  await expect(tabMark).toHaveAttribute("data-xp", /term:/);
   await tabMark.focus();
   await page.keyboard.press("Enter");
   await expect(card(page)).toBeVisible();
