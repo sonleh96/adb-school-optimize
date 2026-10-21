@@ -6,15 +6,15 @@ It reads the database and recomputes nothing: the runs are made by `packages/sch
 
 ## Current Scaffold
 
-- app entrypoint: [main.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/main.py)
-- school loader: [load_core_data.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/load_core_data.py)
-- screening input loader: [load_screening_inputs.py](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/app/ingestion/load_screening_inputs.py)
+- app entrypoint: [main.py](app/main.py)
+- school loader: [load_core_data.py](app/ingestion/load_core_data.py)
+- screening input loader: [load_screening_inputs.py](app/ingestion/load_screening_inputs.py)
 
 ## Expected Local Flow
 
-1. Create the Supabase project and run [001_core_schema.sql](/Users/sonle/Documents/work/ADB/adb-school-optimize/infra/sql/001_core_schema.sql).
+1. Create the Supabase project and run [001_core_schema.sql](../../infra/sql/001_core_schema.sql).
 2. Configure backend env in either:
-   - [services/api/.env.example](/Users/sonle/Documents/work/ADB/adb-school-optimize/services/api/.env.example) copied to `services/api/.env`
+   - [services/api/.env.example](.env.example) copied to `services/api/.env`
    - or a repo-root `.env`
 
    The API now loads `.env` and `.env.local` automatically from both the repo root and `services/api`, with `services/api/.env.local` taking precedence over the other files.
