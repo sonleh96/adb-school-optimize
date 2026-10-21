@@ -130,7 +130,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
         ? views.map((view, i) => (
             <li key={`${view.at}:${view.seed ?? view.name}`}>
               <span className={styles.packN}>{i + 1}.</span>
-              <span className={styles.packName}>
+              <span className={styles.packName} dir="auto">
                 <Sentence segments={titles[i]} />
               </span>
               <span className={styles.packWhat}>
@@ -181,7 +181,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                     ]);
               return (
                 <tr key={`${view.at}:${view.seed ?? view.name}`}>
-                  <td>
+                  <td dir="auto">
                     <Sentence segments={titles[i]} />
                   </td>
                   <td>{short(state.rule)}</td>

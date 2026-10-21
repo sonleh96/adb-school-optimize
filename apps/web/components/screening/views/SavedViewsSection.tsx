@@ -98,7 +98,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
                 <span className={styles.n} aria-hidden="true">
                   {index + 1}
                 </span>
-                <span className={styles.name}>
+                <span className={styles.name} dir="auto">
                   <Sentence segments={title} />
                 </span>
               </button>
