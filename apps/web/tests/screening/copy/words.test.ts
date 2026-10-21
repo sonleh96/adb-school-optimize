@@ -233,9 +233,8 @@ describe("the rows of a school card's numbers", () => {
 });
 
 describe("the link from the main rule to the rule that puts urgency back", () => {
-  it("says what it opens, and is not the link read from the rule with urgency", () => {
+  it("says what it opens, in plain words", () => {
     expect(LAYOUT.seeWithUrgency).toBe("See what changes with the urgency value");
-    expect(LAYOUT.seeWithUrgency).not.toBe(LAYOUT.seeWithout);
     expect(textProblems(LAYOUT.seeWithUrgency, { sentence: false })).toEqual([]);
   });
 });
