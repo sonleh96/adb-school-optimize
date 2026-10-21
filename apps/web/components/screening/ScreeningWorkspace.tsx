@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type CopyRuleId, DEFAULT_RULE, PROPOSED_RULE } from "@/lib/screening/copy";
 import { useAfterPaint } from "@/lib/screening/hooks";
@@ -23,6 +23,9 @@ import styles from "./screening.module.css";
 
 /** Space the floating panels take on the map, so marks are framed and panned clear of them. */
 const PANEL = { column: 16 + 416 + 40, card: 16 + 392 + 40 };
+/** The tabs in screen order, and how far each arrow key moves along them. */
+const VIEWS: readonly ListView[] = ["ranked", "queue"];
+const TAB_STEP: Partial<Record<string, number>> = { ArrowRight: 1, ArrowLeft: -1 };
 
 export function ScreeningWorkspace() {
   return (
@@ -132,7 +135,29 @@ function Workspace() {
   const mixed = scopesMix(ordered);
   const scopeOpen = state.scope || mixed;
   const counts = shown?.copy.counts;
-  const tab = (id: ListView, label: string, count: number | undefined, region?: string) => (
+  const tabCounts: Record<ListView, number | undefined> = { ranked: counts?.ranked, queue: counts?.queue };
+  const tabOpen = () => ready;
+  // The ARIA tabs pattern: the shown tab is the one tab stop. The arrow keys, Home and End move between the tabs that
+  // can be chosen and show the one they reach.
+  const onTabKey = (event: KeyboardEvent<HTMLElement>) => {
+    const open = VIEWS.filter(tabOpen);
+    const at = open.indexOf(state.view);
+    if (at === -1) return;
+    const step = TAB_STEP[event.key];
+    const next =
+      step !== undefined
+        ? open[(at + step + open.length) % open.length]
+        : event.key === "Home"
+          ? open[0]
+          : event.key === "End"
+            ? open[open.length - 1]
+            : undefined;
+    if (next === undefined) return;
+    event.preventDefault();
+    if (next !== state.view) showTab(next);
+    root.current?.querySelector<HTMLElement>(`#screening-tab-${next}`)?.focus();
+  };
+  const tab = (id: ListView, label: string, region?: string) => (
     <button
       type="button"
       role="tab"
@@ -140,13 +165,14 @@ function Workspace() {
       className={styles.tab}
       aria-selected={state.view === id}
       aria-controls="screening-list"
+      tabIndex={state.view === id ? 0 : -1}
       data-region={region}
-      disabled={!ready}
+      disabled={!tabOpen()}
       onClick={() => showTab(id)}
     >
       {label}
-      {ready && count !== undefined ? (
-        <span className={styles.tabCount}>({copy.formatCount(count)})</span>
+      {ready && tabCounts[id] !== undefined ? (
+        <span className={styles.tabCount}>({copy.formatCount(tabCounts[id])})</span>
       ) : null}
     </button>
   );
@@ -193,9 +219,9 @@ function Workspace() {
             <div className={styles.ruleSkeleton} aria-hidden />
           )}
 
-          <div className={styles.tabs} role="tablist">
-            {tab("ranked", copy.LAYOUT.orderedTab, counts?.ranked)}
-            {tab("queue", copy.LAYOUT.incompleteTab, counts?.queue, "queue-tab")}
+          <div className={styles.tabs} role="tablist" onKeyDown={onTabKey}>
+            {tab("ranked", copy.LAYOUT.orderedTab)}
+            {tab("queue", copy.LAYOUT.incompleteTab, "queue-tab")}
           </div>
 
           <div

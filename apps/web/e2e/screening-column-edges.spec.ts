@@ -12,12 +12,14 @@
  *  6. A rule pressed and left before its list loaded becomes the one What changed compares with
  *     -> "a rule left before its list loaded..."
  *  7. A control that removes itself on use drops focus on the page          -> "each column control that removes..."
+ *  8. The arrow keys do nothing on the tabs                                   -> "the arrow keys move..."
  */
 import type { Page } from "@playwright/test";
 
 import { LAYOUT } from "../lib/screening/copy";
 import {
   APP_ORIGIN,
+  INCOMPLETE,
   ORDERED,
   ORDERED_COUNT,
   RULE,
@@ -25,6 +27,8 @@ import {
   expect,
   mainRule,
   openWorkspace,
+  queuedNames,
+  tab,
   test,
   useMockDataset,
   waitForMap,
@@ -191,4 +195,32 @@ test("each column control that removes itself on use hands focus to the rule's o
   await expect(other).toBeFocused();
   await waitForMap(page);
   allowUncapturedComparisons(problems);
+});
+
+test("the arrow keys move between the tabs and show the one they reach, with one tab stop", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const list = tab(page, /The list/);
+  const queue = tab(page, /Incomplete records/);
+  await expect(list).toHaveAttribute("tabindex", "0");
+  await expect(queue).toHaveAttribute("tabindex", "-1");
+
+  await list.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(queue).toBeFocused();
+  await expect(queue).toHaveAttribute("aria-selected", "true");
+  await expect(queue).toHaveAttribute("tabindex", "0");
+  await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(queuedNames("additive_u").length);
+
+  await page.keyboard.press("ArrowRight");
+  await expect(list).toBeFocused();
+  await expect(list).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(queue).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(list).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(queue).toBeFocused();
+  await expect(queue).toHaveAttribute("aria-selected", "true");
 });
