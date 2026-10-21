@@ -4,7 +4,9 @@ An export is a table plus a method record.
 The CSV starts with a byte order mark, then the record as quoted one-cell lines that start with ``# ``, then one header row and the data rows.
 Parse it as CSV (decode with ``utf-8-sig``) and skip the leading one-cell rows that start with ``# ``.
 The XLSX holds the record on its own first sheet.
-Floats are written in full precision, and a missing value is an empty cell, never zero.
+A number is written to at most 12 decimal places with trailing zeros removed, so float noise never reaches the
+file (``1``, not ``1.0000000000000002``), and a screening score stays within 0 to 1 after rounding.
+A missing value is an empty cell, never zero.
 """
 
 from __future__ import annotations
@@ -82,12 +84,51 @@ TOP_KEYS_NOTE = (
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 
+DECIMALS = 12
+SCORE_COLUMNS = frozenset({"score_lower", "score_upper", "score_point"})
+
+
+def export_number(value: float, *, score: bool = False) -> float:
+    """A float as the exports write it: rounded at the twelfth decimal place, a screening score kept within 0 to 1."""
+    if not math.isfinite(value):
+        return value
+    rounded = round(value, DECIMALS)
+    if score:
+        rounded = min(1.0, max(0.0, rounded))
+    return rounded + 0.0  # adding zero turns a negative zero positive
+
+
+def number_text(value: float) -> str:
+    """A float's text in an export: up to 12 decimal places, trailing zeros removed, so ``0.565`` and never
+    ``0.5650000000000001``, and ``1`` and never ``1.0`` or ``1.0000000000000002``."""
+    if not math.isfinite(value):
+        return repr(value)
+    text = f"{export_number(value):.{DECIMALS}f}".rstrip("0").rstrip(".")
+    return "0" if text == "-0" else text
+
+
+def _clean_rows(table: Table) -> list[list[Cell]]:
+    """The table's rows with every float as the exports write it."""
+    scores = [column in SCORE_COLUMNS for column in table.columns]
+    return [
+        [
+            export_number(v, score=score) if isinstance(v, float) else v
+            for v, score in zip(row, scores, strict=True)
+        ]
+        for row in table.rows
+    ]
+
+
 def _format_weight(weight: WeightOut) -> str:
-    return f"{weight.component.value} {weight.fraction} ({weight.value!r})"
+    return f"{weight.component.value} {weight.fraction} ({number_text(weight.value)})"
 
 
 def _format_anchor(anchor: AnchorOut) -> str:
-    bounds = "natural 0..1 fraction" if anchor.p05 is None else f"p05={anchor.p05!r}, p95={anchor.p95!r}"
+    bounds = (
+        "natural 0..1 fraction"
+        if anchor.p05 is None
+        else f"p05={number_text(anchor.p05)}, p95={number_text(anchor.p95)}"
+    )
     return f"{anchor.name} ({anchor.component.value}): {anchor.transformation}; {bounds}; valid {anchor.n_valid} of {anchor.n_records}"
 
 
@@ -321,15 +362,17 @@ def incomplete_table(
 # ---------------------------------------------------------------------------------------------
 
 
-def _csv_cell(value: Cell) -> str | int | float:
-    return "" if value is None else value
+def _csv_cell(value: Cell) -> str | int:
+    if value is None:
+        return ""
+    return number_text(value) if isinstance(value, float) else value
 
 
 def render_csv(record: Sequence[tuple[str, str]], table: Table) -> bytes:
     """A UTF-8 file with a byte order mark, so that Excel reads accents correctly.
 
     The method record comes first, one quoted cell per line, ``"# key: value"``, so that Excel keeps each line in one column.
-    Then comes the header row and the data rows. Floats print with their shortest exact repr.
+    Then comes the header row and the data rows, every float as ``number_text`` writes it.
     """
     buffer = io.StringIO()
     record_writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_ALL)
@@ -337,7 +380,7 @@ def render_csv(record: Sequence[tuple[str, str]], table: Table) -> bytes:
         record_writer.writerow([f"# {key}: {' '.join(str(value).split())}"])
     writer = csv.writer(buffer, lineterminator="\n")
     writer.writerow(table.columns)
-    for row in table.rows:
+    for row in _clean_rows(table):
         writer.writerow([_csv_cell(v) for v in row])
     return ("\ufeff" + buffer.getvalue()).encode("utf-8")
 
@@ -346,9 +389,9 @@ _xlsx_lock = threading.Lock()
 
 
 def _exact_number_text(value: Any) -> str:
-    """openpyxl prints floats with 16 significant digits, which can change the last bit. repr is exact."""
+    """openpyxl prints floats with 16 significant digits; the workbook stores the same text as the CSV instead."""
     if isinstance(value, float) and math.isfinite(value):
-        return repr(value)
+        return number_text(value)
     return _openpyxl_safe_string(value)
 
 
@@ -370,7 +413,7 @@ def render_xlsx(record: Sequence[tuple[str, str]], data_sheet: str, table: Table
     method = workbook.active
     method.title = "Method record"
     data = workbook.create_sheet(data_sheet)
-    for sheet, rows in ((method, [("key", "value"), *record]), (data, [table.columns, *table.rows])):
+    for sheet, rows in ((method, [("key", "value"), *record]), (data, [table.columns, *_clean_rows(table)])):
         for r, values in enumerate(rows, start=1):
             for c, value in enumerate(values, start=1):
                 cell = sheet.cell(
