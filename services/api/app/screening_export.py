@@ -24,10 +24,17 @@ from typing import Any
 from openpyxl import Workbook
 from openpyxl.cell import _writer as openpyxl_cell_writer
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-from school_scoring.screening import INPUT_CONTRACT, Component, GateFailure, Provenance, SchoolRecord
+from school_scoring.screening import (
+    INPUT_CONTRACT,
+    Component,
+    GateFailure,
+    PolicyRole,
+    Provenance,
+    SchoolRecord,
+)
 
 from . import screening_store as store
-from .models.screening import AnchorOut, ManifestOut, WeightOut
+from .models.screening import PERSISTENCE_LIMITATIONS, AnchorOut, ManifestOut, WeightOut
 from .screening_lists import Filters, TopSelection
 from .screening_queries import SchoolRow
 
@@ -46,9 +53,20 @@ GATE_FAILURE_DETAILS: dict[GateFailure, str] = {
 
 PROVENANCE_NOTES: dict[Provenance, str] = {
     Provenance.CIRCULATED_PAPER: "A rule of the circulated paper.",
-    Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW: (
-        "A proposed follow-up scenario pending author review. It is not a result of the circulated paper."
+    Provenance.REVISED_PAPER: (
+        "A rule of the revised paper, which leaves urgency out of every primary calculation. "
+        "It is not a result of the circulated paper."
     ),
+}
+
+POLICY_ROLE_NOTES: dict[PolicyRole, str] = {
+    PolicyRole.PRIMARY: "The revised paper's primary list.",
+    PolicyRole.STRICT_ALTERNATIVE: "A stricter ordering that puts school need before every other input.",
+    PolicyRole.POLICY_SENSITIVITY: "A sensitivity that lets the largest of several inputs lift a school.",
+    PolicyRole.URGENCY_SENSITIVITY: (
+        "A sensitivity that restores the supplied urgency scalar. It is kept for comparison and is not the primary list."
+    ),
+    PolicyRole.CONVENTIONAL_REFERENCE: "A conventional benchmark kept for comparison.",
 }
 
 CAVEAT = (
@@ -134,15 +152,35 @@ def _format_anchor(anchor: AnchorOut) -> str:
 
 FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 
+
+def looks_like_formula(text: str) -> bool:
+    """Whether a spreadsheet could read the text as a formula: its first non-blank character is one of ``FORMULA_STARTS``.
+
+    Leading whitespace, including line breaks and the no-break space, does not hide the character from the application.
+    """
+    return text.startswith(FORMULA_STARTS) or text.lstrip().startswith(FORMULA_STARTS)
+
+
 DISPLAY_NAME_NOTE = (
     "display_name is source_school_name with an apostrophe in front when the name starts with =, +, -, @, "
-    "a tab or a carriage return, so that a spreadsheet application does not read it as a formula. "
-    "source_school_name is always exact: use it to join and to rebuild the list."
+    "a tab or a carriage return, ignoring any leading whitespace, so that a spreadsheet application does not read it as a formula. "
+    "In the XLSX source_school_name is exact: use it to join and to rebuild the list. "
+    "In the CSV it is guarded like every text cell (see csv_text_guard): join on school_key instead."
+)
+
+CSV_TEXT_GUARD_NOTE = (
+    "In the CSV every text cell that starts with =, +, -, @, a tab or a carriage return, ignoring any leading whitespace, "
+    "has an apostrophe in front, so that a spreadsheet application does not read it as a formula. "
+    "That covers source_school_name, province, district and locality as well as display_name. "
+    "Numbers are not changed, and a negative number stays a number. "
+    "To recover a value, remove one leading apostrophe when the text after it, ignoring leading whitespace, starts with one of those; "
+    "a value that was stored with an apostrophe there already is ambiguous, so join on school_key. "
+    "The XLSX stores every text cell as text and is not changed."
 )
 
 
 def display_name(source_school_name: str) -> str:
-    return "'" + source_school_name if source_school_name.startswith(FORMULA_STARTS) else source_school_name
+    return "'" + source_school_name if looks_like_formula(source_school_name) else source_school_name
 
 
 def method_record(
@@ -155,6 +193,7 @@ def method_record(
     generated_at: dt.datetime,
     top: TopSelection | None = None,
     queue_count: int | None = None,
+    persistence: store.PersistenceSet | None = None,
 ) -> list[tuple[str, str]]:
     """The facts a reader needs to interpret an export and rebuild its list, as ordered key/value pairs."""
     sort_keys = ", ".join(manifest.sort_columns)
@@ -165,6 +204,7 @@ def method_record(
         ("rule_provenance", manifest.provenance.value),
         ("rule_provenance_note", PROVENANCE_NOTES[manifest.provenance]),
         ("policy_role", manifest.policy_role.value),
+        ("policy_role_note", POLICY_ROLE_NOTES[manifest.policy_role]),
         ("score_kind", manifest.score_kind),
         ("formula", manifest.rule_formula),
         ("weights", "; ".join(_format_weight(w) for w in manifest.weights)),
@@ -184,6 +224,7 @@ def method_record(
         ("filters", filters.describe()),
         ("filters_effect", "Filters only hide rows. Ranks, bounds and anchors are those of the full run."),
         ("display_name", DISPLAY_NAME_NOTE),
+        ("csv_text_guard", CSV_TEXT_GUARD_NOTE),
     ]
     if top is not None:
         record += [
@@ -208,6 +249,20 @@ def method_record(
                 "Schools with a gate failure under this rule, or whose rule reads urgency and urgency is unknown.",
             ),
             ("rows_listed", f"queue={queue_count}"),
+        ]
+    if persistence is not None:
+        record += [
+            ("persistence_experiment", persistence.experiment_id),
+            # Not named ``..._sha256``: a client counts the record's ``..._sha256`` lines as the source files of the list,
+            # and the persistence table is evidence for a flag, not an input of the ranking.
+            ("persistence_source_hash", persistence.source_sha256),
+            (
+                "persistence_test",
+                f"Lower top-20 frequency at least {number_text(persistence.threshold)} in each of "
+                f"{len(persistence.settings)} settings, {persistence.draws} draws each. "
+                "A frequency is a share of draws under declared scenarios, not a probability that a school needs help.",
+            ),
+            ("persistence_limitation", PERSISTENCE_LIMITATIONS[persistence.rule_id]),
         ]
     record += [
         ("generated_at", generated_at.astimezone(dt.timezone.utc).strftime(TIME_FORMAT)),
@@ -363,16 +418,22 @@ def incomplete_table(
 
 
 def _csv_cell(value: Cell) -> str | int:
+    """A cell as the CSV writes it. A text cell that a spreadsheet could read as a formula gets an apostrophe in front."""
     if value is None:
         return ""
-    return number_text(value) if isinstance(value, float) else value
+    if isinstance(value, float):
+        return number_text(value)
+    if isinstance(value, str) and looks_like_formula(value):
+        return "'" + value
+    return value
 
 
 def render_csv(record: Sequence[tuple[str, str]], table: Table) -> bytes:
     """A UTF-8 file with a byte order mark, so that Excel reads accents correctly.
 
     The method record comes first, one quoted cell per line, ``"# key: value"``, so that Excel keeps each line in one column.
-    Then comes the header row and the data rows, every float as ``number_text`` writes it.
+    Then comes the header row and the data rows, every float as ``number_text`` writes it and every text cell that
+    starts with a formula character guarded by an apostrophe (see ``CSV_TEXT_GUARD_NOTE``).
     """
     buffer = io.StringIO()
     record_writer = csv.writer(buffer, lineterminator="\n", quoting=csv.QUOTE_ALL)

@@ -75,7 +75,7 @@ def test_every_export_row_carries_the_manifest_identity():  # FM9
     for column, value in (
         ("rule_id", "additive_no_u"),
         ("rule_label", "Additive, urgency omitted"),
-        ("provenance", "proposed_follow_up_pending_author_review"),
+        ("provenance", "revised_paper"),
         ("policy_role", "primary"),
         ("input_sha256", "input-hash"),
         ("anchors_sha256", run.manifest.anchors_sha256),

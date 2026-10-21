@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -23,12 +24,14 @@ from school_scoring.screening import (
     INPUT_CONTRACT,
     TOP_K_VALUES,
     Cohort,
+    Component,
     PreparedRecord,
     SchoolResult,
     ScreeningRun,
     Table,
     assemble_frame,
     common_cohort,
+    get_rule,
     pairwise_metrics,
     parse_records,
     prepare,
@@ -41,6 +44,8 @@ EXP15 = "experiments/nightlights/EXP-15-v0.1.0-20261008"
 EXP10_BASELINE = "experiments/nightlights/EXP-10-v0.1.0-20261006/scoring/baseline_reconstruction/deterministic_school_results.csv"
 EXP20_FEATURES = "experiments/environment/EXP-20-v0.1.0-20261012/features/results/environment_features.csv"
 EXP21 = "experiments/decision_rules/EXP-21-v0.1.0-20261012/results"
+# The revised paper's run: the same rules with urgency left out of every primary calculation.
+EXP22 = "experiments/decision_rules/EXP-22-v0.1.0-20261020/results"
 COMPARISON = "publication_followup/20261020/comparison/results"
 RAW_SCHOOLS_FILE = "png_curated_sec_schools_access_v3_clean.csv"
 PREPARED_FILE = f"{EXP15}/results/tables/prepared_current_school_data.csv"
@@ -75,6 +80,7 @@ class Check:
     n_bit_identical: int = 0
     max_abs_deviation: float = 0.0
     n_mismatch: int = 0
+    rule: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -98,10 +104,16 @@ class Harness:
         reference: dict[str, Any],
         *,
         exact: bool,
+        rule: str | None = None,
     ) -> None:
-        """Compare name-keyed values. A missing value only agrees with a missing value."""
+        """Compare name-keyed values. A missing value only agrees with a missing value.
+
+        ``rule`` names the screening rule whose output is compared, so the report can say which rules a reference covers.
+        """
         name = f"{name} [{scope}]"
-        check = Check(name, reference_label, scope, "exact" if exact else f"abs<={TOLERANCE:g}")
+        if any(done.name == name for done in self.checks):
+            raise AssertionError(f"two checks are named {name!r}")
+        check = Check(name, reference_label, scope, "exact" if exact else f"abs<={TOLERANCE:g}", rule=rule)
         if set(engine) != set(reference):
             raise AssertionError(f"{name}: school sets differ between engine and reference")
         for school in engine:
@@ -198,11 +210,547 @@ def _contribution(result: SchoolResult, component: str, side: str) -> float | No
     return None
 
 
-def _contribution(result: SchoolResult, component: str, side: str) -> float | None:
-    for contribution in result.contributions:
-        if contribution.component.value == component:
-            return getattr(contribution, side)
-    return None
+@dataclass(frozen=True)
+class NeedFirstPositions:
+    """How EXP-21 or EXP-22 numbers a complete school under school-need-first, set against the engine's rank."""
+
+    rule_id: str
+    experiment: str
+    complete_names: list[str]
+    determined: list[str]
+    differing: list[str]
+
+
+def _anchor_checks(
+    h: Harness,
+    load: Callable[[str], pd.DataFrame],
+    anchors: dict,
+    experiment: str,
+    folder: str,
+    everyone: str,
+) -> None:
+    """The three fitted anchors against an experiment's primary normalization table."""
+    primary = load(f"{folder}/normalization_anchors.csv").query("variant == 'primary'").set_index("component")
+    tag = "" if experiment == "EXP-21" else f"{experiment} "
+    for name in ("aqi", "emissions", "land"):
+        for label, mine, reference in (
+            ("p05", anchors[name].p05, primary.loc[name, "p05_transformed"]),
+            ("p95", anchors[name].p95, primary.loc[name, "p95_transformed"]),
+            ("valid_rows", float(anchors[name].n_valid), primary.loc[name, "valid_rows"]),
+        ):
+            h.compare(
+                f"{tag}anchor {name} {label}",
+                f"{folder}/normalization_anchors.csv",
+                f"anchors fit on {everyone}",
+                {"a": mine},
+                {"a": reference},
+                exact=label == "valid_rows",
+            )
+
+
+def _contribution_checks(
+    h: Harness,
+    run: ScreeningRun,
+    reference: pd.DataFrame,
+    ref_file: str,
+    eligible: set[str],
+    eligible_scope: str,
+    tag: str = "",
+) -> None:
+    """Each need part's and each component's contribution to a rule's score, lower and upper bound."""
+    rule_id = run.manifest.rule_id
+    for column, part in NEED_PART_CONTRIBUTIONS.items():
+        mine = _results(run, lambda r, p=part: getattr(r.need_part_contributions, p, None), eligible)
+        h.compare(
+            f"{tag}{rule_id} contribution {column}",
+            ref_file,
+            eligible_scope,
+            mine,
+            _only(_column(reference, column), eligible),
+            exact=False,
+            rule=rule_id,
+        )
+    for column, component, side in COMPONENT_CONTRIBUTIONS:
+        if component == "U" and not run.manifest.uses_urgency:
+            continue
+        mine = _results(run, lambda r, c=component, s=side: _contribution(r, c, s), eligible)
+        h.compare(
+            f"{tag}{rule_id} contribution {column}",
+            ref_file,
+            eligible_scope,
+            mine,
+            _only(_column(reference, column), eligible),
+            exact=False,
+            rule=rule_id,
+        )
+
+
+def _benchmark_checks(
+    h: Harness,
+    run: ScreeningRun,
+    reference: pd.DataFrame,
+    ref_file: str,
+    eligible: set[str],
+    scope: str,
+    tag: str = "",
+) -> None:
+    for column, getter, exact in (
+        ("score_point", lambda r: r.score_point, False),
+        ("score_compensatory", lambda r: r.score_point, False),
+        ("rank_point", lambda r: r.rank_point, True),
+        ("rank_compensatory", lambda r: r.rank_point, True),
+    ):
+        h.compare(
+            f"{tag}benchmark {column}",
+            ref_file,
+            scope,
+            _results(run, getter, eligible),
+            _only(_column(reference, column), eligible),
+            exact=exact,
+            rule="benchmark",
+        )
+
+
+def _need_first_checks(
+    h: Harness,
+    run: ScreeningRun,
+    reference: pd.DataFrame,
+    experiment: str,
+    folder: str,
+    eligible: set[str],
+    eligible_scope: str,
+    tag: str = "",
+) -> NeedFirstPositions:
+    """Secondary-score bounds and rank bounds against an experiment, then its position of each complete school."""
+    rule_id = run.manifest.rule_id
+    ref_file = f"{folder}/need_first_results.csv"
+    for column, getter, exact in (
+        ("secondary_score_lower", lambda r: r.score_lower, False),
+        ("secondary_score_upper", lambda r: r.score_upper, False),
+        ("need_first_rank_min_possible", lambda r: r.rank_best, True),
+        ("need_first_rank_max_possible", lambda r: r.rank_worst, True),
+    ):
+        h.compare(
+            f"{tag}{rule_id} {column}",
+            ref_file,
+            eligible_scope,
+            _results(run, getter, eligible),
+            _only(_column(reference, column), eligible),
+            exact=exact,
+            rule=rule_id,
+        )
+    # The experiment numbers a complete school by its position among all eligible schools, interval schools included.
+    # That position must sit inside the engine's best and worst rank, and equal it where best equals worst.
+    position = _column(reference, "need_first_rank_point")
+    results = {r.school_name: r for r in run.results}
+    complete_names = [n for n, r in results.items() if r.rank_point is not None]
+    determined = [n for n in complete_names if results[n].rank_best == results[n].rank_worst]
+    h.compare(
+        f"{tag}{rule_id} {experiment} position equals the engine's rank where best equals worst",
+        ref_file,
+        f"{eligible_scope}, schools with a determined rank ({len(determined)})",
+        {n: float(results[n].rank_best) for n in determined},
+        {n: position[n] for n in determined},
+        exact=True,
+        rule=rule_id,
+    )
+    h.compare(
+        f"{tag}{rule_id} {experiment} position lies within the engine's best and worst rank",
+        ref_file,
+        eligible_scope,
+        {n: float(results[n].rank_best <= position[n] <= results[n].rank_worst) for n in complete_names},
+        {n: 1.0 for n in complete_names},
+        exact=True,
+        rule=rule_id,
+    )
+    differing = [n for n in complete_names if results[n].rank_point != position[n]]
+    for n in differing:
+        gap = int(position[n] - results[n].rank_point)
+        h.scope_differences.append(
+            {
+                "rule_id": rule_id,
+                "experiment": experiment,
+                "school_name": n,
+                "engine_rank_point_complete_scope": results[n].rank_point,
+                "experiment_position_eligible_scope": int(position[n]),
+                "engine_rank_best": results[n].rank_best,
+                "engine_rank_worst": results[n].rank_worst,
+                "rank_determined": results[n].rank_best == results[n].rank_worst,
+                "gap": gap,
+                "reason": f"{experiment} counts {gap} interval school(s) ahead of this school; "
+                "the engine ranks only the complete cohort",
+            }
+        )
+    return NeedFirstPositions(rule_id, experiment, complete_names, determined, differing)
+
+
+def _bottleneck_checks(
+    h: Harness,
+    run: ScreeningRun,
+    reference: pd.DataFrame,
+    ref_file: str,
+    eligible: set[str],
+    eligible_scope: str,
+    point_scope: str,
+    everyone: str,
+    tag: str = "",
+) -> None:
+    rule_id = run.manifest.rule_id
+    for column, getter, exact, scope, keep in (
+        ("bottleneck_score_lower", lambda r: r.score_lower, False, eligible_scope, eligible),
+        ("bottleneck_score_upper", lambda r: r.score_upper, False, eligible_scope, eligible),
+        ("bottleneck_score_point", lambda r: r.score_point, False, everyone, None),
+        ("bottleneck_rank_min_possible", lambda r: r.rank_best, True, eligible_scope, eligible),
+        ("bottleneck_rank_max_possible", lambda r: r.rank_worst, True, eligible_scope, eligible),
+        ("bottleneck_rank_point", lambda r: r.rank_point, True, point_scope, None),
+    ):
+        values = _column(reference, column)
+        h.compare(
+            f"{tag}{rule_id} {column}",
+            ref_file,
+            scope,
+            _results(run, getter, keep),
+            values if keep is None else _only(values, keep),
+            exact=exact,
+            rule=rule_id,
+        )
+
+
+# What EXP-22 saved for the accepted deterministic replay of the urgency-omitted rule, against the comparison package.
+ACCEPTED_REPLAY_COLUMNS: dict[str, tuple[str, Callable[[SchoolResult], Value], bool]] = {
+    "score_lower_replay": ("score_lower", lambda r: r.score_lower, False),
+    "score_upper_replay": ("score_upper", lambda r: r.score_upper, False),
+    "score_point_replay": ("score_point", lambda r: r.score_point, False),
+    "rank_min_possible_replay": ("rank_min_possible", lambda r: r.rank_best, True),
+    "rank_max_possible_replay": ("rank_max_possible", lambda r: r.rank_worst, True),
+    "rank_point_replay": ("rank_point_complete120", lambda r: r.rank_point, True),
+}
+# EXP-22's matched-120 comparisons, as (left rule, right rule) of the engine. "Recommended" is the urgency-omitted additive rule.
+MATCHED120_PAIRS = {
+    "benchmark_to_recommended": ("benchmark", "additive_no_u"),
+    "recommended_to_bottleneck": ("additive_no_u", "bottleneck_no_u"),
+    "recommended_to_need_first": ("additive_no_u", "need_first_no_u"),
+    "need_first_to_bottleneck": ("need_first_no_u", "bottleneck_no_u"),
+}
+# EXP-22's per-school ranks on the matched cohort, by the engine rule each column belongs to.
+MATCHED120_RANK_COLUMNS = {
+    "benchmark_rank": "benchmark",
+    "recommended_rank": "additive_no_u",
+    "bottleneck_rank": "bottleneck_no_u",
+    "need_first_rank": "need_first_no_u",
+}
+MATCHED120_SCORE_COLUMNS = {
+    "benchmark_score": "benchmark",
+    "recommended_score": "additive_no_u",
+    "bottleneck_score": "bottleneck_no_u",
+}
+# EXP-22's weights table: each criterion's share of the urgency-omitted additive rule. A need part is a fifth of school need.
+CONTRIBUTION_WEIGHT_COMPONENTS = {
+    "school_need": "N",
+    "area": "A",
+    "reach": "R",
+    "aqi": "Q",
+    "emissions": "E",
+    "land": "L",
+}
+NEED_PART_CRITERIA = tuple(NEED_PART_CONTRIBUTIONS.values())
+
+
+def _exp22_checks(
+    h: Harness,
+    load: Callable[..., pd.DataFrame],
+    runs: dict[str, ScreeningRun],
+    eligible: set[str],
+    eligible_scope: str,
+    everyone: str,
+    complete: Callable[[str], str],
+) -> NeedFirstPositions:
+    """EXP-22, the run behind the revised paper: every rule it reports, compared with the engine school by school.
+
+    That is the urgency-omitted additive, need-first and bottleneck rules, the benchmark and the explicit-urgency
+    reference, the accepted deterministic replay, the matched-120 comparisons, the score contributions and the weights.
+    The normalization anchors are checked with the EXP-21 ones, by ``_anchor_checks``.
+    """
+    tag, folder = "EXP-22 ", EXP22
+    additive = runs["additive_no_u"]
+
+    # Cohorts: the three urgency-omitted rules read the same components, so they share one cohort.
+    all_ref, all_file = load(f"{folder}/all_school_results.csv"), f"{folder}/all_school_results.csv"
+    reference_cohort = {
+        n: COHORT_BY_REFERENCE_LABEL[c].value for n, c in _column(all_ref, "cohort_class").items()
+    }
+    for rule_id in ("additive_no_u", "need_first_no_u", "bottleneck_no_u"):
+        h.compare(
+            f"{tag}{rule_id} cohort",
+            all_file,
+            everyone,
+            {r.school_name: r.cohort.value for r in runs[rule_id].results},
+            reference_cohort,
+            exact=True,
+            rule=rule_id,
+        )
+
+    # The urgency-omitted additive rule: scores, bounds and ranks.
+    for column, getter, exact, scope in (
+        ("score_lower", lambda r: r.score_lower, False, everyone),
+        ("score_upper", lambda r: r.score_upper, False, everyone),
+        ("score_point", lambda r: r.score_point, False, everyone),
+        ("rank_min_possible", lambda r: r.rank_best, True, eligible_scope),
+        ("rank_max_possible", lambda r: r.rank_worst, True, eligible_scope),
+        ("rank_point", lambda r: r.rank_point, True, complete("additive_no_u")),
+    ):
+        h.compare(
+            f"{tag}additive_no_u {column}",
+            all_file,
+            scope,
+            _results(additive, getter),
+            _column(all_ref, column),
+            exact=exact,
+            rule="additive_no_u",
+        )
+
+    # Need-first and bottleneck, and the benchmark, each against its own EXP-22 table.
+    positions = _need_first_checks(
+        h,
+        runs["need_first_no_u"],
+        load(f"{folder}/need_first_results.csv"),
+        "EXP-22",
+        folder,
+        eligible,
+        eligible_scope,
+        tag,
+    )
+    _bottleneck_checks(
+        h,
+        runs["bottleneck_no_u"],
+        load(f"{folder}/bottleneck_results.csv"),
+        f"{folder}/bottleneck_results.csv",
+        eligible,
+        eligible_scope,
+        complete("bottleneck_no_u"),
+        everyone,
+        tag,
+    )
+    _benchmark_checks(
+        h,
+        runs["benchmark"],
+        load(f"{folder}/benchmark_replay.csv"),
+        f"{folder}/benchmark_replay.csv",
+        eligible,
+        complete("benchmark"),
+        tag,
+    )
+
+    # The explicit-urgency reference: the circulated additive rule restored as a sensitivity.
+    restored, restored_file = (
+        load(f"{folder}/reference_u_restoration.csv"),
+        f"{folder}/reference_u_restoration.csv",
+    )
+    restored_run = runs["additive_u"]
+    for column, getter, exact, scope in (
+        ("score_lower", lambda r: r.score_lower, False, everyone),
+        ("score_upper", lambda r: r.score_upper, False, everyone),
+        ("score_point", lambda r: r.score_point, False, everyone),
+        ("rank_min_possible", lambda r: r.rank_best, True, eligible_scope),
+        ("rank_max_possible", lambda r: r.rank_worst, True, eligible_scope),
+        ("rank_point", lambda r: r.rank_point, True, complete("additive_u")),
+    ):
+        h.compare(
+            f"{tag}additive_u {column}",
+            restored_file,
+            scope,
+            _results(restored_run, getter),
+            _column(restored, column),
+            exact=exact,
+            rule="additive_u",
+        )
+    h.compare(
+        f"{tag}additive_u complete exactly where the reference is point eligible",
+        restored_file,
+        everyone,
+        {r.school_name: float(r.cohort is Cohort.COMPLETE) for r in restored_run.results},
+        {n: float(v) for n, v in _column(restored, "point_eligible").items()},
+        exact=True,
+        rule="additive_u",
+    )
+    h.compare(
+        f"{tag}additive_u eligible exactly where the reference is condition eligible",
+        restored_file,
+        everyone,
+        {r.school_name: float(r.cohort is not Cohort.VERIFICATION_QUEUE) for r in restored_run.results},
+        {n: float(v) for n, v in _column(restored, "condition_eligible").items()},
+        exact=True,
+        rule="additive_u",
+    )
+    for component in "NAURQEL":
+        h.compare(
+            f"{tag}component {component} in the explicit-urgency reference",
+            restored_file,
+            everyone,
+            {r.school_name: getattr(r.components, component) for r in restored_run.results},
+            _column(restored, component),
+            exact=False,
+            rule="additive_u",
+        )
+
+    # Score contributions and the weights behind them.
+    contributions, contribution_file = (
+        load(f"{folder}/recommended_score_contributions.csv"),
+        f"{folder}/recommended_score_contributions.csv",
+    )
+    for column, getter, exact, scope in (
+        ("score_lower", lambda r: r.score_lower, False, everyone),
+        ("score_upper", lambda r: r.score_upper, False, everyone),
+        ("score_point", lambda r: r.score_point, False, everyone),
+        ("rank_min_possible", lambda r: r.rank_best, True, eligible_scope),
+        ("rank_max_possible", lambda r: r.rank_worst, True, eligible_scope),
+        ("rank_point", lambda r: r.rank_point, True, complete("additive_no_u")),
+    ):
+        h.compare(
+            f"{tag}additive_no_u {column} in the contributions table",
+            contribution_file,
+            scope,
+            _results(additive, getter),
+            _column(contributions, column),
+            exact=exact,
+            rule="additive_no_u",
+        )
+    _contribution_checks(h, additive, contributions, contribution_file, eligible, eligible_scope, tag)
+    h.compare(
+        f"{tag}additive_no_u has no urgency contribution",
+        contribution_file,
+        eligible_scope,
+        _results(additive, lambda r: float(_contribution(r, "U", "lower") is None), eligible),
+        {n: 1.0 for n in eligible},
+        exact=True,
+        rule="additive_no_u",
+    )
+    weights = load(f"{folder}/contribution_weights.csv")
+    rule = get_rule("additive_no_u")
+    engine_weights = {
+        criterion: float(rule.weight(Component(component)))
+        for criterion, component in CONTRIBUTION_WEIGHT_COMPONENTS.items()
+    }
+    engine_weights.update(
+        {part: engine_weights["school_need"] / len(NEED_PART_CRITERIA) for part in NEED_PART_CRITERIA}
+    )
+    h.compare(
+        f"{tag}additive_no_u weights",
+        f"{folder}/contribution_weights.csv",
+        "the rule's criteria",
+        engine_weights,
+        dict(zip(weights["criterion"], weights["weight"], strict=True)),
+        exact=False,
+        rule="additive_no_u",
+    )
+
+    # The accepted deterministic replay: its own receipt must say passed on every school, and the engine must agree
+    # with the file the replay was checked against.
+    replay = load(f"{folder}/accepted_no_u_replay.csv")
+    if set(replay["check_id"]) != set(ACCEPTED_REPLAY_COLUMNS):
+        raise AssertionError(f"accepted replay checks changed: {sorted(replay['check_id'])}")
+    for _, row in replay.iterrows():
+        column, getter, exact = ACCEPTED_REPLAY_COLUMNS[row["check_id"]]
+        named = str(row["reference"])
+        if not named.endswith(".csv") or "publication_followup" not in named:
+            raise AssertionError(f"accepted replay reference is not the comparison package: {named}")
+        relative = named[named.index("publication_followup") :]
+        target = load(relative)
+        keep = set(target["School Name"])
+        h.compare(
+            f"{tag}accepted replay {row['check_id']}",
+            relative,
+            eligible_scope,
+            _results(additive, getter, keep),
+            _column(target, column),
+            exact=exact,
+            rule="additive_no_u",
+        )
+        h.compare(
+            f"{tag}accepted replay {row['check_id']} receipt",
+            f"{folder}/accepted_no_u_replay.csv",
+            "the receipt's own statement",
+            {
+                "passed": float(row["status"] == "passed"),
+                "n": float(row["n"]),
+                "within tolerance": float(row["maximum_absolute_difference"] <= TOLERANCE),
+            },
+            {"passed": 1.0, "n": float(len(keep)), "within tolerance": 1.0},
+            exact=True,
+            rule="additive_no_u",
+        )
+
+    # The matched-120 comparisons and the ranks behind them.
+    matched, matched_file = (
+        load(f"{folder}/matched120_comparisons.csv"),
+        f"{folder}/matched120_comparisons.csv",
+    )
+    if set(matched["comparison"]) != set(MATCHED120_PAIRS):
+        raise AssertionError(f"matched-120 comparisons changed: {sorted(matched['comparison'])}")
+    metrics = {name: pairwise_metrics(runs[a], runs[b]) for name, (a, b) in MATCHED120_PAIRS.items()}
+    index = matched.set_index("comparison")
+    scope = f"each pair's common complete cohort (n={sorted({m.n for m in metrics.values()})})"
+    top20 = {name: next(t for t in m.top_k if t.k == 20) for name, m in metrics.items()}
+    for column, getter, exact in (
+        ("n", lambda name: float(metrics[name].n), True),
+        ("spearman_rank", lambda name: metrics[name].spearman_rank, False),
+        ("top20_overlap", lambda name: float(top20[name].overlap), True),
+        ("top20_left", lambda name: float(top20[name].size_a), True),
+        ("top20_right", lambda name: float(top20[name].size_b), True),
+        ("median_absolute_rank_shift", lambda name: metrics[name].median_absolute_rank_shift, False),
+        ("maximum_absolute_rank_shift", lambda name: metrics[name].maximum_absolute_rank_shift, False),
+    ):
+        h.compare(
+            f"{tag}matched-120 {column}",
+            matched_file,
+            scope,
+            {name: getter(name) for name in MATCHED120_PAIRS},
+            {name: index.loc[name, column] for name in MATCHED120_PAIRS},
+            exact=exact,
+        )
+    movements, movement_file = (
+        load(f"{folder}/rank_movements_matched120.csv"),
+        f"{folder}/rank_movements_matched120.csv",
+    )
+    four = common_cohort(*(runs[r] for r in dict.fromkeys(MATCHED120_RANK_COLUMNS.values())))
+    ranks = {
+        rule_id: rank_in_common_cohort(runs[rule_id], four).by_school()
+        for rule_id in set(MATCHED120_RANK_COLUMNS.values())
+    }
+    for column, rule_id in MATCHED120_RANK_COLUMNS.items():
+        h.compare(
+            f"{tag}matched-120 {column}",
+            movement_file,
+            four.scope,
+            ranks[rule_id],
+            _column(movements, column),
+            exact=True,
+            rule=rule_id,
+        )
+    for column, rule_id in MATCHED120_SCORE_COLUMNS.items():
+        h.compare(
+            f"{tag}matched-120 {column}",
+            movement_file,
+            four.scope,
+            _results(runs[rule_id], lambda r: r.score_point, set(four.school_names)),
+            _column(movements, column),
+            exact=False,
+            rule=rule_id,
+        )
+    for column, (left, right) in (
+        ("recommended_minus_benchmark_rank", ("additive_no_u", "benchmark")),
+        ("bottleneck_minus_recommended_rank", ("bottleneck_no_u", "additive_no_u")),
+        ("need_first_minus_recommended_rank", ("need_first_no_u", "additive_no_u")),
+    ):
+        h.compare(
+            f"{tag}matched-120 {column}",
+            movement_file,
+            four.scope,
+            {n: float(ranks[left][n] - ranks[right][n]) for n in four.school_names},
+            _column(movements, column),
+            exact=True,
+        )
+    return positions
 
 
 def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path) -> dict[str, Any]:
@@ -291,23 +839,10 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
         exact=True,
     )
 
-    # Normalization anchors.
+    # Normalization anchors, against both experiments: the urgency-omitted run fits the same anchors.
     anchors = {a.name: a for a in prepared.anchors}
-    primary = load(f"{EXP21}/normalization_anchors.csv").query("variant == 'primary'").set_index("component")
-    for name in ("aqi", "emissions", "land"):
-        for label, mine, reference in (
-            ("p05", anchors[name].p05, primary.loc[name, "p05_transformed"]),
-            ("p95", anchors[name].p95, primary.loc[name, "p95_transformed"]),
-            ("valid_rows", float(anchors[name].n_valid), primary.loc[name, "valid_rows"]),
-        ):
-            h.compare(
-                f"anchor {name} {label}",
-                f"{EXP21}/normalization_anchors.csv",
-                f"anchors fit on {everyone}",
-                {"a": mine},
-                {"a": reference},
-                exact=label == "valid_rows",
-            )
+    for experiment, folder in (("EXP-21", EXP21), ("EXP-22", EXP22)):
+        _anchor_checks(h, load, anchors, experiment, folder, everyone)
     luminosity_file = ref / EXP15 / "results/diagnostics/luminosity_normalization.json"
     used.append(luminosity_file)
     bounds = json.loads(luminosity_file.read_text())["percentile_bounds_on_observed_source_population"]
@@ -339,124 +874,44 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
             _results(additive, getter),
             _column(all21, column),
             exact=exact,
+            rule="additive_u",
         )
     contributions = load(f"{EXP21}/recommended_score_contributions.csv")
     ref_file = f"{EXP21}/recommended_score_contributions.csv"
-    for column, part in NEED_PART_CONTRIBUTIONS.items():
-        mine = _results(additive, lambda r, p=part: getattr(r.need_part_contributions, p, None), eligible)
-        h.compare(
-            f"additive_u contribution {column}",
-            ref_file,
-            eligible_scope,
-            mine,
-            _only(_column(contributions, column), eligible),
-            exact=False,
-        )
-    for column, component, side in COMPONENT_CONTRIBUTIONS:
-        mine = _results(additive, lambda r, c=component, s=side: _contribution(r, c, s), eligible)
-        h.compare(
-            f"additive_u contribution {column}",
-            ref_file,
-            eligible_scope,
-            mine,
-            _only(_column(contributions, column), eligible),
-            exact=False,
-        )
+    _contribution_checks(h, additive, contributions, ref_file, eligible, eligible_scope)
 
     # Benchmark over every eligible school: the benchmark reads no environmental component.
-    ref_file = f"{EXP21}/benchmark_replay.csv"
-    benchmark = runs["benchmark"]
-    for column, getter, exact in (
-        ("score_point", lambda r: r.score_point, False),
-        ("score_compensatory", lambda r: r.score_point, False),
-        ("rank_point", lambda r: r.rank_point, True),
-        ("rank_compensatory", lambda r: r.rank_point, True),
-    ):
-        h.compare(
-            f"benchmark {column}",
-            ref_file,
-            complete("benchmark"),
-            _results(benchmark, getter, eligible),
-            _only(_column(benchmark_ref, column), eligible),
-            exact=exact,
-        )
+    _benchmark_checks(
+        h, runs["benchmark"], benchmark_ref, f"{EXP21}/benchmark_replay.csv", eligible, complete("benchmark")
+    )
 
     # School-need-first. EXP-21 bounds are an eligible-scope quantity and compare directly.
-    need_ref, ref_file = load(f"{EXP21}/need_first_results.csv"), f"{EXP21}/need_first_results.csv"
-    need_run = runs["need_first_u"]
-    for column, getter, exact in (
-        ("secondary_score_lower", lambda r: r.score_lower, False),
-        ("secondary_score_upper", lambda r: r.score_upper, False),
-        ("need_first_rank_min_possible", lambda r: r.rank_best, True),
-        ("need_first_rank_max_possible", lambda r: r.rank_worst, True),
-    ):
-        h.compare(
-            f"need_first_u {column}",
-            ref_file,
+    positions = {
+        "need_first_u": _need_first_checks(
+            h,
+            runs["need_first_u"],
+            load(f"{EXP21}/need_first_results.csv"),
+            "EXP-21",
+            EXP21,
+            eligible,
             eligible_scope,
-            _results(need_run, getter, eligible),
-            _only(_column(need_ref, column), eligible),
-            exact=exact,
         )
-    # EXP-21 numbers a complete school by its position among all eligible schools, interval schools included.
-    # That position must sit inside the engine's best and worst rank, and equal it where best equals worst.
-    position = _column(need_ref, "need_first_rank_point")
-    results = {r.school_name: r for r in need_run.results}
-    complete_names = [n for n, r in results.items() if r.rank_point is not None]
-    determined = [n for n in complete_names if results[n].rank_best == results[n].rank_worst]
-    h.compare(
-        "need_first_u EXP-21 position equals the engine's rank where best equals worst",
-        ref_file,
-        f"{eligible_scope}, schools with a determined rank ({len(determined)})",
-        {n: float(results[n].rank_best) for n in determined},
-        {n: position[n] for n in determined},
-        exact=True,
-    )
-    h.compare(
-        "need_first_u EXP-21 position lies within the engine's best and worst rank",
-        ref_file,
-        eligible_scope,
-        {n: float(results[n].rank_best <= position[n] <= results[n].rank_worst) for n in complete_names},
-        {n: 1.0 for n in complete_names},
-        exact=True,
-    )
-    differing = [n for n in complete_names if results[n].rank_point != position[n]]
-    for n in differing:
-        gap = int(position[n] - results[n].rank_point)
-        h.scope_differences.append(
-            {
-                "school_name": n,
-                "engine_rank_point_complete_scope": results[n].rank_point,
-                "exp21_position_eligible_scope": int(position[n]),
-                "engine_rank_best": results[n].rank_best,
-                "engine_rank_worst": results[n].rank_worst,
-                "rank_determined": results[n].rank_best == results[n].rank_worst,
-                "gap": gap,
-                "reason": f"EXP-21 counts {gap} interval school(s) ahead of this school; "
-                "the engine ranks only the complete cohort",
-            }
-        )
+    }
 
     # Bottleneck against EXP-21.
-    bottleneck_ref, ref_file = load(f"{EXP21}/bottleneck_results.csv"), f"{EXP21}/bottleneck_results.csv"
-    bottleneck_run = runs["bottleneck_u"]
-    for column, getter, exact, scope, keep in (
-        ("bottleneck_score_lower", lambda r: r.score_lower, False, eligible_scope, eligible),
-        ("bottleneck_score_upper", lambda r: r.score_upper, False, eligible_scope, eligible),
-        ("bottleneck_score_point", lambda r: r.score_point, False, everyone, None),
-        ("bottleneck_rank_min_possible", lambda r: r.rank_best, True, eligible_scope, eligible),
-        ("bottleneck_rank_max_possible", lambda r: r.rank_worst, True, eligible_scope, eligible),
-        ("bottleneck_rank_point", lambda r: r.rank_point, True, complete("bottleneck_u"), None),
-    ):
-        reference = _column(bottleneck_ref, column)
-        h.compare(
-            f"bottleneck_u {column}",
-            ref_file,
-            scope,
-            _results(bottleneck_run, getter, keep),
-            reference if keep is None else _only(reference, keep),
-            exact=exact,
-        )
+    _bottleneck_checks(
+        h,
+        runs["bottleneck_u"],
+        load(f"{EXP21}/bottleneck_results.csv"),
+        f"{EXP21}/bottleneck_results.csv",
+        eligible,
+        eligible_scope,
+        complete("bottleneck_u"),
+        everyone,
+    )
+
+    # EXP-22, the run behind the revised paper: every rule it reports, against the engine.
+    positions["need_first_no_u"] = _exp22_checks(h, load, runs, eligible, eligible_scope, everyone, complete)
 
     # Comparison package: component values, all seven rules on the common cohort, and the all-124 bounds.
     components_ref, ref_file = (
@@ -622,9 +1077,20 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
             exact=column in ("left_rank", "right_rank", "Province", "District", "Locality", "missing_aqi"),
         )
 
-    return _write_report(
-        h, prepared.input_sha256, runs, used, Path(output_dir), len(complete_names), differing, determined
-    )
+    return _write_report(h, prepared.input_sha256, runs, used, Path(output_dir), positions)
+
+
+def _position_summary(h: Harness, p: NeedFirstPositions) -> dict[str, Any]:
+    gaps = [row["gap"] for row in h.scope_differences if row["rule_id"] == p.rule_id]
+    return {
+        "complete_schools": len(p.complete_names),
+        "rank_determined_by_the_envelope": len(p.determined),
+        f"engine_rank_point_differs_from_{p.experiment.lower().replace('-', '')}_position": len(p.differing),
+        "gap_min": min(gaps, default=0),
+        "gap_max": max(gaps, default=0),
+        "reason": f"{p.experiment} counts interval schools in a complete school's position; the engine ranks only "
+        "the complete cohort. The position always lies within the engine's best and worst rank.",
+    }
 
 
 def _write_report(
@@ -633,9 +1099,7 @@ def _write_report(
     runs: dict[str, ScreeningRun],
     used: list[Path],
     out: Path,
-    complete_count: int,
-    differing: list[str],
-    determined: list[str],
+    positions: dict[str, NeedFirstPositions],
 ) -> dict[str, Any]:
     groups = {
         "all_records_212": set(h.cohorts),
@@ -643,7 +1107,11 @@ def _write_report(
         "complete_120": {n for n, c in h.cohorts.items() if c is Cohort.COMPLETE},
         "interval_4": {n for n, c in h.cohorts.items() if c is Cohort.INTERVAL},
     }
-    gaps = [row["gap"] for row in h.scope_differences]
+    covered: dict[str, set[str]] = {}
+    for check in h.checks:
+        if check.rule is not None:
+            for experiment in re.findall(r"EXP-\d+", check.reference):
+                covered.setdefault(experiment, set()).add(check.rule)
     report = {
         "passed": all(c.passed for c in h.checks),
         "tolerance_abs": TOLERANCE,
@@ -651,16 +1119,12 @@ def _write_report(
             g: {"schools": len(m), "schools_with_no_mismatch": len(m - h.failed_schools)}
             for g, m in groups.items()
         },
-        "need_first_u_versus_exp21_position": {
-            "complete_schools": complete_count,
-            "rank_determined_by_the_envelope": len(determined),
-            "engine_rank_point_differs_from_exp21_position": len(differing),
-            "gap_min": min(gaps, default=0),
-            "gap_max": max(gaps, default=0),
-            "reason": "EXP-21 counts interval schools in a complete school's position; the engine ranks only "
-            "the complete cohort. The position always lies within the engine's best and worst rank.",
+        **{
+            f"{p.rule_id}_versus_{p.experiment.lower().replace('-', '')}_position": _position_summary(h, p)
+            for p in positions.values()
         },
-        "rules_without_a_frozen_reference_for_eligible_scope_bounds": ["need_first_no_u", "bottleneck_no_u"],
+        # Every rule that an experiment reports and the engine reproduces from it, school by school.
+        "rules_checked_against_experiment": {name: sorted(rules) for name, rules in sorted(covered.items())},
         "checks": [{**asdict(c), "passed": c.passed} for c in h.checks],
         "environment": {
             "python": sys.version.split()[0],

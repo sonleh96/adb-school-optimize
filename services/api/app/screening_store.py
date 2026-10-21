@@ -216,13 +216,22 @@ def read_results(connection: psycopg.Connection, run_id: uuid.UUID) -> tuple[Res
 
 
 # ---------------------------------------------------------------------------------------------
-# Persistence of top-20 membership (``infra/sql/006_screening_persistence.sql``).
-# The numbers belong to the circulated rule only; see ``PERSISTENCE_RULE_ID``.
+# Persistence of top-20 membership (``infra/sql/006_screening_persistence.sql`` and ``007_screening_persistence_per_rule.sql``).
+# A set belongs to one input version and one rule; see ``PERSISTENCE_RULE_IDS``.
 # ---------------------------------------------------------------------------------------------
 
-# The one rule the stored persistence numbers describe. The experiment drew random shares for the factors of the
-# rule that includes urgency, and the migration refuses any other rule.
-PERSISTENCE_RULE_ID = "additive_u"
+# The rules whose top-20 persistence is stored: the circulated paper's rule S, which the circulated experiment
+# measured with urgency included, and the revised paper's rule S0, which the revised experiment measured without it.
+# The migration refuses any other rule, and a set is never read for a rule it was not stored for.
+PERSISTENCE_RULE_IDS: tuple[str, ...] = ("additive_u", "additive_no_u")
+
+# The one experiment whose numbers each of those rules may carry. A file from any other experiment is refused, so
+# the circulated experiment's numbers can never be stored as the revised rule's, whatever its receipt says.
+PERSISTENCE_EXPERIMENTS: dict[str, str] = {"additive_u": "EXP-21", "additive_no_u": "EXP-22"}
+
+# How many standard errors above the threshold still count as "only just above the line". Each experiment's paper
+# states its own band: the circulated paper one standard error, the revised paper two.
+ADJACENCY_STANDARD_ERRORS: dict[str, int] = {"additive_u": 1, "additive_no_u": 2}
 
 
 @dataclass(frozen=True)
@@ -234,7 +243,7 @@ class PersistenceSetting:
 
 @dataclass(frozen=True)
 class PersistenceSet:
-    """Where the persistence numbers of an input version came from and how the draws were made."""
+    """Where the persistence numbers of one rule on an input version came from and how the draws were made."""
 
     input_version: str
     rule_id: str
@@ -250,10 +259,24 @@ class PersistenceSet:
         """Monte Carlo standard error of a frequency at the threshold, over ``draws`` draws."""
         return math.sqrt(self.threshold * (1 - self.threshold) / self.draws)
 
+    @property
+    def adjacency_standard_errors(self) -> int:
+        """The band, in standard errors, inside which a persistent school counts as threshold-adjacent."""
+        return ADJACENCY_STANDARD_ERRORS[self.rule_id]
+
+    @property
+    def adjacency_band(self) -> float:
+        return self.adjacency_standard_errors * self.standard_error
+
 
 def is_persistent(frequencies: tuple[float, ...], threshold: float) -> bool:
     """At or above the threshold in every setting. The one definition, used when loading and when serving."""
     return all(f >= threshold for f in frequencies)
+
+
+def is_threshold_adjacent(frequencies: tuple[float, ...], threshold: float, band: float) -> bool:
+    """Persistent, and by less than ``band`` above the threshold at the lowest setting."""
+    return is_persistent(frequencies, threshold) and min(frequencies) - threshold < band
 
 
 @dataclass(frozen=True)
@@ -274,69 +297,73 @@ class Persistence:
         return None if found is None else min(found)
 
     def is_threshold_adjacent(self, source_school_name: str) -> bool | None:
-        """Persistent, and by less than one standard error. None when the school was not in the experiment."""
+        """Persistent, and within the rule's band above the threshold. None when the school was not in the experiment."""
         found = self.frequencies.get(source_school_name)
         if found is None:
             return None
-        return (
-            is_persistent(found, self.set.threshold)
-            and min(found) - self.set.threshold < self.set.standard_error
-        )
+        return is_threshold_adjacent(found, self.set.threshold, self.set.adjacency_band)
 
 
 def read_persistence_sets(
     connection: psycopg.Connection, input_version: str | None = None
-) -> dict[str, PersistenceSet]:
-    """The stored sets by input version: one version, or all of them when none is named."""
+) -> dict[str, dict[str, PersistenceSet]]:
+    """The stored sets by input version and then by rule: one version, or all of them when none is named."""
     where = sql.SQL("where input_version = %s") if input_version is not None else sql.SQL("")
     params = (input_version,) if input_version is not None else ()
     sets = _select(
         connection,
         sql.SQL(
             "select input_version, rule_id, experiment_id, source_path, source_sha256, draws, threshold "
-            "from screening_persistence_sets {where} order by input_version"
+            "from screening_persistence_sets {where} order by input_version, rule_id"
         ).format(where=where),
         params,
     )
     settings = _select(
         connection,
         sql.SQL(
-            "select input_version, setting_id, top_level_concentration, school_need_concentration "
-            "from screening_persistence_settings {where} order by input_version, setting_position"
+            "select input_version, rule_id, setting_id, top_level_concentration, school_need_concentration "
+            "from screening_persistence_settings {where} order by input_version, rule_id, setting_position"
         ).format(where=where),
         params,
     )
-    return {
-        row["input_version"]: PersistenceSet(
+    found: dict[str, dict[str, PersistenceSet]] = {}
+    for row in sets:
+        found.setdefault(row["input_version"], {})[row["rule_id"]] = PersistenceSet(
             **row,
             settings=tuple(
                 PersistenceSetting(
                     s["setting_id"], s["top_level_concentration"], s["school_need_concentration"]
                 )
                 for s in settings
-                if s["input_version"] == row["input_version"]
+                if (s["input_version"], s["rule_id"]) == (row["input_version"], row["rule_id"])
             ),
         )
-        for row in sets
-    }
+    return found
 
 
-def read_persistence(connection: psycopg.Connection, input_version: str) -> Persistence | None:
-    found = read_persistence_sets(connection, input_version).get(input_version)
-    if found is None:
-        return None
-    slot = {s.setting_id: i for i, s in enumerate(found.settings)}
+def read_persistence(
+    connection: psycopg.Connection, input_version: str, rule_id: str | None = None
+) -> dict[str, Persistence]:
+    """The stored persistence of a version by rule, or of the one rule named. A rule without a set is absent."""
+    sets = read_persistence_sets(connection, input_version).get(input_version, {})
+    if rule_id is not None:
+        sets = {r: found for r, found in sets.items() if r == rule_id}
     rows = _select(
         connection,
         sql.SQL(
-            "select source_school_name, setting_id, lower_top20_frequency from screening_persistence_frequencies "
-            "where input_version = %s and rule_id = %s"
+            "select rule_id, source_school_name, setting_id, lower_top20_frequency from screening_persistence_frequencies "
+            "where input_version = %s"
         ),
-        (input_version, found.rule_id),
+        (input_version,),
     )
-    by_school: dict[str, list[float | None]] = {}
-    for row in rows:
-        by_school.setdefault(row["source_school_name"], [None] * len(slot))[slot[row["setting_id"]]] = row[
-            "lower_top20_frequency"
-        ]
-    return Persistence(found, {name: tuple(values) for name, values in by_school.items()})
+    result = {}
+    for rule, found in sets.items():
+        slot = {s.setting_id: i for i, s in enumerate(found.settings)}
+        by_school: dict[str, list[float | None]] = {}
+        for row in rows:
+            if row["rule_id"] == rule:
+                by_school.setdefault(row["source_school_name"], [None] * len(slot))[
+                    slot[row["setting_id"]]
+                ] = row["lower_top20_frequency"]
+        result[rule] = Persistence(found, {name: tuple(values) for name, values in by_school.items()})
+    return result

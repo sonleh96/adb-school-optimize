@@ -19,6 +19,7 @@ import {
   int,
   list,
   looseEnum,
+  nonEmptyList,
   nullable,
   num,
   obj,
@@ -38,9 +39,12 @@ export type RuleId = Infer<typeof RuleId>;
 /** Where a list puts its interval schools: at the lower or the upper end of their range of scores. */
 export type Placement = "lower" | "upper";
 
-/** The page splits rules by this: the primary rules sit side by side, the rest behind "Other rules". */
+/**
+ * How the API says a rule is meant to be used. The page does not split rules by it: the two main rules sit side by
+ * side and the rest behind "Other rules" by the pair the page compares (see `useScreeningData`).
+ */
 const policyRole = looseEnum<
-  "primary" | "strict_alternative" | "policy_sensitivity" | "conventional_reference"
+  "primary" | "strict_alternative" | "policy_sensitivity" | "urgency_sensitivity" | "conventional_reference"
 >();
 
 // ---------------------------------------------------------------------------------------------
@@ -130,8 +134,11 @@ const areaParts = obj({
 });
 
 const maximumTerm = obj({
-  /** The factors that tie for the largest value: school need, district context and, where the rule reads it, urgency. */
-  attained_by: list(oneOf("N", "A", "U")),
+  /**
+   * The factors that tie for the largest value: school need, district context and, where the rule reads it, urgency.
+   * A largest term always has a source, so an empty list is a malformed response and is rejected here.
+   */
+  attained_by: nonEmptyList(oneOf("N", "A", "U")),
   value: num,
   share: num,
   /** What the largest factor adds to the score: `share` times `value`. */

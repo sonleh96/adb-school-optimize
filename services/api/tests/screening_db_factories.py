@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -139,17 +140,44 @@ def read_back(paths: dict[str, Path]) -> tuple[SchoolRecord, ...]:
 
 
 # ---------------------------------------------------------------------------------------------
-# Invented persistence files, in the layout of the recorded experiment.
+# Invented persistence files, in the layout of the recorded experiments.
+#
+# Two invented experiments stand for the two real ones. ``EXPERIMENT`` gave urgency a weight, as the circulated paper's
+# experiment did, and keeps no hash of its files. ``EXPERIMENT_NO_U`` left urgency out, as the revised paper's
+# experiment did, and records the hash of every file in ``artifact_hashes.json`` and counts the schools near the
+# threshold in ``threshold_adjacency.json``.
 # ---------------------------------------------------------------------------------------------
 
-EXPERIMENT = "EXP-99-v0.0.0-20000101"
-PERSISTENCE_PATH = f"experiments/decision_rules/{EXPERIMENT}/results/persistent_investigation_candidates.csv"
+# Invented, but named as the experiments they stand in for: a rule accepts only its own experiment.
+EXPERIMENT = "EXP-21-v0.0.0-20000101"
+EXPERIMENT_NO_U = "EXP-22-v0.0.0-20000101"
+RESULT_FILE = "persistent_investigation_candidates.csv"
+PERSISTENCE_PATH = f"experiments/decision_rules/{EXPERIMENT}/results/{RESULT_FILE}"
+PERSISTENCE_PATH_NO_U = f"experiments/decision_rules/{EXPERIMENT_NO_U}/results/{RESULT_FILE}"
 SETTINGS = (
     ("concentration_20_15", 20, 15),
     ("concentration_40_35", 40, 35),
     ("concentration_100_80", 100, 80),
 )
 DRAWS = 5000
+# The weights an experiment's receipt states. Only the urgency-included experiment gave urgency one.
+WEIGHTS_WITH_URGENCY = {
+    "school_need": 0.6,
+    "area": 0.15,
+    "urgency": 0.05,
+    "reach": 0.05,
+    "aqi": 0.05,
+    "emissions": 0.05,
+    "land": 0.05,
+}
+WEIGHTS_WITHOUT_URGENCY = {
+    "school_need": 0.6316,
+    "area": 0.1579,
+    "reach": 0.0526,
+    "aqi": 0.0526,
+    "emissions": 0.0526,
+    "land": 0.0526,
+}
 
 
 def write_persistence_files(
@@ -160,13 +188,26 @@ def write_persistence_files(
     receipt_count: int | None = None,
     receipt_names: list[str] | None = None,
     threshold: float = 0.8,
+    urgency_omitted: bool = False,
+    hash_record: str = "listed",
+    adjacency: bool | None = None,
+    adjacent_count: int | None = None,
+    receipt_urgency: bool | None = None,
 ) -> str:
     """Write a persistence table and its receipt under ``reference_root``. Returns the path relative to the root.
 
     The flag column is derived from the frequencies unless ``flags`` overrides a school's value.
     ``receipt_count`` defaults to the number of flagged schools, and ``receipt_names`` to their names as the file spells them.
+    With ``urgency_omitted`` the files are those of the urgency-omitted experiment: the receipt gives urgency no weight,
+    ``artifact_hashes.json`` records the table's hash and ``threshold_adjacency.json`` counts the schools within two
+    standard errors of the threshold. ``hash_record`` is "listed" (the table's real hash), "unlisted" (a record that
+    does not name the table), "none" (no record) or a SHA-256 to record instead. ``adjacency=True`` asks for the adjacency file of the
+    urgency-included experiment too, and ``adjacent_count`` replaces the count it states. ``receipt_urgency``
+    overrides whether the receipt says urgency had a weight, to make a receipt that contradicts its experiment.
     """
-    path = reference_root / PERSISTENCE_PATH
+    experiment = EXPERIMENT_NO_U if urgency_omitted else EXPERIMENT
+    relative = PERSISTENCE_PATH_NO_U if urgency_omitted else PERSISTENCE_PATH
+    path = reference_root / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     flagged = {name: all(f >= threshold for f in freqs) for name, freqs in frequencies.items()}
     flagged.update(flags or {})
@@ -185,6 +226,9 @@ def write_persistence_files(
             }
             for sid, top, need in SETTINGS
         ],
+        "recommended_weights": WEIGHTS_WITH_URGENCY
+        if (not urgency_omitted if receipt_urgency is None else receipt_urgency)
+        else WEIGHTS_WITHOUT_URGENCY,
         "persistent_investigation_candidates": [
             n for n, f in frequencies.items() if f and all(x >= threshold for x in f)
         ]
@@ -197,4 +241,33 @@ def write_persistence_files(
         else receipt_count,
     }
     (path.parent / "run_receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
-    return PERSISTENCE_PATH
+    if hash_record != "none":
+        # The record names files from the repository root, as the real one does.
+        digest = hashlib.sha256(path.read_bytes()).hexdigest() if hash_record == "listed" else hash_record
+        listed = (
+            {}
+            if hash_record == "unlisted"
+            else {f".audit-work/methodology/{relative}": {"bytes": 1, "sha256": digest}}
+        )
+        (path.parent / "artifact_hashes.json").write_text(
+            json.dumps({"artifact_count": len(listed), "artifacts": listed}), encoding="utf-8"
+        )
+    if adjacency or (urgency_omitted and adjacency is None):
+        se = (threshold * (1 - threshold) / DRAWS) ** 0.5
+        band = (2 if urgency_omitted else 1) * se
+        near = sum(
+            all(f >= threshold for f in freqs) and min(freqs) - threshold < band
+            for freqs in frequencies.values()
+        )
+        (path.parent / "threshold_adjacency.json").write_text(
+            json.dumps(
+                {
+                    "adjacent_count": near if adjacent_count is None else adjacent_count,
+                    "cutoff": threshold,
+                    "draws_per_setting": DRAWS,
+                    "experiment": experiment,
+                }
+            ),
+            encoding="utf-8",
+        )
+    return relative

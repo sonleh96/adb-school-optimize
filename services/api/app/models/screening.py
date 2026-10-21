@@ -80,19 +80,34 @@ class RuleOut(Out):
     uses_urgency: bool
     is_default: bool
     available_input_versions: list[str]
+    persistence_by_input_version: dict[str, str] = Field(
+        description="For each input version that has persistence numbers for this rule, the experiment behind them. "
+        "Empty for a rule that has none: only additive_u and additive_no_u can."
+    )
 
 
-PERSISTENCE_LIMITATION = (
-    "These numbers come from an experiment that included urgency, so they describe the circulated rule only. "
-    "They are not a result of the proposed rule that leaves urgency out."
-)
+# What each rule's persistence numbers may and may not be taken to say. Each set carries the wording of its own rule,
+# because the two experiments answer different questions: the circulated one included urgency, the revised one did not.
+PERSISTENCE_LIMITATIONS: dict[str, str] = {
+    "additive_u": (
+        "This count belongs to the circulated paper's urgency-included experiment. "
+        "It must not be relabelled as an urgency-omitted result."
+    ),
+    "additive_no_u": (
+        "This is the revised paper's six-component run. "
+        "It is a revised sensitivity result, not an isolated estimate of urgency's effect."
+    ),
+}
 
 
-PERSISTENCE_ADJACENT_RULE = (
-    "A persistent school is threshold-adjacent when its lowest frequency is less than one standard error above "
-    "the threshold. The standard error is sqrt(threshold * (1 - threshold) / draws), the Monte Carlo error of a "
-    "frequency at the threshold, so such a school could fall below the line on another run of the draws."
-)
+def persistence_adjacent_rule(standard_errors: int) -> str:
+    """The definition of threshold-adjacent for a set whose paper uses a band of ``standard_errors`` standard errors."""
+    band = {1: "one standard error", 2: "two standard errors"}[standard_errors]
+    return (
+        f"A persistent school is threshold-adjacent when its lowest frequency is less than {band} above "
+        "the threshold. The standard error is sqrt(threshold * (1 - threshold) / draws), the Monte Carlo error of a "
+        "frequency at the threshold, so such a school could fall below the line on another run of the draws."
+    )
 
 
 class PersistenceSettingOut(Out):
@@ -102,10 +117,11 @@ class PersistenceSettingOut(Out):
 
 
 class PersistenceOut(Out):
-    """Where the persistence flag of an input version came from and how it was drawn.
+    """Where the persistence flag of one rule on an input version came from and how it was drawn.
 
     A school is a persistent candidate when its lower top-20 frequency is at or above ``threshold`` in every setting.
-    ``rule_id`` names the one rule the flag describes; the API serves the flag nowhere else.
+    ``rule_id`` names the one rule the flag describes, ``experiment_id`` the experiment behind it, and ``limitation``
+    says what it may not be taken to mean. The API serves a rule's flag nowhere else and for no other rule.
     """
 
     rule_id: str
@@ -116,8 +132,11 @@ class PersistenceOut(Out):
     threshold: float
     settings: list[PersistenceSettingOut]
     standard_error: float
-    threshold_adjacent_rule: str = PERSISTENCE_ADJACENT_RULE
-    limitation: str = PERSISTENCE_LIMITATION
+    adjacency_standard_errors: int = Field(
+        description="A persistent school is threshold-adjacent when it is within this many standard errors of the threshold."
+    )
+    threshold_adjacent_rule: str
+    limitation: str
 
 
 class InputVersionOut(Out):
@@ -128,8 +147,9 @@ class InputVersionOut(Out):
     created_at: dt.datetime
     is_default: bool
     rules_available: list[str]
-    persistence: PersistenceOut | None = Field(
-        description="Provenance of the persistent-candidate flag, or null when this version has none."
+    persistence: list[PersistenceOut] = Field(
+        description="Provenance of the persistent-candidate flag of each rule that has one on this version, "
+        "ordered by rule id. Empty when this version has none."
     )
 
 
@@ -321,23 +341,24 @@ class ListedRowOut(SchoolResultOut):
 
 
 class PersistenceFlagsOut(Out):
-    """What the experiment says about one school of the circulated rule. All null when it was not in the experiment."""
+    """What the experiment says about one school under the rule it was run for. All null when it was not in it."""
 
     persistent_candidate: bool | None = Field(
         description="True or false from the experiment's lower top-20 frequencies; null when the school was not in the "
-        "experiment or this input version has no persistence numbers. It describes the circulated rule only."
+        "experiment or this input version has no persistence numbers for the rule. It describes the rule of the "
+        "list or entry it sits in, and no other."
     )
     lowest_top20_frequency: float | None = Field(
         description="The school's lowest lower top-20 frequency over the settings."
     )
     threshold_adjacent: bool | None = Field(
-        description="True for a persistent school whose lowest frequency is less than one standard error above the "
+        description="True for a persistent school whose lowest frequency is within the rule's band above the "
         "threshold (see the provenance block); false for any other school of the experiment."
     )
 
 
 class ListedRowWithPersistenceOut(ListedRowOut, PersistenceFlagsOut):
-    """A row of the circulated rule's list. Rows of every other rule have none of the persistence keys at all."""
+    """A row of a list whose rule can have persistence numbers. Rows of every other rule have none of the keys at all."""
 
 
 # ---------------------------------------------------------------------------------------------
@@ -361,8 +382,11 @@ class ResultsResponse(Out):
     rows: list[ListedRowWithPersistenceOut | ListedRowOut]
 
 
-class CirculatedResultsResponse(ResultsResponse):
-    """The list of the circulated rule, the only one that carries the persistence flag and its provenance."""
+class PersistenceResultsResponse(ResultsResponse):
+    """The list of a rule that can have persistence numbers: the flag on each row and the provenance of its set.
+
+    ``persistence`` is null when the input version has no set for the rule. Lists of other rules have no such key.
+    """
 
     persistence: PersistenceOut | None
 
@@ -387,7 +411,8 @@ class SchoolRuleResultOut(Out):
 
 
 class SchoolRuleResultWithPersistenceOut(SchoolRuleResultOut, PersistenceFlagsOut):
-    """The circulated rule's entry. The flag sits here and nowhere else, so it cannot be read as another rule's."""
+    """The entry of a rule that can have persistence numbers. The flag sits in the entry of its own rule and nowhere
+    else, so it cannot be read as another rule's."""
 
 
 class SchoolDetailOut(Out):

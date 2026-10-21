@@ -91,7 +91,7 @@ describe("the top list preview (2, 3)", () => {
     expect(list.point.every((r) => r.score !== null)).toBe(true);
     expect(list.range.length).toBeGreaterThan(0);
     expect(list.range.every((r) => r.place === null && r.score === null && r.scoreLower !== null)).toBe(true);
-    expect(list.fingerprints).toBe(2);
+    expect(list.fingerprints).toBe(2); // input and anchors; the persistence file's hash is named differently
   });
 
   it("refuses a file whose place is not a number", () => {

@@ -8,7 +8,8 @@
  *     boundary, so no later code has to wonder.
  *  4. The API adds a field, or a new member of an enum the page does not branch on. The page must keep working.
  *  5. The persistence flag appears on a rule it does not describe, or a scope is told apart by its label. The
- *     parser keeps the flag only where the API sent it and carries the scope code the page branches on.
+ *     parser keeps the flag only where the API sent it (the two rules that have an experiment: `additive_u` and
+ *     `additive_no_u`) and carries the scope code the page branches on.
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -70,13 +71,15 @@ describe("the scope codes and the persistence flag", () => {
     }
   });
 
-  it("keeps the flag as true, false or null on the circulated rule and has none on any other rule", () => {
-    const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
-    const flags = circulated.rows.map((row) => row.persistent_candidate);
-    expect(flags).toContain(true);
-    expect(flags).toContain(false);
-    expect(flags).toContain(null);
-    for (const rule of ["additive_no_u", "need_first_u", "bottleneck_no_u", "benchmark"]) {
+  it("keeps the flag as true, false or null on the two rules that have an experiment and has none on any other", () => {
+    for (const rule of ["additive_u", "additive_no_u"]) {
+      const withExperiment = parseWith(resultsResponse, readFixture(`results/${rule}.json`), rule);
+      const flags = withExperiment.rows.map((row) => row.persistent_candidate);
+      expect(flags, rule).toContain(true);
+      expect(flags, rule).toContain(false);
+      expect(flags, rule).toContain(null);
+    }
+    for (const rule of ["need_first_u", "need_first_no_u", "bottleneck_u", "bottleneck_no_u", "benchmark"]) {
       const other = parseWith(resultsResponse, readFixture(`results/${rule}.json`), rule);
       expect(
         other.rows.every((row) => !("persistent_candidate" in row)),
@@ -98,7 +101,9 @@ describe("the scope codes and the persistence flag", () => {
     }
     expect(circulated.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
     expect(circulated.rows.some((row) => row.threshold_adjacent === false)).toBe(true);
-    const other = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
+    const revised = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
+    expect(revised.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
+    const other = parseWith(resultsResponse, readFixture("results/need_first_no_u.json"), "results");
     expect(other.rows.every((row) => !("threshold_adjacent" in row))).toBe(true);
   });
 
@@ -114,14 +119,14 @@ describe("the scope codes and the persistence flag", () => {
     }
   });
 
-  it("keeps the flag only on the circulated rule's entry of a school's detail", () => {
+  it("keeps the flag only on the entries of the two rules that have an experiment in a school's detail", () => {
     const detail = parseWith(
       schoolDetailResponse,
       readFixture(fixtureIndex().requests.find((r) => r.path.includes("/by-key/"))!.file),
       "detail"
     );
     const flagged = detail.rules.filter((entry) => "persistent_candidate" in entry);
-    expect(flagged.map((entry) => entry.rule.rule_id)).toEqual(["additive_u"]);
+    expect(flagged.map((entry) => entry.rule.rule_id)).toEqual(["additive_u", "additive_no_u"]);
     for (const entry of detail.rules) expect(entry.point_rank_scope_code).toBe("complete_under_rule");
   });
 
@@ -308,6 +313,33 @@ describe("an additive API change", () => {
       delete body.rows[3][field];
       expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(`rows[3].${field}`);
     }
+  });
+
+  it("rejects a largest-factor term that names no factor, and reads one that names several", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: { attained_by: string[] } | null }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term !== null);
+    expect(at).toBeGreaterThanOrEqual(0);
+
+    const tied = copy(body) as typeof body;
+    tied.rows[at].maximum_term!.attained_by = ["N", "A"];
+    expect(parseWith(resultsResponse, tied, "Screening results").rows[at]).toBeDefined();
+
+    body.rows[at].maximum_term!.attained_by = [];
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      `rows[${at}].maximum_term.attained_by: expected a non-empty array`
+    );
+  });
+
+  it("accepts a school with no largest term at all", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: unknown }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term === null);
+    // A queued school has no score, so it has no largest term; the fixture holds some.
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(body.rows.length);
   });
 
   it("accepts a rule role the page does not know", () => {

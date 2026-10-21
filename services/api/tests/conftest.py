@@ -101,12 +101,11 @@ def connection(database_url):
         yield conn
 
 
-@pytest.fixture
-def connection_before_screening(migrated_template):
-    """A fresh database with the migrations before 005 applied; the test applies 005 itself."""
+def _connection_before(migration: str, tag: str):
+    """A fresh database with the migrations before ``migration`` applied; the test applies ``migration`` itself."""
     url = _server_url()
-    name = f"rise_screening_pre_{uuid.uuid4().hex[:8]}"
-    earlier = [path for path in migration_files() if path.name < SCREENING_MIGRATION.name]
+    name = f"rise_screening_{tag}_{uuid.uuid4().hex[:8]}"
+    earlier = [path for path in migration_files() if path.name < migration]
     with psycopg.connect(url, autocommit=True) as admin:
         admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
         try:
@@ -115,22 +114,24 @@ def connection_before_screening(migrated_template):
                 yield conn
         finally:
             _drop(admin, name)
+
+
+@pytest.fixture
+def connection_before_screening(migrated_template):
+    """A fresh database with the migrations before 005 applied; the test applies 005 itself."""
+    yield from _connection_before(SCREENING_MIGRATION.name, "pre")
 
 
 @pytest.fixture
 def connection_before_persistence(migrated_template):
     """A fresh database with the migrations before 006 applied; the test applies 006 itself."""
-    url = _server_url()
-    name = f"rise_screening_pre6_{uuid.uuid4().hex[:8]}"
-    earlier = [path for path in migration_files() if path.name < "006_screening_persistence.sql"]
-    with psycopg.connect(url, autocommit=True) as admin:
-        admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
-        try:
-            with psycopg.connect(make_conninfo(url, dbname=name), autocommit=True) as conn:
-                apply_migrations(conn, earlier)
-                yield conn
-        finally:
-            _drop(admin, name)
+    yield from _connection_before("006_screening_persistence.sql", "pre6")
+
+
+@pytest.fixture
+def connection_before_per_rule_persistence(migrated_template):
+    """A fresh database with the migrations before 007 applied; the test applies 007 itself."""
+    yield from _connection_before("007_screening_persistence_per_rule.sql", "pre7")
 
 
 # ---------------------------------------------------------------------------------------------

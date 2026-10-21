@@ -55,18 +55,27 @@ class RuleKind(str, Enum):
 
 
 class Provenance(str, Enum):
-    """Where a rule comes from. This says nothing about how the rule is used."""
+    """Where a rule comes from. This says nothing about how the rule is used.
+
+    The revised paper omits urgency from every primary calculation and keeps the circulated paper's urgency-included
+    rules as labelled sensitivities.
+    """
 
     CIRCULATED_PAPER = "circulated_paper"
-    PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW = "proposed_follow_up_pending_author_review"
+    REVISED_PAPER = "revised_paper"
 
 
 class PolicyRole(str, Enum):
-    """How a rule is meant to be used in a decision."""
+    """How a rule is meant to be used in a decision.
+
+    ``URGENCY_SENSITIVITY`` marks a rule that restores the supplied urgency scalar, which the revised paper treats as
+    a sensitivity and not as a basis for the primary list.
+    """
 
     PRIMARY = "primary"
     STRICT_ALTERNATIVE = "strict_alternative"
     POLICY_SENSITIVITY = "policy_sensitivity"
+    URGENCY_SENSITIVITY = "urgency_sensitivity"
     CONVENTIONAL_REFERENCE = "conventional_reference"
 
 
@@ -162,7 +171,7 @@ _RULE_LIST = (
         "additive_u",
         "Additive, urgency included",
         Provenance.CIRCULATED_PAPER,
-        PolicyRole.PRIMARY,
+        PolicyRole.URGENCY_SENSITIVITY,
         RuleKind.ADDITIVE,
         "S = 0.60N + 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L",
         _CIRCULATED,
@@ -170,17 +179,17 @@ _RULE_LIST = (
     Rule(
         "additive_no_u",
         "Additive, urgency omitted",
-        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        Provenance.REVISED_PAPER,
         PolicyRole.PRIMARY,
         RuleKind.ADDITIVE,
-        "S0 = (S - 0.05U) / 0.95 = (12N + 3A + R + Q + E + L) / 19",
+        "S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95 = (12N + 3A + R + Q + E + L) / 19",
         _URGENCY_OMITTED,
     ),
     Rule(
         "need_first_u",
         "School-need-first, urgency included",
         Provenance.CIRCULATED_PAPER,
-        PolicyRole.STRICT_ALTERNATIVE,
+        PolicyRole.URGENCY_SENSITIVITY,
         RuleKind.NEED_FIRST,
         "Sort N descending, then 0.15A + 0.05U + 0.05R + 0.05Q + 0.05E + 0.05L descending, then school name ascending",
         _CIRCULATED,
@@ -188,7 +197,7 @@ _RULE_LIST = (
     Rule(
         "need_first_no_u",
         "School-need-first, urgency omitted",
-        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        Provenance.REVISED_PAPER,
         PolicyRole.STRICT_ALTERNATIVE,
         RuleKind.NEED_FIRST,
         "Sort N descending, then (0.15A + 0.05R + 0.05Q + 0.05E + 0.05L) / 0.95 descending, then school name ascending",
@@ -198,7 +207,7 @@ _RULE_LIST = (
         "bottleneck_u",
         "Bottleneck, urgency included",
         Provenance.CIRCULATED_PAPER,
-        PolicyRole.POLICY_SENSITIVITY,
+        PolicyRole.URGENCY_SENSITIVITY,
         RuleKind.BOTTLENECK,
         "T = 0.60S + 0.40 max(N, A, U)",
         _CIRCULATED,
@@ -208,7 +217,7 @@ _RULE_LIST = (
     Rule(
         "bottleneck_no_u",
         "Bottleneck, urgency omitted",
-        Provenance.PROPOSED_FOLLOW_UP_PENDING_AUTHOR_REVIEW,
+        Provenance.REVISED_PAPER,
         PolicyRole.POLICY_SENSITIVITY,
         RuleKind.BOTTLENECK,
         "T0 = 0.60S0 + 0.40 max(N, A)",

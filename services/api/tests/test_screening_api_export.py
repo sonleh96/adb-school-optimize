@@ -10,12 +10,13 @@ import zipfile
 
 import openpyxl
 import pytest
+from app.ingestion.load_screening_inputs import read_persistence_source
 from app.screening_export import GATE_FAILURE_DETAILS
 from school_scoring.screening import PACKAGE_VERSION, RULES, GateFailure
 from school_scoring.screening.rules import TIE_RULE
 from screening_api_helpers import load_synthetic, parse_csv_export
 from screening_db_factories import AWKWARD_NAMES as AWK
-from screening_db_factories import record
+from screening_db_factories import record, write_persistence_files
 
 RULE_IDS = list(RULES)
 CSV = "/api/v1/screening/exports/top.csv"
@@ -29,6 +30,7 @@ TOP_RECORD_KEYS = [
     "rule_provenance",
     "rule_provenance_note",
     "policy_role",
+    "policy_role_note",
     "score_kind",
     "formula",
     "weights",
@@ -48,6 +50,7 @@ TOP_RECORD_KEYS = [
     "filters",
     "filters_effect",
     "display_name",
+    "csv_text_guard",
     "k",
     "k_meaning",
     "include_ranges",
@@ -273,13 +276,19 @@ def test_the_method_record_names_everything_needed_to_read_the_file(api, connect
     ).fetchone()
     assert method["export"] == "top schools"
     assert (method["rule_id"], method["rule_label"]) == ("additive_no_u", "Additive, urgency omitted")
-    assert method["rule_provenance"] == "proposed_follow_up_pending_author_review"
+    assert method["rule_provenance"] == "revised_paper"
     assert (
-        "pending author review" in method["rule_provenance_note"]
+        "revised paper" in method["rule_provenance_note"]
         and "not a result of the circulated paper" in method["rule_provenance_note"]
+        and "pending" not in method["rule_provenance_note"]
     )
     assert (method["policy_role"], method["score_kind"]) == ("primary", "additive score")
-    assert method["formula"] == rule.formula == "S0 = (S - 0.05U) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
+    assert method["policy_role_note"] == "The revised paper's primary list."
+    assert (
+        method["formula"]
+        == rule.formula
+        == "S0 = (0.60N + 0.15A + 0.05(R + Q + E + L)) / 0.95 = (12N + 3A + R + Q + E + L) / 19"
+    )
     assert method["weights"].startswith("N 12/19 (0.631578947368)") and "U " not in method["weights"]
     assert method["uses_urgency"] == "no"
     assert method["input_version"] == loaded.input_version
@@ -326,12 +335,66 @@ def test_the_caveat_for_an_urgency_rule_says_urgency_is_unresolved_not_omitted(a
         method["rule_provenance"] == "circulated_paper"
         and method["rule_provenance_note"] == "A rule of the circulated paper."
     )
+    assert method["policy_role"] == "urgency_sensitivity"
+    assert "restores the supplied urgency scalar" in method["policy_role_note"]
     assert method["uses_urgency"] == "yes"
     assert "Urgency enters this rule" in method["caveat"] and "inadmissible" not in method["caveat"]
     assert (
         method["point_rank_scope"] == "complete under this rule (9)"
         and method["rank_bounds_scope"] == "eligible (11)"
     )
+
+
+def test_the_record_names_the_experiment_behind_a_rules_persistence_and_its_own_limit(
+    api, connection, tmp_path
+):  # API17, API35
+    reference = tmp_path / "reference"
+    sets = [
+        read_persistence_source(
+            reference, write_persistence_files(reference, {AWK[7]: (1.0, 1.0, 1.0)}), "additive_u"
+        ),
+        read_persistence_source(
+            reference,
+            write_persistence_files(reference, {AWK[7]: (0.9, 0.9, 0.9)}, urgency_omitted=True),
+            "additive_no_u",
+        ),
+    ]
+    load_synthetic(connection, persistence=sets)
+
+    circulated, _ = top(api, rule="additive_u")
+    revised, _ = top(api, rule="additive_no_u")
+
+    for method, source in ((circulated, sets[0]), (revised, sets[1])):
+        assert method["persistence_experiment"] == source.experiment_id
+        assert method["persistence_source_hash"] == source.source_sha256
+        assert "at least 0.8 in each of 3 settings, 5000 draws each" in method["persistence_test"]
+    assert circulated["persistence_experiment"] != revised["persistence_experiment"]
+    assert "urgency-included experiment" in circulated["persistence_limitation"]
+    assert "not an isolated estimate of urgency's effect" in revised["persistence_limitation"]
+    keys = list(revised)
+    assert keys[keys.index("persistence_experiment") : keys.index("generated_at")] == [
+        "persistence_experiment",
+        "persistence_source_hash",
+        "persistence_test",
+        "persistence_limitation",
+    ]
+
+
+def test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record(
+    api, connection, tmp_path
+):  # API17, API34
+    reference = tmp_path / "reference"
+    sets = [
+        read_persistence_source(
+            reference, write_persistence_files(reference, {AWK[7]: (1.0, 1.0, 1.0)}), "additive_u"
+        )
+    ]
+    load_synthetic(connection, persistence=sets)
+
+    for rule_id in RULE_IDS:
+        method, _ = top(api, rule=rule_id)
+        has = [key for key in method if key.startswith("persistence_")]
+        assert bool(has) == (rule_id == "additive_u"), rule_id
 
 
 @pytest.mark.parametrize("rule_id", RULE_IDS)
@@ -588,29 +651,113 @@ def test_control_characters_in_stored_text_do_not_break_the_xlsx(api, connection
     assert {r["source_school_name"] for r in csv_rows} == set(names)
 
 
-def test_display_name_guards_formula_like_names_while_the_source_name_stays_exact(api, connection):  # API24
+FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def test_the_csv_guards_every_text_cell_that_starts_with_a_formula_character(api, connection):  # API24
     risky = ("=1+1 School", "+Plus School", "-Minus School", "@At School", "\tTab School", "\rReturn School")
     safe = ("Plain School", "'Quoted School", "Mid=dle School")
     load_synthetic(connection, tuple(record(name) for name in (*risky, *safe)))
 
     method, rows = top(api, rule="additive_u", k=50)
-    incomplete_method, incomplete = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    incomplete_method, _ = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
 
-    shown = {r["source_school_name"]: r["display_name"] for r in rows}
-    assert set(shown) == {*risky, *safe}  # the exact name is never changed
-    assert {name: shown[name] for name in risky} == {name: "'" + name for name in risky}
-    assert {name: shown[name] for name in safe} == {name: name for name in safe}
+    # In the CSV the name is guarded in both columns; every other name is as stored.
+    guarded = {r["school_key"]: (r["source_school_name"], r["display_name"]) for r in rows}
+    assert sorted(guarded.values()) == sorted(
+        [("'" + name, "'" + name) for name in risky] + [(name, name) for name in safe]
+    )
     assert list(rows[0]).index("display_name") == list(rows[0]).index("source_school_name") + 1
-    assert "display_name" in incomplete_method and "apostrophe" in method["display_name"]
-    assert "display_name" in (incomplete[0] if incomplete else rows[0])
+    assert "apostrophe" in method["display_name"] and "csv_text_guard" in method["display_name"]
+    assert (
+        "csv_text_guard" in incomplete_method
+        and incomplete_method["csv_text_guard"] == method["csv_text_guard"]
+    )
 
+    # The XLSX stores text as text, so its source name stays exact and its display name keeps the apostrophe.
     sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=50)))["Top schools"]
     header = [c.value for c in sheet[1]]
     in_xlsx = {
+        row[header.index("source_school_name")].replace("_x000D_", "\r"): row[
+            header.index("display_name")
+        ].replace("_x000D_", "\r")
+        for row in sheet.iter_rows(min_row=2, values_only=True)
+    }
+    assert in_xlsx == {**{name: "'" + name for name in risky}, **{name: name for name in safe}}
+
+
+@pytest.mark.parametrize("start", FORMULA_STARTS)
+def test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_not(
+    api, connection, start
+):  # API24
+    place = f"{start}CMD(1)"
+    # A locality the engine does not recognise holds a school back, so that cell is read from the queue export.
+    complete = tuple(record(f"School {i}", province=place, district=place) for i in range(3))
+    held = tuple(record(f"Held {i}", province=place, district=place, locality=place) for i in range(2))
+    load_synthetic(connection, (*complete, *held))
+
+    _, listed = parse_csv_export(export(api, CSV, rule="additive_u", k=10))
+    _, queue = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    assert len(listed) == 3 and len(queue) == 2
+    for row in (*listed, *queue):
+        assert row["province"] == "'" + place and row["district"] == "'" + place
+    for row in queue:
+        assert row["locality"] == "'" + place
+
+    # A negative number is a number, so it carries no apostrophe, and every text cell that starts with a formula
+    # character is guarded: nothing in the file is left for a spreadsheet to read as a formula.
+    def is_number(cell: str) -> bool:
+        try:
+            float(cell)
+        except ValueError:
+            return False
+        return True
+
+    text = export(api, CSV, rule="additive_u", k=10).decode("utf-8-sig")
+    parsed = list(csv.reader(io.StringIO(text, newline="")))
+    first = next(i for i, row in enumerate(parsed) if row and row[0] == "row_kind")
+    for row in parsed[first + 1 :]:
+        for cell in row:
+            assert not cell.startswith(FORMULA_STARTS) or is_number(cell), cell
+
+
+@pytest.mark.parametrize(
+    "name",
+    [" =1+1 School", "\n=1+1 School", "  \t+Plus School", "\r\n-Minus School", "\u00a0@At School", " \n =x"],
+)
+def test_the_csv_guards_a_cell_whose_first_visible_character_is_a_formula_character(
+    api, connection, name
+):  # API24
+    safe = " Plain School"
+    load_synthetic(connection, (record(name, province=name), record(safe)))
+
+    method, rows = top(api, rule="additive_u", k=10)
+
+    by_key = {r["source_school_name"]: r for r in rows}
+    assert "'" + name in by_key and safe in by_key
+    guarded = by_key["'" + name]
+    assert guarded["display_name"] == "'" + name and guarded["province"] == "'" + name
+    assert by_key[safe]["display_name"] == safe  # leading space alone is not a formula
+    assert "ignoring any leading whitespace" in method["csv_text_guard"]
+    # The XLSX keeps the exact name and guards only the display name.
+    sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=10)))["Top schools"]
+    header = [c.value for c in sheet[1]]
+    shown = {
         row[header.index("source_school_name")]: row[header.index("display_name")]
         for row in sheet.iter_rows(min_row=2, values_only=True)
     }
-    assert {k.replace("_x000D_", "\r"): v.replace("_x000D_", "\r") for k, v in in_xlsx.items()} == shown
+    escaped = name.replace("\r", "_x000D_")
+    assert shown[escaped] == "'" + escaped
+
+
+def test_a_negative_number_in_the_csv_is_not_guarded(api, connection):  # API24
+    load_synthetic(connection, tuple(record(f"School {i}") for i in range(3)))
+    # The latitude of a school is negative, and it is written as a number.
+    _, rows = top(api, rule="additive_u", k=10)
+
+    latitudes = [r["latitude"] for r in rows if r["latitude"]]
+    assert latitudes and all(v.startswith("-") and float(v) < 0 for v in latitudes)
+    assert all(not v.startswith("'") for v in latitudes)
 
 
 def test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line(api, loaded):  # API29

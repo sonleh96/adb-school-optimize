@@ -60,7 +60,7 @@ docs/
 - one run per rule and engine package version, and one result row per school and run
 
 `screening_persistence_*`
-- the stored top-20 persistence numbers of a recorded experiment, attached to a version when it is created
+- the stored top-20 persistence numbers of the recorded experiments, one set for each of `additive_u` and `additive_no_u`, attached to a version when it is created
 
 The tables have row level security on and no privileges for `anon` or `authenticated`.
 `services/api/README.md` describes the loaders, the routes and the rules the responses follow.

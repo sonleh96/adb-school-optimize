@@ -2,7 +2,7 @@
 
     python -m app.ingestion.load_screening_inputs --input-version <id> \
         --reference-root <methodology dir> --datasets-root <datasets dir> [--description <text>] \
-        [--persistence-csv <path under the reference root> [--persistence-sha256 <hash>]]
+        [--persistence <rule>=<path under the reference root>]... [--persistence-sha256 <rule>=<hash>]...
 
 The three source tables go through the engine's input contract (``assemble_frame``, ``parse_records``),
 the records are stored as one input version, and all registered rules are run and stored.
@@ -12,7 +12,10 @@ Rerunning with identical inputs changes nothing.
 An existing version with a different input hash is refused, and so is a stored run that no longer equals the engine's output.
 Schools that match no row of ``schools`` are stored with a null ``school_id`` and listed in the output.
 
-``--persistence-csv`` also stores the top-20 persistence numbers of the recorded experiment (see ``read_persistence_source``).
+``--persistence <rule>=<path>`` also stores the top-20 persistence numbers of the experiment behind that rule
+(see ``read_persistence_source``). Give it once per rule: ``additive_u`` (the circulated paper's experiment, with
+urgency) and ``additive_no_u`` (the revised paper's experiment, without it) are the rules that can have a set.
+Each file is checked against its own experiment's record: its recorded hash, its receipt and its named persistent list.
 Its school names are joined to the version's schools through ``normalize_join_key``.
 A name that matches no school or several refuses the whole load, and a stored set that differs from the file is never overwritten.
 """
@@ -28,7 +31,7 @@ import math
 import re
 import sys
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -44,6 +47,7 @@ from school_scoring.screening import (
     ScreeningRun,
     Table,
     assemble_frame,
+    get_rule,
     parse_records,
     prepare,
     records_sha256,
@@ -105,7 +109,8 @@ class LoadReport:
     unmatched: tuple[str, ...]
     ambiguous: tuple[str, ...]
     links_changed: int
-    persistence: str | None = None
+    # What happened to the persistence set of each rule that was supplied, by rule id.
+    persistence: dict[str, str] = field(default_factory=dict)
 
     def lines(self) -> list[str]:
         state = "created" if self.version_created else "already present with identical inputs"
@@ -118,8 +123,7 @@ class LoadReport:
         ]
         lines += [f"  unmatched: {name!r}" for name in self.unmatched]
         lines += [f"  ambiguous: {name!r}" for name in self.ambiguous]
-        if self.persistence is not None:
-            lines.append(f"persistence: {self.persistence}")
+        lines += [f"persistence {rule_id}: {state}" for rule_id, state in self.persistence.items()]
         return lines
 
 
@@ -157,13 +161,17 @@ def read_source_tables(
 # Persistence of top-20 membership: the recorded experiment's table, read and checked before the database is touched.
 # ---------------------------------------------------------------------------------------------
 
-# The experiment drew random shares for the rule that includes urgency, so its numbers describe that rule only.
-PERSISTENCE_RULE_ID = store.PERSISTENCE_RULE_ID
+# An experiment's numbers describe the one rule whose factors it drew shares for: the circulated paper's experiment
+# included urgency, the revised paper's left it out. ``store.PERSISTENCE_RULE_IDS`` lists the rules that can have a set.
 # The file's own convention: a school is persistent at lower top-20 frequency 0.80 in every setting.
 PERSISTENCE_THRESHOLD = 0.80
 PERSISTENCE_FLAG_COLUMN = "persistent_at_0_80_all_settings"
 PERSISTENCE_COUNT_KEY = "persistent_investigation_count_at_0_80_all_settings"
 PERSISTENCE_FLAGGED_KEY = "persistent_investigation_candidates"
+# What an experiment keeps beside its table: the hashes of its outputs, and how many schools sit near the threshold.
+ARTIFACT_HASHES_FILE = "artifact_hashes.json"
+THRESHOLD_ADJACENCY_FILE = "threshold_adjacency.json"
+SHA256 = re.compile(r"[0-9a-f]{64}")
 EXPERIMENT_FOLDER = re.compile(r"EXP-[A-Za-z0-9._-]+")
 
 
@@ -171,6 +179,7 @@ EXPERIMENT_FOLDER = re.compile(r"EXP-[A-Za-z0-9._-]+")
 class PersistenceSource:
     """The persistence table as the file states it, keyed by school name as the file spells it."""
 
+    rule_id: str
     experiment_id: str
     source_path: str
     source_sha256: str
@@ -203,21 +212,112 @@ def _frequency(text: str, name: str, column: str) -> float:
     return value
 
 
-def read_persistence_source(
-    reference_root: Path, relative_path: str, expected_sha256: str | None = None
-) -> PersistenceSource:
-    """Read the experiment's persistence table and check it against itself and its receipt.
+def _recorded_sha256(path: Path, relative: PurePosixPath) -> str | None:
+    """The hash that the experiment recorded for this file in ``artifact_hashes.json``, if it keeps such a record.
 
-    The settings and the number of draws come from ``run_receipt.json`` in the same folder.
+    The record names files from the repository root, so an entry matches when its trailing path parts are
+    ``relative``. A record that exists must list the file exactly once: a file it does not list is not the experiment's.
+    """
+    record = path.parent / ARTIFACT_HASHES_FILE
+    if not record.is_file():
+        return None
+    try:
+        artifacts = json.loads(record.read_text(encoding="utf-8"))["artifacts"]
+        found = [
+            entry["sha256"]
+            for name, entry in artifacts.items()
+            if PurePosixPath(name).parts[-len(relative.parts) :] == relative.parts
+        ]
+    except (ValueError, KeyError, TypeError, AttributeError, UnicodeDecodeError) as error:
+        raise ScreeningLoadError(f"{ARTIFACT_HASHES_FILE} cannot be read: {error!r}") from error
+    if len(found) != 1 or not isinstance(found[0], str) or not SHA256.fullmatch(found[0]):
+        raise ScreeningLoadError(
+            f"{ARTIFACT_HASHES_FILE} records {len(found)} hash(es) for {relative.name}, not exactly one valid SHA-256"
+        )
+    return found[0]
+
+
+def _check_urgency_matches_rule(receipt: dict[str, Any], rule_id: str) -> None:
+    """The experiment must have drawn shares for the factors of the rule it is stored for.
+
+    An experiment that gave urgency a weight describes the urgency-included rule, and one that did not describes the
+    urgency-omitted rule. Storing it under the other rule would put a result on a rule it does not describe.
+    """
+    try:
+        weights = receipt["recommended_weights"]
+        included = "urgency" in weights
+    except (KeyError, TypeError) as error:
+        raise ScreeningLoadError(f"persistence receipt lacks {error} or states it wrongly") from error
+    rule = get_rule(rule_id)
+    if included != rule.uses_urgency:
+        raise ScreeningLoadError(
+            f"persistence receipt: the experiment {'gave' if included else 'did not give'} urgency a weight, "
+            f"but rule {rule_id} {'reads' if rule.uses_urgency else 'does not read'} urgency. "
+            "Its numbers are not stored under this rule."
+        )
+
+
+def _check_threshold_adjacency(
+    folder: Path, rule_id: str, threshold: float, draws: int, rows: Sequence[tuple[str, tuple[float, ...]]]
+) -> None:
+    """If the experiment counted the schools near the threshold, the count derived from the table must equal it.
+
+    The band is the one standard-error multiple the rule's paper uses (``store.ADJACENCY_STANDARD_ERRORS``).
+    """
+    path = folder / THRESHOLD_ADJACENCY_FILE
+    if not path.is_file():
+        return
+    try:
+        stated = json.loads(path.read_text(encoding="utf-8"))
+        count, cutoff, stated_draws = (
+            int(stated["adjacent_count"]),
+            float(stated["cutoff"]),
+            int(stated["draws_per_setting"]),
+        )
+    except (ValueError, KeyError, TypeError, UnicodeDecodeError) as error:
+        raise ScreeningLoadError(
+            f"{THRESHOLD_ADJACENCY_FILE} lacks {error!r} or states it wrongly"
+        ) from error
+    band = store.ADJACENCY_STANDARD_ERRORS[rule_id] * math.sqrt(threshold * (1 - threshold) / draws)
+    derived = sum(store.is_threshold_adjacent(freqs, threshold, band) for _, freqs in rows)
+    if (cutoff, stated_draws, count) != (threshold, draws, derived):
+        raise ScreeningLoadError(
+            f"{THRESHOLD_ADJACENCY_FILE} states cutoff {cutoff}, {stated_draws} draws and {count} school(s) near the "
+            f"threshold, but the table gives cutoff {threshold}, {draws} draws and {derived} within "
+            f"{store.ADJACENCY_STANDARD_ERRORS[rule_id]} standard error(s)"
+        )
+
+
+def read_persistence_source(
+    reference_root: Path, relative_path: str, rule_id: str, expected_sha256: str | None = None
+) -> PersistenceSource:
+    """Read the experiment's persistence table for ``rule_id`` and check it against itself and its own records.
+
+    The experiment folder must be the one the rule is backed by (``store.PERSISTENCE_EXPERIMENTS``).
+    The settings and the number of draws come from ``run_receipt.json`` in the same folder, and that receipt must
+    say whether urgency had a weight in the experiment, which has to agree with ``rule_id``.
     The file's flag column must equal the flag derived from its frequencies for every row,
     and the number of flagged rows must equal the receipt's count.
-    If ``expected_sha256`` is given, the file must hash to it.
+    The file must be vouched for: either its experiment records its hash in ``artifact_hashes.json`` and the file
+    hashes to it, or ``expected_sha256`` pins it (a file whose experiment records no hash). Neither is a refusal.
+    If both exist, the file must match both.
+    If the experiment counted the schools near the threshold in ``threshold_adjacency.json``, the count must agree.
     """
+    if rule_id not in store.PERSISTENCE_RULE_IDS:
+        raise ScreeningLoadError(
+            f"rule {rule_id!r} cannot have persistence numbers; the rules that can are {list(store.PERSISTENCE_RULE_IDS)}"
+        )
     relative = PurePosixPath(relative_path)
     folder = next((part for part in relative.parts if EXPERIMENT_FOLDER.fullmatch(part)), None)
     if folder is None:
         raise ScreeningLoadError(
             f"persistence path {relative_path!r} has no EXP-... folder naming the experiment"
+        )
+    expected_experiment = store.PERSISTENCE_EXPERIMENTS[rule_id]
+    if folder != expected_experiment and not folder.startswith(f"{expected_experiment}-"):
+        raise ScreeningLoadError(
+            f"persistence path {relative_path!r} is from experiment {folder}, but rule {rule_id} is backed by "
+            f"{expected_experiment}. Nothing was loaded."
         )
     path = Path(reference_root) / relative
     if not path.is_file():
@@ -228,8 +328,21 @@ def read_persistence_source(
         raise ScreeningLoadError(
             f"persistence file hashes to {sha256}, not the expected {expected_sha256}. Nothing was loaded."
         )
+    recorded = _recorded_sha256(path, relative)
+    if recorded is None and expected_sha256 is None:
+        raise ScreeningLoadError(
+            f"persistence file {relative.name} has no recorded hash and no pin: its experiment keeps no "
+            f"{ARTIFACT_HASHES_FILE} beside it, so give its SHA-256 with --persistence-sha256 {rule_id}=<hash>. "
+            "Nothing was loaded."
+        )
+    if recorded is not None and sha256 != recorded:
+        raise ScreeningLoadError(
+            f"persistence file hashes to {sha256}, but its experiment records {recorded} in {ARTIFACT_HASHES_FILE}. "
+            "Nothing was loaded."
+        )
 
     receipt = _persistence_receipt(path.parent / "run_receipt.json")
+    _check_urgency_matches_rule(receipt, rule_id)
     try:
         settings = tuple(
             store.PersistenceSetting(
@@ -275,15 +388,22 @@ def read_persistence_source(
             )
         rows.append((name, frequencies))
     derived = sum(store.is_persistent(f, PERSISTENCE_THRESHOLD) for _, f in rows)
-    if derived != receipt_count or len(receipt_flagged) != receipt_count:
+    if derived != receipt_count:
         raise ScreeningLoadError(
             f"persistence file flags {derived} schools but its receipt states {receipt_count}"
         )
+    if len(receipt_flagged) != receipt_count:
+        raise ScreeningLoadError(
+            f"persistence receipt states {receipt_count} persistent schools but names {len(receipt_flagged)}"
+        )
+    draw_count = draws.pop()
+    _check_threshold_adjacency(path.parent, rule_id, PERSISTENCE_THRESHOLD, draw_count, rows)
     return PersistenceSource(
+        rule_id=rule_id,
         experiment_id=folder,
         source_path=str(relative),
         source_sha256=sha256,
-        draws=draws.pop(),
+        draws=draw_count,
         threshold=PERSISTENCE_THRESHOLD,
         settings=settings,
         rows=tuple(rows),
@@ -570,16 +690,17 @@ def _check_against_receipt(
 def _store_persistence(
     connection: psycopg.Connection, input_version: str, source: PersistenceSource, version_created: bool
 ) -> str:
-    """Store the persistence numbers of a version, or confirm that the stored ones equal the file.
+    """Store the persistence numbers of one rule on a version, or confirm that the stored ones equal the file.
 
     Numbers are attached when the version is created, never later: a response that names an input version is
     cached as immutable, and numbers attached afterwards would change what clients already hold.
     """
     school_of = _join_persistence_names(connection, input_version, source)
     _check_against_receipt(connection, input_version, source, school_of)
+    rule_id = source.rule_id
     expected_set = store.PersistenceSet(
         input_version=input_version,
-        rule_id=PERSISTENCE_RULE_ID,
+        rule_id=rule_id,
         experiment_id=source.experiment_id,
         source_path=source.source_path,
         source_sha256=source.source_sha256,
@@ -588,18 +709,18 @@ def _store_persistence(
         settings=source.settings,
     )
     expected = store.Persistence(expected_set, {school_of[name]: freqs for name, freqs in source.rows})
-    stored = store.read_persistence(connection, input_version)
+    stored = store.read_persistence(connection, input_version, rule_id).get(rule_id)
     if stored is not None:
         if stored != expected:
             raise PersistenceConflict(
-                f"stored persistence numbers of input version {input_version!r} differ from the file "
+                f"stored persistence numbers of {rule_id} on input version {input_version!r} differ from the file "
                 f"(stored from {stored.set.source_path}, sha256 {stored.set.source_sha256}). "
                 "A stored set is never overwritten; use a new input version."
             )
         return f"unchanged ({len(expected.frequencies)} schools, sha256 {source.source_sha256})"
     if not version_created:
         raise PersistenceConflict(
-            f"input version {input_version!r} was loaded without persistence numbers, and responses that name a "
+            f"input version {input_version!r} was loaded without persistence numbers for {rule_id}, and responses that name a "
             "version are cached as immutable, so numbers are not attached to it later. "
             "Load a new input version with the persistence file."
         )
@@ -610,7 +731,7 @@ def _store_persistence(
         "values (%s, %s, %s, %s, %s, %s, %s)",
         (
             input_version,
-            PERSISTENCE_RULE_ID,
+            rule_id,
             source.experiment_id,
             source.source_path,
             source.source_sha256,
@@ -625,7 +746,7 @@ def _store_persistence(
             [
                 (
                     input_version,
-                    PERSISTENCE_RULE_ID,
+                    rule_id,
                     s.setting_id,
                     position,
                     s.top_level_concentration,
@@ -638,7 +759,7 @@ def _store_persistence(
             "insert into screening_persistence_frequencies (input_version, rule_id, source_school_name, setting_id, "
             "lower_top20_frequency) values (%s, %s, %s, %s, %s)",
             [
-                (input_version, PERSISTENCE_RULE_ID, school, setting.setting_id, frequency)
+                (input_version, rule_id, school, setting.setting_id, frequency)
                 for school, frequencies in expected.frequencies.items()
                 for setting, frequency in zip(source.settings, frequencies, strict=True)
             ],
@@ -653,14 +774,20 @@ def load_screening(
     records: tuple[SchoolRecord, ...],
     source_manifest: Sequence[Mapping[str, str]],
     description: str | None = None,
-    persistence: PersistenceSource | None = None,
+    persistence: Sequence[PersistenceSource] = (),
 ) -> LoadReport:
     """Store the records as ``input_version`` and every rule's run on them, atomically and idempotently.
 
-    With ``persistence`` the experiment's top-20 persistence numbers are stored with the version in the same transaction.
+    With ``persistence`` the top-20 persistence numbers of each rule named are stored with the version in the same
+    transaction. A rule may be named once.
     """
     if not records:
         raise ScreeningLoadError("no records to load: the source tables list no schools")
+    rule_ids = [source.rule_id for source in persistence]
+    if len(set(rule_ids)) != len(rule_ids):
+        raise ScreeningLoadError(
+            f"persistence numbers are given more than once for one rule: {sorted(rule_ids)}"
+        )
     input_sha256 = records_sha256(records)
     runs = screen_all(prepare(records))  # pure: nothing has touched the database yet
     with connection.transaction():
@@ -691,11 +818,10 @@ def load_screening(
                 unchanged.append(rule_id)
 
         matched, unmatched, ambiguous, changed = _link_schools(connection, input_version)
-        persistence_state = (
-            None
-            if persistence is None
-            else _store_persistence(connection, input_version, persistence, existing is None)
-        )
+        persistence_state = {
+            source.rule_id: _store_persistence(connection, input_version, source, existing is None)
+            for source in persistence
+        }
     return LoadReport(
         input_version=input_version,
         version_created=existing is None,
@@ -711,6 +837,19 @@ def load_screening(
     )
 
 
+def _rule_arguments(flag: str, values: Sequence[str]) -> dict[str, str]:
+    """``RULE=VALUE`` arguments by rule. A rule given twice or an argument without a rule is an error."""
+    found: dict[str, str] = {}
+    for value in values:
+        rule_id, separator, rest = value.partition("=")
+        if not separator or not rule_id or not rest:
+            raise ValueError(f"{flag} must be RULE=VALUE, not {value!r}")
+        if rule_id in found:
+            raise ValueError(f"{flag} is given twice for {rule_id}")
+        found[rule_id] = rest
+    return found
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Load screening inputs and materialize every screening rule."
@@ -722,14 +861,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--datasets-root", type=Path, required=True, help="Folder with the raw school table.")
     parser.add_argument("--description", default=None)
     parser.add_argument(
-        "--persistence-csv",
-        default=None,
-        help="Path under the reference root of the experiment's persistent_investigation_candidates.csv.",
+        "--persistence",
+        action="append",
+        default=[],
+        metavar="RULE=PATH",
+        help="Persistence numbers of one rule: its id, then the path under the reference root of the experiment's "
+        "persistent_investigation_candidates.csv. Give it once for each of additive_u and additive_no_u.",
     )
     parser.add_argument(
         "--persistence-sha256",
-        default=None,
-        help="SHA-256 the persistence file must have; the load is refused otherwise.",
+        action="append",
+        default=[],
+        metavar="RULE=SHA256",
+        help="SHA-256 that the file of a rule must have, for an experiment that records no hash; the load is "
+        "refused otherwise.",
     )
     args = parser.parse_args(argv)
 
@@ -737,8 +882,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not input_version or input_version != input_version.strip():
         print("error: --input-version must be non-empty and have no surrounding whitespace", file=sys.stderr)
         return 2
-    if args.persistence_sha256 and not args.persistence_csv:
-        print("error: --persistence-sha256 needs --persistence-csv", file=sys.stderr)
+    try:
+        files = _rule_arguments("--persistence", args.persistence)
+        pins = _rule_arguments("--persistence-sha256", args.persistence_sha256)
+    except ValueError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+    if pins.keys() - files.keys():
+        print("error: --persistence-sha256 needs --persistence for the same rule", file=sys.stderr)
         return 2
     database_url = get_settings().database_url
     if not database_url:
@@ -747,11 +898,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         tables, source_manifest = read_source_tables(args.reference_root, args.datasets_root)
         records = parse_records(assemble_frame(tables))
-        persistence = (
-            None
-            if args.persistence_csv is None
-            else read_persistence_source(args.reference_root, args.persistence_csv, args.persistence_sha256)
-        )
+        persistence = [
+            read_persistence_source(args.reference_root, path, rule_id, pins.get(rule_id))
+            for rule_id, path in files.items()
+        ]
         with psycopg.connect(database_url) as connection:
             report = load_screening(
                 connection,

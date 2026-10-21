@@ -99,13 +99,28 @@ The files and schools are invented.
 | PE11 | A frequency is not a probability. | Empty, text, NaN, negative or above 1 loads, in the reader or the database. |
 | PE12 | One version lends its numbers to another. | A version loaded without the file reads the numbers of a sibling version. |
 | PE13 | The experiment is unnamed. | A path with no `EXP-` folder loads, so the provenance cannot say which experiment. |
-| PE14 | The numbers are stored for another rule. | The database accepts a set whose rule is not the circulated one. |
+| PE14 | The numbers are stored for a rule that has no experiment. | The database accepts a set whose rule is neither `additive_u` nor `additive_no_u`. |
 | PE15 | The numbers outlive their school or version. | Deleting a school or a version leaves frequencies behind. |
 | PE16 | The Data API roles can reach the tables. | `anon` or `authenticated` holds a privilege, or row security is off. |
 | PE17 | The migration is not atomic or not re-runnable. | A failure before its commit leaves a table behind, or a second apply changes the schema or the rows. |
 | PE18 | The command crashes or half loads. | A wrong hash or a lone `--persistence-sha256` gives a traceback, or leaves inputs and runs stored. |
 | PE19 | Numbers are attached to a version that clients already hold. | A version loaded without persistence accepts a file later, so a response cached as immutable changes while its header says it cannot. |
 | PE20 | The receipt is not the check it stands in for. | A file whose flagged schools differ from the receipt's list loads, the difference is reported by name, a receipt without the list is accepted, or a receipt spelling that normalises alike is refused. |
+| PE21 | One rule's set shadows or replaces the other's. | With both sets loaded, a read returns the circulated numbers for the revised rule or the reverse, the experiment id or the file hash is shared, or one set's settings are lost. |
+| PE22 | The threshold band is the same for both rules. | A school 0.008 above the line is adjacent under the circulated rule (one standard error, 0.0057) or not adjacent under the revised rule (two standard errors, 0.0113). |
+| PE23 | A rerun with both files changes something, or a changed file of one rule is accepted. | A second load alters a row, or a changed revised file loads beside an unchanged circulated one. |
+| PE24 | A second set is attached later to a version that clients already hold. | A version created with the circulated set alone accepts the revised set on a later load. |
+| PE25 | Two files for one rule in one load. | The load succeeds and one file wins. |
+| PE26 | A rule that cannot have persistence numbers is accepted by the reader. | `benchmark`, a need-first or bottleneck rule, or a made-up id is read. |
+| PE27 | An experiment is stored under the rule it does not describe. | The circulated experiment (urgency had a weight) is read for `additive_no_u`, the revised experiment (no urgency weight) for `additive_u`, or a receipt that does not say is accepted. |
+| PE28 | The experiment's own hash is not checked. | A table that differs from the hash in `artifact_hashes.json` loads, a record that does not list the table loads, or a pin is ignored when a record exists. |
+| PE29 | The experiment's count of schools near the threshold is ignored. | A `threshold_adjacency.json` whose count, cutoff or draws disagree with the table loads, or the band used is not the rule's own. |
+| PE30 | The database refuses the revised rule's set. | A set for `additive_no_u` is rejected after 007. |
+| PE31 | The upgrade from 006 loses numbers or leaves the revised rule refused. | After 007 a set stored under 006 is changed, or the revised set still violates the check. |
+| PE32 | A failed 007 leaves the check half changed. | The rule check is dropped and not replaced, or replaced and the file fails. |
+| PE33 | The command takes a malformed pair or half loads. | A repeated rule, an argument without `=`, a pin without its file, or a set under the wrong rule gives a traceback or leaves inputs stored. |
+| PE34 | The hash check fails open. | A file with no recorded hash and no pin loads, or deleting `artifact_hashes.json` from the experiment's folder lets its file load unchecked. |
+| PE35 | A rule carries another experiment's numbers. | EXP-21's file loads for `additive_no_u`, EXP-22's for `additive_u`, or a folder named like the right one (`EXP-210`) loads, whatever the receipt says. |
 
 | Test | Failure mode |
 | --- | --- |
@@ -123,6 +138,7 @@ The files and schools are invented.
 | `test_a_file_that_does_not_hash_to_the_expected_value_is_refused` | PE8 |
 | `test_a_flag_column_that_disagrees_with_the_frequencies_is_refused` | PE9 |
 | `test_a_receipt_count_that_disagrees_with_the_flagged_rows_is_refused` | PE10 |
+| `test_a_receipt_whose_list_is_longer_than_its_count_says_so_and_does_not_blame_the_flags` | PE10 |
 | `test_a_receipt_that_names_other_schools_than_the_file_flags_is_refused_by_count` | PE20 |
 | `test_a_receipt_may_spell_a_name_differently_when_it_normalises_alike` | PE20 |
 | `test_a_receipt_that_lists_a_school_the_version_does_not_have_is_refused` | PE20 |
@@ -131,7 +147,7 @@ The files and schools are invented.
 | `test_a_frequency_that_is_not_a_number_from_zero_to_one_is_refused` | PE11 |
 | `test_a_frequency_outside_zero_to_one_is_rejected_by_the_database` | PE11 |
 | `test_a_path_without_an_experiment_folder_is_refused` | PE13 |
-| `test_the_numbers_cannot_be_stored_for_any_rule_but_the_circulated_one` | PE14 |
+| `test_the_numbers_cannot_be_stored_for_any_rule_but_the_two_with_an_experiment` (5 rules) | PE14 |
 | `test_the_numbers_go_with_their_school_and_their_version` | PE15 |
 | `test_the_persistence_tables_are_closed_to_the_data_api_roles` | PE16 |
 | `test_the_migration_applies_a_second_time_and_keeps_the_numbers` | PE17 |
@@ -139,3 +155,31 @@ The files and schools are invented.
 | `test_the_command_stores_the_numbers_and_a_rerun_changes_nothing` | PE18 |
 | `test_the_command_refuses_a_wrong_hash_without_a_traceback_and_stores_nothing` | PE8, PE18 |
 | `test_the_hash_alone_is_a_usage_error` | PE18 |
+| `test_each_rule_keeps_its_own_set_with_its_own_numbers_and_provenance` | PE21 |
+| `test_a_school_that_is_persistent_under_one_rule_need_not_be_under_the_other` | PE21 |
+| `test_the_threshold_band_is_the_rules_own_one_standard_error_for_the_circulated_rule_two_for_the_revised` | PE22 |
+| `test_a_rerun_with_both_files_changes_nothing_and_a_changed_file_of_one_rule_is_refused` | PE23 |
+| `test_a_set_cannot_be_attached_later_to_a_version_that_has_the_other_rules_set` | PE24 |
+| `test_two_files_for_one_rule_in_one_load_are_refused_and_nothing_is_stored` | PE25 |
+| `test_a_rule_that_cannot_have_persistence_numbers_is_refused_before_the_file_is_read` (4 rules) | PE26 |
+| `test_an_experiment_that_gave_urgency_a_weight_is_not_stored_for_the_urgency_omitted_rule` | PE27 |
+| `test_an_experiment_that_left_urgency_out_is_not_stored_for_the_urgency_included_rule` | PE27 |
+| `test_a_receipt_that_does_not_say_whether_urgency_had_a_weight_is_refused` | PE27 |
+| `test_a_file_that_differs_from_the_hash_its_experiment_recorded_is_refused` | PE28 |
+| `test_a_file_that_was_edited_after_its_hash_was_recorded_is_refused` | PE28 |
+| `test_a_record_of_hashes_that_does_not_list_the_file_is_refused` | PE28 |
+| `test_a_pin_is_checked_as_well_as_the_recorded_hash` | PE28 |
+| `test_a_count_near_the_threshold_that_disagrees_with_the_table_is_refused` | PE29 |
+| `test_an_experiment_that_counts_no_school_near_the_threshold_must_have_none_in_its_table` | PE29 |
+| `test_the_adjacency_count_of_an_urgency_included_experiment_uses_one_standard_error` | PE29 |
+| `test_the_revised_rule_can_hold_a_set_in_the_database` | PE30 |
+| `test_007_lets_the_revised_rule_store_a_set_and_keeps_the_numbers_stored_under_006` | PE31 |
+| `test_a_failed_apply_of_007_leaves_the_rule_check_as_006_made_it` | PE32 |
+| `test_the_command_stores_both_sets_and_a_rerun_changes_nothing` | PE33 |
+| `test_the_command_refuses_a_set_under_the_wrong_rule_and_stores_nothing` | PE27, PE33 |
+| `test_malformed_persistence_arguments_are_a_usage_error` (5 cases) | PE33 |
+| `test_a_file_with_no_recorded_hash_and_no_pin_is_refused` | PE34 |
+| `test_removing_the_record_of_hashes_does_not_open_the_check` | PE34 |
+| `test_each_rule_accepts_only_its_own_experiment` | PE35 |
+| `test_an_experiment_whose_id_only_resembles_the_expected_one_is_refused` (3 ids) | PE35 |
+| `test_a_file_with_no_recorded_hash_is_read_when_it_is_pinned_and_refused_when_the_pin_is_wrong` | PE28, PE34 |

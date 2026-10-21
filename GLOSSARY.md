@@ -119,8 +119,9 @@ What the exported score column means under a rule: an additive score, a need-fir
 
 ## Provenance and policy role
 
-Provenance says where a rule comes from: the circulated paper, or the proposed follow-up that is pending author review.
-Policy role says how the rule is meant to be used: primary, strict alternative, policy sensitivity, or conventional reference.
+Provenance says where a rule comes from: the circulated paper, or the revised paper that leaves urgency out of every primary calculation.
+Policy role says how the rule is meant to be used: primary, strict alternative, policy sensitivity, urgency sensitivity, or conventional reference.
+An urgency sensitivity restores the supplied urgency scalar and is labelled as a sensitivity, not as the primary list.
 
 ## Tie rule
 
