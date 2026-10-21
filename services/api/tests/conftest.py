@@ -13,6 +13,7 @@ from app import main as app_main
 from app.main import app
 from app.routers import districts, exports, meta, rasters, scenarios, schools, scoring
 from app.security import require_write_operations, write_rate_limiter
+from app.settings import get_settings
 from fastapi.testclient import TestClient
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
@@ -168,3 +169,21 @@ def connection_before_screening(migrated_template):
                 yield conn
         finally:
             _drop(admin, name)
+
+
+# ---------------------------------------------------------------------------------------------
+# The real application on a real, migrated database, for the screening API tests.
+# The app opens its own connection pool from DATABASE_URL, exactly as it does when deployed.
+# ---------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def api(database_url, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+    get_settings.cache_clear()
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        get_settings.cache_clear()

@@ -67,8 +67,8 @@ A cohort belongs to a school under one rule, because rules read different compon
 - Interval: the rule reads an environmental component (Q, E or L) that is missing.
 - Complete: otherwise.
 
-The benchmark reads no environmental component, so all 124 eligible schools are complete under it.
-Under the other six rules the complete cohort is 120 on the frozen data.
+The benchmark reads no environmental component, so every eligible school is complete under it.
+Under the other six rules the complete cohort is smaller whenever a school misses an environmental input.
 `prepare` records the rule-agnostic facts (gate failures and missing components), and `screen` decides the cohort.
 
 Gate reasons from the study are a missing stock field, a negative stock count, and a denominator (total classrooms, teachers) that is not positive.
@@ -88,7 +88,13 @@ Ranks from different rules use different cohorts.
 `common_cohort(*runs)` returns the schools complete under every compared run.
 `rank_in_common_cohort(run, cohort)` ranks one run's point scores within it, with the same tie rule, and returns the scope label and the count.
 Use it for matched comparisons and for a rule switch in a user interface.
-On the frozen data the cohort shared by all seven rules is the 120 schools.
+The cohort shared by all seven rules is the smallest complete cohort.
+
+`pairwise_metrics(run_a, run_b)` compares two runs of one input on the schools complete under both.
+It returns `n`, the Spearman correlation, Kendall tau, the pairwise discordance (the fraction of school pairs whose order reverses, so tau is 1 minus twice the discordance), the median and maximum absolute rank shift, and for K = 10, 20, 30 and 40 the overlap, the Jaccard index and the two set sizes.
+It also lists the top-20 exits (in the top 20 under `a` only, ordered by rank under `a`) and entrants (in the top 20 under `b` only, ordered by rank under `b`) with both ranks.
+Metrics that need at least two schools are `None` below that, never `NaN`.
+`rank_point_scores` and `compare_ranks` are the same computation on plain rows, for callers that hold stored results instead of runs.
 
 ### Input contract
 
@@ -161,13 +167,14 @@ Every check name states its scope.
 
 What the frozen outputs cover:
 
-- All seven rules are compared on the common 120-school cohort, with ranks produced by `rank_in_common_cohort`.
-- The benchmark is compared over all 124 eligible schools against EXP-21 `benchmark_replay.csv`.
+- All seven rules are compared on their common complete cohort, with ranks produced by `rank_in_common_cohort`.
+- The benchmark is compared over every eligible school against EXP-21 `benchmark_replay.csv`.
 - For `additive_u`, `need_first_u` and `bottleneck_u`, scores, bounds and point ranks are compared against EXP-21.
 - For `additive_no_u`, the bounds and point ranks over the eligible cohort are compared against the comparison package.
+- `pairwise_metrics` is compared for every pair of rules against `pairwise_metrics.csv` (`n`, set sizes and overlaps exactly; correlations, discordance, shifts and Jaccard indices within 1e-12), and the top-20 entrants and exits against every row of `top20_changes.csv` (ranks exactly, scores and components within 1e-12).
 - For `need_first_no_u` and `bottleneck_no_u`, the eligible-scope bounds have no frozen reference. Unit tests cover them and nothing else does.
 
-EXP-21 numbers each complete school's `need_first_rank_point` by its position among all 124 eligible schools.
+EXP-21 numbers each complete school's `need_first_rank_point` by its position among all eligible schools.
 The engine's point rank counts only the complete cohort, so the two differ for schools that sit below interval schools.
 The reproduction reports every such school in `need_first_scope_differences.csv`.
 It also checks that the EXP-21 position equals the engine's best rank wherever best equals worst.

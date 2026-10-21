@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 from school_scoring.screening import (
     INPUT_CONTRACT,
+    TOP_K_VALUES,
     Cohort,
     PreparedRecord,
     SchoolResult,
@@ -28,6 +29,7 @@ from school_scoring.screening import (
     Table,
     assemble_frame,
     common_cohort,
+    pairwise_metrics,
     parse_records,
     prepare,
     rank_in_common_cohort,
@@ -531,6 +533,93 @@ def run_reproduction(reference_root: Path, datasets_root: Path, output_dir: Path
             _results(no_u, getter, keep),
             _column(bounds124, column),
             exact=exact,
+        )
+
+    # Pairwise metrics and top-20 changes: every pair of rules, computed by the engine on the pair's common cohort.
+    # The pair (or pair and school) stands in the "school" slot of a check, so mismatches name the pair.
+    pairs_ref, ref_file = load(f"{COMPARISON}/pairwise_metrics.csv"), f"{COMPARISON}/pairwise_metrics.csv"
+    pair_keys = [f"{a} vs {b}" for a, b in zip(pairs_ref["left_rule"], pairs_ref["right_rule"], strict=True)]
+    metrics = {
+        key: pairwise_metrics(runs[a], runs[b])
+        for key, a, b in zip(pair_keys, pairs_ref["left_rule"], pairs_ref["right_rule"], strict=True)
+    }
+    pair_scope = f"each pair's common complete cohort (n={sorted({m.n for m in metrics.values()})})"
+    pair_getters: dict[str, tuple[Callable[[Any], Value], bool]] = {
+        "n": (lambda m: float(m.n), True),
+        "spearman_rank": (lambda m: m.spearman_rank, False),
+        "kendall_tau": (lambda m: m.kendall_tau, False),
+        "pairwise_discordance": (lambda m: m.pairwise_discordance, False),
+        "median_absolute_rank_shift": (lambda m: m.median_absolute_rank_shift, False),
+        "maximum_absolute_rank_shift": (lambda m: m.maximum_absolute_rank_shift, False),
+    }
+    for index_, k in enumerate(TOP_K_VALUES):
+        pair_getters[f"top{k}_overlap"] = (lambda m, i=index_: float(m.top_k[i].overlap), True)
+        pair_getters[f"top{k}_jaccard"] = (lambda m, i=index_: m.top_k[i].jaccard, False)
+        pair_getters[f"top{k}_left"] = (lambda m, i=index_: float(m.top_k[i].size_a), True)
+        pair_getters[f"top{k}_right"] = (lambda m, i=index_: float(m.top_k[i].size_b), True)
+    for column, (getter, exact) in pair_getters.items():
+        h.compare(
+            f"pairwise {column}",
+            ref_file,
+            pair_scope,
+            {key: getter(m) for key, m in metrics.items()},
+            dict(zip(pair_keys, pairs_ref[column], strict=True)),
+            exact=exact,
+        )
+
+    changes_ref, ref_file = load(f"{COMPARISON}/top20_changes.csv"), f"{COMPARISON}/top20_changes.csv"
+    by_name = {p.record.school_name: p for p in prepared.records}
+    engine_rows: dict[str, dict[str, Value]] = {}
+    for pair_key, m in metrics.items():
+        a, b = pair_key.split(" vs ")
+        score_a, score_b = (
+            {r.school_name: r.score_point for r in runs[rule_id].results} for rule_id in (a, b)
+        )
+        for change in m.top20_changes:
+            p, record = by_name[change.school_name], by_name[change.school_name].record
+            engine_rows[f"{pair_key} | {change.status.value} | {change.school_name}"] = {
+                "left_rank": float(change.rank_a),
+                "right_rank": float(change.rank_b),
+                "left_score": score_a[change.school_name],
+                "right_score": score_b[change.school_name],
+                "Province": record.province,
+                "District": record.district,
+                "Locality": record.locality,
+                **{c: getattr(p.components, c) for c in "NAURQEL"},
+                "missing_aqi": float(p.components.Q is None),
+            }
+    change_keys = [
+        f"{a} vs {b} | {status} | {name}"
+        for a, b, status, name in zip(
+            changes_ref["left_rule"],
+            changes_ref["right_rule"],
+            changes_ref["status"],
+            changes_ref["School Name"],
+            strict=True,
+        )
+    ]
+    change_scope = f"top-20 entrants and exits over {len(pair_keys)} pairs ({len(change_keys)} rows)"
+    for column in (
+        "left_rank",
+        "right_rank",
+        "left_score",
+        "right_score",
+        "Province",
+        "District",
+        "Locality",
+        *"NAURQEL",
+        "missing_aqi",
+    ):
+        reference_values = changes_ref[column]
+        if column == "missing_aqi":
+            reference_values = reference_values.astype(float)
+        h.compare(
+            f"top20 change {column}",
+            ref_file,
+            change_scope,
+            {key: row[column] for key, row in engine_rows.items()},
+            dict(zip(change_keys, reference_values, strict=True)),
+            exact=column in ("left_rank", "right_rank", "Province", "District", "Locality", "missing_aqi"),
         )
 
     return _write_report(

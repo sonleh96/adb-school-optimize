@@ -23,6 +23,7 @@ from .routers.rasters import router as rasters_router
 from .routers.scenarios import router as scenarios_router
 from .routers.schools import router as schools_router
 from .routers.scoring import router as scoring_router
+from .routers.screening import router as screening_router
 from .security import require_authenticated_user
 from .settings import get_settings
 
@@ -50,6 +51,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+    # A browser script can read only the response headers named here. The screening client needs them all.
+    expose_headers=[
+        "Content-Disposition",
+        "ETag",
+        "X-Request-ID",
+        "X-RISE-PNG-Decision-Use",
+        "X-Screening-Input-Version",
+        "X-Screening-Input-Sha256",
+    ],
 )
 
 
@@ -92,6 +102,7 @@ app.include_router(scenarios_router, dependencies=protected)
 app.include_router(scoring_router, dependencies=protected)
 app.include_router(exports_router, dependencies=protected)
 app.include_router(rasters_router, dependencies=protected)
+app.include_router(screening_router, dependencies=protected)
 
 
 @app.get("/", response_model=HealthResponse, tags=["health"])
