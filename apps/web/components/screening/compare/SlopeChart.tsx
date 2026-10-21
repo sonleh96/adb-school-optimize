@@ -195,7 +195,9 @@ export function SlopeChart({
       );
     }
 
-  const line = (r: ComparedSchool) => `path("M${xA},${frame.y(r.a)} L${xB},${frame.y(r.b)}")`;
+  // The path is the d attribute, which every browser reads; the same path in CSS is what lets a browser that animates
+  // the d property move the line to its new places when the pair changes.
+  const path = (r: ComparedSchool) => `M${xA},${frame.y(r.a)} L${xB},${frame.y(r.b)}`;
   const ordered = [...rows].sort((p, q) => Math.abs(p.d) - Math.abs(q.d));
   const highlight = [hovered, selected].filter((key): key is SchoolKey => key !== null && byKey.has(key));
 
@@ -243,7 +245,8 @@ export function SlopeChart({
                 <path
                   key={r.key}
                   className={styles.line}
-                  style={{ d: line(r) } as React.CSSProperties}
+                  d={path(r)}
+                  style={{ d: `path("${path(r)}")` } as React.CSSProperties}
                   stroke={moveHex(r.d, edges)}
                   strokeWidth={mover ? 1.75 : crosser ? 2 : low ? 0.9 : r.d === 0 ? 1 : 1.25}
                   strokeOpacity={
