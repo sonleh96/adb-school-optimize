@@ -985,14 +985,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .root[data-card-docked] .foot {
   left: var(--gap);
 }
-/* With the guide rail open in the compact layout the map is about 360 px wide: the key and the caveat take all of
-   it, and leave the line below them to the basemap's credit. */
-.root[data-rail][data-layout="compact"] .foot {
+/* With the guide rail open the map is narrow (about 360 px in the compact layout, and as little at 1280 beside compare
+   mode's wider column): the key and the caveat take all of it, and leave the line below them to the basemap's credit.
+   A key squeezed into what is left beside the credit grows tall enough to meet the map bar. */
+.root[data-rail] .foot {
   right: var(--gap);
   bottom: 24px;
 }
 /* A card there takes the map's right side, so the key and the caveat stop short of it. */
-.root[data-rail][data-layout="compact"][data-has-insp] .foot {
+.root[data-rail][data-has-insp] .foot {
   right: calc(var(--gap) + var(--card-w) + var(--gap));
 }
 /* The glossary drawer takes the right of the map; the key and the caveat make room for it. */

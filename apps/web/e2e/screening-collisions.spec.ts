@@ -12,6 +12,9 @@
  *     -> "the rail's start lets every guide..." and "the rail's start shows that more..."
  *  5. In the narrow layout, help mode's bar sits under the key -> "help mode's bar..."
  *  6. Compare mode's chart heading squeezes its middle caption to one word a line -> "compare mode's chart heading..."
+ *  7. With the method details on, help mode widens the map bar into the actions (1440), or, with the rail open and
+ *     compare mode's wide column (1280), the map bar runs past the window and the help bar rises into it
+ *     -> "help mode with the method details on..."
  */
 import type { Locator, Page } from "@playwright/test";
 
@@ -236,6 +239,42 @@ test.describe("the rail's start at 768 by 1024", () => {
     ).toBeGreaterThan(4);
   });
 });
+
+for (const state of [
+  {
+    name: "at 1280 by 800 with the rail open in compare mode",
+    viewport: { width: 1280, height: 800 },
+    search: "?analyst=1&mode=compare&rule=bottleneck_no_u&compare=additive_no_u&guide=start",
+    rail: true,
+  },
+  { name: "at 1440 by 900", viewport: { width: 1440, height: 900 }, search: "?analyst=1", rail: false },
+]) {
+  test.describe(`help mode with the method details on ${state.name}`, () => {
+    test.use({ viewport: state.viewport });
+
+    test(`help mode with the method details on ${state.name}: the map bar, the help bar, the actions and the zoom buttons stay apart and in the window`, async ({
+      page,
+    }) => {
+      await openWorkspace(page, state.search);
+      await page
+        .getByRole("toolbar")
+        .getByRole("button", { name: /Explain this screen/ })
+        .click();
+      await expect(page.getByTestId("help-bar")).toBeVisible();
+      const named: Record<string, string> = {
+        column: COLUMN,
+        actions: ACTIONS,
+        mapbar: MAP_BAR,
+        helpbar: "[data-testid=help-bar] > div",
+        zoom: ZOOM,
+        key: "[data-slot=legend]",
+      };
+      if (state.rail) named.rail = RAIL;
+      await expectApart(page, named, Object.keys(named));
+      await expectUncovered(page.getByTestId("help-bar").getByRole("button", { name: /Done/ }), "Done");
+    });
+  });
+}
 
 test.describe("help mode in the narrow layout", () => {
   test.use({ viewport: { width: 768, height: 1024 } });
