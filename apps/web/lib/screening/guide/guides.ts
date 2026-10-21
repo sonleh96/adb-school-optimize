@@ -364,11 +364,10 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [term("missing_all_but_remoteness"), term("missing_classrooms")],
-        // Its Try it is about the filter by what is missing, a method-details control, so the step turns them on.
-        tryIt: ctx.filters ? base.tryIt : null,
-        patch: ctx.filters
-          ? { view: "queue", qgroup: "evidence", analyst: true }
-          : { view: "queue", qgroup: "evidence" },
+        // The guides stay in the plain layer. Its Try it is about the filter by what is missing, a method-details
+        // control, so it is not offered.
+        tryIt: null,
+        patch: { view: "queue", qgroup: "evidence" },
         // Group by in the column (the card names its own chips `queue-missing` too), then the first group.
         targets: [
           [`[data-slot="column"] ${region("queue-missing")}`],
