@@ -6,9 +6,11 @@ import json
 import re
 import uuid
 from dataclasses import asdict, replace
+from urllib.parse import quote
 
 import pytest
 from app import screening_store as store
+from app.screening_queries import school_key
 from school_scoring.screening import PACKAGE_VERSION, RULES, pairwise_metrics
 from screening_api_helpers import api_records, load_synthetic
 from screening_db_factories import AWKWARD_NAMES as AWK
@@ -718,9 +720,10 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
             == 404
         )
 
-    # A request that names the input version and the package version is immutable; naming the version alone is not.
+    # The body carries each school's link to `schools`, which a reload changes, so naming both versions is not enough
+    # to make a list immutable. It gets the lifetime of a named version.
     both = api.get(path, params={"input_version": loaded.input_version, "package_version": "0.9.0"})
-    assert both.headers["cache-control"] == "private, max-age=31536000, immutable"
+    assert both.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     version_only = api.get(path, params={"input_version": loaded.input_version})
     assert version_only.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     assert (
@@ -728,6 +731,29 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
         .headers["cache-control"]
         .startswith("private, max-age=60")
     )
+
+
+def test_no_route_that_carries_the_links_is_cached_as_immutable(api, loaded):  # API38
+    both = {"input_version": loaded.input_version, "package_version": PACKAGE_VERSION}
+    key = quote(school_key(loaded.input_version, AWK[7]), safe="")
+    base = "/api/v1/screening"
+    routes = {
+        "results": (f"{base}/results", {**both, "rule": "additive_u"}),
+        "by key": (f"{base}/schools/by-key/{key}", both),
+        "by link": (f"{base}/schools/{loaded.school_ids[AWK[7]]}", both),
+        "compare": (f"{base}/compare", {**both, "a": "additive_u", "b": "benchmark"}),
+    }
+    for name, (url, params) in routes.items():
+        response = api.get(url, params=params)
+        assert response.status_code == 200, name
+        assert response.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600", name
+        revalidated = api.get(url, params=params, headers={"If-None-Match": response.headers["etag"]})
+        assert revalidated.status_code == 304 and "immutable" not in revalidated.headers["cache-control"], (
+            name
+        )
+    # The bulk inputs hold nothing from `schools`, so they stay immutable.
+    inputs = api.get(f"{base}/inputs", params={"input_version": loaded.input_version})
+    assert inputs.headers["cache-control"] == "private, max-age=31536000, immutable"
 
 
 def test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change(api, loaded):  # API38
