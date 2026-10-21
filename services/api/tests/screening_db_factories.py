@@ -188,7 +188,7 @@ def write_persistence_files(
     receipt_names: list[str] | None = None,
     threshold: float = 0.8,
     urgency_omitted: bool = False,
-    hash_record: str = "auto",
+    hash_record: str = "listed",
     adjacency: bool | None = None,
     adjacent_count: int | None = None,
 ) -> str:
@@ -199,8 +199,7 @@ def write_persistence_files(
     With ``urgency_omitted`` the files are those of the urgency-omitted experiment: the receipt gives urgency no weight,
     ``artifact_hashes.json`` records the table's hash and ``threshold_adjacency.json`` counts the schools within two
     standard errors of the threshold. ``hash_record`` is "listed" (the table's real hash), "unlisted" (a record that
-    does not name the table), "none" (no record) or a SHA-256 to record instead; "auto" is "listed" for the
-    urgency-omitted experiment and "none" for the other. ``adjacency=True`` asks for the adjacency file of the
+    does not name the table), "none" (no record) or a SHA-256 to record instead. ``adjacency=True`` asks for the adjacency file of the
     urgency-included experiment too, and ``adjacent_count`` replaces the count it states.
     """
     experiment = EXPERIMENT_NO_U if urgency_omitted else EXPERIMENT
@@ -237,8 +236,6 @@ def write_persistence_files(
         else receipt_count,
     }
     (path.parent / "run_receipt.json").write_text(json.dumps(receipt), encoding="utf-8")
-    if hash_record == "auto":
-        hash_record = "listed" if urgency_omitted else "none"
     if hash_record != "none":
         # The record names files from the repository root, as the real one does.
         digest = hashlib.sha256(path.read_bytes()).hexdigest() if hash_record == "listed" else hash_record

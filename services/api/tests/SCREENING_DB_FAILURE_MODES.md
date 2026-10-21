@@ -119,6 +119,7 @@ The files and schools are invented.
 | PE31 | The upgrade from 006 loses numbers or leaves the revised rule refused. | After 007 a set stored under 006 is changed, or the revised set still violates the check. |
 | PE32 | A failed 007 leaves the check half changed. | The rule check is dropped and not replaced, or replaced and the file fails. |
 | PE33 | The command takes a malformed pair or half loads. | A repeated rule, an argument without `=`, a pin without its file, or a set under the wrong rule gives a traceback or leaves inputs stored. |
+| PE34 | The hash check fails open. | A file with no recorded hash and no pin loads, or deleting `artifact_hashes.json` from the experiment's folder lets its file load unchecked. |
 
 | Test | Failure mode |
 | --- | --- |
@@ -166,7 +167,6 @@ The files and schools are invented.
 | `test_a_file_that_was_edited_after_its_hash_was_recorded_is_refused` | PE28 |
 | `test_a_record_of_hashes_that_does_not_list_the_file_is_refused` | PE28 |
 | `test_a_pin_is_checked_as_well_as_the_recorded_hash` | PE28 |
-| `test_an_experiment_with_no_recorded_hash_is_read_on_its_receipt_alone_or_with_a_pin` | PE28 |
 | `test_a_count_near_the_threshold_that_disagrees_with_the_table_is_refused` | PE29 |
 | `test_an_experiment_that_counts_no_school_near_the_threshold_must_have_none_in_its_table` | PE29 |
 | `test_the_adjacency_count_of_an_urgency_included_experiment_uses_one_standard_error` | PE29 |
@@ -176,3 +176,6 @@ The files and schools are invented.
 | `test_the_command_stores_both_sets_and_a_rerun_changes_nothing` | PE33 |
 | `test_the_command_refuses_a_set_under_the_wrong_rule_and_stores_nothing` | PE27, PE33 |
 | `test_malformed_persistence_arguments_are_a_usage_error` (5 cases) | PE33 |
+| `test_a_file_with_no_recorded_hash_and_no_pin_is_refused` | PE34 |
+| `test_removing_the_record_of_hashes_does_not_open_the_check` | PE34 |
+| `test_a_file_with_no_recorded_hash_is_read_when_it_is_pinned_and_refused_when_the_pin_is_wrong` | PE28, PE34 |
