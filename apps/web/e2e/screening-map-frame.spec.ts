@@ -8,6 +8,7 @@
  *     out of view                                                        -> "a second pick made mid-pan..."
  *  4. With a list of over 700 schools the dots stop drawing, the key's bands do not come from the data, or the
  *     console reports a problem (R12)                                    -> "a list of over 700 schools..."
+ *  5. The place numbers paint over the column when the map moves them beneath it -> "the column covers a place number..."
  */
 import type { Page, Route } from "@playwright/test";
 
@@ -167,6 +168,57 @@ test.describe("at 1600 by 1000", () => {
     expect(point.x).toBeLessThan(clear.right);
     expect(point.y).toBeGreaterThan(clear.top);
     expect(point.y).toBeLessThan(clear.bottom);
+  });
+});
+
+/* ---------- the place numbers stay under the panels ---------- */
+
+test.describe("at 1600 by 1000, the numbers and the column", () => {
+  test.use({ viewport: { width: 1600, height: 1000 } });
+
+  test("the column covers a place number the map has moved beneath it", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await settled(page);
+    const label = page.locator("[data-rank-label='1']");
+    // The numbers ignore the pointer, and hit testing skips what ignores it. For the check only, they take it, so the
+    // point at a number's centre names whatever is painted on top there.
+    const topAt = (locator: typeof label) =>
+      locator.evaluate((el) => {
+        const marker = el.closest<HTMLElement>(".maplibregl-marker")!;
+        el.style.pointerEvents = marker.style.pointerEvents = "auto";
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        el.style.pointerEvents = marker.style.pointerEvents = "";
+        if (!hit) return "nothing";
+        if (hit.closest(".maplibregl-marker") === marker) return "the number";
+        return hit.closest("section[data-slot=column]") ? "the column" : hit.outerHTML.slice(0, 80);
+      });
+    // On the first view the number is in the clear part of the map, so the check can see a number.
+    expect(await topAt(label)).toBe("the number");
+
+    // Drag the map, a stroke at a time inside its clear part (a drag let go over the column never ends), until the
+    // number sits in the middle of the column.
+    const column = (await page.locator("section[data-slot=column]").boundingBox())!;
+    const target = { x: column.x + column.width / 2, y: column.y + column.height / 2 };
+    const clearLeft = column.x + column.width + 40;
+    for (let stroke = 0; stroke < 6; stroke += 1) {
+      const at = (await label.boundingBox())!;
+      const dx = target.x - (at.x + at.width / 2);
+      const dy = target.y - (at.y + at.height / 2);
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) break;
+      const from = { x: 1150, y: 500 };
+      const step = { x: Math.max(dx, clearLeft - from.x, -500), y: Math.max(-200, Math.min(200, dy)) };
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + step.x, from.y + step.y, { steps: 12 });
+      await page.mouse.up();
+      await settled(page);
+    }
+    const moved = (await label.boundingBox())!;
+    expect(moved.x).toBeGreaterThan(column.x + 40);
+    expect(moved.x + moved.width).toBeLessThan(column.x + column.width - 40);
+    expect(await topAt(label)).toBe("the column");
   });
 });
 
