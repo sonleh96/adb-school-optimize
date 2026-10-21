@@ -101,8 +101,10 @@ export interface Mounts {
   methodSwitch: ReactNode;
   /** "Download the top list", in the actions. */
   exportButton: ReactNode;
-  /** The method switch and Download the top list as choices of the narrow layout's menu. */
-  menuItems: (act: MenuAct) => ReactNode;
+  /** The method switch and Download the top list as choices of the narrow layout's menu, which puts Copy link
+   * between them (notes/final.md, "Responsive layout"). */
+  methodMenuItem: (act: MenuAct) => ReactNode;
+  exportMenuItem: (act: MenuAct) => ReactNode;
   /** The export sheet while it is open. */
   exportSheet: ReactNode | null;
   ruleArea: ReactNode | null;
@@ -196,29 +198,29 @@ export function useMethodMounts(input: MountInput): Mounts {
       {copy.TERMS.export.label}
     </button>
   );
-  const menuItems = (act: MenuAct) => (
-    <>
-      <button
-        type="button"
-        aria-pressed={state.analyst}
-        disabled={!ready}
-        onPointerEnter={load}
-        onClick={act(() => store.setState({ analyst: !state.analyst }))}
-      >
-        {copy.LAYOUT.methodSwitch}
-      </button>
-      <button
-        type="button"
-        aria-haspopup="dialog"
-        disabled={!ready}
-        onClick={act(() => {
-          loadSheet();
-          openSheet();
-        })}
-      >
-        {copy.TERMS.export.label}
-      </button>
-    </>
+  const methodMenuItem = (act: MenuAct) => (
+    <button
+      type="button"
+      aria-pressed={state.analyst}
+      disabled={!ready}
+      onPointerEnter={load}
+      onClick={act(() => store.setState({ analyst: !state.analyst }))}
+    >
+      {copy.LAYOUT.methodSwitch}
+    </button>
+  );
+  const exportMenuItem = (act: MenuAct) => (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      disabled={!ready}
+      onClick={act(() => {
+        loadSheet();
+        openSheet();
+      })}
+    >
+      {copy.TERMS.export.label}
+    </button>
   );
   // A chunk or the method words that did not load say so in the copy's words, with a Retry that asks again.
   const failure = (retry: () => void, close?: () => void) => (
@@ -275,7 +277,7 @@ export function useMethodMounts(input: MountInput): Mounts {
       />
     ) : null;
 
-  const common = { on, methodSwitch, exportButton, menuItems, exportSheet, paint };
+  const common = { on, methodSwitch, exportButton, methodMenuItem, exportMenuItem, exportSheet, paint };
   if (!on || !mod || !method || !rule) {
     return {
       ...common,

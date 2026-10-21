@@ -114,10 +114,11 @@
 }
 
 /* ---------- the help bar, above the key ---------- */
+/* As wide as the clear map, so it stays one or two lines and does not rise into the map bar; its words sit left. */
 .bar {
   position: absolute;
   left: calc(var(--rail-w) + var(--gap) + var(--col-w) + var(--gap));
-  right: calc(var(--gap) + 220px);
+  right: var(--gap);
   bottom: 220px;
   z-index: 4;
   display: flex;
@@ -134,6 +135,10 @@
 }
 :global([data-has-insp]) .bar {
   right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
+/* The glossary drawer takes the map's right side, as it does for the key. */
+:global([data-gloss]) .bar {
+  right: calc(var(--gap) + 400px + 28px);
 }
 .barIn {
   pointer-events: auto;
@@ -485,14 +490,20 @@
 
 /* ---------- narrow: the help card is a sheet from the bottom edge, the glossary a full-height sheet ---------- */
 @media (max-width: 1023px) {
+  /* Above the key, which sits on the band's foot: HelpBar measures the key and sets `bottom`. Until it has, the bar
+     sits at the band's foot. */
   .bar {
     left: 8px;
     right: 8px;
-    bottom: auto;
-    top: calc(56px + var(--band) - 52px);
+    bottom: calc(100% - 56px - var(--band) + 8px);
   }
   :global([data-card-docked]) .bar {
     left: 8px;
+  }
+  /* The card and the glossary take the region under the band here, not the map's right side. */
+  :global([data-has-insp]) .bar,
+  :global([data-gloss]) .bar {
+    right: 8px;
   }
   .card[data-sheet] {
     left: 8px !important;

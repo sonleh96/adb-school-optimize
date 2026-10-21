@@ -173,6 +173,13 @@ export function GuidanceLayer({
 
 /* ------------------------------------------------------------------ the map bar */
 
+/** The map bar's spacing, in px: the window edge, below the actions, and below the bar (where the zoom buttons go). */
+const GAP = 16;
+const BELOW_ACTIONS = 14;
+const AFTER_BAR = 8;
+/** Where the hint sits with no actions to sit under. */
+const HINT_TOP = 64;
+
 function MapBar({
   root,
   data,
@@ -189,8 +196,10 @@ function MapBar({
   const bar = useRef<HTMLDivElement>(null);
   const seen = catalog ? seenCount(memory, catalog) : 0;
 
-  // When the bar would touch the actions it steps down a row; when it would then touch the card, the glossary
-  // button keeps only its icon. Its name stays in aria-label and title.
+  // When the bar would touch the actions it steps down below them (two rows of them when the rail leaves the map
+  // narrow); when it would then touch the card, the glossary button keeps only its icon. Its name stays in aria-label
+  // and title. The hint under the actions steps below the bar when the bar would touch it. Where the bar and the hint
+  // sit goes on the root (`--bar-top`, `--hint-top`), so the zoom buttons follow the bar.
   const full = useRef(0);
   const school = useWorkspaceState().school;
   const more = items !== null;
@@ -199,21 +208,44 @@ function MapBar({
     if (!element || !root) return;
     // What the bar holds may have changed, so its full width is measured again before the check.
     element.removeAttribute("data-bar-tight");
+    element.removeAttribute("data-bar-icons");
     const check = () => {
       if (!element.hasAttribute("data-bar-tight")) full.current = element.offsetWidth;
+      const box = root.getBoundingClientRect();
+      const top = box.top;
       const left = element.getBoundingClientRect().left;
       const right = left + full.current + 8;
+      // Even a row down, the bar with its names would pass the window's edge (a wide column beside the rail): every
+      // button keeps only its icon, as in the compact layout.
+      const icons = right > box.right - GAP;
       const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
+      const shown = !!actions && actions.width > 0;
       // A row down, the bar meets the card, or the hint that holds the card's place.
       const below = ['[data-region="inspector"]', '[data-region="slot-hint"]']
         .map((selector) => root.querySelector(selector)?.getBoundingClientRect())
         .filter((box): box is DOMRect => !!box && box.width > 0);
-      const stack = !!actions && actions.width > 0 && right > actions.left;
+      const stack = shown && right > actions.left;
       const squeeze = stack && below.some((box) => right > box.left);
       for (const node of [element, root]) {
         node.toggleAttribute("data-bar-stack", stack);
-        node.toggleAttribute("data-bar-tight", squeeze || data.mode === "compact");
+        node.toggleAttribute("data-bar-tight", squeeze || icons || data.mode === "compact");
       }
+      element.toggleAttribute("data-bar-icons", icons);
+      // One row of actions ends 50 px down, so the stepped-down bar and the hint sit at 64 px, as specified; a second
+      // row of actions moves both down with it.
+      const underActions = shown ? Math.round(actions.bottom - top) + BELOW_ACTIONS : HINT_TOP;
+      const barTop = stack ? underActions : GAP;
+      const barBottom = barTop + element.offsetHeight;
+      const hint = root.querySelector('[data-region="slot-hint"]')?.getBoundingClientRect();
+      const hintMeetsBar =
+        !!hint &&
+        hint.width > 0 &&
+        right > hint.left &&
+        left < hint.right &&
+        barTop < underActions + hint.height &&
+        barBottom > underActions;
+      root.style.setProperty("--bar-top", `${barTop}px`);
+      root.style.setProperty("--hint-top", `${hintMeetsBar ? barBottom + AFTER_BAR : underActions}px`);
     };
     check();
     // The card and the slot hint come and go with the selection; check again once they have.
@@ -223,6 +255,13 @@ function MapBar({
       frame = requestAnimationFrame(check);
     });
     observer.observe(root);
+    // The bar widens on its own ("Explaining this screen" in help mode), the actions wrap to a second row, and the
+    // hint rewraps, all without the root changing size.
+    observer.observe(element);
+    for (const selector of ['[data-region="actions"]', '[data-region="slot-hint"]']) {
+      const part = root.querySelector(selector);
+      if (part) observer.observe(part);
+    }
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
@@ -233,6 +272,8 @@ function MapBar({
     () => () => {
       root?.removeAttribute("data-bar-stack");
       root?.removeAttribute("data-bar-tight");
+      root?.style.removeProperty("--bar-top");
+      root?.style.removeProperty("--hint-top");
     },
     [root]
   );

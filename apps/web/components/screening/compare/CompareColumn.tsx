@@ -286,9 +286,9 @@ export function CompareColumn(props: CompareColumnProps) {
             </section>
             <section className={styles.sec} data-region="slope-chart" aria-label={words.compare.slopeAria}>
               <div className={styles.slopeHead}>
-                <span className={styles.cap}>{copy.ruleShortName(a)}</span>
+                <span className={`${styles.cap} ${styles.capA}`}>{copy.ruleShortName(a)}</span>
                 <span className={`${styles.cap} ${styles.capMid}`}>{words.compare.slopeMid(data.n)}</span>
-                <span className={styles.cap}>{copy.ruleShortName(b)}</span>
+                <span className={`${styles.cap} ${styles.capB}`}>{copy.ruleShortName(b)}</span>
                 <span className={styles.kSeg} role="group" aria-label={words.compare.kAria}>
                   {[10, 20].map((k) => (
                     <button key={k} type="button" aria-pressed={data.k === k} onClick={() => onState({ k })}>

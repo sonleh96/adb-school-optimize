@@ -43,12 +43,17 @@ export function isAllowedEmail(email: string | null | undefined): boolean {
 // A backslash (a browser reads `/\evil.com` as `//evil.com`) and the control characters the URL parser strips
 // (a tab or line feed turns `/<tab>/evil.com` into `//evil.com`) can all hide a second slash.
 const HIDES_A_HOST = /[\\\u0000-\u001f\u007f]/;
+// A `%` not followed by two hex digits starts no escape, so no decoding turns it into anything else. `50%25`
+// decodes to `50%`, and that `%` stays a `%` however many times the value is decoded again. The legacy `%u005C`
+// form is not lone: `unescape` reads it as a backslash, so it is left to fail the decoding and be refused.
+const LONE_PERCENT = /%(?![0-9a-fA-F]{2}|u[0-9a-fA-F]{4})/gi;
 
 /**
  * Where to go after signing in: a path on this origin, or `/`. The value comes from the address, so it must not
  * start a second slash or hold a backslash or control character, written plainly or percent-encoded (checked after
  * each of up to five decodings, which is more than a hop through the sign-in form and the callback makes). A value
- * still changing after the fifth decoding is refused, because a later decoding could reveal a host the check missed.
+ * still changing after the fifth decoding is refused, because a later decoding could reveal a host the check missed,
+ * and so is one holding an escape that does not decode.
  */
 export function safeNextPath(value: string | null | undefined): string {
   if (!value) return "/";
@@ -58,7 +63,7 @@ export function safeNextPath(value: string | null | undefined): string {
     if (!form.startsWith("/") || form.startsWith("//") || HIDES_A_HOST.test(form)) return "/";
     let decoded: string;
     try {
-      decoded = decodeURIComponent(form);
+      decoded = decodeURIComponent(form.replace(LONE_PERCENT, "%25"));
     } catch {
       return "/";
     }

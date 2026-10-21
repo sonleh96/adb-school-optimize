@@ -32,6 +32,9 @@
  * 21. Guide 4's Try it asks for the filter by what is missing while it is off screen             -> "guide 4's group step..."
  * 22. A card's rows do not add up to the total it shows: a largest-factor rule's extra share left out of the method
  *     card, or any rule's rows in either card                                                   -> "every rule's rows..."
+ * 23. The compare card's two tables do not add up to their totals                              -> "every rule's rows add up ... compare card"
+ * 24. A largest-factor tie (two factors share the largest value) names one factor, or counts the extra share once
+ *     per factor, so the rows no longer add up                                                  -> "a largest-factor tie..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -531,52 +534,131 @@ const ALL_RULES = [
   "benchmark",
 ] as const;
 
-test("every rule's rows add up to the total in the method card and the plain card", async ({ page }) => {
-  const numbers = (texts: string[]) => texts.map((t) => Number(t.trim()));
-  // Each shown figure is rounded to three places, so the rows may miss the shown total by half a thousandth each.
-  const near = (rows: number[], total: number, label: string) => {
-    const sum = rows.reduce((a, b) => a + b, 0);
-    expect(rows.length, label).toBeGreaterThan(1);
-    expect(Math.abs(sum - total), `${label}: rows ${sum.toFixed(4)}, total ${total}`).toBeLessThanOrEqual(
-      0.0005 * (rows.length + 1) + 1e-9
+const numbers = (texts: string[]) => texts.map((t) => Number(t.trim()));
+// Each shown figure is rounded to three places, so the rows may miss the shown total by half a thousandth each.
+const near = (rows: number[], total: number, label: string) => {
+  const sum = rows.reduce((a, b) => a + b, 0);
+  expect(rows.length, label).toBeGreaterThan(1);
+  expect(Math.abs(sum - total), `${label}: rows ${sum.toFixed(4)}, total ${total}`).toBeLessThanOrEqual(
+    0.0005 * (rows.length + 1) + 1e-9
+  );
+};
+/** A method table's rows (each input, and a largest-factor rule's extra share) against the total it shows. */
+async function methodTableAddsUp(table: ReturnType<Page["locator"]>, label: string) {
+  await expect(table.locator("[data-row=total]")).toBeVisible();
+  const adds = numbers(
+    await table
+      .locator("[data-row=input], [data-row=largest]")
+      .locator("[role=cell]:last-child")
+      .allTextContents()
+  );
+  const total = Number(await table.locator("[data-row=total] [role=cell]:last-child").textContent());
+  near(adds, total, label);
+}
+/** The plain card's rows against its total. */
+async function plainCardAddsUp(page: Page, rule: string) {
+  const plain = card(page).locator("[data-region=inspector-breakdown]");
+  await expect(plain).toBeVisible();
+  const rows = numbers(
+    await plain.locator("[class*=numRow]:not([class*=numPart]) [class*=numValue]").allTextContents()
+  );
+  const shown = Number(await plain.locator("[class*=numTotal] b").textContent());
+  // Under a need-first rule the plain card lists school need's five parts, each on its own 0 to 1 scale, under
+  // "Parts of school need"; school need is their average. Every other plain card lists what each input adds.
+  if (rule.startsWith("need_first"))
+    near(
+      rows.map((v) => v / rows.length),
+      shown,
+      `plain card, ${rule}`
     );
-  };
+  else near(rows, shown, `plain card, ${rule}`);
+}
+const firstComplete = (rule: string) =>
+  (json(`results/${rule}.json`).rows as typeof ROWS).find((r) => r.cohort === "complete")!.school.school_key;
+
+test("every rule's rows add up to the total in the method card and the plain card", async ({ page }) => {
   for (const rule of ALL_RULES) {
-    const first = (json(`results/${rule}.json`).rows as typeof ROWS).find((r) => r.cohort === "complete")!;
-    const school = first.school.school_key;
+    const school = firstComplete(rule);
 
     await page.goto(`/screening?analyst=1&rule=${rule}&school=${school}`);
     await waitForMap(page);
     const method = card(page).locator("[data-region=inspector-breakdown]").first();
-    await expect(method.locator("[data-row=total]")).toBeVisible();
-    const adds = numbers(
-      await method
-        .locator("[data-row=input], [data-row=largest]")
-        .locator("[role=cell]:last-child")
-        .allTextContents()
-    );
-    const total = Number(await method.locator("[data-row=total] [role=cell]:last-child").textContent());
-    near(adds, total, `method card, ${rule}`);
+    await methodTableAddsUp(method, `method card, ${rule}`);
     if (rule.startsWith("bottleneck")) await expect(method.locator("[data-row=largest]")).toHaveCount(1);
 
     await page.goto(`/screening?rule=${rule}&school=${school}`);
     await waitForMap(page);
-    const plain = card(page).locator("[data-region=inspector-breakdown]");
-    await expect(plain).toBeVisible();
-    const rows = numbers(
-      await plain.locator("[class*=numRow]:not([class*=numPart]) [class*=numValue]").allTextContents()
-    );
-    const shown = Number(await plain.locator("[class*=numTotal] b").textContent());
-    // Under a need-first rule the plain card lists school need's five parts, each on its own 0 to 1 scale, under
-    // "Parts of school need"; school need is their average. Every other plain card lists what each input adds.
-    if (rule.startsWith("need_first"))
-      near(
-        rows.map((v) => v / rows.length),
-        shown,
-        `plain card, ${rule}`
-      );
-    else near(rows, shown, `plain card, ${rule}`);
+    await plainCardAddsUp(page, rule);
   }
+});
+
+test("every rule's rows add up to the total in both tables of the compare card", async ({ page }) => {
+  // Four pairs that hold every rule between them, both largest-factor rules among them.
+  for (const [rule, compare] of [
+    ["bottleneck_u", "additive_u"],
+    ["bottleneck_no_u", "bottleneck_u"],
+    ["need_first_no_u", "additive_no_u"],
+    ["benchmark", "need_first_u"],
+  ]) {
+    const complete = (r: string) =>
+      new Set(
+        (json(`results/${r}.json`).rows as typeof ROWS)
+          .filter((row) => row.cohort === "complete")
+          .map((row) => row.school.school_key)
+      );
+    const both = complete(compare);
+    const school = [...complete(rule)].find((key) => both.has(key))!;
+    await page.goto(`/screening?analyst=1&mode=compare&rule=${rule}&compare=${compare}&school=${school}`);
+    await waitForMap(page);
+    const tables = card(page).locator("[data-region=inspector-breakdown]");
+    await expect(tables).toHaveCount(2);
+    for (const [index, shown] of [compare, rule].entries())
+      await methodTableAddsUp(tables.nth(index), `compare card, ${shown} beside ${index ? compare : rule}`);
+    await expect(card(page).locator("[data-row=largest]")).toHaveCount(
+      [rule, compare].filter((r) => r.startsWith("bottleneck")).length
+    );
+  }
+});
+
+test("a largest-factor tie names both factors once and the rows still add up, in the method card and the plain card", async ({
+  page,
+}) => {
+  const rule = "bottleneck_no_u";
+  const school = firstComplete(rule);
+  // The fixtures hold no tie, so the school's record is given one on its way to the page, which reads it with its own
+  // parser. Only which factors reach the largest value changes: the share and what it adds are the API's.
+  /* eslint-disable @typescript-eslint/no-explicit-any -- the API's JSON, edited in one field; the page parses it. */
+  const tie = (term: any) => {
+    expect(term.attained_by).toHaveLength(1);
+    term.attained_by = ["N", "A"];
+  };
+  await page.route(`**/api/v1/screening/schools/by-key/${school}*`, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    tie(body.rules.find((entry: any) => entry.rule.rule_id === rule).result.maximum_term);
+    await route.fulfill({ response, json: body });
+  });
+  await page.route(`**/api/v1/screening/results?*rule=${rule}*`, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    tie(body.rows.find((row: any) => row.school.school_key === school).maximum_term);
+    await route.fulfill({ response, json: body });
+  });
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+  await page.goto(`/screening?analyst=1&rule=${rule}&school=${school}`);
+  await waitForMap(page);
+  const method = card(page).locator("[data-region=inspector-breakdown]").first();
+  await expect(method.locator("[data-row=largest]")).toHaveCount(1);
+  await expect(method.locator("[data-row=largest] [role=rowheader]")).toContainText(
+    "Largest factor: School need and District context"
+  );
+  await methodTableAddsUp(method, "method card, a tie");
+
+  await page.goto(`/screening?rule=${rule}&school=${school}`);
+  await waitForMap(page);
+  await plainCardAddsUp(page, rule);
+  await expect(card(page)).toContainText("school need and district context, which are equal");
 });
 
 test.describe("the narrow layout", () => {

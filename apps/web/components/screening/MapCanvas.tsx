@@ -40,6 +40,9 @@ const BLANK_STYLE: StyleSpecification = {
 // static asset and this tells MapLibre where it went. Must run before the first map is created.
 setWorkerUrl(new URL("../../node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs", import.meta.url).href);
 
+/** How far past the clear part's edge a mark still counts as inside it, in px. */
+const EDGE_SLACK = 2;
+
 /** Papua New Guinea, before any school is known. */
 const DEFAULT_VIEW = { longitude: 147, latitude: -6.5, zoom: 4.8 };
 
@@ -249,53 +252,113 @@ export default function MapCanvas({
     setTipAt({ x: point.x, y: point.y, width: map.getContainer().clientWidth });
   }, [hovered, ready, moving]);
 
-  // When the clear part of the map changes shape, the country is framed in it again.
+  // Opening the card or the rail can restack the key, and the clear part is measured after that render, so the moves
+  // below wait two frames and read the latest padding and schools.
+  const latest = useRef({ padding, still, selected, schools });
+  useLayoutEffect(() => {
+    latest.current = { padding, still, selected, schools };
+  });
+
+  // A refit of the country, from the moment it is due until it settles (`fitting`), and the school chosen meanwhile
+  // (`waiting`). The school waits instead of panning: a pan would stop the fit halfway, and the frame the fit lands on
+  // already holds every school. It is shown once the last fit has settled.
+  const fitting = useRef<object | null>(null);
+  const waiting = useRef<(() => void) | null>(null);
+
+  // When the clear part of the map changes shape (the list steps aside, the rail opens or closes), the country is
+  // framed in it again. A pan under way is stopped by the fit, so whichever comes first, the fit has the last word.
   const framed = useRef(frame);
   useEffect(() => {
     const map = mapRef.current;
-    const bounds = boundsOf(schools);
-    if (framed.current === frame || !map || !bounds) return;
+    if (framed.current === frame || !map || !boundsOf(latest.current.schools)) return;
     framed.current = frame;
-    map.fitBounds(bounds, { padding: fitFor(map, padding), maxZoom: 9, duration: still() ? 0 : 300 });
-  }, [frame, schools, padding, still]);
+    const fit = {};
+    fitting.current = fit;
+    // An earlier fit's end, fired as this one stops it, is not this one's.
+    const settle = () => {
+      if (fitting.current !== fit) return;
+      fitting.current = null;
+      const show = waiting.current;
+      waiting.current = null;
+      show?.();
+    };
+    let started = false;
+    let step = requestAnimationFrame(() => {
+      step = requestAnimationFrame(() => {
+        started = true;
+        const bounds = boundsOf(latest.current.schools);
+        if (!bounds) return settle();
+        map.fitBounds(bounds, {
+          padding: fitFor(map, latest.current.padding),
+          maxZoom: 9,
+          duration: latest.current.still() ? 0 : 300,
+        });
+        if (map.isMoving()) map.once("moveend", settle);
+        else settle();
+      });
+    });
+    return () => {
+      cancelAnimationFrame(step);
+      if (started || fitting.current !== fit) return;
+      // Cancelled before it moved. The next frame's effect, which runs straight after this, may start a fit that the
+      // waiting school then waits on; if it does not (no map, no schools yet), nothing is running, so the school is
+      // shown now rather than waiting for ever.
+      fitting.current = null;
+      queueMicrotask(() => {
+        if (fitting.current !== null || !waiting.current) return;
+        const show = waiting.current;
+        waiting.current = null;
+        show();
+      });
+    };
+  }, [frame]);
 
   // A school chosen in the list is brought into the clear part of the map. This needs the map, not the basemap.
   // It runs when the selected school changes, and only then: a map the user has panned since stays where they left
-  // it when the rows, the clear part or the last input change. Opening the card can restack the key, and the clear
-  // part is measured after that render, so the check waits two frames and reads the latest padding. While the map is
-  // still moving to an earlier choice, where a mark sits says nothing about where it will settle, so the new school
-  // is gone to whatever its position mid-pan.
-  const latest = useRef({ padding, still, selected });
-  useLayoutEffect(() => {
-    latest.current = { padding, still, selected };
-  });
+  // it when the rows, the clear part or the last input change. While the map is still moving to an earlier choice,
+  // where a mark sits says nothing about where it will settle, so the new school is gone to whatever its position
+  // mid-pan. While the country is being framed again, the school waits for the fit and is moved only if the fit left
+  // it outside the clear part.
   const selectedId = selected?.key ?? null;
   useEffect(() => {
     const map = mapRef.current;
     const chosen = latest.current.selected;
     if (!map || !chosen || chosen.key !== selectedId) return;
-    const midPan = map.isMoving();
+    const midPan = map.isMoving() && fitting.current === null;
+    const show = (force: boolean) => {
+      const { padding: clear, still: instant, selected: now } = latest.current;
+      // Not for a school no longer chosen, or a map that has gone.
+      if (now?.key !== chosen.key || mapRef.current !== map) return;
+      const point = map.project([chosen.lon, chosen.lat]);
+      const { width, height } = map.getContainer().getBoundingClientRect();
+      // The room a fit leaves, as the fit measured it: a fit puts the outermost schools on its edge, to a fraction of
+      // a pixel, and such a school is inside.
+      const room = fitPadding(clear, width, height);
+      const inside =
+        !force &&
+        point.x >= room.left - EDGE_SLACK &&
+        point.x <= width - room.right + EDGE_SLACK &&
+        point.y >= room.top - EDGE_SLACK &&
+        point.y <= height - room.bottom + EDGE_SLACK;
+      if (!inside) {
+        map.easeTo({
+          center: [chosen.lon, chosen.lat],
+          offset: clearCentreOffset(room),
+          duration: instant() ? 0 : 400,
+        });
+      }
+    };
+    const after = () => show(false);
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
-        const { padding: clear, still: instant } = latest.current;
-        const point = map.project([chosen.lon, chosen.lat]);
-        const { width, height } = map.getContainer().getBoundingClientRect();
-        const inside =
-          !midPan &&
-          point.x >= clear.left &&
-          point.x <= width - clear.right &&
-          point.y >= clear.top &&
-          point.y <= height - clear.bottom;
-        if (!inside) {
-          map.easeTo({
-            center: [chosen.lon, chosen.lat],
-            offset: clearCentreOffset(fitPadding(clear, width, height)),
-            duration: instant() ? 0 : 400,
-          });
-        }
+        if (fitting.current) waiting.current = after;
+        else show(midPan);
       });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (waiting.current === after) waiting.current = null;
+    };
     // Panning on a click would be redundant: the mark is already inside, so this only runs for list picks.
   }, [selectedId]);
 
