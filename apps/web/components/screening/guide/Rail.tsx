@@ -210,7 +210,6 @@ function Stepper({
       plan,
       agreeK: agree.length ? Math.max(...agree) : null,
       example: exampleSchool(shown.schools, DEFAULT_RULE, PROPOSED_RULE),
-      filters: data.features.filters,
     };
   }, [data, roles, plan, later, compare.data]);
 
