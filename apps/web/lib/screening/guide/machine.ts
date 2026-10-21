@@ -173,11 +173,10 @@ export function reduce(model: Model, event: LayerEvent, catalog: Catalog | null)
       return catalog ? backward(model, catalog, state.present) : model;
     case "pageUp":
       return catalog ? backward(model, catalog, true) : model;
-    case "skip": {
-      if (state.rail.kind !== "step" || !catalog) return shut(model);
-      const last = state.rail.step >= stepsOf(catalog, state.rail.guide);
-      return shut(last ? { ...model, memory: withDone(model.memory, state.rail.guide) } : model);
-    }
+    case "skip":
+      // "Skip closes and marks the guide seen" (notes/final.md, "Interactions"), at any step.
+      if (state.rail.kind !== "step") return shut(model);
+      return shut({ ...model, memory: withDone(model.memory, state.rail.guide) });
     case "present":
       if (state.rail.kind !== "step") return model;
       return { ...model, state: { ...state, present: event.on } };
@@ -254,14 +253,16 @@ export function stateFromSearch(search: string, memory: Memory): LayerState {
 }
 
 /**
- * `search` with the layer keys replaced by `state`'s and every other key kept as it was. The start list is written
- * only when it is not where this person's rail opens anyway, so a first visit keeps a clean address.
+ * `search` with the layer keys replaced by `state`'s and every other key kept as it was. The start list, and a
+ * closed rail, are written only when they are not where this person's rail opens anyway: a first visit keeps a clean
+ * address, and a first visitor's link that closes the rail keeps it closed on reload.
  */
 export function searchWithLayers(search: string, state: LayerState, memory: Memory = EMPTY_MEMORY): string {
   const params = new URLSearchParams(search);
   for (const key of LAYER_KEYS) params.delete(key);
   const { rail } = state;
   if (rail.kind === "start" && memory.seen) params.set("guide", "start");
+  if (rail.kind === "off" && !memory.seen) params.set("guide", "off");
   if (rail.kind === "step") {
     params.set("guide", rail.guide);
     params.set("gstep", String(rail.step));

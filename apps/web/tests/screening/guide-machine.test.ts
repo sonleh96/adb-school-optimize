@@ -4,13 +4,13 @@
  *  2. Next at the last guide's last step leaves the rail open, or the guide uncounted.
  *  3. Back at a first step jumps into another guide when not presenting; Page Up at a first step does not return
  *     to the previous guide's last step; either moves before the first guide.
- *  4. Skip counts a guide as seen that the person left half way; Skip at a last step does not count it.
+ *  4. Skip does not count the guide as seen (the spec: "Skip closes and marks the guide seen").
  *  5. Presenting outlives the rail: it survives closing or going back to the start list.
  *  6. A returning user is taught twice (the rail opens with no link asking for it), or a first visit starts closed.
  *  7. A pasted link does not land on its step, or loses the help card, glossary search or page.
  *  8. A link to a guide the data cannot teach, or a step past its end, leaves the rail on nothing.
- *  9. Writing the layer keys drops the workspace's keys, or a first visit's address carries the start list it
- *     opens on anyway.
+ *  9. Writing the layer keys drops the workspace's keys, a first visit's address carries the start list it opens
+ *     on anyway, or a first visitor's link that closes the rail loses that on reload.
  * 10. Malformed local storage breaks the page instead of reading as a first visit.
  * 11. The card and the glossary drawer show together, or leaving help mode leaves its card open.
  * 12. "Show this step again" does not ask the screen to be set again from the guide's own school.
@@ -96,13 +96,10 @@ describe("stepping through the guides", () => {
 });
 
 describe("leaving a guide", () => {
-  it("does not count a guide skipped half way as seen, but remembers the person has been here", () => {
+  it("closes the rail and counts a skipped guide as seen, at any step", () => {
     const after = run(at("q2", 2), { type: "skip" });
     expect(after.state.rail).toEqual({ kind: "off" });
-    expect(after.memory).toEqual({ seen: true, done: [], last: { guide: "q2", step: 2 } });
-  });
-
-  it("counts a guide skipped at its last step as seen", () => {
+    expect(after.memory).toEqual({ seen: true, done: ["q2"], last: null });
     expect(run(at("q2", 3), { type: "skip" }).memory.done).toEqual(["q2"]);
   });
 
@@ -174,7 +171,19 @@ describe("links", () => {
   });
 
   it("drops its own keys when the layers close and keeps the workspace's", () => {
-    expect(searchWithLayers("?guide=q1&gstep=2&school=k1&help=1", INITIAL_STATE)).toBe("?school=k1");
+    const returning = { seen: true, done: [], last: null };
+    expect(searchWithLayers("?guide=q1&gstep=2&school=k1&help=1", INITIAL_STATE, returning)).toBe(
+      "?school=k1"
+    );
+  });
+
+  it("keeps a closed rail in the address only for someone whose rail would otherwise open", () => {
+    const linked = stateFromSearch("?guide=off&school=k1", EMPTY_MEMORY);
+    expect(linked.rail).toEqual({ kind: "off" });
+    expect(searchWithLayers("?guide=off&school=k1", linked, EMPTY_MEMORY)).toBe("?school=k1&guide=off");
+    expect(searchWithLayers("?guide=off&school=k1", linked, { seen: true, done: [], last: null })).toBe(
+      "?school=k1"
+    );
   });
 
   it("names the start list only for someone whose rail would otherwise open closed", () => {
