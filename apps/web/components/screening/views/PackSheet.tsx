@@ -21,7 +21,15 @@ import { classifyFailure } from "@/lib/screening/errors";
 import { fetchTopList, saveFile } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
 import type { RuleId } from "@/lib/screening/types";
-import { linkOf, linksText, packFileName, packText, rulesUsed, stateOf } from "@/lib/screening/views/pack";
+import {
+  droppedKeys,
+  linkOf,
+  linksText,
+  packFileName,
+  packText,
+  rulesUsed,
+  stateOf,
+} from "@/lib/screening/views/pack";
 import { plainViewTitle, viewTitle } from "@/lib/screening/views/step";
 import type { TopLength, WorkspaceState } from "@/lib/screening/workspace/state";
 
@@ -127,7 +135,10 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
     <ol className={styles.packList} data-region="pack-table" aria-busy={!ready}>
       {ready
         ? views.map((view, i) => (
-            <li key={`${view.at}:${view.seed ?? view.name}`}>
+            <li
+              key={`${view.at}:${view.seed ?? view.name}`}
+              data-dropped={droppedKeys(view.q, known).join(" ") || undefined}
+            >
               <span className={styles.packN}>{i + 1}.</span>
               <span className={styles.packName} dir="auto">
                 <Sentence segments={titles[i]} />

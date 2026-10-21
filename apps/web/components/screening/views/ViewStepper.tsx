@@ -157,7 +157,12 @@ export function ViewStepper({
             >
               <Sentence segments={step.title} />
             </h2>
-            <div className={styles.stepBody} data-testid="guide-step-body">
+            <div
+              className={styles.stepBody}
+              data-testid="guide-step-body"
+              // What the stored state named that the data no longer holds. The sentence that says so is a copy request.
+              data-dropped={step.dropped.join(" ") || undefined}
+            >
               {step.body.map((p, i) => (
                 <p key={i}>
                   <Sentence segments={p.text} />

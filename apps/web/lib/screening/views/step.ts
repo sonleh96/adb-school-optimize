@@ -11,8 +11,9 @@ import { type BoundCopy, type CopyRuleId, type CopySchool, type Segments, savedV
 import type { LaterCopy } from "../copy/later";
 import type { GuideId } from "../guide/machine";
 import type { Paragraph, StepView } from "../guide/guides";
-import { type Known, shownRule, stateFromSearch } from "../workspace/state";
+import { type Known, type StateKey, shownRule, stateFromSearch } from "../workspace/state";
 
+import { droppedKeys } from "./pack";
 import type { SavedView } from "./views";
 
 export interface ViewContext {
@@ -53,7 +54,12 @@ export const plainViewTitle = (later: LaterCopy, view: SavedView): string =>
     .map((s) => (typeof s === "string" ? s : s.name))
     .join("");
 
-export function viewStep(ctx: ViewContext, view: SavedView): StepView {
+/** A saved view's step: a guide step's anatomy, and what its stored state named that the data no longer holds. */
+export interface ViewStep extends StepView {
+  readonly dropped: readonly StateKey[];
+}
+
+export function viewStep(ctx: ViewContext, view: SavedView): ViewStep {
   const { copy, later, known } = ctx;
   const { GUIDE } = later;
   const { TERMS, IDEAS } = copy;
@@ -68,6 +74,7 @@ export function viewStep(ctx: ViewContext, view: SavedView): StepView {
     // The whole state, so every key lands where the view was saved and nothing from the screen before stays.
     patch: state,
     onMap: false,
+    dropped: droppedKeys(view.q, known),
   } as const;
   switch (view.seed) {
     case "top": {
@@ -117,8 +124,9 @@ export function viewStep(ctx: ViewContext, view: SavedView): StepView {
       return {
         ...base,
         body: card ? [ruleLine, para(card)] : [ruleLine],
-        onScreen: GUIDE.viewFallbackOnScreen,
-        // The fallback names the whole screen, so no ring singles a part of it out.
+        // Said from the state the view opens on: a school card only when a school opens.
+        onScreen: school ? GUIDE.viewFallbackOnScreen : GUIDE.seedViews.top.onScreen,
+        // The line names the whole screen, so no ring singles a part of it out.
         targets: [],
         scroll: school ? "card" : "top",
       };
