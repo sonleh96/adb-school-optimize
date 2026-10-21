@@ -156,10 +156,7 @@
 /* Zoom buttons sit under the map bar, 16 px right of the column, and follow it when it steps down a row. */
 .map :global(.maplibregl-ctrl-top-left) {
   left: calc(var(--col-w) + var(--gap) * 2);
-  top: calc(var(--gap) + 52px);
-}
-.root[data-bar-stack] .map :global(.maplibregl-ctrl-top-left) {
-  top: calc(var(--gap) + 100px);
+  top: calc(var(--bar-top, var(--gap)) + 52px);
 }
 /* A panel showing the previous rule's rows: its content fades, its paper stays solid so the map does not show through. */
 .stale {
@@ -869,13 +866,20 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 
 /* ---------- top right: the actions ---------- */
+/* Right of the column, and on a second row when the guide rail leaves too little room for one (1024 with the rail). */
 .actions {
   position: absolute;
   top: var(--gap);
   right: var(--gap);
   z-index: 4;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+  max-width: calc(100% - var(--col-w) - var(--gap) * 3);
+}
+.root[data-card-docked] .actions {
+  max-width: calc(100% - var(--gap) * 2);
 }
 .actionButton,
 .retryButton {
@@ -933,15 +937,17 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 
 /* ---------- the empty card slot says how to fill it ---------- */
+/* Under the actions, or under the map bar when the bar would touch it (MapBar sets --hint-top). Never wider than the
+   map right of the zoom buttons. */
 .slotHint {
   position: absolute;
-  top: 64px;
+  top: var(--hint-top, 64px);
   right: var(--gap);
   z-index: 2;
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  max-width: 300px;
+  max-width: min(300px, calc(100% - var(--col-w) - var(--gap) * 3 - 44px));
   margin: 0;
   padding: 9px 12px 10px;
   font: 500 13px/18px var(--sans);
