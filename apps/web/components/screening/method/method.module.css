@@ -269,7 +269,7 @@
 }
 .cols {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) 48px 92px;
+  grid-template-columns: 46px minmax(0, 1fr) 60px 92px;
   column-gap: 10px;
   align-items: end;
   padding: 10px 20px 6px;
@@ -290,7 +290,7 @@
   text-align: right;
 }
 .row {
-  grid-template-columns: 46px minmax(0, 1fr) 48px 92px;
+  grid-template-columns: 46px minmax(0, 1fr) 60px 92px;
   column-gap: 10px;
   align-items: center;
   min-height: 48px;
@@ -463,8 +463,16 @@
 }
 
 /* ---------- the map bar's layers button; the zoom buttons step down under it ---------- */
-.methodRoot :global(.maplibregl-ctrl-top-left) {
-  top: 64px;
+@media (min-width: 1024px) {
+  .methodRoot :global(.maplibregl-ctrl-top-left) {
+    top: 64px;
+  }
+}
+/* The narrow layout has no map bar; its menu, when it comes, holds the layers. */
+@media (max-width: 1023px) {
+  .mapBar {
+    display: none;
+  }
 }
 .mapBar {
   position: absolute;

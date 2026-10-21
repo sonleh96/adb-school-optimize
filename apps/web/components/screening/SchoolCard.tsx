@@ -207,8 +207,18 @@ export function SchoolCard(props: CardProps) {
           </h2>
           <p className={styles.cardMeta}>{copy.locationLine(listed)}</p>
         </header>
-        {methodLayer && record && detail.data ? (
-          methodLayer({ record, detail: detail.data })
+        {methodLayer ? (
+          // The method layer states the place in its own form, so it waits for the record instead of showing the
+          // plain place first and replacing it.
+          record && detail.data ? (
+            methodLayer({ record, detail: detail.data })
+          ) : (
+            <CardPending
+              failed={detail.isError || (detail.isSuccess && record === null)}
+              copy={copy}
+              retry={detail.refetch}
+            />
+          )
         ) : (
           <>
             <div className={styles.hero} data-region="inspector-place" data-form={heroForm}>

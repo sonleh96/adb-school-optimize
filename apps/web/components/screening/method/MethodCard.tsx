@@ -97,10 +97,13 @@ function Breakdown({
   school,
   parts,
   onParts,
+  named = false,
 }: {
   copy: BoundCopy;
   method: Method;
   rule: CopyRuleId;
+  /** Two tables stack in compare mode, so each names its rule. */
+  named?: boolean;
   ruleInfo: Rule | undefined;
   result: DetailResult;
   school: CopySchool;
@@ -124,7 +127,11 @@ function Breakdown({
       <div className={styles.secHead}>
         <span className={base.eyebrow}>{method.insp.produces}</span>
         <span className={base.eyebrow}>
-          {rule === "additive_no_u" ? method.insp.derivedSplit : method.insp.recordedSplit}
+          {named
+            ? copy.ruleShortName(rule)
+            : rule === "additive_no_u"
+              ? method.insp.derivedSplit
+              : method.insp.recordedSplit}
         </span>
       </div>
       <div className={styles.table} role="table" aria-label={method.insp.produces}>
@@ -493,6 +500,7 @@ export function MethodCard({
               school={school}
               parts={parts}
               onParts={onParts}
+              named
             />
           ) : null;
         })}
