@@ -16,9 +16,6 @@ dependencies = [
     "numpy",
     "shapely",
     "openpyxl",
-    "python-multipart",
-    "google-cloud-storage",
-    "rasterio",
     "PyJWT[crypto]",
 ]
 

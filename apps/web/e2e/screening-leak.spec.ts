@@ -1,5 +1,5 @@
 /**
- * Failure mode: leaving /screening and coming back leaves the old map's WebGL context, canvas and memory behind,
+ * Failure mode: leaving the workspace and coming back leaves the old map's WebGL context, canvas and memory behind,
  * so a long session slowly fills the browser's context limit and its heap.
  * Counting canvas elements cannot see this (a leaked canvas is detached), so the test asks the browser's heap how
  * many WebGL2 contexts are alive, after a garbage collection, across route round trips.
@@ -39,16 +39,17 @@ test("route round trips do not leave WebGL contexts behind", async ({ page }) =>
   const first = await liveWebGlContexts(page);
   expect(first).toBe(1);
 
-  // The app router's own client-side navigation, so the page is never reloaded. The workspace is full-bleed and
-  // has no link to the other pages, so the test goes both ways through the router.
+  // The app router's own client-side navigation, so the page is never reloaded. The workspace has no link to
+  // the sign-in page, which is the app's only other page, so the test goes both ways through the router.
   const push = (path: string) =>
     page.evaluate(
       (to) => (window as unknown as { next: { router: { push: (p: string) => void } } }).next.router.push(to),
       path
     );
   for (let cycle = 0; cycle < 6; cycle += 1) {
-    await push("/all-schools");
-    await expect(page).toHaveURL(/\/all-schools/);
+    await push("/sign-in");
+    await expect(page).toHaveURL(/\/sign-in/);
+    await expect(page.getByRole("heading", { name: "Sign in to see the school screening" })).toBeVisible();
     await expect(page.locator("[data-testid=screening-map]")).toHaveCount(0);
     await push("/screening");
     await expect(page).toHaveURL(/\/screening$/);

@@ -33,6 +33,7 @@ import { SchoolCard } from "./SchoolCard";
 import { useMethodMounts } from "./method/mounts";
 import { IncompleteList, OrderedList, incompleteGroups } from "./SchoolList";
 import { ScreeningMap } from "./ScreeningMap";
+import { SignOut, useSignedIn } from "./SignOut";
 import { useScreeningData } from "./useScreeningData";
 import { WhatChanged } from "./WhatChanged";
 import { WorkspaceProvider, useWorkspaceState, useWorkspaceStore } from "./WorkspaceProvider";
@@ -220,7 +221,7 @@ function Masthead({
       <svg className={styles.logo} viewBox="0 0 108 108" role="img" aria-label={LAYOUT.logoAria}>
         <rect width="108" height="108" fill="#0a2e73" />
         <text x="54" y="68" fill="#fff" fontSize="48" textAnchor="middle">
-          ADB
+          {LAYOUT.logoMark}
         </text>
       </svg>
       <h1 className={styles.mastName}>{LAYOUT.productName}</h1>
@@ -504,6 +505,11 @@ function Workspace() {
   const copyLink = (compact: boolean) => (
     <CopyLink copy={copy} disabled={!ready} onCopied={notify} compact={compact} />
   );
+  const signedIn = useSignedIn();
+  const signOut = (compact: boolean) =>
+    signedIn ? (
+      <SignOut label={copy.LAYOUT.signOut} className={compact ? undefined : styles.quietAction} />
+    ) : null;
 
   const guideData = useMemo(
     (): GuideData => ({
@@ -572,6 +578,7 @@ function Workspace() {
                 <>
                   {copyLink(true)}
                   {method.menuItems(act)}
+                  {signOut(true)}
                 </>
               )}
             </GuideMenu>
@@ -581,6 +588,7 @@ function Workspace() {
           {method.methodSwitch}
           {copyLink(false)}
           {method.exportButton}
+          {signOut(false)}
         </div>
 
         {!cardOpen && ready && !guidance.glossary && !guidance.page && !method.on ? (

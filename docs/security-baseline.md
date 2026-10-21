@@ -18,19 +18,16 @@ All tables in the exposed `public` schema have Row Level Security enabled.
 
 The `anon` and `authenticated` roles have no table or view privileges during the containment period.
 
-The `ranked_school_scores_latest` view uses `security_invoker` semantics.
-
 Default privileges are revoked so newly created public tables, sequences, and functions are not exposed automatically.
 
 The tracked deployment SQL is [infra/sql/002_security_lockdown.sql](../infra/sql/002_security_lockdown.sql).
 
 ## API controls
 
-Mutation endpoints are disabled unless `WRITE_OPERATIONS_ENABLED=true` is set in the server environment.
+The API serves only GET requests, and the screening routes read stored runs.
+It has no endpoint that writes data.
 
-This flag is an operational containment control, not a substitute for authentication and authorization.
-
-The flag must stay false in every shared environment until Supabase JWT verification and the ADB email allowlist are implemented and tested end to end.
+Every `/api/v1` route checks the Supabase JWT and the ADB email allowlist.
 
 ## Operational rules
 
@@ -49,7 +46,6 @@ The current owner-level FastAPI database connection is a known follow-up and mus
 - Confirm unauthenticated Data API reads and writes are denied.
 - Confirm the security advisor reports no RLS-disabled or security-definer-view errors.
 - Confirm FastAPI reads still work through its server-side connection.
-- Confirm FastAPI mutation endpoints return a structured disabled response when the write flag is false.
 - Confirm public signup is disabled in Supabase Auth.
 - Confirm no private Supabase credential is present in browser-visible environment variables.
 
