@@ -130,13 +130,15 @@
     color: var(--ink);
   }
 }
+/* The field keeps room for its placeholder; in the narrower rail the button wraps under it rather than squeeze it. */
 .save {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
 }
 .input {
+  flex: 1 1 128px;
   min-width: 0;
   height: 36px;
   padding: 0 10px;
@@ -155,6 +157,7 @@
 }
 /* Specific enough to win over the rail's own `.rail .quiet` height, whichever stylesheet loads last. */
 .section .save .saveButton {
+  flex: none;
   height: 36px;
 }
 .saved {
