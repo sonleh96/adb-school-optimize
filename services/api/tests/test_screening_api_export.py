@@ -50,6 +50,7 @@ TOP_RECORD_KEYS = [
     "filters",
     "filters_effect",
     "display_name",
+    "csv_text_guard",
     "k",
     "k_meaning",
     "include_ranges",
@@ -650,29 +651,84 @@ def test_control_characters_in_stored_text_do_not_break_the_xlsx(api, connection
     assert {r["source_school_name"] for r in csv_rows} == set(names)
 
 
-def test_display_name_guards_formula_like_names_while_the_source_name_stays_exact(api, connection):  # API24
+FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
+
+
+def test_the_csv_guards_every_text_cell_that_starts_with_a_formula_character(api, connection):  # API24
     risky = ("=1+1 School", "+Plus School", "-Minus School", "@At School", "\tTab School", "\rReturn School")
     safe = ("Plain School", "'Quoted School", "Mid=dle School")
     load_synthetic(connection, tuple(record(name) for name in (*risky, *safe)))
 
     method, rows = top(api, rule="additive_u", k=50)
-    incomplete_method, incomplete = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    incomplete_method, _ = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
 
-    shown = {r["source_school_name"]: r["display_name"] for r in rows}
-    assert set(shown) == {*risky, *safe}  # the exact name is never changed
-    assert {name: shown[name] for name in risky} == {name: "'" + name for name in risky}
-    assert {name: shown[name] for name in safe} == {name: name for name in safe}
+    # In the CSV the name is guarded in both columns; every other name is as stored.
+    guarded = {r["school_key"]: (r["source_school_name"], r["display_name"]) for r in rows}
+    assert sorted(guarded.values()) == sorted(
+        [("'" + name, "'" + name) for name in risky] + [(name, name) for name in safe]
+    )
     assert list(rows[0]).index("display_name") == list(rows[0]).index("source_school_name") + 1
-    assert "display_name" in incomplete_method and "apostrophe" in method["display_name"]
-    assert "display_name" in (incomplete[0] if incomplete else rows[0])
+    assert "apostrophe" in method["display_name"] and "csv_text_guard" in method["display_name"]
+    assert (
+        "csv_text_guard" in incomplete_method
+        and incomplete_method["csv_text_guard"] == method["csv_text_guard"]
+    )
 
+    # The XLSX stores text as text, so its source name stays exact and its display name keeps the apostrophe.
     sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=50)))["Top schools"]
     header = [c.value for c in sheet[1]]
     in_xlsx = {
-        row[header.index("source_school_name")]: row[header.index("display_name")]
+        row[header.index("source_school_name")].replace("_x000D_", "\r"): row[
+            header.index("display_name")
+        ].replace("_x000D_", "\r")
         for row in sheet.iter_rows(min_row=2, values_only=True)
     }
-    assert {k.replace("_x000D_", "\r"): v.replace("_x000D_", "\r") for k, v in in_xlsx.items()} == shown
+    assert in_xlsx == {**{name: "'" + name for name in risky}, **{name: name for name in safe}}
+
+
+@pytest.mark.parametrize("start", FORMULA_STARTS)
+def test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_not(
+    api, connection, start
+):  # API24
+    place = f"{start}CMD(1)"
+    # A locality the engine does not recognise holds a school back, so that cell is read from the queue export.
+    complete = tuple(record(f"School {i}", province=place, district=place) for i in range(3))
+    held = tuple(record(f"Held {i}", province=place, district=place, locality=place) for i in range(2))
+    load_synthetic(connection, (*complete, *held))
+
+    _, listed = parse_csv_export(export(api, CSV, rule="additive_u", k=10))
+    _, queue = parse_csv_export(export(api, INCOMPLETE, rule="additive_u"))
+    assert len(listed) == 3 and len(queue) == 2
+    for row in (*listed, *queue):
+        assert row["province"] == "'" + place and row["district"] == "'" + place
+    for row in queue:
+        assert row["locality"] == "'" + place
+
+    # A negative number is a number, so it carries no apostrophe, and every text cell that starts with a formula
+    # character is guarded: nothing in the file is left for a spreadsheet to read as a formula.
+    def is_number(cell: str) -> bool:
+        try:
+            float(cell)
+        except ValueError:
+            return False
+        return True
+
+    text = export(api, CSV, rule="additive_u", k=10).decode("utf-8-sig")
+    parsed = list(csv.reader(io.StringIO(text, newline="")))
+    first = next(i for i, row in enumerate(parsed) if row and row[0] == "row_kind")
+    for row in parsed[first + 1 :]:
+        for cell in row:
+            assert not cell.startswith(FORMULA_STARTS) or is_number(cell), cell
+
+
+def test_a_negative_number_in_the_csv_is_not_guarded(api, connection):  # API24
+    load_synthetic(connection, tuple(record(f"School {i}") for i in range(3)))
+    # The latitude of a school is negative, and it is written as a number.
+    _, rows = top(api, rule="additive_u", k=10)
+
+    latitudes = [r["latitude"] for r in rows if r["latitude"]]
+    assert latitudes and all(v.startswith("-") and float(v) < 0 for v in latitudes)
+    assert all(not v.startswith("'") for v in latitudes)
 
 
 def test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line(api, loaded):  # API29
