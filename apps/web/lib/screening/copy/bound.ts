@@ -64,7 +64,6 @@ import {
 } from "./rank";
 import { contributions, inputSentence, reasonSentence, topDrivers } from "./reasons";
 import {
-  DEFAULT_RULE,
   PRIMARY_RULE,
   RULE_IDS,
   ruleExplanation,
@@ -194,7 +193,7 @@ export function copyFor(data: CopyData = {}) {
       rankSentence(school, ruleId, withCounts(opts)),
     placeHeadline: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
       placeHeadline(school, ruleId, withCounts(opts)),
-    scopesMix: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = DEFAULT_RULE) =>
+    scopesMix: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = PRIMARY_RULE) =>
       scopesMix(list, ruleId),
     rowPlace: (
       school: PlacedSchool,
@@ -208,7 +207,7 @@ export function copyFor(data: CopyData = {}) {
       fullRankingSentence(school, ruleId, withCounts(opts)),
     rangeComparisonSentence: (school: PlacedSchool, a: CopyRuleId, b: CopyRuleId, opts?: WithoutCounts) =>
       rangeComparisonSentence(school, a, b, withCounts(opts)),
-    listStartsSentence: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = DEFAULT_RULE, n = 3) =>
+    listStartsSentence: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = PRIMARY_RULE, n = 3) =>
       listStartsSentence(list, ruleId, n),
     comparisonSentence: (
       a: CopyRuleId,
@@ -243,7 +242,7 @@ export function copyFor(data: CopyData = {}) {
         rangeComparisonSegments(school, a, b, withCounts(opts)),
       listStartsSentence: (
         list: readonly PlacedSchool[] = schools,
-        ruleId: CopyRuleId = DEFAULT_RULE,
+        ruleId: CopyRuleId = PRIMARY_RULE,
         n = 3
       ) => listStartsSegments(list, ruleId, n),
       comparisonSentence: (
