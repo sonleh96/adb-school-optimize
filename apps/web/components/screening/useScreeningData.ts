@@ -214,9 +214,11 @@ export function useScreeningData(): ScreeningData {
   const rulesList = useMemo((): RuleChoice[] | null => {
     if (!rules.data) return null;
     const offered = new Map(rules.data.rules.map((r) => [r.rule_id as string, r]));
+    // The two main rules are the pair the page compares. They are not read from the API's policy role, because the
+    // revised paper names one rule alone as primary and the circulated rule is a labelled urgency sensitivity.
     return RULE_IDS.filter((id) => offered.has(id)).map((id) => ({
       id,
-      primary: offered.get(id)!.policy_role === "primary",
+      primary: id === MAIN_PAIR.a || id === MAIN_PAIR.b,
     }));
   }, [rules.data]);
 
