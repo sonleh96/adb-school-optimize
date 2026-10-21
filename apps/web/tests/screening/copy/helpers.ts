@@ -197,6 +197,13 @@ const contribution = (urgency: boolean): RecordedContribution => ({
   },
 });
 
+/** A largest-factor rule's record: the combined-factors figures at their 60% share, and the extra 40% share. */
+const largestFactor = (urgency: boolean, factors: readonly ("N" | "A" | "U")[]): RecordedContribution => {
+  const base = contribution(urgency).components;
+  const scaled = Object.fromEntries(Object.entries(base).map(([k, v]) => [k, 0.6 * v])) as typeof base;
+  return { components: scaled, largest: { factors, value: 0.8, share: 0.4, contribution: 0.4 * 0.8 } };
+};
+
 export interface SchoolSpec {
   id: string;
   name?: string | null;
@@ -295,7 +302,14 @@ export function school(spec: SchoolSpec): CopySchool {
     gate_failures: gate,
     results,
     contributions:
-      cohort === "queue" ? {} : { additive_u: contribution(true), additive_no_u: contribution(false) },
+      cohort === "queue"
+        ? {}
+        : {
+            additive_u: contribution(true),
+            additive_no_u: contribution(false),
+            bottleneck_u: largestFactor(true, ["N"]),
+            bottleneck_no_u: largestFactor(false, ["N"]),
+          },
   };
 }
 

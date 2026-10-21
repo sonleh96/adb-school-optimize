@@ -622,3 +622,26 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
     });
   });
 });
+
+suite("the design data lacks the largest-factor records [needs RISE_PNG_DESIGN_ROOT]", () => {
+  // The prototype's own screen reads the design data, which holds the combined-factors records only. It builds the
+  // largest-factor record from them as the API sends it, so the record the suites above add changes nothing.
+  it("is read by the prototype as the record the API sends", () => {
+    const differ: string[] = [];
+    for (const { name, data } of datasets) {
+      for (const s of data.schools) {
+        const bare = { ...s, contributions: s.contributions && { ...s.contributions } };
+        delete bare.contributions?.bottleneck_u;
+        delete bare.contributions?.bottleneck_no_u;
+        for (const r of ["bottleneck_u", "bottleneck_no_u"]) {
+          for (const call of ["contributions", "topDrivers", "reasonSentence"] as const) {
+            const a = JSON.stringify(run(() => proto[call](s, r)));
+            const b = JSON.stringify(run(() => proto[call](bare, r)));
+            if (a !== b && differ.length < 10) differ.push(`${name} ${s.id} ${r} ${call}\n  ${a}\n  ${b}`);
+          }
+        }
+      }
+    }
+    expect(differ).toEqual([]);
+  });
+});

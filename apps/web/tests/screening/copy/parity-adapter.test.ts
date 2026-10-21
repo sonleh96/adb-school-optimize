@@ -243,25 +243,32 @@ const wireArea = (a: any) => ({
   female_disadvantage: a.female_disadvantage ?? null,
 });
 
+const RECORDED_RULES = ["additive_u", "additive_no_u", "bottleneck_u", "bottleneck_no_u"];
+
 function wireContributions(s: any, rule: string) {
-  const rec =
-    s.cohort !== "queue" && (rule === "additive_u" || rule === "additive_no_u")
-      ? s.contributions?.[rule]
-      : null;
-  if (!rec) return { contributions: [], need_part_contributions: null };
+  const rec = s.cohort !== "queue" && RECORDED_RULES.includes(rule) ? s.contributions?.[rule] : null;
+  if (!rec) return { contributions: [], need_part_contributions: null, maximum_term: null };
   const x = rec.components;
   const entry = (component: string, lower: number, upper = lower) => ({ component, lower, upper });
   return {
     contributions: [
       entry("N", 0),
       entry("A", x.area),
-      ...(rule === "additive_u" ? [entry("U", x.urgency)] : []),
+      ...(x.urgency !== undefined ? [entry("U", x.urgency)] : []),
       entry("R", x.reach),
       entry("Q", x.aqi_lower, x.aqi_upper),
       entry("E", x.emissions_lower, x.emissions_upper),
       entry("L", x.land_lower, x.land_upper),
     ],
     need_part_contributions: Object.fromEntries(NEED_FIELDS.map((f) => [f, x[f]])),
+    maximum_term: rec.largest
+      ? {
+          attained_by: rec.largest.factors,
+          value: rec.largest.value,
+          share: rec.largest.share,
+          contribution: rec.largest.contribution,
+        }
+      : null,
   };
 }
 

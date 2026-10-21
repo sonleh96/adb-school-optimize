@@ -15,7 +15,17 @@ import {
   joinList,
   plural,
 } from "./format";
-import type { AreaField, CopyRuleId, CopySchool, InputKey, NeedField, NeedKey, NeedParts } from "./model";
+import type {
+  AreaField,
+  CopyRuleId,
+  CopySchool,
+  InputKey,
+  Largest,
+  NeedField,
+  NeedKey,
+  NeedParts,
+  RecordedRule,
+} from "./model";
 import { gateSentence, otherCause } from "./causes";
 import { AREA_PARTS, FACILITIES } from "./inputs";
 import { isNeedFirst, resultFor } from "./rank";
@@ -78,14 +88,15 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
   const np = school.need_parts;
   const missingAir = school.missing_env && school.missing_env.aqi;
 
-  const fromRecorded = (id: "additive_u" | "additive_no_u"): Contribution | null => {
+  // What the API recorded for this rule. A largest-factor rule's figures already hold their 60% share.
+  const fromRecorded = (id: RecordedRule): Contribution | null => {
     const rec = school.contributions && school.contributions[id];
     if (!rec) return null;
     const x = rec.components;
     const out: Contribution = {};
     for (const k of NEED_KEYS) out[k] = x[NEED_FIELDS[k]];
     out.area = x.area;
-    if (id === "additive_u") out.urgency = x.urgency;
+    if (x.urgency !== undefined) out.urgency = x.urgency;
     out.reach = x.reach;
     out.air = missingAir || x.aqi_lower !== x.aqi_upper ? null : x.aqi_lower;
     out.emissions = x.emissions_lower !== x.emissions_upper ? null : x.emissions_lower;
@@ -117,35 +128,31 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
     return out;
   }
 
-  // Largest factor: 0.60 x weighted screening score + 0.40 x the largest of N, A (and U).
-  const base = fromRecorded(ruleId === "bottleneck_u" ? "additive_u" : "additive_no_u");
-  if (!base) throw new Error(`No recorded contributions to build ${ruleId} from`);
-  const out: Contribution = {};
-  for (const [k, v] of Object.entries(base) as [InputKey, number | null | undefined][]) {
-    out[k] = v == null ? null : 0.6 * v;
-  }
+  // Largest factor: 0.60 x weighted screening score + 0.40 x the largest of N, A (and U). The weighted part is as
+  // recorded for this rule; the 0.40 term goes to the factor or factors the API says attain the largest value, a
+  // tie sharing it. School need passes it on to its five parts in proportion to their size.
+  if (ruleId !== "bottleneck_u" && ruleId !== "bottleneck_no_u")
+    throw new Error(`No way to build the contributions of ${ruleId}`);
+  const base = fromRecorded(ruleId);
+  const largest = school.contributions?.[ruleId]?.largest;
+  if (!base || !largest) throw new Error(`No recorded contributions to build ${ruleId} from`);
+  const out: Contribution = { ...base };
   const add = (key: InputKey, by: number) => {
     out[key] = (out[key] ?? 0) + by;
   };
-  const top = largestFactor(school, ruleId);
-  if (top === "N") {
-    const parts = needParts();
-    for (const k of NEED_KEYS) add(k, (0.4 / 5) * required(parts[NEED_FIELDS[k]], NEED_FIELDS[k]));
-  } else if (top === "A") add("area", 0.4 * required(c.A, "district-context value"));
-  else add("urgency", 0.4 * required(c.U, "urgency value"));
+  const each = largest.contribution / largest.factors.length;
+  for (const factor of largest.factors) {
+    if (factor === "A") add("area", each);
+    else if (factor === "U") add("urgency", each);
+    else {
+      const parts = needParts();
+      const total = NEED_KEYS.reduce((sum, k) => sum + required(parts[NEED_FIELDS[k]], NEED_FIELDS[k]), 0);
+      if (total > 0) for (const k of NEED_KEYS) add(k, (each * (parts[NEED_FIELDS[k]] as number)) / total);
+    }
+  }
   return out;
 }
 
-type Largest = "N" | "A" | "U";
-function largestFactor(school: CopySchool, ruleId: CopyRuleId): Largest {
-  const N = required(school.components.N, "school need");
-  const A = required(school.components.A, "district-context value");
-  if (ruleId === "bottleneck_u") {
-    const U = required(school.components.U, "urgency value");
-    if (U > N && U > A) return "U";
-  }
-  return A > N ? "A" : "N";
-}
 const LARGEST_NAME: Record<Largest, string> = {
   N: "school need",
   A: "district context",
@@ -397,8 +404,9 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
       ruleId === "bottleneck_u"
         ? "the largest of school need, district context and the urgency value"
         : "the larger of school need and district context";
+    const named = (school.contributions?.[ruleId]?.largest?.factors ?? []).map((f) => LARGEST_NAME[f]);
     parts.push(
-      `This rule gives an extra share to ${which}. For this school that is ${LARGEST_NAME[largestFactor(school, ruleId)]}.`
+      `This rule gives an extra share to ${which}. For this school that is ${joinList(named)}${named.length > 1 ? ", which are equal" : ""}.`
     );
   }
   return parts.join(" ");
