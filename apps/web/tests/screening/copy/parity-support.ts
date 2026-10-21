@@ -48,6 +48,8 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.tipNotComputed": [["Need first"]],
   "LAYOUT.savedToast": [[3]],
   "LAYOUT.removeView": [["Top of the list"], ["J"]],
+  "LAYOUT.viewsFull": [[50]],
+  "LAYOUT.viewPartMissing": [[["rule", "school", "hover"]], [["prov"]], [["compare", "loc"]]],
   "METHOD.list.wasUnder": [["14th", "the benchmark"]],
   "METHOD.list.rankUnder": [["the benchmark", 9]],
   "METHOD.samePlaceUnder": [["the benchmark"]],

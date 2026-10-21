@@ -260,6 +260,18 @@
   color: var(--ink-3);
   overflow-wrap: anywhere;
 }
+/* Under a view's line in the sheet: part of it could not be reopened. */
+.packLost {
+  display: block;
+  grid-column: 2;
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+}
+td .packLost {
+  grid-column: auto;
+}
 .ruleLine {
   display: block;
 }

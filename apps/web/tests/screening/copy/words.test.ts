@@ -164,3 +164,42 @@ describe("the workspace's words for the map, a stale list and an ended session",
     expect(existsSync(path.resolve(__dirname, "../../../components/screening/copy.ts"))).toBe(false);
   });
 });
+
+describe("a saved view that names what the data no longer has", () => {
+  const KEYS = ["rule", "compare", "school", "hover", "prov", "loc"];
+  // Every non-empty set of the keys a view's stored state can name, in the screen's own order.
+  const SETS = Array.from({ length: 2 ** KEYS.length - 1 }, (_, i) =>
+    KEYS.filter((_k, j) => (i + 1) & (1 << j))
+  );
+
+  it("says one clean sentence for any set, in plain words with no key, id or rule letter", () => {
+    for (const keys of SETS) {
+      const text = LAYOUT.viewPartMissing(keys);
+      expect(textProblems(text), keys.join()).toEqual([]);
+      expect(text, keys.join()).toMatch(
+        /^Part of this view could not be reopened: .+, so the screen shows .+ instead\.$/
+      );
+      expect(text, keys.join()).not.toMatch(/\b(prov|loc|hover|compare)\b|_|\b[A-Z]\d?\b/);
+    }
+  });
+
+  it("names the school once whether it was selected or only pointed at, and agrees is with are", () => {
+    expect(LAYOUT.viewPartMissing(["school", "hover"])).toBe(
+      "Part of this view could not be reopened: the school is no longer in the data, so the screen shows no school selected instead."
+    );
+    expect(LAYOUT.viewPartMissing(["rule", "school"])).toContain(
+      "the rule and the school are no longer in the data"
+    );
+  });
+
+  it("refuses a key it has no words for rather than showing it", () => {
+    expect(() => LAYOUT.viewPartMissing(["place"])).toThrow("No words for a saved view's place");
+  });
+
+  it("tells a person with a full list what to do", () => {
+    expect(LAYOUT.viewsFull(50)).toBe(
+      "The list holds 50 saved views, the most you can keep. Remove a view first to save another."
+    );
+    expect(textProblems(LAYOUT.viewsFull(50))).toEqual([]);
+  });
+});

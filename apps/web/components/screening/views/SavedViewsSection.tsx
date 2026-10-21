@@ -10,7 +10,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { LaterCopy } from "@/lib/screening/copy/later";
 import { canPresent } from "@/lib/screening/guide/layout";
 import { plainViewTitle, viewTitle } from "@/lib/screening/views/step";
-import { NAME_MAX, canSave, cleanName, isStarting, viewQuery } from "@/lib/screening/views/views";
+import { NAME_MAX, VIEWS_MAX, canSave, cleanName, isStarting, viewQuery } from "@/lib/screening/views/views";
 
 import { Sentence } from "../Sentence";
 import { useWorkspaceStore } from "../WorkspaceProvider";
@@ -67,7 +67,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
   // Back to the starting views. A view a person saved is only dropped after a second press; removing a starting
   // view alone costs nothing that cannot be brought back, so it restores at once.
   const kept = store.entries();
-  // At the cap the form is closed; the sentence that says so is a copy request.
+  // At the cap the form is closed, and the note beside it says what to do.
   const full = !canSave(kept);
   const hasOwn = !!kept?.some((entry) => "name" in entry);
   const restore = () => {
@@ -175,12 +175,23 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
           placeholder={LAYOUT.viewName}
           aria-label={LAYOUT.viewName}
           disabled={!ready || full}
+          aria-describedby={full ? "views-full" : undefined}
           onChange={(event) => setName(event.target.value)}
         />
-        <button type="submit" className={`${rail.quiet} ${styles.saveButton}`} disabled={!ready || full}>
+        <button
+          type="submit"
+          className={`${rail.quiet} ${styles.saveButton}`}
+          disabled={!ready || full}
+          aria-describedby={full ? "views-full" : undefined}
+        >
           {LAYOUT.saveView}
         </button>
       </form>
+      {full ? (
+        <p id="views-full" className={styles.note} data-region="views-full">
+          {LAYOUT.viewsFull(VIEWS_MAX)}
+        </p>
+      ) : null}
       <p className={styles.saved} role="status">
         {status ?? ""}
       </p>

@@ -134,11 +134,14 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
   const groups = rules.map((rule) => ({ rule, sentence: copy.groupsSentence(rule as CopyRuleId) }));
   const oneGroups = new Set(groups.map((g) => g.sentence)).size <= 1;
 
+  // What a view's stored state names that the loaded data no longer holds.
+  const lost = (view: { q: string }) => droppedKeys(view.q, known);
+
   const plainList = (
     <ol className={styles.packList} data-region="pack-table" aria-busy={!ready}>
       {ready
         ? views.map((view, i) => (
-            <li key={view.id} data-dropped={droppedKeys(view.q, known).join(" ") || undefined}>
+            <li key={view.id} data-dropped={lost(view).join(" ") || undefined}>
               <span className={styles.packN}>{i + 1}.</span>
               <span className={styles.packName} dir="auto">
                 <Sentence segments={titles[i]} />
@@ -152,6 +155,11 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                   ])}
                 />
               </span>
+              {lost(view).length > 0 ? (
+                <span className={styles.packLost} data-region="view-dropped">
+                  {LAYOUT.viewPartMissing(lost(view))}
+                </span>
+              ) : null}
             </li>
           ))
         : null}
@@ -204,6 +212,11 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                   <td>{short(state.rule)}</td>
                   <td className={exportStyles.quiet}>
                     <Sentence segments={shows} />
+                    {lost(view).length > 0 ? (
+                      <span className={styles.packLost} data-region="view-dropped">
+                        {LAYOUT.viewPartMissing(lost(view))}
+                      </span>
+                    ) : null}
                   </td>
                 </tr>
               );

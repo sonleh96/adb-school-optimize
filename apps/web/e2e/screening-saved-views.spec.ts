@@ -596,11 +596,46 @@ test("a view whose school and rule are gone points at no card, and marks what it
   const onScreen = rail(page).locator("p", { hasText: "On screen" });
   await expect(onScreen).not.toContainText("school card");
   await expect(page.getByTestId("guide-step-body")).toHaveAttribute("data-dropped", "rule school");
+  // One plain sentence says so, in words and never in keys, in the rail and in the sheet.
+  const SAYS =
+    "Part of this view could not be reopened: the rule and the school are no longer in the data, so the screen shows the paper's main rule and no school selected instead.";
+  await expect(rail(page).locator("[data-region=view-dropped]")).toHaveText(SAYS);
   await open(page, "?guide=off&panel=export&pack=1");
   await expect(sheet(page).locator("[data-region=pack-table] li").first()).toHaveAttribute(
     "data-dropped",
     "rule school"
   );
+  await expect(sheet(page).locator("[data-region=pack-table] li [data-region=view-dropped]")).toHaveText(
+    SAYS
+  );
+  await open(page, "?guide=off&analyst=1&panel=export&pack=1");
+  await expect(sheet(page).locator("[data-region=pack-table] tbody [data-region=view-dropped]")).toHaveText(
+    SAYS
+  );
+  // A view that lost nothing says nothing.
+  await open(page, "?guide=off&panel=export&pack=1");
+  await expect(sheet(page).locator("[data-region=view-dropped]")).toHaveCount(1);
+});
+
+test("a full list says why Save is unavailable, and what to do", async ({ page, context }) => {
+  const named = Array.from({ length: 49 }, (_, i) => ({ name: `View ${i + 1}`, q: "view=queue" }));
+  await store(context, JSON.stringify({ v: 1, views: [{ seed: "top" }, ...named] }));
+  await startList(page);
+  await expect(viewButtons(page)).toHaveCount(50);
+  const note = section(page).locator("[data-region=views-full]");
+  await expect(note).toHaveText(
+    "The list holds 50 saved views, the most you can keep. Remove a view first to save another."
+  );
+  const save = section(page).getByRole("button", { name: "Save this view" });
+  await expect(save).toBeDisabled();
+  await expect(save).toHaveAccessibleDescription(await note.innerText());
+  await expect(section(page).getByRole("textbox", { name: "Name this view" })).toBeDisabled();
+  expect(await spills(page, "[data-region=saved-views]")).toEqual([]);
+
+  await section(page).locator("button[data-remove]").last().click();
+  await expect(viewButtons(page)).toHaveCount(49);
+  await expect(note).toHaveCount(0);
+  await expect(save).toBeEnabled();
 });
 
 /** A sentence that says a saved view keeps the map position, which no link can restore. */
