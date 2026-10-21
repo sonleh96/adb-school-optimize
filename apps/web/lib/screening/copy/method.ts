@@ -8,9 +8,9 @@
  * so no number is typed here and no group is called the same under every rule.
  */
 import { allRecords, amongAllOrdered, completePhrase, countWord, orderedPhrase, type Reads } from "./counts";
-import { formatCount, joinList, ordinal } from "./format";
+import { formatCount, formatPercent, joinList, ordinal } from "./format";
 import { IDEAS } from "./ideas";
-import type { CopyRuleId, CountBag } from "./model";
+import type { CopyRuleId, CountBag, PersistenceRule, PersistenceTest } from "./model";
 import { sharedSize } from "./rank";
 import { RULE_IDS, urgencyNote } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
@@ -22,6 +22,8 @@ export interface MethodContext {
   readonly counts?: CountBag;
   /** The inputs the rule shown reads. */
   readonly reads?: Reads;
+  /** How each persistence test was drawn, by rule, from the data. Without it the words state no draws or settings. */
+  readonly tests?: Partial<Record<PersistenceRule, PersistenceTest>>;
 }
 
 // "the 16 schools both rules put in order", or the same without a count.
@@ -53,13 +55,28 @@ const shareDenominator = (weights: Record<string, number | null | undefined>): n
 /** The sheet's title with the rule's name marked, so the page can set it in italics without reading markup. */
 const sheetTitle = (n: number, name: string): Segments => seg`First ${n}, ${nameSegment(name, "rule")}`;
 
-/** The persistence test in the research team's terms, for each rule it was run for. */
-const PERSISTENT_METHOD = Object.freeze({
-  additive_no_u:
-    "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80), drawn fresh over the six components this rule uses. It is a revised sensitivity result, not an isolated estimate of what urgency changes.",
-  additive_u:
-    "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80) of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.",
-});
+/**
+ * The persistence test in the research team's terms, for a rule it was run for. The draws, the threshold and the
+ * settings come from the data (`test`); without them the words say the same without a number.
+ */
+function persistentMethod(ruleId: PersistenceRule, test?: PersistenceTest): string {
+  let how =
+    "at least the paper's threshold share of the Dirichlet weight draws in each concentration setting";
+  if (test && test.settings.length > 0) {
+    const n = test.settings.length;
+    const pairs = joinList(
+      test.settings.map((s) => `${formatCount(s.topLevel)}/${formatCount(s.schoolNeed)}`)
+    );
+    const where =
+      n === 1
+        ? `the concentration setting (${pairs})`
+        : `each of the ${countWord(n)} concentration settings (${pairs})`;
+    how = `at least ${formatPercent(test.threshold)} of ${formatCount(test.draws)} Dirichlet weight draws in ${where}`;
+  }
+  return ruleId === "additive_no_u"
+    ? `Persistent candidate: certain top-20 membership in ${how}, drawn fresh over the six components this rule uses. It is a revised sensitivity result, not an isolated estimate of what urgency changes.`
+    : `Persistent candidate: certain top-20 membership in ${how} of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.`;
+}
 
 export function buildMethod(ctx: MethodContext = {}) {
   const c = ctx.counts || {};
@@ -195,7 +212,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       valueZeroToOne: "value, 0 to 1",
       // The test behind the persistence flag, in the research team's own terms. Each rule the test ran for is its own
       // experiment, so each has its own words, and neither is read as the other's result.
-      persistent: (ruleId: "additive_u" | "additive_no_u") => PERSISTENT_METHOD[ruleId],
+      persistent: (ruleId: PersistenceRule) => persistentMethod(ruleId, ctx.tests?.[ruleId]),
       // The row for a largest-factor rule's extra share, named by the factor or factors that attain the largest value.
       largestRow: (factors: readonly string[]) =>
         factors.length

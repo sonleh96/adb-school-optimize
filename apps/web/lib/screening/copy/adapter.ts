@@ -49,6 +49,7 @@ import type {
   PairwiseRow,
   PersistenceFlag,
   PersistenceRule,
+  PersistenceTest,
   PlacedSchool,
   RecordedContribution,
   RecordedRule,
@@ -514,6 +515,25 @@ export function standardErrorFromResults(response: ResultsResponse): number | un
   return isPersistenceRule(viewRuleOf(response))
     ? (response.persistence?.standard_error ?? undefined)
     : undefined;
+}
+
+/**
+ * How a rule's stochastic test was drawn, from its list's provenance block, for the method details' words. Nothing
+ * when the list is another rule's or the block does not give all of the draws, the threshold and the settings.
+ */
+export function testFromResults(response: ResultsResponse): PersistenceTest | undefined {
+  const block = response.persistence;
+  if (!isPersistenceRule(viewRuleOf(response)) || !block) return undefined;
+  const { draws, threshold, settings } = block;
+  if (draws === undefined || threshold === undefined || !settings || settings.length === 0) return undefined;
+  return {
+    draws,
+    threshold,
+    settings: settings.map((s) => ({
+      topLevel: s.top_level_concentration,
+      schoolNeed: s.school_need_concentration,
+    })),
+  };
 }
 
 /**
