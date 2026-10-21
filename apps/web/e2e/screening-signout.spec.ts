@@ -5,7 +5,7 @@
  *  2. The action is there but does not end the session or leave the page (the form does not post to /auth/sign-out)
  *     -> "posts to /auth/sign-out and lands on the sign-in page"
  *  3. A mouse can reach it and a keyboard cannot
- *     -> "is reached and used with the keyboard, next to Copy link"
+ *     -> "is reached and used with the keyboard, after the export button"
  *  4. The narrow layout hides Copy link in the Menu and forgets Sign out there
  *     -> "is in the Menu in the narrow layout"
  * The mock app has no sign-in, so the tests that need a signed-in person answer `/auth/user` as the real route
@@ -51,11 +51,14 @@ test("posts to /auth/sign-out and lands on the sign-in page", async ({ page }) =
   await sentToSignIn(page);
 });
 
-test("is reached and used with the keyboard, next to Copy link", async ({ page }) => {
+test("is reached and used with the keyboard, after the export button", async ({ page }) => {
   await signedIn(page);
   await openWorkspace(page);
   await expect(signOut(page)).toBeVisible();
+  // The actions read: Show method details, Copy link, the export button, then Sign out last.
   await page.getByRole("button", { name: LAYOUT.copyLink }).focus();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("[data-region=export-button]")).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(signOut(page)).toBeFocused();
   await page.keyboard.press("Enter");
