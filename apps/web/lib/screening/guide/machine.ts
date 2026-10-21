@@ -9,6 +9,10 @@
  *
  * What a person has seen is `Memory`, kept in local storage: a returning user starts with the rail closed and the
  * Guides button says how many guides they have seen, so nobody is taught twice.
+ *
+ * Saved views for meetings step through the rail exactly like a guide's steps (`view`), with one sequence of their
+ * own: Next, Back, Page Down, Page Up and Presentation mode apply to them, and they never run into the guides. The
+ * views themselves live in their own store (lib/screening/views); the reducer only needs how many there are.
  */
 
 export const GUIDE_IDS = ["q1", "q2", "q3", "q4", "q5"] as const;
@@ -19,7 +23,13 @@ export const isGuideId = (value: unknown): value is GuideId =>
 export type Rail =
   | { readonly kind: "off" }
   | { readonly kind: "start" }
-  | { readonly kind: "step"; readonly guide: GuideId; readonly step: number };
+  | { readonly kind: "step"; readonly guide: GuideId; readonly step: number }
+  /** A saved view for meetings, presented as a step. `step` counts from 1. */
+  | { readonly kind: "view"; readonly step: number };
+
+/** The rail shows a step: a guide's, or a saved view's. Presenting, Page Down and the rings apply to both. */
+export const isStepping = (rail: Rail): rail is Extract<Rail, { kind: "step" | "view" }> =>
+  rail.kind === "step" || rail.kind === "view";
 
 /** A help card: a term, a rule, the place of a school, or one of the two comparison notes. */
 export type CardId = `term:${string}` | `rule:${string}` | `place:${string}` | "compare" | "compare-main";
@@ -34,7 +44,7 @@ export interface Glossary {
 
 export interface LayerState {
   readonly rail: Rail;
-  /** Presentation mode: presenter type, the wider rail, Up next and the key hints. Only while a guide runs. */
+  /** Presentation mode: presenter type, the wider rail, Up next and the key hints. Only while a step shows. */
   readonly present: boolean;
   readonly page: "how" | null;
   readonly help: boolean;
@@ -81,6 +91,8 @@ export type LayerEvent =
   /** The map bar's Guides button: open the start, or close whatever the rail shows. */
   | { readonly type: "toggleGuides" }
   | { readonly type: "openGuide"; readonly guide: GuideId }
+  /** A saved view from the start list, or Presentation mode beside them, which starts at view 1 presenting. */
+  | { readonly type: "openView"; readonly step: number; readonly present?: boolean }
   | { readonly type: "allGuides" }
   /** Explore on my own, Close guides. */
   | { readonly type: "close" }
@@ -120,6 +132,21 @@ function land(model: Model, guide: GuideId, step: number, fresh: boolean): Model
   };
 }
 
+/** A saved view, set for the screen. It does not change where a guide was left. */
+function landView(model: Model, step: number, present: boolean): Model {
+  const { state, memory } = model;
+  return {
+    state: {
+      ...state,
+      rail: { kind: "view", step },
+      present,
+      page: null,
+      apply: { seq: state.apply.seq + 1, fresh: true },
+    },
+    memory: memory.seen ? memory : remember(memory, { seen: true }),
+  };
+}
+
 function shut(model: Model): Model {
   return {
     state: { ...model.state, rail: { kind: "off" }, present: false },
@@ -149,12 +176,38 @@ function backward(model: Model, catalog: Catalog, cross: boolean): Model {
   return land(model, previous.id, previous.steps, true);
 }
 
+/** Next or Page Down on a saved view: the next view; past the last, closed, as after the last guide. */
+function forwardView(model: Model, views: number): Model {
+  const { rail } = model.state;
+  if (rail.kind !== "view") return model;
+  return rail.step < views ? landView(model, rail.step + 1, model.state.present) : shut(model);
+}
+
+/** Back or Page Up on a saved view: the previous view. The views never cross into the guides. */
+function backwardView(model: Model): Model {
+  const { rail } = model.state;
+  if (rail.kind !== "view" || rail.step <= 1) return model;
+  return landView(model, rail.step - 1, model.state.present);
+}
+
 /**
- * The state after `event`. `catalog` is null until the data says which guides it can teach; until then the rail
- * can open and close but not step.
+ * The state after `event`. `catalog` is null until the data says which guides it can teach, and `views` until the
+ * saved views are known; until then the rail can open and close but not step.
  */
-export function reduce(model: Model, event: LayerEvent, catalog: Catalog | null): Model {
+export function reduce(
+  model: Model,
+  event: LayerEvent,
+  catalog: Catalog | null,
+  views: number | null = null
+): Model {
   const { state } = model;
+  if (state.rail.kind === "view" && ["next", "pageDown", "back", "pageUp", "skip"].includes(event.type)) {
+    if (event.type === "skip") return shut(model);
+    if (views === null) return model;
+    return event.type === "next" || event.type === "pageDown"
+      ? forwardView(model, views)
+      : backwardView(model);
+  }
   switch (event.type) {
     case "toggleGuides":
       if (state.rail.kind === "off") return { ...model, state: { ...state, rail: { kind: "start" } } };
@@ -162,6 +215,9 @@ export function reduce(model: Model, event: LayerEvent, catalog: Catalog | null)
     case "openGuide":
       if (catalog && stepsOf(catalog, event.guide) === 0) return model;
       return land(model, event.guide, 1, true);
+    case "openView":
+      if (event.step < 1 || (views !== null && event.step > views)) return model;
+      return landView(model, event.step, event.present ?? false);
     case "allGuides":
       return { ...model, state: { ...state, rail: { kind: "start" }, present: false } };
     case "close":
@@ -178,10 +234,10 @@ export function reduce(model: Model, event: LayerEvent, catalog: Catalog | null)
       if (state.rail.kind !== "step") return shut(model);
       return shut({ ...model, memory: withDone(model.memory, state.rail.guide) });
     case "present":
-      if (state.rail.kind !== "step") return model;
+      if (!isStepping(state.rail)) return model;
       return { ...model, state: { ...state, present: event.on } };
     case "restore":
-      if (state.rail.kind !== "step") return model;
+      if (!isStepping(state.rail)) return model;
       return { ...model, state: { ...state, apply: { seq: state.apply.seq + 1, fresh: true } } };
     case "page":
       return { ...model, state: { ...state, page: event.page } };
@@ -214,6 +270,18 @@ export function revalidate(state: LayerState, catalog: Catalog): LayerState {
   return { ...state, rail: { ...rail, step: n } };
 }
 
+/**
+ * The state checked against how many saved views there are: a link to a view past the end lands on the last one, and
+ * with no views at all the rail shows the start list, where views are saved.
+ */
+export function revalidateViews(state: LayerState, views: number): LayerState {
+  const { rail } = state;
+  if (rail.kind !== "view") return state;
+  if (views === 0) return { ...state, rail: { kind: "start" }, present: false };
+  if (rail.step <= views) return state;
+  return { ...state, rail: { kind: "view", step: views } };
+}
+
 /* ------------------------------------------------------------------ the URL */
 
 /** The URL keys the guidance layers own; the workspace keeps every other key. */
@@ -235,12 +303,13 @@ export function stateFromSearch(search: string, memory: Memory): LayerState {
   if (guide === "off") rail = { kind: "off" };
   else if (guide === "start") rail = { kind: "start" };
   else if (isGuideId(guide)) rail = { kind: "step", guide, step };
+  else if (guide === "views") rail = { kind: "view", step };
   else rail = memory.seen ? { kind: "off" } : { kind: "start" };
   const card = params.get("card");
   const glossOpen = params.get("gloss") === "1";
   return {
     rail,
-    present: rail.kind === "step" && params.get("present") === "1",
+    present: isStepping(rail) && params.get("present") === "1",
     page: params.get("page") === "how" ? "how" : null,
     help: params.get("help") === "1",
     card: isCardId(card) ? card : null,
@@ -248,7 +317,7 @@ export function stateFromSearch(search: string, memory: Memory): LayerState {
       ? { open: true, q: params.get("gq") ?? "", x: params.get("gx") || null }
       : CLOSED_GLOSSARY,
     // A link copied mid-guide keeps the school it was copied with, when the step can follow that school.
-    apply: { seq: rail.kind === "step" ? 1 : 0, fresh: false },
+    apply: { seq: isStepping(rail) ? 1 : 0, fresh: false },
   };
 }
 
@@ -263,8 +332,8 @@ export function searchWithLayers(search: string, state: LayerState, memory: Memo
   const { rail } = state;
   if (rail.kind === "start" && memory.seen) params.set("guide", "start");
   if (rail.kind === "off" && !memory.seen) params.set("guide", "off");
-  if (rail.kind === "step") {
-    params.set("guide", rail.guide);
+  if (isStepping(rail)) {
+    params.set("guide", rail.kind === "view" ? "views" : rail.guide);
     params.set("gstep", String(rail.step));
     if (state.present) params.set("present", "1");
   }
