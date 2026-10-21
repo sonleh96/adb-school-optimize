@@ -42,6 +42,10 @@ function signInRedirect(request: NextRequest, error: string | null) {
   return NextResponse.redirect(url);
 }
 
+// Every page links the manifest and the icons, the sign-in page included, so they stay public: sent to sign in, the
+// browser reads the sign-in page as the manifest and logs "Manifest: Syntax error".
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
 };
