@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 import pytest
+from school_scoring.screening import RULES
 from screening_reproduction import run_reproduction
 
 pytestmark = pytest.mark.reproduction
@@ -36,3 +37,24 @@ def test_engine_reproduces_frozen_outputs_school_by_school():  # FM1, FM2, FM4, 
         "complete_120": {"schools": 120, "schools_with_no_mismatch": 120},
         "interval_4": {"schools": 4, "schools_with_no_mismatch": 4},
     }
+
+    # Every rule that EXP-22 reports is reproduced from EXP-22, and the two it does not report from EXP-21,
+    # so no rule of the registry goes unchecked against an experiment.
+    covered = report["rules_checked_against_experiment"]
+    assert covered["EXP-22"] == sorted(
+        ["additive_no_u", "additive_u", "benchmark", "bottleneck_no_u", "need_first_no_u"]
+    )
+    assert sorted(set(covered["EXP-21"]) | set(covered["EXP-22"])) == sorted(RULES)
+    names = [c["name"] for c in report["checks"]]
+    for part in (
+        "EXP-22 anchor aqi p05",
+        "EXP-22 accepted replay rank_point_replay",
+        "EXP-22 matched-120 spearman_rank",
+        "EXP-22 matched-120 recommended_rank",
+        "EXP-22 additive_no_u contribution area_contribution",
+        "EXP-22 additive_no_u weights",
+        "EXP-22 need_first_no_u need_first_rank_min_possible",
+        "EXP-22 bottleneck_no_u bottleneck_rank_point",
+        "EXP-22 additive_u score_point",
+    ):
+        assert any(name.startswith(part) for name in names), part
