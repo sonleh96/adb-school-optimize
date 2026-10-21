@@ -10,9 +10,9 @@
  *  5. The persistence flag appears on a rule it does not describe, or a scope is told apart by its label. The
  *     parser keeps the flag only where the API sent it and carries the scope code the page branches on.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { ParseError, parseWith } from "@/lib/screening/schema";
+import { ParseError, forgetWarnings, parseWith } from "@/lib/screening/schema";
 import {
   compareResponse,
   inputsResponse,
@@ -83,13 +83,12 @@ describe("the scope codes and the persistence flag", () => {
     }
   });
 
-  it("keeps the margin fields where the flag is, and they agree with it", () => {
+  it("keeps the margin flag where the flag is, and it agrees with it", () => {
     const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
     for (const row of circulated.rows) {
       if (row.persistent_candidate === null) {
-        expect([row.lowest_top20_frequency, row.threshold_adjacent]).toEqual([null, null]);
+        expect(row.threshold_adjacent).toBeNull();
       } else {
-        expect(typeof row.lowest_top20_frequency).toBe("number");
         // Adjacent only when persistent, and only when just above the 0.80 line.
         if (row.threshold_adjacent) expect(row.persistent_candidate).toBe(true);
         if (row.persistent_candidate === false) expect(row.threshold_adjacent).toBe(false);
@@ -98,9 +97,7 @@ describe("the scope codes and the persistence flag", () => {
     expect(circulated.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
     expect(circulated.rows.some((row) => row.threshold_adjacent === false)).toBe(true);
     const other = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
-    expect(
-      other.rows.every((row) => !("lowest_top20_frequency" in row) && !("threshold_adjacent" in row))
-    ).toBe(true);
+    expect(other.rows.every((row) => !("threshold_adjacent" in row))).toBe(true);
   });
 
   it("carries the scope code of a comparison's ranks and cohort", () => {
@@ -141,6 +138,64 @@ describe("the scope codes and the persistence flag", () => {
     expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
       'rows[0].persistent_candidate: expected a boolean, got string "yes"'
     );
+  });
+});
+
+describe("fields the page does not read", () => {
+  it("are not parsed, so a change to one cannot blank a list", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<Record<string, unknown> & { scores: Record<string, unknown> }>;
+    };
+    for (const row of body.rows) {
+      row.lowest_top20_frequency = "a text now";
+      row.scores.upper = "a text now";
+    }
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.rows).toHaveLength(25);
+    expect(parsed.rows[0]).not.toHaveProperty("lowest_top20_frequency");
+    const inputs = copy(readFixture("inputs.json")) as Record<string, unknown>;
+    delete inputs.input_sha256;
+    expect(() => parseWith(inputsResponse, inputs, "inputs")).not.toThrow();
+  });
+
+  it("say so once in the console when a block the page can do without has changed, naming the field", () => {
+    forgetWarnings();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = { standard_error: "n/a" };
+      expect(parseWith(resultsResponse, body, "results").rows).toHaveLength(25);
+      parseWith(resultsResponse, body, "results");
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain("persistence.standard_error");
+      // A block that is absent, or null, is not a change and says nothing.
+      forgetWarnings();
+      warn.mockClear();
+      const quiet = copy(readFixture("results/additive_no_u.json")) as Record<string, unknown>;
+      parseWith(resultsResponse, quiet, "results");
+      quiet.persistence = null;
+      parseWith(resultsResponse, quiet, "results");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("include the provenance block, which only adds a margin, so a changed one leaves the list whole", () => {
+    for (const changed of [
+      { standard_error: "n/a" },
+      "a text now",
+      { rule_id: 3, threshold: "x", draws: null },
+      { standard_error: 0.006 },
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = changed;
+      const parsed = parseWith(resultsResponse, body, "results");
+      expect(parsed.rows, JSON.stringify(changed)).toHaveLength(25);
+    }
+    const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+    body.persistence = { standard_error: 0.006 };
+    expect(parseWith(resultsResponse, body, "results").persistence?.standard_error).toBe(0.006);
   });
 });
 
@@ -224,15 +279,25 @@ describe("an additive API change", () => {
   it("does not need fields the page does not read", () => {
     const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
     for (const row of body.rows) {
-      delete row.components;
-      delete row.need_parts;
-      delete row.area_parts;
-      delete row.contributions;
-      delete row.scores;
       delete row.placement;
       delete row.display_order;
     }
     expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
+  });
+
+  it("reads what the copy needs of a listed row, and names the path of what is missing", () => {
+    for (const field of [
+      "gate_failures",
+      "need_parts",
+      "area_parts",
+      "contributions",
+      "need_part_contributions",
+      "maximum_term",
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+      delete body.rows[3][field];
+      expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(`rows[3].${field}`);
+    }
   });
 
   it("accepts a rule role the page does not know", () => {
