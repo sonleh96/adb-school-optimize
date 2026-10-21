@@ -8,7 +8,6 @@
  * the export sheet each load in their own chunk on first use, and the method words through the copy's `methodFor`.
  * Every change goes through the workspace controller, so a guide, a pasted link and a click land on the same screen.
  */
-import { Download } from "lucide-react";
 import { type ReactNode, createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -27,7 +26,7 @@ import type { Layout } from "@/lib/screening/workspace/layout";
 import type { WorkspaceState } from "@/lib/screening/workspace/state";
 import type { WorkspaceStore } from "@/lib/screening/workspace/store";
 
-import type { MapBarClasses } from "../guide/GuidanceLayer";
+import type { MapBarClasses, MenuAct } from "../guide/GuidanceLayer";
 import type { RuleChoice } from "../useScreeningData";
 import base from "../screening.module.css";
 import styles from "./actions.module.css";
@@ -106,9 +105,10 @@ export interface Mounts {
   /** The method details are drawn. */
   on: boolean;
   methodSwitch: ReactNode;
-  /** "Download the top list", in the actions, and the compact one for the narrow top bar. */
+  /** "Download the top list", in the actions. */
   exportButton: ReactNode;
-  exportIcon: ReactNode;
+  /** The method switch and Download the top list as choices of the narrow layout's menu. */
+  menuItems: (act: MenuAct) => ReactNode;
   /** The export sheet while it is open. */
   exportSheet: ReactNode | null;
   ruleArea: ReactNode | null;
@@ -198,18 +198,29 @@ export function useMethodMounts(input: MountInput): Mounts {
       {copy.TERMS.export.label}
     </button>
   );
-  const exportIcon = (
-    <button
-      type="button"
-      className={`${styles.open} ${styles.openIcon}`}
-      disabled={!ready}
-      aria-label={copy.TERMS.export.label}
-      title={copy.TERMS.export.label}
-      aria-haspopup="dialog"
-      onClick={openSheet}
-    >
-      <Download size={15} aria-hidden />
-    </button>
+  const menuItems = (act: MenuAct) => (
+    <>
+      <button
+        type="button"
+        aria-pressed={state.analyst}
+        disabled={!ready}
+        onPointerEnter={load}
+        onClick={act(() => store.setState({ analyst: !state.analyst }))}
+      >
+        {copy.LAYOUT.methodSwitch}
+      </button>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        disabled={!ready}
+        onClick={act(() => {
+          loadSheet();
+          openSheet();
+        })}
+      >
+        {copy.TERMS.export.label}
+      </button>
+    </>
   );
   // A chunk or the method words that did not load say so in the copy's words, with a Retry that asks again.
   const failure = (retry: () => void, close?: () => void) => (
@@ -250,14 +261,21 @@ export function useMethodMounts(input: MountInput): Mounts {
         onLength={(n) => store.setState({ n })}
         onClose={() => {
           store.setState({ panel: null });
-          // The sheet leaves the page as it closes, so focus goes back to the button that opened it.
-          requestAnimationFrame(() => exportOpener.current?.focus({ preventScroll: true }));
+          // The sheet leaves the page as it closes, so focus goes back to the button that opened it: the actions'
+          // button, or in the narrow layout, where the actions are hidden, the menu's button.
+          requestAnimationFrame(() => {
+            const opener = exportOpener.current;
+            const shown = opener && opener.getClientRects().length > 0 ? opener : null;
+            (shown ?? document.querySelector<HTMLElement>('[aria-controls="screening-menu"]'))?.focus({
+              preventScroll: true,
+            });
+          });
         }}
         onNotify={input.onNotify}
       />
     ) : null;
 
-  const common = { on, methodSwitch, exportButton, exportIcon, exportSheet, paint };
+  const common = { on, methodSwitch, exportButton, menuItems, exportSheet, paint };
   if (!on || !mod || !method || !rule) {
     return {
       ...common,

@@ -23,6 +23,8 @@
  * 16. The method layer's code fails to load and the switch does nothing, with no way on         -> "a failed load..."
  * 17. Map layers sits apart from the guidance map bar, or widens it into the actions or the card
  *     without the bar stepping down or keeping its icons only                                    -> "the map bar..."
+ * 18. The narrow layout, which hides the actions, offers no way to the method details or the export sheet, or a
+ *     choice in its menu leaves focus nowhere                                                    -> "the narrow menu..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -418,4 +420,33 @@ test("a failed load of the method layer says so and loads it again on Retry", as
   // The refused scripts are expected failures; nothing else may go wrong on the page.
   expect(errors).toEqual([]);
   await page.close();
+});
+
+test.describe("the narrow layout", () => {
+  test.use({ viewport: { width: 768, height: 1024 } });
+
+  test("the narrow menu turns the method details on and opens the export sheet, and hands focus back", async ({
+    page,
+  }) => {
+    await openWorkspace(page);
+    const menuButton = page.getByRole("button", { name: "Menu" });
+    const menu = page.getByRole("group", { name: "Menu" });
+    await menuButton.click();
+    await menu.getByRole("button", { name: "Show method details" }).click();
+    await expect(menu).toHaveCount(0);
+    await expect.poll(() => search(page)).toBe("?analyst=1");
+    await expect(menuButton).toBeFocused();
+
+    await menuButton.click();
+    await expect(menu.getByRole("button", { name: "Show method details" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await menu.getByRole("button", { name: "Download the top list" }).click();
+    const sheet = page.locator("[data-region=export-sheet]");
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await expect(menuButton).toBeFocused();
+  });
 });
