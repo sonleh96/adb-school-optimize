@@ -721,6 +721,35 @@ def test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_n
             assert not cell.startswith(FORMULA_STARTS) or is_number(cell), cell
 
 
+@pytest.mark.parametrize(
+    "name",
+    [" =1+1 School", "\n=1+1 School", "  \t+Plus School", "\r\n-Minus School", "\u00a0@At School", " \n =x"],
+)
+def test_the_csv_guards_a_cell_whose_first_visible_character_is_a_formula_character(
+    api, connection, name
+):  # API24
+    safe = " Plain School"
+    load_synthetic(connection, (record(name, province=name), record(safe)))
+
+    method, rows = top(api, rule="additive_u", k=10)
+
+    by_key = {r["source_school_name"]: r for r in rows}
+    assert "'" + name in by_key and safe in by_key
+    guarded = by_key["'" + name]
+    assert guarded["display_name"] == "'" + name and guarded["province"] == "'" + name
+    assert by_key[safe]["display_name"] == safe  # leading space alone is not a formula
+    assert "ignoring any leading whitespace" in method["csv_text_guard"]
+    # The XLSX keeps the exact name and guards only the display name.
+    sheet = openpyxl.load_workbook(io.BytesIO(export(api, XLSX, rule="additive_u", k=10)))["Top schools"]
+    header = [c.value for c in sheet[1]]
+    shown = {
+        row[header.index("source_school_name")]: row[header.index("display_name")]
+        for row in sheet.iter_rows(min_row=2, values_only=True)
+    }
+    escaped = name.replace("\r", "_x000D_")
+    assert shown[escaped] == "'" + escaped
+
+
 def test_a_negative_number_in_the_csv_is_not_guarded(api, connection):  # API24
     load_synthetic(connection, tuple(record(f"School {i}") for i in range(3)))
     # The latitude of a school is negative, and it is written as a number.
