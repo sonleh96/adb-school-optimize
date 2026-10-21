@@ -11,6 +11,8 @@
  *  5. Opening the guide rail narrows the map without framing it again, or a school's pan overrides that framing, so
  *     schools, the selected one among them, sit under the rail, the column or the card -> "with the rail and a pick..."
  *  6. The place numbers paint over the column when the map moves them beneath it -> "the column covers a place number..."
+ *  7. A school picked while the country is being framed again pans at once, stops the fit halfway, and leaves schools
+ *     outside the clear part                                             -> "a school picked during a refit..."
  */
 import type { Page, Route } from "@playwright/test";
 
@@ -258,6 +260,67 @@ for (const size of [
     }
   });
 }
+
+test.describe("at 1600 by 1000, a pick during a refit", () => {
+  test.use({ viewport: { width: 1600, height: 1000 } });
+
+  test("a school picked during a refit waits for it, and the country and the school end in the clear part", async ({
+    page,
+  }) => {
+    const ordered = rowsOf("additive_u").filter(
+      (r) => r.cohort !== "verification_queue" && r.school.latitude !== null
+    );
+    const first = ordered[0].school.school_key;
+    await page.goto(`/screening?school=${first}`);
+    await waitForMap(page);
+    await settledMark(page, first);
+    await settled(page);
+    // Zoomed in, most schools lie outside the clear part, and framing the country again is a long move.
+    for (let step = 0; step < 2; step += 1) {
+      await page.getByRole("button", { name: "Zoom in" }).click();
+      await page.waitForTimeout(400);
+    }
+    await settled(page);
+    let picked: string | null = null;
+    for (const row of ordered.slice(1)) {
+      if ((await outsideClear(page, [row.school.school_key])).length > 0) {
+        picked = row.school.school_key;
+        break;
+      }
+    }
+    expect(picked).not.toBeNull();
+
+    // Opening the rail steps the list aside for the card: the map frames the country again. While it moves, another
+    // school is chosen. Panning to it now would stop the fit halfway, zoomed in.
+    // The page picks the school itself, the moment the map starts moving: a check from outside can miss a 300 ms move.
+    const pickedMidFit = page.evaluate(
+      (key) =>
+        new Promise<void>((resolve, reject) => {
+          const map = document.querySelector("[data-testid=screening-map]")!;
+          const timer = setTimeout(
+            () => reject(new Error("the map never started framing the country")),
+            5000
+          );
+          const observer = new MutationObserver(() => {
+            if (map.getAttribute("data-map-moving") !== "true") return;
+            observer.disconnect();
+            clearTimeout(timer);
+            window.__screeningWorkspace!.setState({ school: key });
+            resolve();
+          });
+          observer.observe(map, { attributes: true, attributeFilter: ["data-map-moving"] });
+        }),
+      picked
+    );
+    await openRail(page);
+    await pickedMidFit;
+
+    await settledMark(page, picked!);
+    await settled(page);
+    expect(await outsideClear(page, [picked!])).toEqual([]);
+    expect(await outsideClear(page, MAPPED)).toEqual([]);
+  });
+});
 
 /* ---------- the place numbers stay under the panels ---------- */
 
