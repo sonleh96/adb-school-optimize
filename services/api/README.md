@@ -73,7 +73,7 @@ A set describes the one rule it is stored for. The two experiments answer differ
 - Numbers are attached when a version is created and never later, because a response that names a version is cached as immutable. To add a set to a version that is already loaded, load a new input version. This holds for each rule's set.
 - The flag itself is never stored. It is derived on read from the stored frequencies, so it cannot disagree with them.
 - A rerun with the same files changes nothing. A rerun whose file differs from the stored numbers of its rule is refused. Giving one rule twice is refused.
-- Engine versions: a version loaded before the revised paper holds runs whose manifests name the retired provenance `proposed_follow_up_pending_author_review`. The API cannot read those manifests. Load a new input version.
+- Engine versions: engine 0.1.0 stored the revised paper's rules with a provenance that no longer exists (`proposed_follow_up_pending_author_review`), and the circulated rules with their earlier roles. This API answers 409 `stale_run`, naming the rule, input version and package version, for any run whose stored provenance or policy role differs from the registry, and never 500. Run the loader again on the same input version: it stores the 0.2.0 runs beside the old ones (the inputs and persistence sets are untouched), and the API serves the highest package version. A request that pins the old package version stays refused.
 
 `app/screening_store.py` reads versions, runs, ordered results and persistence back as typed objects.
 

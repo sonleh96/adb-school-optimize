@@ -158,6 +158,35 @@ def _version(connection, requested: str | None) -> VersionEntry:
     )
 
 
+def _require_current(run: store.StoredRun) -> store.StoredRun:
+    """A stored run must carry the provenance and policy role that the engine registry gives its rule today.
+
+    A run stored before the registry changed names a provenance this API cannot read, or a role that contradicts
+    ``/rules``. It is refused by name, and loading the input version again stores a current run beside it.
+    """
+    rule = RULES.get(run.rule_id)
+    if rule is not None and (run.provenance, run.policy_role) == (
+        rule.provenance.value,
+        rule.policy_role.value,
+    ):
+        return run
+    raise ApiError(
+        f"The stored run of rule {run.rule_id!r} for input version {run.input_version!r} was made by engine "
+        f"version {run.package_version} with rule metadata this API no longer serves. "
+        "Load the input version again with the current engine to store a current run.",
+        status_code=409,
+        code="stale_run",
+        details={
+            "rule": run.rule_id,
+            "input_version": run.input_version,
+            "package_version": run.package_version,
+            "stored_provenance": run.provenance,
+            "stored_policy_role": run.policy_role,
+            "run_id": str(run.run_id),
+        },
+    )
+
+
 def _run(connection, version: str, rule_id: str, package_version: str | None = None) -> store.StoredRun:
     run = current_runs(connection, version, package_version).get(rule_id)
     if run is None:
@@ -169,7 +198,7 @@ def _run(connection, version: str, rule_id: str, package_version: str | None = N
             code="run_not_found",
             details={"rule": rule_id, "input_version": version, "package_version": package_version},
         )
-    return run
+    return _require_current(run)
 
 
 def _filters(province: str | None, district: str | None) -> Filters:
@@ -499,7 +528,10 @@ def _school_details(
     records = {
         r.school_name: r for r in store.read_inputs(connection, input_version) if r.school_name in wanted
     }
-    runs = current_runs(connection, input_version, package_version)
+    runs = {
+        rule_id: _require_current(run)
+        for rule_id, run in current_runs(connection, input_version, package_version).items()
+    }
     persistence = store.read_persistence(connection, input_version)
     results = {
         rule_id: {
