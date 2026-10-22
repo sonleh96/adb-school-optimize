@@ -25,6 +25,8 @@
  *                                                                      -> "the full key stays open..."
  * 13. A guide step's ring round the Menu button is painted under the top bar, so the step points at nothing
  *                                                                      -> "a guide step's ring round the Menu..."
+ * 14. Under reduced motion one disclosure's chevron still turns while another's does not
+ *                                                                      -> "under reduced motion, every disclosure's..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -432,3 +434,25 @@ for (const size of [
     });
   });
 }
+
+test.describe("the disclosures' chevrons under reduced motion", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, firstVisit: true });
+
+  test("under reduced motion, every disclosure's chevron changes the same way: no turn", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/screening");
+    await waitForMap(page);
+    await expect(rail(page)).toBeVisible();
+    const chevrons = [
+      "[data-region=rule-change] svg",
+      "[data-region=open-guides] svg",
+      "[data-slot=legend] [data-region=key-toggle] svg",
+    ];
+    const transitions = await Promise.all(
+      chevrons.map((selector) =>
+        page.locator(selector).evaluate((el) => getComputedStyle(el).transitionProperty)
+      )
+    );
+    expect(transitions).toEqual(["opacity", "opacity", "opacity"]);
+  });
+});
