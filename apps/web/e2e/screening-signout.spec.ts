@@ -10,8 +10,8 @@
  *     -> "is in the Menu in the narrow layout"
  *  5. Sign out takes the button ink the other actions use instead of its quieter ink, so it competes with Copy link,
  *     or the quieter ink falls under 4.5:1 on the map behind it  -> "reads quieter than the other actions..."
- *  6. The narrow Menu lists its choices in another order than the specification's ("Responsive layout"), or Sign out
- *     is not last                                                -> "is last in the Menu..."
+ *  6. The narrow Menu lists its choices in another order than the specification's ("Responsive layout"), mixes in the
+ *     kinds of help that Help holds, or Sign out is not last                                                -> "is last in the Menu..."
  * The mock app has no sign-in, so the tests that need a signed-in person answer `/auth/user` as the real route
  * does when sign-in is required; `/auth/sign-out` is the app's own route.
  */
@@ -113,13 +113,11 @@ test.describe("in the narrow layout", () => {
     await page.getByRole("button", { name: LAYOUT.menu, exact: true }).click();
     const menu = page.getByRole("group", { name: LAYOUT.menu });
     await expect(menu.getByRole("button", { name: LAYOUT.signOut, exact: true })).toBeVisible();
+    // The kinds of help are under Help, beside it; the Menu holds the workspace's own actions.
     expect((await menu.getByRole("button").allTextContents()).map((text) => text.trim())).toEqual([
-      "Guides",
-      "Explain this screen",
-      "Glossary of terms",
-      "Show method details",
+      "For researchers: show method details",
       "Copy link",
-      "Download the top list",
+      "Download the top list as a spreadsheet",
       "Sign out",
     ]);
   });

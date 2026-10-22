@@ -4,7 +4,7 @@
  * Failure modes, each with the test that catches it:
  *  1. One rule's broken contributions fail the whole card, though the card shows another rule.
  *  2. The reasons for a rule whose contributions are missing say "none of its inputs adds", which is false.
- *  3. An urgency value that no loaded rule read reads as recorded when it is unknown, or as unknown when it is
+ *  3. An urgency rating that no loaded rule read reads as recorded when it is unknown, or as unknown when it is
  *     recorded. It comes from the stored input.
  *  4. Two scores a rounding error apart are called a tie, though the engine orders them.
  */
@@ -50,7 +50,7 @@ describe("one rule's contributions are broken", () => {
     const s = load(broken(), "additive_u");
     expect(s.cohort).toBe("complete");
     expect(Object.keys(s.contributions ?? {})).toEqual(["additive_u", "bottleneck_u", "bottleneck_no_u"]);
-    expect(copy.reasonSentence(s, "additive_u")).toMatch(/^\w+ things? adds? most to its screening score/);
+    expect(copy.reasonSentence(s, "additive_u")).toMatch(/^\w+ things? adds? most to its score/);
     expect(load(broken(), "benchmark").cohort).toBe("complete");
     expect(load(broken(), "need_first_u").cohort).toBe("complete");
   });
@@ -81,7 +81,7 @@ describe("one rule's contributions are broken", () => {
   it("does not say that no input adds when the contributions are only missing", () => {
     const s = load(broken(), "additive_u");
     expect(copy.reasonSentence(s, "additive_no_u")).toBe(
-      "What adds to the screening score under the combined-factors rule without urgency (S0) is not available for this school."
+      "What adds to the score under the combined-factors rule without urgency (S0) is not available for this school."
     );
   });
 
@@ -96,7 +96,7 @@ describe("one rule's contributions are broken", () => {
   });
 });
 
-describe("an urgency value that no loaded rule reads", () => {
+describe("an urgency rating that no loaded rule reads", () => {
   const withoutUrgencyRules = () => {
     const b = body();
     b.rules = b.rules.filter(

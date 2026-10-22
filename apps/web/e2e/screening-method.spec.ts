@@ -38,13 +38,25 @@
  * 25. The method card states one rule's persistence test under the other rule, or says a school is near the line
  *     where that rule's own band does not put it, or leaves the near-line sentence out where it does
  *                                                                                                -> "each rule's persistence test..."
+ * 26. A sentence on the plain screen names a rule by its letters (S0, S), the method details lose them, or turning the
+ *     method details on or off needs a reload to re-word the screen   -> "the method details name rules by letter..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import type { Page } from "@playwright/test";
 
-import { RULE, expect, mainRule, openWorkspace, test, useMockDataset, waitForMap } from "./screening-helpers";
+import {
+  RULE,
+  expect,
+  helpItem,
+  mainRule,
+  openRules,
+  openWorkspace,
+  test,
+  useMockDataset,
+  waitForMap,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
@@ -83,7 +95,7 @@ test("the switch turns the method details on over the same screen, survives a re
   const first = methodRow(page, "Sample School 08");
   await expect(first).toContainText("1Sample School 08South One, South Province0.708");
   await expect(page.getByTestId("legend-rule")).toContainText(
-    "Place in the list under combined factors, without urgency"
+    "Rank in the list under combined factors, without urgency"
   );
   await page.getByRole("button", { name: "Formula" }).click();
   await expect(page.locator("#screening-formula")).toHaveText(FORMULA);
@@ -96,6 +108,7 @@ test("the switch turns the method details on over the same screen, survives a re
   await methodSwitch(page).click();
   // The formula is method detail: it leaves the link with the method details.
   expect(search(page)).toBe("");
+  await openRules(page);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("ol[aria-label='The list'] button").first()).toContainText("1st");
   const text = await workspaceText(page);
@@ -103,20 +116,18 @@ test("the switch turns the method details on over the same screen, survives a re
     expect(text, `plain view shows "${word}"`).not.toContain(word);
 });
 
-test("the card's method layer states the API's place, screening score, shares and record", async ({
-  page,
-}) => {
+test("the card's method layer states the API's place, score, shares and record", async ({ page }) => {
   await openWorkspace(page, "?analyst=1");
   await methodRow(page, "Sample School 08").click();
   const c = card(page);
   await expect(c.locator("[data-region=inspector-place]")).toContainText(
-    "1Place in the listunder combined factors, without urgency, among the 17 schools with a record for every input the rule uses"
+    "1Rank in the listunder combined factors, without urgency, among the 17 schools with a record for every input the rule uses"
   );
-  await expect(c).toContainText("Screening score0.708");
+  await expect(c).toContainText("Score0.708");
   const breakdown = c.locator("[data-region=inspector-breakdown]");
   await expect(breakdown).toContainText("School need× 12/19");
   await expect(breakdown).toContainText("District context× 3/19");
-  await expect(breakdown.getByRole("row").last()).toContainText("Screening score0.708");
+  await expect(breakdown.getByRole("row").last()).toContainText("Score0.708");
   await expect(c.locator("[data-region=inspector-across] dt")).toHaveCount(7);
   await expect(c).toContainText(ROWS[0].school.school_key);
   // The parts of school need open and close in place, and the link keeps the choice.
@@ -211,7 +222,7 @@ test("the map bar holds Map layers, and steps down or keeps its icons rather tha
 });
 
 const LEAD_20 =
-  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with every input recorded.";
+  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with one rank under both methods.";
 
 test("compare mode reproduces a pasted pair, says the agreement in What changed's words, swaps and goes back", async ({
   page,
@@ -228,9 +239,9 @@ test("compare mode reproduces a pasted pair, says the agreement in What changed'
   // The chart's accessible table is headed in the copy's words.
   await expect(page.locator("table[aria-label]").first().locator("thead th")).toHaveText([
     "School",
-    /^Place under /,
-    /^Place under /,
-    "Places moved",
+    /^Rank under /,
+    /^Rank under /,
+    "Ranks moved",
   ]);
 
   await page.getByRole("button", { name: "Top 10" }).click();
@@ -261,6 +272,7 @@ test("turning the method details off while comparing returns to the plain list o
   await expect(page.locator("[data-region=compare-statement]")).toBeVisible();
   await methodSwitch(page).click();
   expect(search(page)).toBe("?rule=additive_u&compare=additive_no_u");
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-region=what-changed]")).toBeVisible();
   await expect(page.locator("[data-region=compare-statement]")).toHaveCount(0);
@@ -327,7 +339,7 @@ test("the card in compare mode shows the school under both rules and how far it 
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined");
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined, no urgency");
   await expect(c.locator("[data-region=inspector-breakdown]")).toHaveCount(2);
-  await expect(c).toContainText(/Same place in the list under|(Up|Down) \d+ places? under/);
+  await expect(c).toContainText(/Same rank in the list under|(Up|Down) \d+ ranks? under/);
 });
 
 test("no raw null, undefined or NaN renders in the method states on the worst-case data (R8)", async ({
@@ -395,7 +407,7 @@ test("the chart has a table a keyboard and a screen reader can use", async ({ pa
   await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   const pair = json("compare/additive_u__additive_no_u.json");
   const table = page.getByRole("table", {
-    name: "Places in the list under the two rules, joined by a line per school",
+    name: "Ranks in the list under the two rules, joined by a line per school",
   });
   await expect(table.getByRole("row")).toHaveCount(pair.ranks.length + 1);
   const first = pair.ranks[0];
@@ -452,7 +464,7 @@ test("help mode explains the method details' rules, lines and controls, and a ma
   const school = ROWS.find((r) => r.cohort === "complete")!.school.school_key;
   await openWorkspace(page, `?analyst=1&school=${school}`);
   await expect(card(page).locator("[data-region=inspector-place]")).toBeVisible();
-  await page.getByRole("toolbar").getByRole("button", { name: "Explain this screen" }).click();
+  await (await helpItem(page, "Explain this screen")).click();
   const marked = page.locator("[data-testid=screening-workspace] [data-xp]");
   await expect.poll(() => marked.count()).toBeGreaterThanOrEqual(18);
   expect(await marked.count()).toBeLessThanOrEqual(40);
@@ -498,7 +510,7 @@ test("the incomplete records filter by what is missing, count each choice and re
 
   await openWorkspace(page, "?analyst=1&view=queue");
   const chips = page.getByRole("group", { name: "Show only schools missing this detail" });
-  const rows = page.locator("ol[aria-label='Incomplete records'] button[data-school-key]");
+  const rows = page.locator("ol[aria-label='Missing information'] button[data-school-key]");
   await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(queued.length);
   await expect(page.locator("[class*=missLabel]")).toHaveText("Missing detail");
@@ -725,4 +737,30 @@ test.describe("the narrow layout", () => {
     await expect(sheet).toHaveCount(0);
     await expect(menuButton).toBeFocused();
   });
+});
+
+test("the method details name rules by letter, the plain screen in words, and turning them on or off re-words it in place", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await page.locator("ol[aria-label='The list'] button", { hasText: "Sample School 08" }).click();
+  const plain = page.getByText("Three things add most to its score under the main method.", { exact: false });
+  const lettered = page.getByText(
+    "Three things add most to its score under the combined-factors rule without urgency (S0).",
+    {
+      exact: false,
+    }
+  );
+  await expect(plain).toBeVisible();
+  // A mark on the page that a reload would wipe.
+  await page.evaluate(() => ((window as unknown as { kept: boolean }).kept = true));
+
+  const methodSwitch = page.getByRole("switch", { name: "Show method details" });
+  await methodSwitch.click();
+  await expect(lettered.first()).toBeVisible();
+  await expect(plain).toHaveCount(0);
+  await methodSwitch.click();
+  await expect(plain).toBeVisible();
+  await expect(lettered).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
 });

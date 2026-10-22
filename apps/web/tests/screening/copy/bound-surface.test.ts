@@ -159,7 +159,7 @@ describe("the definitions of one rule", () => {
   it("describe a comparison by the schools both rules put in order", async () => {
     const { P } = await bind("additive_u");
     expect(P.termsFor("additive_u").compare.help).toBe(
-      "Comparisons come from the study's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next."
+      "Comparisons come from the research team's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next."
     );
   });
 });

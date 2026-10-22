@@ -89,7 +89,7 @@ export function ExportSheet(props: ExportSheetProps) {
 
   // The file is the API's in both layers: its method record is what lets someone rebuild the list. What the plain
   // sheet names and copies is in plain words; the method sheet keeps the API's name and the technical record.
-  const title = LAYOUT.listTitle(n, copy.ruleName(rule));
+  const title = LAYOUT.listTitle(n, copy.rulePlainName(rule));
   const plainRecord = () =>
     [
       title,
@@ -417,7 +417,7 @@ export function ExportSheet(props: ExportSheetProps) {
               {props.pack
                 ? pack.title
                 : plain
-                  ? LAYOUT.listTitle(n, copy.ruleName(rule))
+                  ? LAYOUT.listTitle(n, copy.rulePlainName(rule))
                   : method.segments
                       .sheetTitle(n, copy.ruleShortName(rule))
                       .map((part, index) =>

@@ -47,7 +47,7 @@ describe("bindCopy", () => {
 
   it("uses the recorded comparison and the persistence margin", () => {
     expect(bound.copy.comparisonSentence("additive_u", "additive_no_u")).toContain(
-      "among the 16 schools with every input recorded."
+      "among the 16 schools with one rank under both methods."
     );
     const flagged = bound.schools.find((s) => s.name === "Sample School 02");
     expect(bound.copy.persistenceNote(flagged as never, "additive_u")[1]).toContain(

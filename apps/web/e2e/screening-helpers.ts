@@ -99,7 +99,7 @@ export async function waitForWorkspaceHook(page: Page) {
 
 /** The lists' accessible names, as the copy system words the tabs. */
 export const ORDERED = "ol[aria-label='The list']";
-export const INCOMPLETE = "ol[aria-label='Incomplete records']";
+export const INCOMPLETE = "ol[aria-label='Missing information']";
 /** The two rules of the switch by their labels: the main rule, which the screen opens on, then the urgency sensitivity. */
 export const RULE = {
   main: "Combined factors, without urgency",
@@ -123,11 +123,25 @@ export const queuedRow = (page: Page, name: string) =>
   page.locator(`${INCOMPLETE} button`, { hasText: name });
 export const listNames = (page: Page) =>
   page.locator(`${ORDERED} button span[class*=name]`).allTextContents();
-/** One of the two main rules in the switch. */
+/** One of the two main rules in the switch. The switch shows once the rule area is open (`openRules`). */
 export const mainRule = (page: Page, label: string) =>
-  page
-    .getByRole("group", { name: "The main rule and the urgency sensitivity" })
-    .getByRole("button", { name: label });
+  page.getByRole("group", { name: "How the list is ordered" }).getByRole("button", { name: label });
+/** The rule area's Change, which opens the switch, Other rules and the statement. */
+export const ruleChange = (page: Page) => page.locator("[data-region=rule-change]");
+/** Opens the rule area if it is closed, as a reader does with Change. */
+export async function openRules(page: Page) {
+  const change = ruleChange(page);
+  if ((await change.getAttribute("aria-expanded")) !== "true") await change.click();
+  await expect(page.locator("[data-region=rule-switch]")).toBeVisible();
+}
+/** Help, wherever the layout puts it: the list panel's top, or the top bar in the narrow layout. */
+export const helpButton = (page: Page) => page.locator("[data-region=help-button]:visible");
+/** Opens Help and returns one of its four choices: Guides, Explain this screen, Glossary of terms, How this works. */
+export async function helpItem(page: Page, name: string | RegExp) {
+  const button = helpButton(page);
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  return page.locator("#screening-help-menu").getByRole("button", { name });
+}
 export const tab = (page: Page, name: RegExp) => page.getByRole("tab", { name });
 
 export const markAt = (page: Page, key: string) =>

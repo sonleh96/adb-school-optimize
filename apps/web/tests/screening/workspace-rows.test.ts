@@ -72,7 +72,7 @@ describe("exampleSchool", () => {
 
   const name = (school: { name: string | null } | null) => school?.name ?? null;
 
-  it("takes the range school whose possible places move most, the first of any that tie", () => {
+  it("takes the range school whose possible positions move most, the first of any that tie", () => {
     // 11th to 18th becomes 10th to 17th, and 21st becomes 22nd: both move two places; Sample School 17 comes first.
     expect(name(exampleSchool(both, "additive_u", "additive_no_u"))).toBe("Sample School 17");
   });
@@ -83,7 +83,7 @@ describe("exampleSchool", () => {
     expect(name(exampleSchool(two, "additive_u", "additive_no_u"))).toBe("Sample School 19");
   });
 
-  it("falls back to the school with a single place that moves most when no range school has both", () => {
+  it("falls back to the school with a single position that moves most when no range school has both", () => {
     const completeOnly = both.filter((s) => s.cohort !== "interval");
     // 5th under one rule and 3rd under the other; the two schools above it keep their places.
     expect(name(exampleSchool(completeOnly, "additive_u", "additive_no_u"))).toBe("Sample School 12");

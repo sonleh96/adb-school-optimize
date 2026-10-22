@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Link2, MousePointerClick } from "lucide-react";
+import { Link2, List as ListIcon, Map as MapIcon, MousePointerClick } from "lucide-react";
 import {
   Component,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -24,7 +24,7 @@ import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
-import { GuidanceLayer, GuideMenu, HowLink } from "./guide/GuidanceLayer";
+import { ActionsMenu, GuidanceLayer, HelpMenu } from "./guide/GuidanceLayer";
 import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
 import type { GuideData } from "./guide/types";
 import { Legend } from "./Legend";
@@ -329,7 +329,18 @@ function Workspace() {
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
-  const footHeight = useFootHeight(foot, [ready, layout.keyCollapsed, layout.keyStacked, mode, cardOpen]);
+  // The full key's open state lives here, above the foot, which moves in the page between the narrow List and Map.
+  const [keyOpen, setKeyOpen] = useState(false);
+  // The narrow Map view puts the map's foot before the list in the page, so the keyboard meets the key first.
+  const footFirst = layout.mode === "narrow" && state.pane === "map";
+  const footHeight = useFootHeight(foot, [
+    ready,
+    layout.keyCollapsed,
+    layout.keyStacked,
+    mode,
+    cardOpen,
+    footFirst,
+  ]);
   const padding = useMemo(
     () => mapPadding(layout, cardOpen, footHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `layout` is rebuilt each render; its fields are the key.
@@ -370,7 +381,7 @@ function Workspace() {
     // never on screen, so it is not the one compared with.
     store.setState({ rule, compare: shown?.rule ?? data.requested });
   };
-  // What changed for the main rule, against the rule that puts the urgency value back: the list stays on the main
+  // What changed for the main rule, against the rule that puts the urgency rating back: the list stays on the main
   // rule, as guide 5 and the saved view "With and without urgency" show it.
   const seeWithUrgency = () => {
     store.setState({ rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, view: "ranked" });
@@ -439,6 +450,8 @@ function Workspace() {
     layer,
     layout,
     bands,
+    keyOpen,
+    onKeyToggle: () => setKeyOpen((value) => !value),
     keyboard,
     onSelect: select,
     onPointerHover: setPointerHover,
@@ -530,6 +543,28 @@ function Workspace() {
     [copy, shown, ordered, ready, data.rules, layout.mode, viewport.width]
   );
 
+  const mapFoot = (
+    <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
+      {ready && method.legend ? (
+        method.legend
+      ) : ready ? (
+        <Legend
+          copy={copy}
+          rule={shown?.rule ?? null}
+          bands={bands}
+          ranged={ordered.length - (bands.length ? bands[bands.length - 1].hi : 0)}
+          stacked={layout.keyStacked}
+          stale={stale}
+          open={keyOpen}
+          onToggle={() => setKeyOpen((value) => !value)}
+        />
+      ) : null}
+      <p className={styles.caveat} data-region="caveat">
+        {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
+      </p>
+    </div>
+  );
+
   return (
     <div
       ref={rootRef}
@@ -538,6 +573,11 @@ function Workspace() {
       data-layout={layout.mode}
       data-has-insp={cardOpen || undefined}
       data-card-docked={layout.docked || undefined}
+      data-pane={state.pane}
+      // The guide rail holds the narrow layout's band: a step, or Start here while a card covers the list region.
+      data-rail-band={
+        guidance.stepping ? "step" : guidance.railOpen && state.school !== null ? "start" : undefined
+      }
       data-instant={keyboard || undefined}
       data-gloss={guidance.glossary || undefined}
       data-rail={(guidance.rail ?? 0) > 0 || undefined}
@@ -577,19 +617,50 @@ function Workspace() {
           copy={copy}
           className={styles.topBar}
           actions={
-            <GuideMenu copy={copy} ready={ready}>
-              {(act) => (
-                <>
-                  {method.methodMenuItem(act)}
-                  {copyLink(true)}
-                  {method.exportMenuItem(act)}
-                  {signOut(true)}
-                </>
-              )}
-            </GuideMenu>
+            <>
+              <HelpMenu copy={copy} ready={ready} />
+              <ActionsMenu copy={copy}>
+                {(act) => (
+                  <>
+                    {method.methodMenuItem(act)}
+                    {copyLink(true)}
+                    {method.exportMenuItem(act)}
+                    {signOut(true)}
+                  </>
+                )}
+              </ActionsMenu>
+            </>
           }
         />
+        {/* The narrow layout's choice under the top bar: the list (first), or the map band over it. A school chosen
+            in one is still chosen in the other; a guide step takes the band whichever is chosen. */}
+        <div
+          className={styles.paneSwitch}
+          role="group"
+          aria-label={copy.LAYOUT.paneAria}
+          data-region="pane-switch"
+        >
+          <button
+            type="button"
+            aria-pressed={state.pane === "list"}
+            onClick={() => store.setState({ pane: "list" })}
+          >
+            <ListIcon size={15} aria-hidden />
+            {copy.LAYOUT.paneList}
+          </button>
+          <button
+            type="button"
+            aria-pressed={state.pane === "map"}
+            onClick={() => store.setState({ pane: "map" })}
+          >
+            <MapIcon size={15} aria-hidden />
+            {copy.LAYOUT.paneMap}
+          </button>
+        </div>
+        {/* Help first among the actions, at the top right of the map: always on screen, whatever the list does. The
+            narrow layout keeps its own in the top bar. */}
         <div className={styles.actions} data-region="actions">
+          <HelpMenu copy={copy} ready={ready} />
           {method.methodSwitch}
           {copyLink(false)}
           {method.exportButton}
@@ -603,6 +674,8 @@ function Workspace() {
           </p>
         ) : null}
 
+        {/* The narrow Map view shows the band over the list, so its key comes before the list for the keyboard too. */}
+        {footFirst ? mapFoot : null}
         <section
           data-slot="column"
           className={`${styles.panel} ${styles.column}`}
@@ -610,7 +683,17 @@ function Workspace() {
           inert={layout.docked}
           data-aside={layout.docked || undefined}
         >
-          <Masthead copy={copy} actions={<HowLink copy={copy} />} />
+          <Masthead copy={copy} />
+          {/* The narrow layout's head of the list: what the tool is for, and the caveat, once, where the list shows it
+              whether or not the map band is open. Wide layouts keep both in the masthead and the map's foot. */}
+          <div className={styles.narrowHead} data-region="list-head">
+            <p className={styles.narrowHeadTitle}>{copy.LAYOUT.productSub}</p>
+            <p className={styles.narrowHeadCaveat} data-region="list-caveat">
+              {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
+            </p>
+          </div>
+          {/* A phone's Start here, which scrolls with the list (GuidanceLayer). */}
+          <div data-slot="start-slot" />
 
           {firstLoad ? (
             <p className={styles.state} role="status">
@@ -630,9 +713,11 @@ function Workspace() {
                   shown={shown?.rule ?? null}
                   statement={comparing ? null : data.statement}
                   comparing={comparing}
+                  open={state.rules}
                   disabled={!ready}
                   layer={layer}
                   onRule={changeRule}
+                  onToggle={() => store.setState({ rules: !state.rules })}
                   onSeeWithUrgency={seeWithUrgency}
                   onBack={backToMain}
                 />
@@ -794,7 +879,6 @@ function Workspace() {
                         />
                       </>
                     )}
-                    <p className={styles.listCaveat}>{copy.STRINGS.caveatPlain}</p>
                   </>
                 )}
               </div>
@@ -802,23 +886,7 @@ function Workspace() {
           )}
         </section>
 
-        <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
-          {ready && method.legend ? (
-            method.legend
-          ) : ready ? (
-            <Legend
-              copy={copy}
-              rule={shown?.rule ?? null}
-              bands={bands}
-              collapsed={layout.keyCollapsed}
-              stacked={layout.keyStacked}
-              stale={stale}
-            />
-          ) : null}
-          <p className={styles.caveat} data-region="caveat">
-            {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
-          </p>
-        </div>
+        {footFirst ? null : mapFoot}
 
         {selectedSchool && shown ? (
           <SchoolCard

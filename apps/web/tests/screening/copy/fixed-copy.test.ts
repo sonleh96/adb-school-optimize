@@ -113,6 +113,10 @@ describe("every fixed string follows the writing rules", () => {
     const corpus = new Corpus();
     const LAYOUT_ARGS: Record<string, unknown[]> = {
       otherRulesCount: [5],
+      keyRamp: ["1st", "20th"],
+      keyRampNote: [20, 4],
+      ruleNow: ["additive_no_u"],
+      ruleNowShort: ["additive_no_u"],
       addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],
       notComputedGroup: ["Need first, no urgency", 4],
@@ -123,7 +127,7 @@ describe("every fixed string follows the writing rules", () => {
       positionOf: [3, 20],
       placeRange: ["3rd", "12th"],
       valueRange: ["0.487", "0.537"],
-      underRule: ["Place in the list", "the combined-factors rule with urgency (S)"],
+      underRule: ["Rank in the list", "the combined-factors rule with urgency (S)"],
       groupMany: [3],
       tooltipMissing: ["classroom count blank, power source blank"],
       tipNotComputed: ["Need first"],
@@ -263,9 +267,9 @@ describe("rules", () => {
   });
 
   it("says a rule that leaves urgency out leaves it out", () => {
-    expect(copy.shareSentence("additive_no_u", "U")).toBe("The urgency value is left out by this rule.");
+    expect(copy.shareSentence("additive_no_u", "U")).toBe("The urgency rating is left out by this rule.");
     expect(copy.urgencyNote("additive_no_u").startsWith("Left out by this rule.")).toBe(true);
-    expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency value.")).toBe(true);
+    expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency rating.")).toBe(true);
   });
 
   it("reads the main rule and the urgency sensitivity differently, and the rest by role and paper", () => {
@@ -273,7 +277,7 @@ describe("rules", () => {
       "The main rule of the revised paper, which leaves urgency out"
     );
     expect(copy.ruleRoleLine("additive_u")).toBe(
-      "A sensitivity check that puts the urgency value back, from the circulated paper"
+      "A sensitivity check that puts the urgency rating back, from the circulated paper"
     );
     expect(copy.ruleRoleLine("need_first_no_u")).toBe("Strict alternative, from the revised paper");
     expect(copy.ruleRoleLine("bottleneck_no_u")).toBe("Sensitivity check, from the revised paper");
@@ -299,9 +303,9 @@ describe("rules", () => {
   });
 
   it.each([
-    ["additive_u", "N", "School need counts for 60 percent of the screening score."],
-    ["additive_no_u", "N", "School need counts for about 63 percent of the screening score."],
-    ["additive_u", "need_part", "Each part of school need counts for 12 percent of the screening score."],
+    ["additive_u", "N", "School need counts for 60 percent of the score."],
+    ["additive_no_u", "N", "School need counts for about 63 percent of the score."],
+    ["additive_u", "need_part", "Each part of school need counts for 12 percent of the score."],
     ["benchmark", "Q", "Air quality is left out by this rule."],
     ["need_first_u", "N", "School need sets the order under this rule."],
     [
@@ -312,12 +316,12 @@ describe("rules", () => {
     [
       "bottleneck_u",
       "U",
-      "The urgency value counts for 3 percent of the screening score, and a further 40 percent of the screening score when the urgency value is the school's largest factor.",
+      "The urgency rating counts for 3 percent of the score, and a further 40 percent of the score when the urgency rating is the school's largest factor.",
     ],
     [
       "bottleneck_no_u",
       "need_part",
-      "Each part of school need counts for about 8 percent of the screening score, and a further 8 percent of the screening score when school need is the school's largest factor.",
+      "Each part of school need counts for about 8 percent of the score, and a further 8 percent of the score when school need is the school's largest factor.",
     ],
   ] as const)("says %s's share of %s in words", (id, key, want) => {
     expect(copy.shareSentence(id, key)).toBe(want);
@@ -355,10 +359,10 @@ describe("the term map", () => {
 
   it("refuses a term it does not have", () => {
     expect(() => copy.term("nope" as never)).toThrow("Unknown term: nope");
-    expect(copy.term("rank").label).toBe("Place in the list");
+    expect(copy.term("rank").label).toBe("Rank in the list");
   });
 
-  it("keeps the urgency definition in one place", () => {
+  it("keeps the urgency definition in one position", () => {
     expect(P.TERMS.urgency.line).toBe(P.STRINGS.urgencyDefinition);
     for (const phrase of ["described as hazard-related", "could not be traced", "not known"]) {
       expect(P.STRINGS.urgencyDefinition).toContain(phrase);
@@ -385,17 +389,17 @@ describe("the three ideas", () => {
 
   it("never says 'Some schools' of a single school, and uses the plural for several", () => {
     const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
-    expect(one.ranges.title).toBe("One school shows a range because a reading is missing");
-    expect(one.queue.title).toBe("One school has no place in the list yet because its record is incomplete");
+    expect(one.ranges.title).toBe("One school shows a range because an air-quality figure is missing");
+    expect(one.queue.title).toBe("One school is not in the list yet because information about it is missing");
     for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
       expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
-    expect(one.queue.long).toMatch(/^One of the 12 schools has an incomplete record/);
+    expect(one.queue.long).toMatch(/^One of the 12 schools has information missing/);
     const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
-    expect(several.ranges.title).toBe("Two schools show a range because a reading is missing");
-    expect(several.queue.short).toMatch(/^4 schools have no place/);
+    expect(several.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
+    expect(several.queue.short).toMatch(/^4 schools are not in the list yet/);
   });
 
-  it("says what an air-quality reading is wherever it names the range", () => {
+  it("says what an air-quality figure is wherever it names the range", () => {
     expect(copy.IDEAS.ranges.short).toContain("air-pollution");
     expect(copy.IDEAS.ranges.long).toContain("air-pollution");
   });
@@ -423,7 +427,7 @@ describe("the explainer and the questions", async () => {
       `Under the paper's main rule, ${P.groupsSentence("additive_no_u").replace(/^./, (c) => c.toLowerCase())}`
     );
     expect(P.scope("additive_u").groups).toBe(
-      "96 schools have every input recorded, and three more lack a reading such as air quality and show a range of places, so 99 schools can be put in order."
+      "96 schools have every input recorded, and three more lack a figure such as air quality and show a range of ranks, so 99 schools can be put in order."
     );
   });
 
@@ -547,7 +551,7 @@ describe("the fixed strings that carry a rule of the project", () => {
     expect(METHOD.insp.largestRow(["School need"])).not.toBe(copy.TERMS.school_need.label);
   });
 
-  it("names a missing reading as listed where it would sit if air quality added nothing, never as 0", () => {
+  it("names a missing figure as listed where it would sit if air quality added nothing, never as 0", () => {
     expect(copy.buildScope({}).listOrder).toContain("added nothing");
     expect(copy.TERMS.list_order.line).toContain("added nothing");
   });
@@ -583,8 +587,8 @@ describe("the fixed strings that carry a rule of the project", () => {
     ]) {
       expect(t.startsWith(P.scope("additive_u").groups)).toBe(true);
     }
-    expect(P.scope("additive_u").scopeShort).toBe(
-      "99 schools can be put in order, 96 with every input recorded and 3 that show a range of places."
+    expect(P.scope("additive_u").scopeDetail).toContain(
+      "99 schools can be put in order, 96 with every input recorded and 3 that show a range of ranks."
     );
   });
 });
@@ -650,7 +654,7 @@ describe("counts belong to the data they came from", () => {
     expect(later.HOW_IT_WORKS).toEqual(later.buildHow({}));
     expect(later.FIRST_QUESTIONS).toEqual(later.buildQuestions());
     expect(copy.buildScope({}).groups).toBe(
-      "Schools with every input recorded have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order."
+      "Schools with every input recorded have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order."
     );
   });
 

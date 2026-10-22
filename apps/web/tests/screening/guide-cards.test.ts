@@ -1,5 +1,5 @@
 /**
- * Reproduces a defect found on the study's data: a help card's example, about another school, said word for word
+ * Reproduces a defect found on the research team's data: a help card's example, about another school, said word for word
  * what the open school card already said, because both schools lack the same facilities.
  * Failure mode: a help card repeats a sentence the screen already shows (notes/final.md, "Critique pass 1").
  */

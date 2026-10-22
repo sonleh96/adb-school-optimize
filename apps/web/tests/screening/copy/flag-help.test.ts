@@ -110,7 +110,7 @@ describe("each rule's help", () => {
   it("words each rule's experiment as its own, and the unbound help as both", () => {
     const copy = view("additive_no_u");
     expect(copy.termsFor("additive_no_u").persistent_flag.help).toMatch(
-      /fresh run for this rule and not a measure of what the urgency value changes/
+      /fresh run for this rule and not a measure of what the urgency rating changes/
     );
     expect(copy.termsFor("additive_u").persistent_flag.help).toMatch(
       /circulated paper's experiment, which included urgency\. It is not a result for the rule without urgency/

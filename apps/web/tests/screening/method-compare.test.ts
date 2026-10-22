@@ -5,7 +5,7 @@
  *  2. A comparison of other rules is drawn as if it were the pair on screen.
  *  3. Entrants and exits at the top k disagree with the overlap the API measured.
  *  4. A move sorts into the wrong bin at the edges (4 and 5, 14 and 15), or up and down are confused.
- *  5. A range school's possible places are lost or swapped with the pair.
+ *  5. A range school's possible positions are lost or swapped with the pair.
  */
 import { describe, expect, it } from "vitest";
 
@@ -55,7 +55,7 @@ describe("compareFor", () => {
     }
   });
 
-  it("keeps each range school's possible places with its rule (5)", () => {
+  it("keeps each range school's possible positions with its rule (5)", () => {
     const forward = compareFor(pair, S, NF, 10);
     const back = compareFor(pair, NF, S, 10);
     const school = pair.interval_schools![0];

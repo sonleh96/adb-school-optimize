@@ -8,7 +8,7 @@
  * watches the screen: a step that follows the person's selection retitles for the school they chose, and a step
  * whose screen has moved on says so and offers to show it again.
  */
-import { ArrowRight, Check, SquareDashed } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, SquareDashed, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { type CopySchool, pairwiseFromCompare } from "@/lib/screening/copy";
@@ -48,9 +48,11 @@ interface RailProps {
   data: GuideData;
   roles: Roles | null;
   plan: Plan | null;
+  /** Start here as a short card above the list, its guides folded: the narrow layout. */
+  compact?: boolean;
 }
 
-export default function Rail({ root, data, roles, plan }: RailProps) {
+export default function Rail({ root, data, roles, plan, compact = false }: RailProps) {
   const later = useLater(data.copy);
   const { state } = useLayers();
   if (later.status === "failed") {
@@ -76,7 +78,7 @@ export default function Rail({ root, data, roles, plan }: RailProps) {
       ) : state.rail.kind === "view" ? (
         <ViewStepper root={root} data={data} later={later.copy} />
       ) : (
-        <Start data={data} plan={plan} later={later.copy} />
+        <Start data={data} plan={plan} later={later.copy} compact={compact} />
       )}
     </aside>
   );
@@ -84,87 +86,152 @@ export default function Rail({ root, data, roles, plan }: RailProps) {
 
 /* ---------------------------------------------------------------- the start */
 
-function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; later: LaterCopy }) {
+function Start({
+  data,
+  plan,
+  later,
+  compact,
+}: {
+  data: GuideData;
+  plan: Plan | null;
+  later: LaterCopy;
+  compact: boolean;
+}) {
   const store = useLayerStore();
   const { memory } = useLayers();
-  const { copy } = data;
   const { GUIDE } = later;
   const returning = memory.seen;
   const title = useRef<HTMLHeadingElement>(null);
   const acted = useActed();
+  // On a narrow screen Start here is a short card above the list: one line, the guides folded under it, and Hide.
+  const [unfolded, setUnfolded] = useState(false);
+  const folded = compact && !unfolded;
   useEffect(() => {
-    if (acted()) title.current?.focus({ preventScroll: true });
+    if (!acted()) return;
+    title.current?.focus({ preventScroll: true });
+    // On a narrow screen the card heads the list region, which the reader may have scrolled well past: asked for, it
+    // comes into view, at once when the reader prefers less motion.
+    if (compact)
+      title.current?.closest('[data-testid="guide-rail"]')?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the start list opens.
   }, []);
   const guides = plan ? guidesOf({ later, plan }) : [];
   return (
     <>
-      <div className={styles.railHead}>
+      <div className={`${styles.railHead} ${styles.headRow}`}>
         <span className={styles.eyebrow}>{returning ? GUIDE.returningEyebrow : GUIDE.startEyebrow}</span>
-      </div>
-      <div className={styles.railBody}>
-        <h2 ref={title} className={styles.startTitle} tabIndex={-1}>
-          {GUIDE.startTitle}
-        </h2>
-        <p className={styles.lede}>{copy.TERMS.screening.help}</p>
-        <ol className={styles.tasks} aria-busy={!plan}>
-          {guides.map((guide, index) => {
-            const status = statusOf(memory, guide.id, guide.steps.length);
-            return (
-              <li key={guide.id}>
-                <button
-                  type="button"
-                  className={styles.task}
-                  disabled={!data.ready}
-                  data-guide={guide.id}
-                  onClick={() => store.dispatch({ type: "openGuide", guide: guide.id })}
-                >
-                  <span className={styles.taskN} aria-hidden="true">
-                    {index + 1}
-                  </span>
-                  <span className={styles.taskText}>
-                    <span className={styles.taskTitle}>{guide.title}</span>
-                    <span className={styles.taskSub}>{guide.sub}</span>
-                  </span>
-                  <span className={styles.taskStatus} data-seen={status.kind === "seen" || undefined}>
-                    {status.kind === "seen" ? (
-                      <>
-                        <Check size={12} aria-hidden />
-                        {GUIDE.seen}
-                      </>
-                    ) : status.kind === "left" ? (
-                      GUIDE.stepOf(status.step, status.of)
-                    ) : (
-                      GUIDE.stepCount(status.steps)
-                    )}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+        {/* Hidden, it stays hidden in this browser until Help, then Guides, brings it back. */}
         <button
           type="button"
-          className={styles.howLink}
-          data-region="how-link"
-          onClick={() => store.dispatch({ type: "page", page: "how" })}
-        >
-          <span className={styles.howTitle}>{GUIDE.howTitle}</span>
-          <span className={styles.taskSub}>{GUIDE.howCount(later.HOW_IT_WORKS.length)}</span>
-          <ArrowRight size={14} aria-hidden />
-        </button>
-        <SavedViewsSection data={data} later={later} />
-      </div>
-      <div className={styles.railFoot}>
-        <button
-          type="button"
-          className={`${styles.quiet} ${styles.wide}`}
+          className={styles.hide}
+          data-region="hide-guides"
+          // The short card's dismiss sounds final beside Open the guides; it hides and remembers as Hide does.
+          aria-label={compact ? GUIDE.dismissCompactAria : undefined}
           onClick={() => store.dispatch({ type: "close" })}
         >
-          {returning ? GUIDE.close : GUIDE.explore}
+          {compact ? GUIDE.dismissCompact : GUIDE.hide}
+          <X size={13} aria-hidden />
         </button>
-        <p className={styles.note}>{returning ? GUIDE.returningNote : GUIDE.firstNote}</p>
       </div>
+      <div className={styles.railBody}>
+        {compact ? (
+          <div className={styles.startRow}>
+            <h2 ref={title} className={styles.startShort} tabIndex={-1}>
+              {/* The guides this data can teach: the plan leaves out any it has no example for. */}
+              {GUIDE.startShort(plan ? guides.length : GUIDE.tasks.length)}
+            </h2>
+            <button
+              type="button"
+              className={styles.unfold}
+              data-region="open-guides"
+              // A disclosure: one name, its state in aria-expanded and in the chevron.
+              aria-expanded={unfolded}
+              aria-controls={unfolded ? "screening-start-guides" : undefined}
+              onClick={() => setUnfolded((value) => !value)}
+            >
+              {GUIDE.openGuides}
+              <ChevronDown size={14} aria-hidden data-open={unfolded || undefined} />
+            </button>
+          </div>
+        ) : (
+          <>
+            <h2 ref={title} className={styles.startTitle} tabIndex={-1}>
+              {GUIDE.startTitle}
+            </h2>
+            {/* What the tool is for; its caveat shows once, at the foot of the map. */}
+            <p className={styles.lede}>{GUIDE.startLede}</p>
+          </>
+        )}
+        {folded ? null : (
+          <div id="screening-start-guides">
+            <ol className={styles.tasks} aria-busy={!plan}>
+              {guides.map((guide, index) => {
+                const status = statusOf(memory, guide.id, guide.steps.length);
+                return (
+                  <li key={guide.id}>
+                    <button
+                      type="button"
+                      className={styles.task}
+                      disabled={!data.ready}
+                      data-guide={guide.id}
+                      onClick={() => store.dispatch({ type: "openGuide", guide: guide.id })}
+                    >
+                      <span className={styles.taskN} aria-hidden="true">
+                        {index + 1}
+                      </span>
+                      <span className={styles.taskText}>
+                        <span className={styles.taskTitle}>{guide.title}</span>
+                        <span className={styles.taskSub}>{guide.sub}</span>
+                      </span>
+                      <span className={styles.taskStatus} data-seen={status.kind === "seen" || undefined}>
+                        {status.kind === "seen" ? (
+                          <>
+                            <Check size={12} aria-hidden />
+                            {GUIDE.seen}
+                          </>
+                        ) : status.kind === "left" ? (
+                          GUIDE.stepOf(status.step, status.of)
+                        ) : (
+                          GUIDE.stepCount(status.steps)
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+            <button
+              type="button"
+              className={styles.howLink}
+              data-region="how-link"
+              onClick={() => store.dispatch({ type: "page", page: "how" })}
+            >
+              <span className={styles.howTitle}>{GUIDE.howTitle}</span>
+              <span className={styles.taskSub}>{GUIDE.howCount(later.HOW_IT_WORKS.length)}</span>
+              <ArrowRight size={14} aria-hidden />
+            </button>
+            <SavedViewsSection data={data} later={later} />
+          </div>
+        )}
+      </div>
+      {/* Folded, the card is only its line, its toggle and Hide; Hide says what Explore on my own would. */}
+      {folded ? null : (
+        <div className={styles.railFoot}>
+          {compact ? null : (
+            <button
+              type="button"
+              className={`${styles.quiet} ${styles.wide}`}
+              onClick={() => store.dispatch({ type: "close" })}
+            >
+              {returning ? GUIDE.close : GUIDE.explore}
+            </button>
+          )}
+          <p className={styles.note}>{returning ? GUIDE.returningNote : GUIDE.firstNote}</p>
+        </div>
+      )}
     </>
   );
 }
@@ -209,7 +276,7 @@ function Stepper({
       roles,
       plan,
       agreeK: agree.length ? Math.max(...agree) : null,
-      // Guide 5 shows the main rule, switched to from the rule that puts the urgency value back.
+      // Guide 5 shows the main rule, switched to from the rule that puts the urgency rating back.
       example: exampleSchool(shown.schools, SENSITIVITY_RULE, PRIMARY_RULE),
     };
   }, [data, roles, plan, later, compare.data]);

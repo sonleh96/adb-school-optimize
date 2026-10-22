@@ -14,7 +14,7 @@ export function seedsOf(roles: Roles, urgencyRule: boolean): Seeds {
   const seeds: { -readonly [K in keyof Seeds]: Seeds[K] } = {};
   if (roles.complete.length > 0) {
     seeds.top = query({ rule: PRIMARY_RULE });
-    // The main rule, compared with the rule that puts the urgency value back over the schools with every input
+    // The main rule, compared with the rule that puts the urgency rating back over the schools with every input
     // recorded, as the statement's link and guide 5 show it.
     if (urgencyRule) seeds.urgency = query({ rule: PRIMARY_RULE, compare: SENSITIVITY_RULE });
   }

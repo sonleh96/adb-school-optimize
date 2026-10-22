@@ -4,7 +4,7 @@
  * Failure modes, each with the test that catches it:
  *  1. One school's malformed input throws, and building the copy for the list fails for every school.
  *  2. The unreadable input becomes a blank, so the record says a value is missing that is there but cannot be read.
- * Sample School 08 is given a text where its total of classrooms and its air-quality reading should be numbers.
+ * Sample School 08 is given a text where its total of classrooms and its air-quality figure should be numbers.
  */
 import { describe, expect, it } from "vitest";
 
@@ -45,11 +45,11 @@ describe("a list with one malformed stored input", () => {
   it("says that school's inputs cannot be read, and not that they are blank", () => {
     expect(s08.unreadable).toEqual(["classrooms_total", "aqi"]);
     expect(bound.copy.missingSentences(s08, "additive_u")[0]).toBe(
-      "The total number of classrooms and the air-quality reading in the record cannot be read, so they are not used."
+      "The total number of classrooms and the air-quality figure in the record cannot be read, so they are not used."
     );
     expect(bound.copy.missingSentence(s08, "additive_u")).not.toMatch(/blank/);
     expect(bound.copy.missingValueNote(s08, "air")).toBe(
-      "The air-quality reading in the record cannot be read, so it is not counted as 0."
+      "The air-quality figure in the record cannot be read, so it is not counted as 0."
     );
   });
 

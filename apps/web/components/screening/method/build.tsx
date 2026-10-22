@@ -168,6 +168,8 @@ export function buildMounts(input: BuildInput): Built {
     stale,
     ranges: ordered.length - complete,
     incomplete: input.rows.length - ordered.length,
+    open: input.keyOpen,
+    onToggle: input.onKeyToggle,
   };
   const legend =
     comparing && compared && a ? (

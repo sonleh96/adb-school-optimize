@@ -1,5 +1,5 @@
 /**
- * A reading the engine cannot use is a missing reading, whether the source left it blank or recorded a value that
+ * A reading the engine cannot use is a missing figure, whether the source left it blank or recorded a value that
  * is out of range (a negative air-quality index or emissions figure, a land fraction outside 0 to 1).
  *
  * Failure modes, each with the test that catches it:
@@ -37,13 +37,13 @@ const load = (b: Body, view: copy.CopyRuleId = "additive_u") =>
   schoolFromDetail(parseWith(schoolDetailResponse, b, "school"), view);
 
 describe.each([
-  ["aqi_p95_selected", "Q", -4, "aqi", "air", "air-quality reading"],
+  ["aqi_p95_selected", "Q", -4, "aqi", "air", "air-quality figure"],
   ["emissions_co2e_100yr_10km_tonnes", "E", -10, "emissions", "emissions", "nearby emissions figure"],
   ["water_flooded_vegetation_fraction_500m", "L", 1.4, "land", "land", "land-cover figure"],
 ] as const)("a recorded %s the engine cannot use", (input, component, value, flag, key, noun) => {
   const s = load(unusable(input, component, value));
 
-  it("is a missing reading", () => {
+  it("is a missing figure", () => {
     expect(s.cohort).toBe("interval");
     expect(s.missing_env[flag]).toBe(true);
     expect(s.raw[`${component}_raw` as "Q_raw"]).toBe(value);
@@ -52,7 +52,7 @@ describe.each([
   it("is not read as recorded", () => {
     expect(copy.missingValueKind(s, key)).toBe("unresolved");
     expect(copy.missingValueNote(s, key)).toBe(
-      `The ${noun} recorded for this school cannot be used, so it is not counted as 0. The school shows a range of places instead of one place.`
+      `The ${noun} recorded for this school cannot be used, so it is not counted as 0. The school shows a range of ranks instead of one rank.`
     );
     expect(copy.inputSentence(s, key)).toMatch(/cannot use it, so it is not counted as 0\.$/);
     expect(copy.inputSentence(s, key)).not.toContain(String(value));
@@ -86,7 +86,7 @@ describe("the list route and the detail route", () => {
     for (const r of b.rules) r.result.components.Q = null;
     const s = load(b);
     expect(s.missing_env.aqi).toBe(true);
-    expect(copy.missingValueNote(s, "air")).toMatch(/^No air-quality reading is recorded for this school/);
+    expect(copy.missingValueNote(s, "air")).toMatch(/^No air-quality figure is recorded for this school/);
   });
 });
 

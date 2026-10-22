@@ -6,7 +6,7 @@
  *     "cannot be put in order under any rule" when the other rules put it in order.
  *  2. Both places are said against the group of the rule shown, though the groups differ between rules (16, 17 and
  *     21 schools with every input recorded in the saved responses).
- *  3. The worked example in How this works compares two possible places against one group.
+ *  3. The worked example in How this works compares two possible ranks against one group.
  */
 import { describe, expect, it } from "vitest";
 
@@ -50,7 +50,7 @@ describe("a school held back under the rule shown, from the list route", () => {
     counts: countsFromResults(lists.additive_u),
     countsByRule: byRule,
   });
-  // Sample School 23 lacks an urgency value, so the rules that read urgency hold it back.
+  // Sample School 23 lacks an urgency rating, so the rules that read urgency hold it back.
   const s23 = placed.find((s) => s.name === "Sample School 23");
 
   it("keeps its results under the rules that put it in order", () => {
@@ -63,7 +63,7 @@ describe("a school held back under the rule shown, from the list route", () => {
     expect(place).toBeGreaterThan(0);
     const text = P.rangeComparisonSentence(s23 as never, "additive_u", "additive_no_u");
     expect(text).toBe(
-      `Under ${S0}, Sample School 23 is ${copy.ordinal(place as number)} among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because its record is incomplete.`
+      `Under ${S0}, Sample School 23 is ${copy.ordinal(place as number)} among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because information about it is missing.`
     );
     expect(text).not.toMatch(/any rule/);
     expect(textProblems(text)).toEqual([]);
@@ -71,7 +71,7 @@ describe("a school held back under the rule shown, from the list route", () => {
 
   it("is said to be held back under both when both rules hold it", () => {
     expect(P.rangeComparisonSentence(s23 as never, "additive_u", "benchmark")).toBe(
-      `Sample School 23 cannot be put in order under ${S} or ${B} yet, because its record is incomplete.`
+      `Sample School 23 cannot be put in order under ${S} or ${B} yet, because information about it is missing.`
     );
   });
 });
@@ -100,7 +100,7 @@ describe("a school held back under the rule shown, from the detail route", () =>
   it("says where the other rule puts it", () => {
     const P = copy.copyFor({ counts: { complete: 16 }, countsByRule: { additive_no_u: { complete: 17 } } });
     expect(P.rangeComparisonSentence(s, "additive_u", "additive_no_u")).toBe(
-      `Under ${S0}, Sample School 08 is 1st among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because its record is incomplete.`
+      `Under ${S0}, Sample School 08 is 1st among the 17 schools with a record for every input the rule uses. It cannot be put in order under ${S} yet, because information about it is missing.`
     );
   });
 });
@@ -145,7 +145,7 @@ describe("the worked example in How this works", () => {
   it("names the group of each rule when they differ", async () => {
     const text = (await example(byRule)) as string;
     expect(text).toContain(
-      "possible places among all the schools that can be put in order under each rule are"
+      "possible ranks among all the schools that can be put in order under each rule are"
     );
     expect(textProblems(text)).toEqual([]);
   });
@@ -155,12 +155,12 @@ describe("the worked example in How this works", () => {
       additive_u: byRule.additive_u,
       additive_no_u: byRule.additive_u,
     })) as string;
-    expect(same).toContain("possible places among all 21 schools that can be put in order are");
+    expect(same).toContain("possible ranks among all 21 schools that can be put in order are");
   });
 });
 
 describe("the saved detail of a school", () => {
-  it("still reads a range school's range and the benchmark's single place in the group both count", () => {
+  it("still reads a range school's range and the benchmark's single rank in the group both count", () => {
     const shown = schoolFromDetail(fixtureDetail(KEYS.interval), "additive_u");
     const P = copy.copyFor({ counts: countsFromResults(lists.additive_u), countsByRule: byRule });
     expect(P.rangeComparisonSentence(shown, "additive_u", "benchmark")).toBe(
@@ -197,7 +197,7 @@ describe("the top 10 changes between two rules", () => {
     const text = P.comparisonSentence("additive_u", "additive_no_u", undefined, { top: 10 });
     const overlap = compare.pairwise[0].top10_overlap;
     expect(overlap).toBe(9);
-    expect(text).toContain("9 of the top 10 schools are the same under both.");
+    expect(text).toContain("9 of the top 10 schools are the same under both methods.");
     expect(text.match(/joins the top 10/g) ?? []).toHaveLength(10 - overlap);
     expect(text.match(/drops out of the top 10/g) ?? []).toHaveLength(10 - overlap);
   });

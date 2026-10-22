@@ -2,10 +2,10 @@
  * Which inputs a rule reads decides what "every input recorded" can mean under it.
  *
  * Failure modes, each with the test that catches it:
- *  1. The benchmark reads no air-quality, emissions or land-cover figure, so a school with a missing reading is
+ *  1. The benchmark reads no air-quality, emissions or land-cover figure, so a school with a missing figure is
  *     complete under it. The copy said all of that school's inputs are recorded, and that the benchmark's group of
  *     21 schools all have every input recorded, when five of them lack a reading.
- *  2. The rules that leave urgency out put a school with no urgency value in order. The copy said the same of it.
+ *  2. The rules that leave urgency out put a school with no urgency rating in order. The copy said the same of it.
  *  3. A rule that reads every input is worded as before.
  * The records are the API's own saved lists.
  */
@@ -51,11 +51,11 @@ describe("the group of schools with their inputs recorded", () => {
 
   it("is worded as before under a rule that reads every input", () => {
     expect(P.groupsSentence("additive_u")).toBe(
-      "16 schools have every input recorded, and five more lack a reading such as air quality and show a range of places, so 21 schools can be put in order."
+      "16 schools have every input recorded, and five more lack a figure such as air quality and show a range of ranks, so 21 schools can be put in order."
     );
   });
 
-  it("is worded by the inputs the benchmark reads, which includes schools with a missing reading", () => {
+  it("is worded by the inputs the benchmark reads, which includes schools with a missing figure", () => {
     const text = P.groupsSentence("benchmark");
     expect(text).toBe(
       "21 schools have a record for every input the rule uses, so 21 schools can be put in order."
@@ -71,12 +71,12 @@ describe("the group of schools with their inputs recorded", () => {
 
   it("says no number it was not given", () => {
     expect(copy.groupsSentence(undefined, { urgency: true, readings: false })).toBe(
-      "Schools with a record for every input the rule uses have one place each, and can be put in order."
+      "Schools with a record for every input the rule uses have one rank each, and can be put in order."
     );
   });
 });
 
-describe("a school with a missing reading, under the benchmark", () => {
+describe("a school with a missing figure, under the benchmark", () => {
   const P = copy.copyFor({
     schools: underBenchmark,
     counts: countsFromResults(lists.benchmark),
@@ -92,7 +92,7 @@ describe("a school with a missing reading, under the benchmark", () => {
   it("does not have all of its inputs recorded, and still names the reading that is missing", () => {
     expect(P.missingSentences(s17, "benchmark")).toEqual([
       "All of the inputs this rule uses are recorded.",
-      "Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not use it.",
+      "Its air-quality figure, an air-pollution index for its location, is missing, but this rule does not use it.",
     ]);
     expect(P.missingSentence(s17, "benchmark")).not.toMatch(/all of its inputs/i);
   });
@@ -110,7 +110,7 @@ describe("a school with a missing reading, under the benchmark", () => {
   });
 });
 
-describe("a school with no urgency value, under a rule that leaves urgency out", () => {
+describe("a school with no urgency rating, under a rule that leaves urgency out", () => {
   const P = copy.copyFor({
     schools: underNoUrgency,
     counts: countsFromResults(lists.additive_no_u),
@@ -118,11 +118,11 @@ describe("a school with no urgency value, under a rule that leaves urgency out",
   });
   const s23 = named(underNoUrgency, "Sample School 23");
 
-  it("is complete there, and says its urgency value is not recorded but not needed", () => {
+  it("is complete there, and says its urgency rating is not recorded but not needed", () => {
     expect(s23.cohort).toBe("complete");
     expect(P.missingSentences(s23, "additive_no_u")).toEqual([
       "All of the inputs this rule uses are recorded.",
-      "Its urgency value is not recorded, but this rule does not use it.",
+      "Its urgency rating is not recorded, but this rule does not use it.",
     ]);
   });
 });

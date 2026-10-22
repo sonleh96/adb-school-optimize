@@ -83,7 +83,7 @@ describe("the records of a list", () => {
         "4 kinds",
         "Remoteness off the scale, needs checking",
         "Teacher count blank",
-        "Urgency value not recorded",
+        "Urgency rating not recorded",
       ].sort()
     );
   });
@@ -221,11 +221,11 @@ describe("a range row's one line of why", () => {
   it("names every reading a range school lacks when it lacks more than one", () => {
     const s = without(byName("Sample School 17"), ["aqi", "land"]);
     expect(copy.rangeRowWhy(s)).toBe(
-      "Its air-quality reading and land-cover figure are missing, so the school shows a range of places."
+      "Its air-quality figure and land-cover figure are missing, so the school shows a range of ranks."
     );
     const all = without(byName("Sample School 17"), ["aqi", "emissions", "land"]);
     expect(copy.rangeRowWhy(all)).toBe(
-      "Its air-quality reading, nearby emissions figure and land-cover figure are missing, so the school shows a range of places."
+      "Its air-quality figure, nearby emissions figure and land-cover figure are missing, so the school shows a range of ranks."
     );
     expect(textProblems(copy.rangeRowWhy(all) as string)).toEqual([]);
   });

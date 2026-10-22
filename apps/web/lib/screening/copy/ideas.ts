@@ -24,48 +24,48 @@ export function buildIdeas(c: CountBag = {}) {
   const noQueue = known(c, "queue") && c.queue === 0;
   return Object.freeze({
     notVerdict: {
-      title: "A place in the list is a suggestion, not a verdict",
+      title: "A rank in the list is a suggestion, not a verdict",
       short:
-        "A place in the list suggests which schools to inspect first under the chosen rule. It is not a verdict on condition, safety or funding.",
-      long: "The list puts schools in the order a rule suggests for a closer look. A high place means the school's records, read through that rule, point to inspecting it sooner. It does not show that the school's buildings are in bad shape, and a low place does not mean it is fine. Only an inspection visit can establish the facts.",
+        "A rank in the list suggests which schools to look at first under this method. It is not a verdict on condition, safety or funding.",
+      long: "The list puts schools in the order a method suggests for a closer look. A high rank means what is known about the school points to visiting it sooner. It does not show that the school's buildings are in bad shape, and a low rank does not mean it is fine. Only an inspection visit can establish the real facts.",
     },
     ranges: noRange
       ? {
-          title: "No school shows a range here, because every school has its readings",
+          title: "No school shows a range here, because every school has its figures",
           short:
-            "No school lacks an air-quality reading, an air-pollution index for its location. One that did would show the highest and lowest places it could take.",
-          long: "No school lacks an air-quality reading, an air-pollution index for each school's location, so none shows a range here. A school that did would not have its missing reading guessed. The tool would work out the highest and lowest places it could take among all the schools that can be put in order, listing it where air quality added nothing.",
+            "No school lacks an air-quality figure, an air-pollution index for its location. One that did would show the highest and lowest ranks it could take.",
+          long: "No school lacks an air-quality figure, an air-pollution index for each school's location, so none shows a range here. A school that did would not have its missing figure guessed. The tool would work out the highest and lowest ranks it could take among all the schools that can be put in order, listing it where air quality added nothing.",
         }
       : oneRange
         ? {
-            title: "One school shows a range because a reading is missing",
+            title: "One school shows a range because an air-quality figure is missing",
             short:
-              "One school lacks an air-quality reading, an air-pollution index for its location. It shows the highest and lowest places it could take in the list.",
-            long: `One school lacks an air-quality reading, an air-pollution index for the school's location, and the tool does not guess it. It works out the highest and lowest places that school could take among ${ordered} schools that can be put in order. The list then shows it where it would sit if air quality added nothing to its screening score.`,
+              "One school lacks an air-quality figure, an air-pollution index for its location. It shows the highest and lowest ranks it could take in the list.",
+            long: `One school lacks an air-quality figure, an air-pollution index for the school's location, and the tool does not guess it. It works out the highest and lowest ranks that school could take among ${ordered} schools that can be put in order. The list shows it where it would sit if air quality added nothing at all to its score.`,
           }
         : {
-            title: `${rangeLead} schools show a range because a reading is missing`,
-            short: `${rangeLead} schools lack an air-quality reading, an air-pollution index for their location. They show the highest and lowest places they could take in the list.`,
-            long: `${rangeLead} schools lack an air-quality reading, an air-pollution index for each school's location, and the tool does not guess it. It works out the highest and lowest places each one could take among ${ordered} schools that can be put in order. The list then shows them where they would sit if air quality added nothing to their screening score.`,
+            title: `${rangeLead} schools show a range because an air-quality figure is missing`,
+            short: `${rangeLead} schools lack an air-quality figure, an air-pollution index for their location. They show the highest and lowest ranks they could take in the list.`,
+            long: `${rangeLead} schools lack an air-quality figure, an air-pollution index for each school's location, and the tool does not guess it. It works out the highest and lowest ranks each one could take among ${ordered} schools that can be put in order. The list shows them where they would sit if air quality added nothing at all to their score.`,
           },
     queue: noQueue
       ? {
-          title: "No school lacks a place in the list because its record is incomplete",
+          title: "No school is left out of the list because information about it is missing",
           short:
-            "No school lacks a place in the list yet through an incomplete record. One would show what is missing. That says nothing about its need.",
-          long: "No school has an incomplete record, like a blank power source or 0 classrooms recorded. School need is built from five parts of each school's record, so a school missing a part could not be put in order until someone checked it. Its entry would show what is missing. Having no place yet would not mean its need is low.",
+            "No school is left out of the list yet for any missing information. One would show what is missing. That says nothing about its need.",
+          long: "No school has information missing, like a blank power source or 0 classrooms. School need is built from five parts of each school's information, so a school missing a part could not be put in order until someone checked it. Its entry would show what is missing. Not being in the list yet would not mean its need is low.",
         }
       : oneQueued
         ? {
-            title: "One school has no place in the list yet because its record is incomplete",
+            title: "One school is not in the list yet because information about it is missing",
             short:
-              "One school has no place in the list yet because its record is incomplete. Its entry shows what is missing. That says nothing about need.",
-            long: `One of ${ofAll} schools has an incomplete record, such as a blank power source or 0 classrooms recorded. School need is built from five parts of each school's record, so this school cannot be put in order until someone checks it. Its entry shows what is missing. Having no place yet does not mean a school's need is low.`,
+              "One school is not in the list yet because information about it is missing. Its entry shows what is missing. That says nothing about need.",
+            long: `One of ${ofAll} schools has information missing, such as a blank power source or 0 classrooms recorded. School need is built from five parts of each school's information, so this school cannot be put in order until someone checks it. Its entry shows what is missing. Not being in the list yet does not mean its need is low.`,
           }
         : {
-            title: "Some schools have no place in the list yet because their records are incomplete",
-            short: `${queueLead} schools have no place in the list yet because their records are incomplete. Each one shows what is missing. That says nothing about need.`,
-            long: `${queueOfAll} schools have incomplete records, such as a blank power source or 0 classrooms recorded. School need is built from five parts of each school's record, so these schools cannot be put in order until someone checks them. Each school's entry shows what is missing. Having no place yet does not mean a school's need is low.`,
+            title: "Some schools are not in the list yet because information about them is missing",
+            short: `${queueLead} schools are not in the list yet because information about them is missing. Each one shows what is missing. That says nothing about need.`,
+            long: `${queueOfAll} schools have information missing, such as a blank power source or 0 classrooms. School need is built from five parts of each school's information, so these schools cannot be put in order until someone checks them. Each school's entry shows what is missing. Not being in the list yet does not mean their need is low.`,
           },
   });
 }

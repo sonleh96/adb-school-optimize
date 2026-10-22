@@ -72,7 +72,8 @@ export interface GuideContext {
  * a key the workspace gains (the method details' `analyst`, `mode`, `panel` and the rest) fails the typecheck here
  * until it is given its starting value.
  */
-export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
+/** Every key but `pane`: the narrow layout shows a step's band whatever the reader chose, and keeps the choice. */
+export const BASE: { readonly [K in Exclude<StateKey, "pane">]: Patch[K] } = Object.freeze({
   rule: PRIMARY_RULE,
   compare: null,
   view: "ranked",
@@ -81,6 +82,8 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  // The rule area starts closed, as a first-time reader sees it; the steps that point at its switch open it.
+  rules: false,
   // The method details are off, so a step shows the plain screen with nothing open.
   analyst: false,
   mode: "screen",
@@ -98,7 +101,7 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
 });
 
 /** The keys a step owns, in `BASE`'s order. */
-export const STEP_KEYS = Object.keys(BASE) as StateKey[];
+export const STEP_KEYS = Object.keys(BASE) as Exclude<StateKey, "pane">[];
 
 const text = (value: string): Segments => [value];
 const para = (value: string | Segments, lead?: string): Paragraph => ({
@@ -259,7 +262,7 @@ export function stepView(
         title: staticTitle,
         body: [para(TERMS.export.line), para(TERMS.shortlist_size.help), para(TERMS.manifest.line)],
         // The narrow layout keeps Download the top list in its menu; a ring takes in whichever of the two shows.
-        targets: [[region("export-button"), '[aria-controls="screening-menu"]']],
+        targets: [[region("export-button"), region("actions-menu")]],
       };
     case "q2.why":
       return {
@@ -395,7 +398,7 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [para(TERMS.urgency.help)],
-        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, rules: true },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };
@@ -419,7 +422,7 @@ export function stepView(
         title: staticTitle,
         body: [para(copy.ruleExplanation(PRIMARY_RULE))],
         tryIt: text(call<string>(sc.tryIt, copy.ruleLabel(SENSITIVITY_RULE))),
-        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, rules: true },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };

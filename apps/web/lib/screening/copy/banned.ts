@@ -7,7 +7,7 @@ export const BANNED = Object.freeze([
   { pattern: /\brisk/i, why: "No input measures risk; the screen proposes inspection attention only." },
   {
     pattern: /(?<!real )\bhazard(?!-related)/i,
-    why: "The urgency value is described as hazard-related, but how it was made could not be traced. Only say what leaving it out does not say, about real hazards.",
+    why: "The urgency rating is described as hazard-related, but how it was made could not be traced. Only say what leaving it out does not say, about real hazards.",
   },
   {
     pattern: /\bflood(?!ed vegetation)/i,
@@ -36,7 +36,7 @@ export const BANNED = Object.freeze([
   { pattern: /(?<!not a )\bverdict/i, why: "Only used to say a place is not a verdict." },
   {
     pattern: /\bprobabilit|\bconfidence|\bmargin of error/i,
-    why: "Ranges are bounds from a missing reading, not statistical uncertainty.",
+    why: "Ranges are bounds from a missing figure, not statistical uncertainty.",
   },
   { pattern: /\bimput|\bestimated value/i, why: "Missing values are never filled in." },
   {
@@ -53,7 +53,7 @@ export const BANNED = Object.freeze([
     pattern: /\bplaced\b/i,
     why: "Retired in round 3: testers read it as chosen or approved; say can be put in order.",
   },
-  { pattern: /(?<!screening )\bscore\b/i, why: "One name for the number a rule gives: screening score." },
+  { pattern: /\bscreening scores?\b/i, why: "Say score: screening reads as a check on people." },
   {
     pattern: /\breading counts as\b|\bcounts? as 0\b(?! or)/i,
     why: "Reads as scoring zero; say where they would sit if air quality added nothing.",

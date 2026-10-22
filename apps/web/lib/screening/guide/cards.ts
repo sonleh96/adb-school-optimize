@@ -27,7 +27,7 @@ export interface CardModel {
   readonly chips?: readonly string[];
   readonly line: string;
   readonly body?: string;
-  /** What adds most to a school's screening score. */
+  /** What adds most to a school's score. */
   readonly receipt?: {
     readonly rows: readonly { readonly label: string; readonly value: number }[];
     readonly rest: number;

@@ -10,9 +10,9 @@ import { KEYS, LAYOUT } from "./words";
 // Each is built once from segments. The string form passes a name as plain text and the marked form passes it as a
 // name, so the two read the same and the marked form knows where each name sits.
 const whyTitle = (who: Segments, place: string | null): Segments =>
-  place ? seg`What puts ${who} ${place}` : seg`${who} has no place in the list yet`;
+  place ? seg`What puts ${who} ${place}` : seg`${who} is not in the list yet`;
 const rangeTitle = (who: Segments, place: string | null): Segments =>
-  place ? seg`${who} could be ${place}` : seg`${who} has no place under this rule`;
+  place ? seg`${who} could be ${place}` : seg`${who} has no rank under this method`;
 const rangeTryIt = (names: Segments, n: number): Segments =>
   n === 1
     ? seg`It is ${names}. Select it.`
@@ -22,9 +22,9 @@ const rangeTryIt = (names: Segments, n: number): Segments =>
 const orderBody = (who: Segments, a: Segments, aPlace: string, b: Segments, bPlace: string): Segments =>
   seg`So ${who} sits between ${a}, ${aPlace}, and ${b}, ${bPlace}.`;
 const mapBody = (who: Segments): Segments =>
-  seg`The map draws it without the blue used for places in the list, so ${who} never looks like it has one place.`;
+  seg`The map draws it without the blue used for ranks in the list, so ${who} never looks like it has one rank.`;
 const schoolTitle = (who: Segments): Segments => seg`What ${who} is missing`;
-const rangesBody = (who: Segments): Segments => seg`The example under it follows ${who} under both rules.`;
+const rangesBody = (who: Segments): Segments => seg`The example under it follows ${who} under both methods.`;
 
 /** The same lines with each school's name marked, for a screen that sets names apart. `names` are plain names. */
 export const GUIDE_SEGMENTS = Object.freeze({
@@ -50,8 +50,18 @@ export const GUIDE = Object.freeze({
   howTitle: LAYOUT.howTitle,
   explore: "Explore on my own",
   close: "Close guides",
-  firstNote: "Guides stay one click away, in the bar on the map.",
-  returningNote: "Each guide puts the screen in the right state, then hands it back.",
+  firstNote: "To see the guides again, choose Help, then Guides.",
+  returningNote: "To see the guides again, choose Help, then Guides.",
+  // Under "What do you want to find out?": what the tool is for, without the caveat the screen shows once at the map's foot.
+  startLede: "This tool suggests which schools to look at first, with the main reason for each.",
+  hide: "Hide the guides",
+  // The compact Start here card on narrow screens: one line on what the guides are, and the control that unfolds them.
+  startShort: (n: number) =>
+    `${capitalise(countWord(n))} short ${plural(n, "guide shows", "guides show")} how to read this screen.`,
+  // The compact card's dismiss, worded as a final choice so it is not read as the twin of Open the guides.
+  dismissCompact: "No thanks",
+  dismissCompactAria: "No thanks, hide the guides",
+  openGuides: "Open the guides",
   onScreen: "On screen",
   tryIt: "Try it",
   upNext: "Up next",
@@ -70,7 +80,7 @@ export const GUIDE = Object.freeze({
   railAria: "Guide",
   sectionsAria: "Sections",
   seen: "Seen",
-  stepCount: (n: number) => `${n} ${plural(n, "step", "steps")}`,
+  stepCount: (n: number) => `${n}-step guide`,
   howCount: (n: number) => `${n} short ${plural(n, "section", "sections")} on how the list is made`,
   seenCount: (n: number, m: number) => `${n} of ${m} seen`,
   drift: "The screen has moved on from this step.",
@@ -81,13 +91,13 @@ export const GUIDE = Object.freeze({
   viewFallbackOnScreen: "The list, the map and the school card",
   seedViews: Object.freeze({
     top: Object.freeze({
-      name: "Top of the list under the paper's main rule",
+      name: "Top of the list under the main method",
       onScreen: "The list and the map",
     }),
-    urgency: Object.freeze({ name: "With and without urgency" }),
-    range: Object.freeze({ name: "A school with possible places" }),
+    urgency: Object.freeze({ name: "With and without the urgency rating" }),
+    range: Object.freeze({ name: "A school with a range of ranks" }),
     queue: Object.freeze({
-      name: "Schools with incomplete records",
+      name: "Schools with missing information",
       onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what is missing`,
     }),
   }),
@@ -96,10 +106,10 @@ export const GUIDE = Object.freeze({
   // The card is named for what it is, not for where it sits: in the narrow layout it replaces the list below the map.
   pointToCard: (n: number) =>
     n === 1
-      ? "The school card lists the one thing that adds most to its screening score, in the school's own record."
+      ? "The school card lists the one thing that adds most to its score, in the school's own record."
       : n > 0
-        ? `The school card lists the ${SMALL[n] || n} things that add most to its screening score, in the school's own record.`
-        : "The school card shows what adds to its screening score.",
+        ? `The school card lists the ${SMALL[n] || n} things that add most to its score, in the school's own record.`
+        : "The school card shows what adds to its score.",
   pointToMissing:
     "The school card names each missing detail, and whether it is blank or recorded as 0 and needing a check.",
   // The card numbers the reasons inside school need.
@@ -113,17 +123,21 @@ export const GUIDE = Object.freeze({
     [
       {
         id: "q1",
-        title: "Which schools to inspect first",
+        title: "Which schools to look at first",
         sub: IDEAS.notVerdict.title,
         steps: [
           { key: "first", title: "Where to look first", onScreen: "The first rows of the list" },
-          { key: "rule", title: "The rule is named at the top", onScreen: "The rule, above the list" },
+          {
+            key: "rule",
+            title: "The list says how it is ordered",
+            onScreen: "The line above the list that says how it is ordered",
+          },
           {
             key: "map",
             title: "The map shows the same order",
             onScreen: "The first school on the map, and the key",
             body: "Numbered dots are the first 10. The darker the blue, the earlier the school comes in the list.",
-            tryIt: "Move the pointer over any dot to read its place in the list.",
+            tryIt: "Move the pointer over any dot to read its rank in the list.",
           },
           {
             key: "download",
@@ -136,7 +150,7 @@ export const GUIDE = Object.freeze({
       {
         id: "q2",
         title: "Why a school sits where it does",
-        sub: "The things that add most, in the school's own record",
+        sub: "The main reasons, from what is known about the school",
         steps: [
           {
             key: "why",
@@ -147,27 +161,27 @@ export const GUIDE = Object.freeze({
           {
             key: "need",
             title: (needReasons: boolean) =>
-              needReasons ? "The reasons sit inside school need" : "Every input has its own row",
+              needReasons ? "The reasons sit inside school need" : "Every item has its own row",
             onScreen: 'School need, inside "Why it sits here"',
           },
           {
             key: "adds",
-            title: "What each input adds",
+            title: "What each item adds",
             onScreen: '"In numbers", lower in the school card',
-            tryIt: `Turn on "Show method details" to see each input's share and its place in the list under all ${ruleCountWord()} rules.`,
+            tryIt: `Turn on "For researchers: show method details" to see each item's share and its rank in the list under all ${ruleCountWord()} methods.`,
           },
         ],
       },
       {
         id: "q3",
-        title: "Why some schools show a range",
+        title: "Why some schools show a range of ranks",
         sub: IDEAS.ranges.title,
         steps: [
           {
             key: "range",
             title: (name: string, place: string | null) => textOf(rangeTitle([name], place)),
             onScreen: "The school card",
-            body: "The school card gives its highest and lowest places in the list, and whether it is in the top 20 either way.",
+            body: "The school card gives its highest and lowest ranks in the list, and whether it is in the top 20 either way.",
             tryIt: (names: string, n: number) => textOf(rangeTryIt([names], n)),
           },
           {
@@ -187,18 +201,18 @@ export const GUIDE = Object.freeze({
       },
       {
         id: "q4",
-        title: "Which schools cannot be put in order yet",
+        title: "Which schools are not in the list yet",
         sub: IDEAS.queue.title,
         steps: [
           {
             key: "list",
             title: (count: number) =>
               count === 1
-                ? "One school cannot be put in order yet"
+                ? "One school is not in the list yet"
                 : count === 0
-                  ? "Every school can be put in order"
-                  : `${count} schools cannot be put in order yet`,
-            onScreen: "The Incomplete records tab and its list",
+                  ? "Every school is in the list"
+                  : `${count} schools are not in the list yet`,
+            onScreen: "The Missing information tab and its list",
           },
           {
             key: "group",
@@ -216,35 +230,35 @@ export const GUIDE = Object.freeze({
       },
       {
         id: "q5",
-        title: "What changes without the urgency value",
-        sub: "What did leaving the uncertain urgency value out change?",
+        title: "What changes with the earlier method",
+        sub: "The earlier method also counted an urgency rating whose source could not be traced.",
         steps: [
           {
             key: "agree",
             title: (k: number | null) =>
               k
-                ? `The same ${k} schools make the top ${k} with or without urgency`
-                : "With or without urgency",
+                ? `The same ${k} schools make the top ${k} with or without the urgency rating`
+                : "With or without the urgency rating",
             onScreen: '"What changed", at the top of the list',
-            body: "\"What changed\", at the top of the list, compares the circulated paper's rule with urgency and the main rule without it, using the study's recorded comparison.",
+            body: '"What changed", at the top of the list, compares the earlier method, which also counts the urgency rating, with the main method, which leaves it out, using the research team\'s recorded comparison.',
           },
           {
             key: "why",
-            title: "Why the urgency value is left out",
-            onScreen: "The main rule and the urgency sensitivity, above the list",
+            title: "Why the urgency rating is left out",
+            onScreen: "The line above the list that says how it is ordered",
           },
           {
             key: "ranges",
-            title: "Schools with possible places move more",
+            title: "Schools with a range of ranks move more",
             onScreen: 'The example in "What changed"',
             body: (name: string) => textOf(rangesBody([name])),
           },
           {
             key: "use",
-            title: "Switch between the two rules yourself",
-            onScreen: "The main rule and the urgency sensitivity, above the list",
+            title: "Switch between the two methods yourself",
+            onScreen: "The line above the list that says how it is ordered",
             tryIt: (label: string) =>
-              `Choose "${label}" to put the urgency value back and see the circulated paper's rule. "See the full comparison" opens the method details.`,
+              `Choose "${label}" to see the earlier method, which also counts the urgency rating. "See the full comparison" opens the method details.`,
           },
         ],
       },

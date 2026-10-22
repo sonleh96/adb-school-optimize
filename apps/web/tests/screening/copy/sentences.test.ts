@@ -1,13 +1,13 @@
 /**
- * Sentences about one school: its place, its reasons, its missing details, its name and its ties.
+ * Sentences about one school: its rank, its reasons, its missing details, its name and its ties.
  *
  * Failure modes, each with the test that catches it:
  *  1. The place sentence states the wrong place, or a place for a school that has none. Each cohort and each way
  *     the bounds can relate to the place has its own case, with the expected sentence written out.
- *  2. A range school's headline reads as a single place beside another school's place.
+ *  2. A range school's headline reads as a single rank beside another school's place.
  *  3. The plain card offers a second place, or the method card forgets the one it should add.
  *  4. A blank name, district or province leaks "null" or leaves an empty clause.
- *  5. A missing reading reads as a value ("lists no emission sources", "reaches 0"). Every combination of the
+ *  5. A missing figure reads as a value ("lists no emission sources", "reaches 0"). Every combination of the
  *     three readings missing is checked.
  *  6. Two schools level on score or on school need get no tie note, or a school that is not level gets one.
  *  7. Two schools whose names differ only in spacing read the same.
@@ -52,20 +52,20 @@ describe("the place sentence", () => {
     );
   });
 
-  it("states a range school's highest and lowest places and which reading is missing", () => {
+  it("states a range school's highest and lowest ranks and which reading is missing", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [12, 24], blank: ["aqi"] });
     expect(rank(s)).toBe(
-      "Anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality reading, an air-pollution index for its location, is missing, so the screen shows the highest and lowest places in the list it could take."
+      "Anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality figure, an air-pollution index for its location, is missing, so the screen shows the highest and lowest ranks in the list it could take."
     );
     expect(rank(s, "additive_u", { name: true, shortlist: 20 })).toBe(
-      "School r could be anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality reading, an air-pollution index for its location, is missing, so the screen shows the highest and lowest places in the list it could take. It may or may not be in the top 20, depending on the missing reading."
+      "School r could be anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality figure, an air-pollution index for its location, is missing, so the screen shows the highest and lowest ranks in the list it could take. It may or may not be in the top 20, depending on the missing figure."
     );
   });
 
-  it("says a range school whose ends are equal has one place, and why that cannot change", () => {
+  it("says a range school whose ends are equal has one rank, and why that cannot change", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [21, 21], blank: ["aqi"] });
     expect(rank(s, "additive_u", { shortlist: 20 })).toBe(
-      "21st of the 21 schools that can be put in order. Its air-quality reading is missing, but under this rule that cannot change its place in the list. It is outside the top 20 either way."
+      "21st of the 21 schools that can be put in order. Its air-quality figure is missing, but under this rule that cannot change its rank in the list. It is outside the top 20 either way."
     );
     expect(
       rank(school({ id: "r", cohort: "interval", bounds: [3, 3], blank: ["aqi"] }), "additive_u", {
@@ -78,7 +78,7 @@ describe("the place sentence", () => {
     const q = school({ id: "q", cohort: "queue", gate: ["teacher_housing_deficit"] });
     for (const rule of RULES) {
       expect(rank(q, rule)).toBe(
-        "Cannot be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need."
+        "Cannot be put in order yet. Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need."
       );
     }
     expect(rank(q, "additive_u", { name: true })).toMatch(/^School q cannot be put in order yet\./);
@@ -137,13 +137,13 @@ describe("the card's figure and its context", () => {
   it("says a range school's context and the top-list clause", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [30, 40], blank: ["emissions", "land"] });
     expect(P.placeContext(s, "additive_u", { shortlist: 20 })).toBe(
-      "Possible places among the 21 schools that can be put in order. Its nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest places in the list it could take. It is outside the top 20 either way."
+      "Possible ranks among the 21 schools that can be put in order. Its nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest ranks in the list it could take. It is outside the top 20 either way."
     );
   });
 
   it("says what a complete school's place is among all the schools, or that the rule did not count them", () => {
     expect(P.fullRankingSentence(school({ id: "a", place: 5, bounds: [5, 5] }), "additive_u")).toBe(
-      "Counting the five schools that show a range does not change its place in the list."
+      "Counting the five schools that show a range does not change its rank in the list."
     );
     expect(P.fullRankingSentence(school({ id: "a", place: 5, bounds: [7, 9] }), "additive_u")).toBe(
       "Once the five schools that show a range are counted, it would sit between 7th and 9th of all 21 schools that can be put in order."
@@ -154,13 +154,13 @@ describe("the card's figure and its context", () => {
         "additive_u"
       )
     ).toBe(
-      "This rule was not run on all 21 schools that can be put in order, so only its place in the list among the 16 schools with every input recorded is available."
+      "This rule was not run on all 21 schools that can be put in order, so only its rank in the list among the 16 schools with every input recorded is available."
     );
   });
 });
 
 describe("one school under two rules", () => {
-  it("reads a single place under each rule for a complete school", () => {
+  it("reads a single rank under each rule for a complete school", () => {
     const a = {
       ...school({ id: "a", place: 3 }),
       results: { additive_u: { rank_complete120: 3 }, additive_no_u: { rank_complete120: 4 } },
@@ -191,16 +191,16 @@ describe("one school under two rules", () => {
     );
   });
 
-  it("says a school with an incomplete record has no place under either rule when it has no result under both", () => {
+  it("says a school with an incomplete record has no place under either rule when it has no result under both methods", () => {
     expect(P.rangeComparisonSentence(school({ id: "q", cohort: "queue" }), "additive_u", "benchmark")).toBe(
-      "School q cannot be put in order under the combined-factors rule with urgency (S) or the conventional benchmark (B) yet, because its record is incomplete."
+      "School q cannot be put in order under the combined-factors rule with urgency (S) or the conventional benchmark (B) yet, because information about it is missing."
     );
   });
 
   it("gives a place under the rule that has one for a school held back under the other", () => {
     const q = { ...school({ id: "q", cohort: "queue" }), results: { benchmark: { rank_complete120: 7 } } };
     expect(P.rangeComparisonSentence(q, "additive_u", "benchmark")).toBe(
-      "Under the conventional benchmark (B), School q is 7th among the 16 schools with a record for every input the rule uses. It cannot be put in order under the combined-factors rule with urgency (S) yet, because its record is incomplete."
+      "Under the conventional benchmark (B), School q is 7th among the 16 schools with a record for every input the rule uses. It cannot be put in order under the combined-factors rule with urgency (S) yet, because information about it is missing."
     );
   });
 });
@@ -211,19 +211,19 @@ describe("one school that shows a range", () => {
 
   it("agrees the subject, the verb and the pronouns in the list order", () => {
     expect(one.scope("additive_u").listOrder).toBe(
-      "The one school that shows a range is listed where it would sit if its missing readings added nothing to its screening score. The study uses this as its main order."
+      "The one school that shows a range is listed where it would sit if its missing figures added nothing to its score. The research team uses this as its main order."
     );
     expect(one.scope("additive_u").listOrderUpper).toBe(
-      "Sensitivity check: the one school that shows a range is listed where it would sit if its missing readings added as much as they can to its screening score."
+      "Sensitivity check: the one school that shows a range is listed where it would sit if its missing figures added as much as they can to its score."
     );
     expect(one.termsFor("additive_u").list_order.line).toBe(
-      "In the list, the one school that shows a range sits where it would if its missing readings added nothing to its screening score."
+      "In the list, the one school that shows a range sits where it would if its missing figures added nothing to its score."
     );
     expect(four.scope("additive_u").listOrder).toBe(
-      "The four schools that show a range are listed where they would sit if their missing readings added nothing to their screening score. The study uses this as its main order."
+      "The four schools that show a range are listed where they would sit if their missing figures added nothing to their score. The research team uses this as its main order."
     );
     expect(four.termsFor("additive_u").list_order.line).toBe(
-      "In the list, the four schools that show a range sit where they would if their missing readings added nothing to their screening score."
+      "In the list, the four schools that show a range sit where they would if their missing figures added nothing to their score."
     );
   });
 
@@ -263,10 +263,10 @@ describe("one school that shows a range", () => {
     const complete = (id: string) => school({ id, place: 1 });
     const text = (schools: copy.CopySchool[]) => copy.urgencyReassurance({ pairwise: rows, schools });
     expect(text([complete("a"), range("r")])).toMatch(
-      /For the one school that shows a range, putting it back can still move its possible places\.$/
+      /For the one school that shows a range, adding it back can still move its possible ranks\.$/
     );
     expect(text([complete("a"), range("r"), range("q")])).toMatch(
-      /For the two schools that show a range, putting it back can still move their possible places\.$/
+      /For the two schools that show a range, adding it back can still move their possible ranks\.$/
     );
   });
 });
@@ -304,7 +304,7 @@ describe("one school under two rules, whatever its group under each", () => {
     );
   });
 
-  it("gives a range school's single place under a rule that does not read the missing reading", () => {
+  it("gives a range school's single rank under a rule that does not read the missing figure", () => {
     const r = complete(
       "r",
       {
@@ -462,9 +462,9 @@ describe("ties", () => {
   const d = school({ id: "t4", name: "Delta", score: 0.4 });
   const all = [a, b, c, d];
 
-  it("notes a school level with another on screening score, on the card and the row", () => {
+  it("notes a school level with another on score, on the card and the row", () => {
     expect(copy.tieNote(a, "additive_u", all, "card")).toBe(
-      "It has exactly the same screening score as Beta, so the order goes by school name."
+      "It has exactly the same score as Beta, so the order goes by school name."
     );
     expect(copy.tieNote(a, "additive_u", all, "row")).toBe("Level with Beta");
   });
@@ -503,7 +503,7 @@ describe("ties", () => {
     const x = school({ id: "x1", name: "Lumi ", score: 0.7, district: "North" });
     const y = school({ id: "x2", name: "Lumi", score: 0.7, district: "South" });
     expect(copy.tieNote(x, "additive_u", [x, y])).toBe(
-      "It has exactly the same screening score as Lumi (South), so the order goes by the name as recorded, which differs only in spacing."
+      "It has exactly the same score as Lumi (South), so the order goes by the name as recorded, which differs only in spacing."
     );
   });
 
@@ -518,13 +518,11 @@ describe("ties", () => {
       "It has exactly the same school need as Two and Three, so the other inputs decide which comes first."
     );
     expect(copy.tieNote(n1, "need_first_u", [n1, n2, n3], "row")).toBe("Same school need as Two and Three");
-    expect(copy.tieNote(n1, "additive_u", [n1, n2, n3], "card")).toContain(
-      "exactly the same screening score"
-    );
+    expect(copy.tieNote(n1, "additive_u", [n1, n2, n3], "card")).toContain("exactly the same score");
   });
 });
 
-describe("a missing reading", () => {
+describe("a missing figure", () => {
   type Reading = "aqi" | "emissions" | "land";
   const subsets = [
     [],
@@ -556,7 +554,7 @@ describe("a missing reading", () => {
           expect(said, key).not.toMatch(/lists no|none of the area|reaches|account for/);
           expect(P.missingValueKind(s, key), key).toBe("unresolved");
           expect(P.missingValueNote(s, key), key).toMatch(
-            /is recorded for this school, so it is not counted as 0\. The school shows a range of places instead of one place\.$/
+            /is recorded for this school, so it is not counted as 0\. The school shows a range of ranks instead of one rank\.$/
           );
         } else {
           expect(P.missingValueKind(s, key), key).toBe("recorded");
@@ -570,10 +568,10 @@ describe("a missing reading", () => {
   it("names all three when all three are missing", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [4, 9], blank: ["aqi", "emissions", "land"] });
     expect(P.rankSentence(s, "additive_u")).toContain(
-      "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded, so the screen shows"
+      "Its air-quality figure, nearby emissions figure and land-cover figure are not recorded, so the screen shows"
     );
     expect(P.missingSentence(s, "additive_u")).toBe(
-      "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded. Every other input is recorded."
+      "Its air-quality figure, nearby emissions figure and land-cover figure are not recorded. Every other input is recorded."
     );
     expect(P.missingSentences(s, "additive_u")).toHaveLength(2);
   });
@@ -584,7 +582,7 @@ describe("a missing reading", () => {
       missing_env: { aqi: false, emissions: false, land: false },
     };
     expect(P.missingSentence(s, "additive_u")).toBe(
-      "One of its readings is missing. Every other input is recorded."
+      "One of its figures is missing. Every other input is recorded."
     );
   });
 
@@ -707,7 +705,7 @@ describe("one input at a time", () => {
       "One of its six facility counts is not recorded."
     );
     expect(say(withCondition(none), "facilities")).toBe(
-      "It has none of the six facility types the study counts, such as a library or a workshop."
+      "It has none of the six facility types the list looks at, such as a library or a workshop."
     );
     expect(
       say(
@@ -721,9 +719,9 @@ describe("one input at a time", () => {
         }),
         "facilities"
       )
-    ).toBe("It has all six facility types the study counts.");
+    ).toBe("It has all six facility types the list looks at.");
     expect(say(withCondition({ ...none, computer_labs: 2 }), "facilities")).toBe(
-      "Of the six facility types the study counts, it has only a computer laboratory."
+      "Of the six facility types the list looks at, it has only a computer laboratory."
     );
     expect(say(withCondition({ ...none, libraries: 1, workshops: 1 }), "facilities")).toBe(
       "It has no practical-skills room, home-economics room, computer laboratory or special classroom."
@@ -758,11 +756,11 @@ describe("one input at a time", () => {
     [{ power_source: null, water_source: null }, "Its power and water sources are not recorded."],
     [
       { power_source: "Coal", water_source: "Well" },
-      "Its power source is recorded as Coal, a type that is not on the study's scale.",
+      "Its power source is recorded as Coal, a type that is not on the research team's scale.",
     ],
     [
       { power_source: "Solar", water_source: " Rain " },
-      "Its water source is recorded as Rain, a type that is not on the study's scale.",
+      "Its water source is recorded as Rain, a type that is not on the research team's scale.",
     ],
   ] as const)("services %j", (condition, want) => {
     expect(say(withCondition(condition), "services")).toBe(want);
@@ -776,7 +774,7 @@ describe("one input at a time", () => {
       "Its remoteness category is not recorded."
     );
     expect(say(school({ id: "c", locality: "Very Remote " }), "locality")).toBe(
-      "Its record classes it as very remote, on a six-step remoteness scale from highly accessible to extremely remote."
+      "It is listed as very remote, on a six-step remoteness scale from highly accessible to extremely remote."
     );
   });
 
@@ -798,13 +796,13 @@ describe("one input at a time", () => {
       raw: { ...school({ id: "c" }).raw, ...raw },
     });
     expect(say(school({ id: "c" }), "urgency")).toBe(
-      "Its urgency value is 0.21 on a 0 to 1 scale. No one could trace where that value comes from."
+      "Its urgency rating is 0.21 on a 0 to 1 scale. No one could trace where that value comes from."
     );
     expect(say(s({ Q_raw: 1234 }), "air")).toBe(
       "Its air-quality index, a measure of air pollution assigned to its location, reaches 1,234 on its worst 1 day in 20."
     );
     expect(say(s({ Q_raw: null }), "air")).toBe(
-      "Its air-quality reading is not recorded. The study assigns an air-pollution index to each school's location, and none was assigned to this one."
+      "Its air-quality figure is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
     );
     expect(say(s({ E_raw: 165178 }), "emissions")).toBe(
       "Fixed emission sources within 10 km account for about 165,000 tonnes of CO2-equivalent a year in the Climate TRACE inventory."
@@ -987,7 +985,7 @@ describe("what is missing from a record", () => {
     expect(P.missingValueKind(s, "need")).toBe("not_calculable");
     expect(P.missingValueNote(s, "need")).toMatch(/^School need cannot be worked out, because /);
     expect(P.missingSentence(s, "additive_u")).toMatch(
-      /Having no place in the list yet does not mean its need is low\.$/
+      /Not being in the list yet does not mean its need is low\.$/
     );
     expect(P.missingSentences(s, "additive_u").join(" ")).toBe(P.missingSentence(s, "additive_u"));
     const corpus = new Corpus();
@@ -1003,7 +1001,7 @@ describe("what is missing from a record", () => {
       "School need cannot be worked out, because the record gives 0 classrooms in total."
     );
     expect(P.missingSentence(s, "additive_u")).toBe(
-      "The record gives 0 classrooms in total, which needs checking, and until then the share built of permanent materials cannot be worked out. Until these are checked, its school need cannot be worked out, so it has no place in the list yet. Having no place in the list yet does not mean its need is low."
+      "The record gives 0 classrooms in total, which needs checking, and until then the share built of permanent materials cannot be worked out. Until these are checked, its school need cannot be worked out, so it is not in the list yet. Not being in the list yet does not mean its need is low."
     );
   });
 
@@ -1082,7 +1080,7 @@ describe("why a school sits where it does, from the engine's own scores", () => 
 
   it("names the three needs that add most to a complete school, in order, with its own record", () => {
     expect(copy.reasonSentence(s, "additive_u")).toBe(
-      "Three things add most to its screening score under the combined-factors rule with urgency (S). All three are parts of its school need, the measure built from five parts of its own record. None of its 8 classrooms is built of permanent materials. Its record classes it as very remote, on a six-step remoteness scale from highly accessible to extremely remote. It has 2 teacher houses for its 10 teachers."
+      "Three things add most to its score under the combined-factors rule with urgency (S). All three are parts of its school need, the measure built from five parts of its own record. None of its 8 classrooms is built of permanent materials. It is listed as very remote, on a six-step remoteness scale from highly accessible to extremely remote. It has 2 teacher houses for its 10 teachers."
     );
     expect(copy.topDrivers(s, "additive_u").map((d) => d.key)).toEqual(["classrooms", "locality", "housing"]);
   });
@@ -1111,7 +1109,7 @@ describe("why a school sits where it does, from the engine's own scores", () => 
       /This rule gives an extra share to the larger of school need and district context\. For this school that is school need\.$/
     );
     expect(copy.reasonSentence(s, "bottleneck_u")).toMatch(
-      /the largest of school need, district context and the urgency value\. For this school that is school need\.$/
+      /the largest of school need, district context and the urgency rating\. For this school that is school need\.$/
     );
   });
 
@@ -1156,14 +1154,14 @@ describe("why a school sits where it does, from the engine's own scores", () => 
     const s0 = { ...base, contributions: { additive_u: { components: zero as never } } };
     expect(copy.topDrivers(s0, "additive_u")).toEqual([]);
     expect(copy.reasonSentence(s0, "additive_u")).toBe(
-      "Under the combined-factors rule with urgency (S), none of its inputs adds to its screening score."
+      "Under the combined-factors rule with urgency (S), none of its inputs adds to its score."
     );
   });
 
   it("says a school with an incomplete record has nothing to explain", () => {
     const q = school({ id: "q", cohort: "queue", gate: ["service_deficit"] });
     expect(copy.reasonSentence(q, "additive_u")).toBe(
-      "This school has no place in the list yet, so there is no screening score to explain. Its entry shows what is missing."
+      "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing."
     );
     expect(copy.topDrivers(q, "additive_u")).toEqual([]);
     expect(copy.contributions(q, "additive_u")).toBeNull();
@@ -1215,14 +1213,14 @@ describe("what the port refuses where the prototype would have coerced", () => {
     const base = school({ id: "z" });
     const noUrgency = { ...base, components: { ...base.components, U: null } };
     const noReach = { ...base, components: { ...base.components, R: null } };
-    expect(() => copy.inputSentence(noUrgency, "urgency")).toThrow("has no urgency value");
+    expect(() => copy.inputSentence(noUrgency, "urgency")).toThrow("has no urgency rating");
     expect(() => copy.inputSentence(noReach, "reach")).toThrow("has no reach value");
-    expect(() => copy.contributions(noUrgency, "benchmark")).toThrow("has no urgency value");
+    expect(() => copy.contributions(noUrgency, "benchmark")).toThrow("has no urgency rating");
   });
 
   it("falls back to the count-free groups sentence when the range count is known but the ordered count is not", () => {
     expect(copy.groupsSentence({ complete: 2, range: 1 })).toBe(
-      "Schools with every input recorded have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order."
+      "Schools with every input recorded have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order."
     );
   });
 });

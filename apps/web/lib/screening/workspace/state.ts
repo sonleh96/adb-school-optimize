@@ -18,6 +18,8 @@ export type Placement = "lower" | "upper";
 export type Mode = "screen" | "compare";
 /** The method details' popovers. Only one is open at a time, and none is written to the URL. */
 export type Pop = "layers" | "filter" | "pickA" | "pickB" | "rules";
+/** What the narrow layout shows under its top bar: the list alone, or the map band over the list. */
+export type Pane = "list" | "map";
 /** The map layers the method details can hide. */
 export type MapLayer = "ranked" | "numerals" | "range" | "queue" | "provinces" | "districts";
 export const MAP_LAYERS: readonly MapLayer[] = [
@@ -52,10 +54,21 @@ export interface WorkspaceState {
   readonly hover: SchoolKey | null;
   readonly view: ListView;
   readonly qgroup: QueueGrouping;
-  /** Where range schools sit: at the lower end of their scores (the study's main order) or the upper end. */
+  /** Where range schools sit: at the lower end of their scores (the research team's main order) or the upper end. */
   readonly place: Placement;
   /** The scope detail under the scope line is open. */
   readonly scope: boolean;
+  /**
+   * The rule area is open: the switch, Other rules and the full statement. Closed, it shows one plain line, the way
+   * to open it and the urgency comparison; a first-time reader is not asked to choose a rule before seeing the list.
+   * Not written to the address: a saved view or a copied link opens it closed.
+   */
+  readonly rules: boolean;
+  /**
+   * The narrow layout shows the list, or the map band with the list under it. The list comes first: the screen's answer
+   * is the list. Wide layouts show both and ignore it. Not written to the address, as `rules` is not.
+   */
+  readonly pane: Pane;
 
   // The method details ("Show method details") and what only they show.
   readonly analyst: boolean;
@@ -94,6 +107,8 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  rules: false,
+  pane: "list",
   analyst: false,
   mode: "screen",
   k: 20,
@@ -211,6 +226,9 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
   mode: enumKey<Mode>("screen", "screen", "compare"),
   rule: ruleKey,
   compare: ruleKey,
+  // Opening the rule area is a passing choice, like a popover: a link may open it, and the address never keeps it.
+  rules: { ...flag, write: () => null },
+  pane: { parse: oneOf<Pane>("list", "map"), write: () => null },
   k: lengthKey<FullRows>(20, 10, 20),
   view: enumKey<ListView>("ranked", "ranked", "queue"),
   qgroup: enumKey<QueueGrouping>("province", "province", "evidence"),

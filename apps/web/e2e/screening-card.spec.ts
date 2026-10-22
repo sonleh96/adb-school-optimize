@@ -3,7 +3,7 @@
  * fixture datasets. Failure modes and the test for each:
  *  1. The card states a second place, or reasons out of order, or the need parts outside the need box
  *                                                                       -> "a complete school's card..."
- *  2. A range school reads as one place, or a missing reading reads as 0 or splits its label (R9, R10)
+ *  2. A range school reads as one rank, or a missing figure reads as 0 or splits its label (R9, R10)
  *                                                                       -> "a range school's card..."
  *  3. An incomplete record's card has no reasons, or prints "null"      -> "an incomplete record's card..."
  *  4. The paper's persistence flag shows under another rule, or for a school without it, or a flag only just over
@@ -27,6 +27,7 @@ import {
   expect,
   keyOf,
   mainRule,
+  openRules,
   openWorkspace,
   orderedRow,
   queuedRow,
@@ -46,12 +47,12 @@ const LOAD_FAILED = "Some of the information did not load, so there is nothing t
 const PERSISTENT =
   "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.";
 const PERSISTENT_REVISED =
-  "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.";
+  "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency rating changes.";
 const near = (points: string) =>
   `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
 const NEAR_LINE = near("0.6");
 
-test("a complete school's card states one place, its reasons with the school need parts first, and its numbers", async ({
+test("a complete school's card states one rank, its reasons with the school need parts first, and its numbers", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -59,7 +60,7 @@ test("a complete school's card states one place, its reasons with the school nee
 
   await expect(place(page)).toHaveText("1st");
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule without urgency (S0)"
+    "Rank in the list under the main method"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
     "Among the 17 schools with a record for every input the rule uses."
@@ -70,7 +71,7 @@ test("a complete school's card states one place, its reasons with the school nee
 
   const why = card(page).locator("[data-region=inspector-why]");
   await expect(why.locator("p").first()).toHaveText(
-    "Three things add most to its screening score under the combined-factors rule without urgency (S0). All three are parts of its school need, the measure built from five parts of its own record."
+    "Three things add most to its score under the main method. All three are parts of its school need, the measure built from five parts of its own record."
   );
   // The named parts come first, numbered in reading order; the other parts follow, quieter and unnumbered.
   const parts = why.locator("[data-region=need-box] li");
@@ -85,7 +86,7 @@ test("a complete school's card states one place, its reasons with the school nee
   );
 
   const numbers = card(page).locator("[data-region=inspector-breakdown]");
-  await expect(numbers).toContainText("Screening score0.708");
+  await expect(numbers).toContainText("Score0.708");
   // School need's own value and its share of the score never share a label: "School need" names the value in the
   // need box, and the table names the share for what it is.
   await expect(card(page).getByText("School need", { exact: true })).toHaveCount(1);
@@ -96,22 +97,22 @@ test("a complete school's card states one place, its reasons with the school nee
   );
 });
 
-test("a range school's card shows its range, names the missing reading, and labels it on one line", async ({
+test("a range school's card shows its range, names the missing figure, and labels it on one line", async ({
   page,
 }) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 17").click();
   await expect(place(page)).toHaveText("10thto17th");
   await expect(page.getByTestId("card-context")).toContainText(
-    "Its air-quality reading, an air-pollution index for its location, is missing"
+    "Its air-quality figure, an air-pollution index for its location, is missing"
   );
   await expect(page.getByTestId("card-context")).toContainText("It is in the top 20 either way.");
 
   const air = card(page).locator("[data-missing]", { hasText: "Air quality" });
-  await expect(air).toContainText("No reading");
+  await expect(air).toContainText("No figure");
   await expect(air).toContainText("so it is not counted as 0");
   // The label is one line, under the hatched bar, never split in two.
-  const label = air.getByText("No reading", { exact: true });
+  const label = air.getByText("No figure", { exact: true });
   const box = (await label.boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(18);
   await expect(card(page).locator("[data-region=inspector-record]")).toHaveCount(0);
@@ -152,8 +153,11 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
 
   // Under the rule with urgency the circulated experiment speaks, in its own words. A school flagged only just over
   // its one-standard-error band says that another run could take the flag away, and by how much.
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
-  await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("with urgency (S)");
+  await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
+    "Rank in the list under the earlier method with its urgency rating"
+  );
   await orderedRow(page, "Sample School 02").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
   await expect(flag).toHaveText(`${PERSISTENT} ${NEAR_LINE}`);
@@ -177,7 +181,7 @@ test("the card steps through the list on screen and counts it", async ({ page })
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "true");
   await expect(card(page)).toContainText("2 of 22");
 
-  await tab(page, /Incomplete records/).click();
+  await tab(page, /Missing information/).click();
   await queuedRow(page, "Sample School 24").click();
   await expect(card(page)).toContainText("3 of 3");
   await expect(card(page).getByRole("button", { name: "Next school" })).toBeDisabled();
@@ -207,22 +211,48 @@ test("Copy link copies the address of this screen and says so", async ({ page, c
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
 });
 
-test("the key names the rule, cuts its place bands from the data and says what each mark means", async ({
+test("the key starts as one line, opens to name the rule, cuts its rank bands from the data and says what each mark means", async ({
   page,
   context,
 }) => {
   await openWorkspace(page);
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
+  const more = key.getByRole("button", { name: "What the map shows" });
+  // Compact: the colour strip in words, not ranks (it ends at the last school with one rank, before the list's
+  // count), read out with its first and last rank, and the marks in a few words.
+  await expect(key.locator("[class*=miniRamp]")).toHaveText("Darker: earlier in the list");
+  await expect(
+    key.getByRole("img", {
+      name: "Darker is earlier in the list: 1st to 17th, among the 17 schools with one rank",
+    })
+  ).toBeVisible();
+  await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
+  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of ranks");
+  await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in the list yet");
+  await expect(bands).toHaveCount(0);
+  await expect(page.getByTestId("legend-rule")).toHaveCount(0);
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+
+  // What the map shows opens the full key, and closes it again.
+  await more.click();
+  // A disclosure: one name, its state in aria-expanded.
+  await expect(more).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("legend-rule")).toHaveText("Rank in the list under the main method");
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
-    "Ring with a centre dotA school with a range of possible places in the list, because its air-quality reading is missing."
+    "Ring with a centre dotA school with a range of possible ranks in the list, because its air-quality figure is missing."
   );
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+  await expect(bands).toHaveCount(0);
 
   // One school: one band, "1st", and one dot.
   await useMockDataset(context, "one");
   await page.goto("/screening");
   await waitForMap(page);
+  await expect(key.getByRole("img", { name: /^Darker is earlier in the list: 1st to 1st/ })).toBeVisible();
+  await more.click();
   await expect(bands).toHaveText(["1st"]);
   await expect(page.locator("[data-rank-label]")).toHaveCount(1);
 });
@@ -300,7 +330,7 @@ test("no schools at all shows one sentence and Retry, with every action off", as
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Copy link" })).toBeDisabled();
   await expect(tab(page, /The list/)).toBeDisabled();
-  await expect(mainRule(page, RULE.main)).toBeDisabled();
+  await expect(page.locator("[data-region=rule-change]")).toBeDisabled();
   await expect(page.locator(INCOMPLETE)).toHaveCount(0);
   // The API's own 404s for an empty store are expected.
   expect(problems.every((p) => p.includes("404"))).toBe(true);
@@ -317,7 +347,7 @@ test("a failed load shows one sentence and Retry, with every action off", async 
   const failure = page.locator("[role=alert][data-failure]");
   await expect(failure).toContainText(LOAD_FAILED);
   await expect(page.getByRole("button", { name: "Copy link" })).toBeDisabled();
-  await expect(tab(page, /Incomplete records/)).toBeDisabled();
+  await expect(tab(page, /Missing information/)).toBeDisabled();
   expect(problems.length).toBeGreaterThan(0);
   problems.length = 0;
 });

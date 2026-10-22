@@ -72,7 +72,7 @@ function NameLine({ name, place }: { name: string; place: string | null }) {
 const cleaned = (copy: BoundCopy, value: string | null) => (value?.trim() ? copy.cleanName(value) : null);
 
 /**
- * Why a school sits where it does, in one line: the input that adds most for a school with one place; for a range
+ * Why a school sits where it does, in one line: the input that adds most for a school with one position; for a range
  * school, why it shows a range, naming every reading it lacks when it lacks more than one.
  */
 function whyLine(copy: BoundCopy, school: CopySchool, rule: CopyRuleId): string {
@@ -102,7 +102,7 @@ export function OrderedList({
     copy.segments.tieNote(schools.get(row.school.school_key)!, rule, all, "row")
   );
   const rangeAt = firstRangeIndex(rows);
-  // The tie rule ("the name decides") holds for exact ties of the screening score. Under a need-first rule a row's
+  // The tie rule ("the name decides") holds for exact ties of the score. Under a need-first rule a row's
   // marker means the same school need, which the other inputs settle, so the sentence would mislead there.
   const needFirst = rule === "need_first_u" || rule === "need_first_no_u";
   const tieAt = needFirst ? -1 : tieNoteAfter(ties.map(Boolean));
@@ -124,6 +124,8 @@ export function OrderedList({
           <Fragment key={key}>
             {index === rangeAt ? (
               <li className={`${styles.listNote} ${styles.rangeNote}`} data-region="list-order">
+                {/* The map key's mark for a range, so the list and the key show one sign for it. */}
+                <span className={styles.keyMark} data-mark="range" aria-hidden />
                 {upper ? copy.scope(rule).listOrderUpper : copy.scope(rule).listOrder}
               </li>
             ) : null}
@@ -220,7 +222,7 @@ export function IncompleteList({
             {group.rows.map((row) => {
               const key = row.school.school_key;
               const school = schools.get(key)!;
-              // Grouped by what is missing, the row names its place instead, since the heading names the gap.
+              // Grouped by what is missing, the row names its position instead, since the heading names the gap.
               const where =
                 grouping === "evidence" ? copy.locationLine(school) : cleaned(copy, row.school.district);
               return (

@@ -1,7 +1,8 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { joinList, lowerFirst, plural, slug } from "./format";
-import { RULE_IDS } from "./rules";
+import { formatCount, joinList, lowerFirst, plural, slug } from "./format";
+import type { CopyRuleId } from "./model";
+import { RULE_IDS, rule } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
 
 /** The remove button's name for a saved view, with the name a person gave the view marked. */
@@ -27,25 +28,36 @@ export const LAYOUT = Object.freeze({
   withUrgency: "With urgency",
   withoutUrgency: "Without urgency",
   guides: "Guides",
-  change: "Change",
+  // The one plain line of the quiet rule area: how the list is ordered under a rule, with no symbol or term of art.
+  ruleNow: (id: CopyRuleId) => rule(id).plain,
+  // The same for the first screen: what comes first, in a line or two with no percentages. `ruleNow` has the shares.
+  ruleNowShort: (id: CopyRuleId) => rule(id).plainShort,
+  help: "Help",
+  helpAria: "Help and guides",
   amongAll124: "Among all schools that can be put in order",
   orderedTab: "The list",
-  incompleteTab: "Incomplete records",
-  legendNoAirQuality: "No air-quality reading",
-  legendIncomplete: "Incomplete record",
-  workspaceHint: "Select a school to see the reasons for its place in the list.",
+  incompleteTab: "Missing information",
+  legendNoAirQuality: "No air-quality figure",
+  legendIncomplete: "Missing information",
+  workspaceHint: "Select a school to see why it is where it is in the list.",
   tooltipHint: "Select to see why",
   missingFilters: "Missing details",
   groupBy: "Group by",
   // Moved from the final design's REQ object in round 4; same text, same shapes.
-  methodSwitch: "Show method details",
-  otherRulesCount: (n: number) => `Other rules (${n})`,
-  rulePair: "The main rule and the urgency sensitivity",
+  methodSwitch: "For researchers: show method details",
+  otherRulesCount: (n: number) => `Other ways to order the list (${n})`,
+  // The control that opens the full choice of how the list is ordered, from the one line that says how it is today.
+  orderControl: "Change how the list is ordered",
+  // The narrow layout's choice between the list and the map band.
+  paneAria: "Show the list or the map",
+  paneList: "List",
+  paneMap: "Map",
+  rulePair: "How the list is ordered",
   howBack: "Back to the map",
   showMe: "Show me on the screen",
   // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
-  // puts the urgency value back.
-  seeWithUrgency: "See what changes with the urgency value",
+  // puts the urgency rating back.
+  seeWithUrgency: "Compare with the earlier method, which also counts an urgency rating",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
   whatChanged: "What changed",
@@ -53,13 +65,13 @@ export const LAYOUT = Object.freeze({
   fullComparison: "See the full comparison",
   example: "Example",
   whyKey: "Why",
-  rowHintQueue: "Select a school to see what is missing from its record.",
+  rowHintQueue: "Select a school to see what information is missing.",
   why: "Why it sits here",
   whatMissing: "What is missing",
   recordSays: "What the record says",
   numbers: "In numbers",
-  adds: "What each input adds",
-  // A row of that table, named for what it is: the part of the screening score an input gives, not the input's own value.
+  adds: "What each item adds",
+  // A row of that table, named for what it is: the part of the score an input gives, not the input's own value.
   addedBy: (label: string) => `Added by ${lowerFirst(label)}`,
   // A part of school need under the row of what school need adds: what the part adds, not the part's own value, which
   // keeps the part's plain name (under the need-first rules, where the number is the value).
@@ -97,7 +109,7 @@ export const LAYOUT = Object.freeze({
   // Round 6: product, landmarks and states.
   howTitle: "How this works",
   productName: "RISE-PNG",
-  productSub: "Screening of secondary schools",
+  productSub: "Which secondary schools to look at first",
   logoAria: "ADB logo",
   /** The letters in the logo. */
   logoMark: "ADB",
@@ -118,7 +130,7 @@ export const LAYOUT = Object.freeze({
   valueRange: (lo: string, hi: string) => `${lo} to ${hi}`,
   underRule: (label: string, ruleName: string) => `${label} under ${ruleName}`,
   emptyFiltered: "No school that can be put in order matches these filters.",
-  emptyIncompleteFiltered: "No school with an incomplete record matches these filters.",
+  emptyIncompleteFiltered: "No school with missing information matches these filters.",
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
@@ -166,8 +178,29 @@ export const LAYOUT = Object.freeze({
   // The narrow layout.
   menu: "Menu",
   keyLabel: "Key",
-  keyShow: "Show the map key",
-  keyHide: "Hide the map key",
+  // The compact key over the map: the control that opens the full key, and the words beside each mark.
+  keyMore: "What the map shows",
+  keyDot: "One rank",
+  keyRange: "A range of ranks",
+  keyRing: "Not in the list yet",
+  // The colour strip covers the schools with one rank, so it can end below the number of schools in the list; the
+  // schools with a range are shown apart. `n` is the number of schools with one rank.
+  keyRamp: (first: string, last: string, n?: number) =>
+    `Darker is earlier in the list: ${first} to ${last}${
+      n === undefined
+        ? ""
+        : `, among ${n === 1 ? "the one school" : `the ${formatCount(n)} schools`} with one rank`
+    }`,
+  // Why the strip's last rank is not the number of schools in the list.
+  keyRampNote: (n: number, range: number) =>
+    range > 0
+      ? `The colours show the ${formatCount(n)} ${plural(n, "school", "schools")} with one rank. The ${formatCount(range)} ${plural(range, "school", "schools")} with a range of ranks ${plural(range, "is", "are")} shown apart.`
+      : `The colours show all ${formatCount(n)} ${plural(n, "school", "schools")} in the list.`,
+  // What the compact strip says beside its swatches instead of a first and last rank, which can end below the number
+  // of schools in the list. `keyRamp` and `keyRampNote` keep the exact numbers, for the full key and the screen reader.
+  keyStrip: "Darker: earlier in the list",
+  // The dark numbered circles on the map.
+  keyNumbers: "Numbered: ranks 1 to 10",
   // An empty or failed load: one sentence and Retry.
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
@@ -177,7 +210,7 @@ export const LAYOUT = Object.freeze({
   retrying: "Trying again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
-  mapKeyboard: "To choose a school with the keyboard, use the list or the incomplete records.",
+  mapKeyboard: "To choose a school with the keyboard, use the list or the schools with missing information.",
   basemapUnavailable: "The map's background did not load. The schools and the list still work.",
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
   sessionEnded: "Your session has ended.",
@@ -209,7 +242,7 @@ export const HELP = Object.freeze({
   esc: "Esc",
   find: "Find a term",
   none: "No term matches.",
-  adds: "What adds most to its screening score",
+  adds: "What adds most to its score",
   others: "Everything else",
   inData: "In this data",
   keep: "Keep in mind",

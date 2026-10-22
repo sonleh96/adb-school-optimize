@@ -155,6 +155,7 @@ export function useScreeningData(): ScreeningData {
   }, [store, schoolKeys]);
 
   const pairCompare = pair ? (isMainPair ? mainCompare.data : otherCompare.data) : mainCompare.data;
+  const ruleNames = state.analyst ? "lettered" : "plain";
   const others = [mainList.data, urgencyList.data, fromList.data];
   const shown = useMemo((): ShownList | null => {
     if (!data || !shownId || !inputs.data) return null;
@@ -164,12 +165,19 @@ export function useScreeningData(): ScreeningData {
       ...others.filter((l): l is ResultsResponse => !!l && l.run.rule_id !== data.run.rule_id),
     ];
     const unique = lists.filter((l, i) => lists.findIndex((m) => m.run.rule_id === l.run.rule_id) === i);
-    const bound = bindCopy({ view: shownId, inputs: inputs.data, lists: unique, compare: pairCompare });
+    // Plain words name each rule on the first screen; the method details keep the paper's letters (S0, S, ...).
+    const bound = bindCopy({
+      view: shownId,
+      inputs: inputs.data,
+      lists: unique,
+      compare: pairCompare,
+      ruleNames,
+    });
     return { rule: shownId, response: data, schools: bound.schools, copy: bound.copy };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `others` is rebuilt each render; its members are the key.
-  }, [data, shownId, inputs.data, pairCompare, mainList.data, urgencyList.data, fromList.data]);
+  }, [data, shownId, inputs.data, pairCompare, mainList.data, urgencyList.data, fromList.data, ruleNames]);
 
-  const idleCopy = useMemo(() => copyFor({}), []);
+  const idleCopy = useMemo(() => copyFor({ ruleNames }), [ruleNames]);
 
   const view = listView(
     { hasData: Boolean(rules.data), isPlaceholderData: false, error: rules.error },

@@ -4,6 +4,9 @@
  *  1. A pasted link does not reproduce the screen, or the URL falls behind a change -> "a pasted link..."
  *  2. The statement and What changed show together, or What changed compares the wrong rules, or the way back does
  *     not return to the default screen                                               -> "the statement..."
+ * 10. The first view asks a reader to choose a rule: the switch, the statement or the analyst letters show before
+ *     Change, the urgency comparison is more than one click away, or the address keeps the open area
+ *                                                                                    -> "the rule area starts..."
  *  3. Other rules hides a rule, stays open after a choice, traps Escape, animates a keyboard open, or the rule line
  *     does not name the rule chosen                                                  -> "Other rules..."
  *  4. Counts in the tabs or the scope line are not the run's own                       -> "a pasted link...", "the scope line..."
@@ -15,6 +18,8 @@
  *     missing is lost from the URL, or the arrow keys leave the order on screen       -> "the incomplete records..."
  *  9. The controller accepts an invalid value, cannot clear a key, does not report a change, or says ready before the
  *     map has drawn                                                                    -> "the controller..."
+ * 10. The note on ranges draws a sign of its own for a range, where the map's key uses the ring with a centre dot
+ *                                                                                      -> "the note on ranges..."
  */
 import {
   INCOMPLETE,
@@ -22,6 +27,8 @@ import {
   RULE,
   expect,
   mainRule,
+  openRules,
+  ruleChange,
   openWorkspace,
   orderedRow,
   tab,
@@ -34,20 +41,27 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
+  "Among the 16 schools with one rank under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 ranks. For the five schools that show a range, adding it back can still move their possible ranks.";
 // What changed from the rule with urgency to the main rule, as the statement's link and guide 5 show it.
 const EXAMPLE =
-  "Under the combined-factors rule with urgency (S), Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the combined-factors rule without urgency (S0), it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
+  "Under the earlier method with its urgency rating, Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the main method, it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
 // The same, read the other way: from the main rule to the rule with urgency.
 const EXAMPLE_BACK =
-  "Under the combined-factors rule without urgency (S0), Sample School 17 could be anywhere from 10th to 17th among the 22 schools that can be put in order. Under the combined-factors rule with urgency (S), it could be anywhere from 11th to 18th among the 21 schools that can be put in order.";
+  "Under the main method, Sample School 17 could be anywhere from 10th to 17th among the 22 schools that can be put in order. Under the earlier method with its urgency rating, it could be anywhere from 11th to 18th among the 21 schools that can be put in order.";
 // The scope detail under the rule with urgency, and under the main rule, which reads one input fewer.
 const SCOPE_DETAIL =
-  "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
+  "21 schools can be put in order, 16 with every input recorded and 5 that show a range of ranks. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single ranks count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
 const SCOPE_DETAIL_MAIN =
-  "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
+  "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of ranks. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single ranks count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
+
+/** The rule area's plain line on the main rule: a line or two in words, with no shares. */
+const QUIET_MAIN =
+  "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and a few smaller things also count.";
+/** The same rule with its shares, which the open rule area says above the choice. */
+const SHARES_MAIN =
+  "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
@@ -56,26 +70,29 @@ const search = (page: import("@playwright/test").Page) => new URL(page.url()).se
 test("a pasted link reproduces the screen, and the URL follows every change", async ({ page }) => {
   await openWorkspace(page, "?rule=additive_u&compare=additive_no_u&scope=1&guide=start");
 
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
   await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE_BACK}`);
   await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
   // The run's own counts: one school fewer can be put in order with urgency.
   await expect(tab(page, /The list/)).toHaveText("The list(21)");
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(4)");
+  await expect(tab(page, /Missing information/)).toHaveText("Missing information(4)");
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
   expect(search(page)).toBe("?rule=additive_u&scope=1&guide=start");
 
-  await tab(page, /Incomplete records/).click();
+  await tab(page, /Missing information/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
   expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
-  // The same link, opened again, is the same screen.
+  // The same link, opened again, is the same screen. The rule area is not part of the address: it opens closed.
   await page.reload();
   await waitForMap(page);
-  await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(4);
 });
@@ -84,14 +101,19 @@ test("the statement shows under the main rule only, never beside What changed, a
   page,
 }) => {
   await openWorkspace(page);
-  // The main rule comes first in the switch, pressed.
-  await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(`S0${RULE.main}`);
+  await openRules(page);
+  // The main rule comes first in the switch, pressed, named in words: the letters stay in the method details.
+  await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(RULE.main);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  await expect(statement(page)).toHaveText(
+    `${STATEMENT} Compare with the earlier method, which also counts an urgency rating`
+  );
   await expect(changed(page)).toHaveCount(0);
 
   // The statement's link opens What changed for the main rule against the rule with urgency, on the main rule's list.
-  await statement(page).getByRole("button", { name: "See what changes with the urgency value" }).click();
+  await statement(page)
+    .getByRole("button", { name: "Compare with the earlier method, which also counts an urgency rating" })
+    .click();
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
   await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE}`);
@@ -102,7 +124,9 @@ test("the statement shows under the main rule only, never beside What changed, a
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  await expect(statement(page)).toHaveText(
+    `${STATEMENT} Compare with the earlier method, which also counts an urgency rating`
+  );
   expect(search(page)).toBe("");
 
   // The switch shows What changed too, and from the rule with urgency What changed has the way back.
@@ -120,18 +144,83 @@ test("the statement shows under the main rule only, never beside What changed, a
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   const line = page.locator("[data-region=rule-role]");
   await expect(line).toHaveText(
-    "The screening score adds up several factors, each with a fixed share, and urgency is one of them. A sensitivity check that puts the urgency value back, from the circulated paper. Back to the paper's main rule"
+    "The score adds up several factors, each with a fixed share, and urgency is one of them. A sensitivity check that puts the urgency rating back, from the circulated paper. Back to the paper's main rule"
   );
   await expect(statement(page)).toHaveCount(0);
   await line.getByRole("button", { name: "Back to the paper's main rule" }).click();
   await expect(statement(page)).toBeVisible();
 });
 
+test("the rule area starts as one plain line, keeps the urgency comparison one click away, and opens with Change", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const area = page.locator("[data-region=rule-identity]");
+  // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
+  // A disclosure: one name, its state in aria-expanded.
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
+  // A control names what it controls only while that is in the page, unless it says it is closed.
+  for (const control of await page.locator("[aria-controls]:not([aria-expanded=false])").all()) {
+    const id = await control.getAttribute("aria-controls");
+    await expect(page.locator(`[id="${id}"]`), `${id} is in the page`).toHaveCount(1);
+  }
+  await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
+  await expect(statement(page)).toHaveCount(0);
+  await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);
+  expect(await area.innerText()).not.toMatch(/\bS0?\b/);
+  expect(await area.innerText()).not.toMatch(/%/);
+
+  // What the urgency rating changes is one click away, and answers on the main rule's list.
+  await area.locator("[data-region=see-with-urgency]").click();
+  await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
+  expect(search(page)).toBe("?compare=additive_u");
+  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
+
+  // The control opens the switch, the other ways and the statement, and closes them again; the address never keeps
+  // either.
+  await ruleChange(page).click();
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
+  // The shares wait behind the control: open, they come first, above the switch; the line above keeps its words.
+  await expect(area.locator("[data-region=rule-shares]")).toHaveText(SHARES_MAIN);
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+  const shares = (await area.locator("[data-region=rule-shares]").boundingBox())!;
+  const pair = (await page.locator("[data-region=rule-switch]").boundingBox())!;
+  expect(shares.y + shares.height).toBeLessThanOrEqual(pair.y);
+  await expect(page.locator("[data-region=rule-switch] button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Other ways to order the list (5)" })).toBeVisible();
+  await expect(statement(page)).toHaveText(
+    `${STATEMENT} Compare with the earlier method, which also counts an urgency rating`
+  );
+  expect(search(page)).toBe("");
+  await ruleChange(page).click();
+  await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
+
+  // On another rule the line names it, and the way back replaces the comparison.
+  await openRules(page);
+  await mainRule(page, RULE.urgency).click();
+  await expect(changed(page)).toBeVisible();
+  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
+  await ruleChange(page).click();
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(
+    "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and smaller things, the urgency rating among them, also count."
+  );
+  await openRules(page);
+  await expect(area.locator("[data-region=rule-shares]")).toHaveText(
+    "Ordered mainly by school need (60% of the score), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each)."
+  );
+  await area.getByRole("button", { name: "Back to the paper's main rule" }).click();
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+});
+
 test("Other rules lists all seven, closes on a choice or on Escape, and the rule line names the choice", async ({
   page,
 }) => {
   await openWorkspace(page);
-  const button = page.getByRole("button", { name: "Other rules (5)" });
+  await openRules(page);
+  const button = page.getByRole("button", { name: "Other ways to order the list (5)" });
   const popover = page.locator("#screening-other-rules");
 
   await button.click();
@@ -176,7 +265,7 @@ test("the scope line opens its detail in place, and a range row's place names th
   await less.click();
   await expect(page.locator("#screening-scope-detail")).toHaveCount(0);
 
-  // A range row says which group it counts in, so its number never reads as a single place (R19).
+  // A range row says which group it counts in, so its number never reads as a single rank (R19).
   await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thto17thof 22");
   await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("22ndof 22");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place]")).toHaveText("1st");
@@ -198,8 +287,8 @@ test("each row says why it sits there, and a range row names the reading it lack
   );
   await expect(why("Sample School 12")).toHaveText("Why It has 1 teacher house for its 10 teachers.");
   const range = (what: string) =>
-    `Why No ${what} is recorded for this school, so it is not counted as 0. The school shows a range of places instead of one place.`;
-  await expect(why("Sample School 17")).toHaveText(range("air-quality reading"));
+    `Why No ${what} is recorded for this school, so it is not counted as 0. The school shows a range of ranks instead of one rank.`;
+  await expect(why("Sample School 17")).toHaveText(range("air-quality figure"));
   await expect(why("Sample School 18")).toHaveText(range("land-cover figure"));
   await expect(why("Sample School 19")).toHaveText(range("nearby emissions figure"));
 });
@@ -208,7 +297,7 @@ test("the range note sits just before the first range school", async ({ page }) 
   await openWorkspace(page);
   const note = page.locator(`${ORDERED} > [data-region=list-order]`);
   await expect(note).toHaveText(
-    "The five schools that show a range are listed where they would sit if their missing readings added nothing to their screening score. The study uses this as its main order."
+    "The five schools that show a range are listed where they would sit if their missing figures added nothing to their score. The research team uses this as its main order."
   );
   const next = note.locator("xpath=following-sibling::li[1]//button");
   await expect(next).toContainText("Sample School 17");
@@ -219,7 +308,7 @@ test("the range note sits just before the first range school", async ({ page }) 
 test("the incomplete records are grouped by province or by what is missing, with each row's missing details", async ({
   page,
 }) => {
-  // Under the rule with urgency, so the list holds a school held back only for its urgency value as well.
+  // Under the rule with urgency, so the list holds a school held back only for its urgency rating as well.
   await openWorkspace(page, "?rule=additive_u&view=queue");
   const headings = page.locator(`${INCOMPLETE} > li > div`);
   const rows = page.locator(`${INCOMPLETE} button`);
@@ -235,7 +324,7 @@ test("the incomplete records are grouped by province or by what is missing, with
     "Teacher count blank",
     "District figure missing or unusable",
     "Walking reach missing or unusable",
-    "Urgency value not recorded",
+    "Urgency rating not recorded",
   ]);
 
   // By what is missing: one heading per school's gap, the largest group first and then by heading; each row names
@@ -247,7 +336,7 @@ test("the incomplete records are grouped by province or by what is missing, with
     "4 kinds of detail missing1",
     "Remoteness off the scale, needs checking1",
     "Teacher count blank1",
-    "Urgency value not recorded1",
+    "Urgency rating not recorded1",
   ]);
   await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
   // Each grouping says how the list is ordered.
@@ -294,6 +383,25 @@ test("the controller ignores invalid values, clears with null, reports each chan
     view: "queue",
     end: "ranked",
   });
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
+});
+
+test("the note on ranges shows the map key's mark for a range, and no sign of its own", async ({ page }) => {
+  await openWorkspace(page);
+  const note = page.locator("[data-region=list-order]");
+  await expect(note).toBeVisible();
+  await expect(note.locator("[data-mark=range]")).toHaveCount(1);
+  expect(await note.evaluate((el) => getComputedStyle(el, "::before").content)).toBe("none");
+  // The same drawing as the key's: the same size and ring.
+  const look = (el: Element) => {
+    const style = getComputedStyle(el);
+    return [style.width, style.height, style.borderTopWidth, style.borderTopColor, style.borderRadius].join(
+      " "
+    );
+  };
+  await page.locator("[data-slot=legend] [data-region=key-toggle]").click();
+  const keyMark = page.locator("[data-slot=legend] [data-region=legend-range] [data-mark=range]");
+  expect(await note.locator("[data-mark=range]").evaluate(look)).toBe(await keyMark.evaluate(look));
 });

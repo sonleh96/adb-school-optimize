@@ -18,12 +18,18 @@
  * 11. The narrow layout keeps the rail beside the map, or a map step hides the map     -> "in the narrow layout ..."
  * 12. A link to guide 5 is dropped when the rules answer after the list, so the screen opens without the step
  *                                                                                      -> "a link to guide 5 ..."
+ * 13. Start here cannot be put away from its top, comes back on the next visit once hidden, cannot be brought back
+ *     from Help, or a guide link no longer opens it                                    -> "Hide puts Start here away ..."
+ * 14. Junk or blocked storage breaks the screen, hides Start here from a first-time reader, or stops Hide working
+ *                                                                                      -> "with junk storage ...", "with blocked storage ..."
  */
 import type { Page } from "@playwright/test";
 
 import {
   ORDERED,
   expect,
+  helpButton,
+  helpItem,
   markAt,
   settledMark,
   openWorkspace,
@@ -71,8 +77,79 @@ test("a first visit opens the rail at its start, with the guides the data can te
   await page.reload();
   await openWorkspace(page, "?");
   await expect(rail(page)).toHaveCount(0);
-  await expect(page.getByRole("toolbar").getByRole("button", { name: "Guides" })).toBeEnabled();
+  await expect(await helpItem(page, "Guides")).toBeEnabled();
 });
+
+test("Hide puts Start here away from its top, a reload keeps it away, and Help then Guides brings it back", async ({
+  page,
+}) => {
+  await ready(page);
+  const start = rail(page).getByRole("heading", { name: "What do you want to find out?" });
+  await expect(start).toBeVisible();
+  // Hide sits at the top of the panel, above everything it would otherwise have to scroll past.
+  const hide = rail(page).getByRole("button", { name: "Hide the guides" });
+  const hideBox = (await hide.boundingBox())!;
+  expect(hideBox.y).toBeLessThan((await start.boundingBox())!.y);
+  await hide.click();
+  await expect(rail(page)).toHaveCount(0);
+  // Focus goes to Help, where the guides come back from.
+  await expect(helpButton(page)).toBeFocused();
+  const kept = await page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)!), MEMORY);
+  expect(kept.seen).toBe(true);
+  // The column takes the rail's place.
+  await expect.poll(async () => (await page.locator("[data-slot=column]").boundingBox())!.x).toBeLessThan(40);
+
+  await page.reload();
+  await openWorkspace(page, "?");
+  await expect(rail(page)).toHaveCount(0);
+  expect(new URL(page.url()).search).toBe("");
+
+  await (await helpItem(page, "Guides")).click();
+  await expect(start).toBeVisible();
+  await expect(await helpItem(page, /^Guides/)).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("Escape");
+
+  // A link that names a guide opens it, hidden or not; one that names the start list opens that.
+  await page.goto("/screening?guide=q2&gstep=1");
+  await expect(stepTitle(page)).toBeVisible();
+  await page.goto("/screening?guide=start");
+  await expect(start).toBeVisible();
+});
+
+for (const [kind, script] of [
+  [
+    "junk",
+    ([key]: string[]) => {
+      window.localStorage.setItem(key, "{not json");
+    },
+  ],
+  [
+    "blocked",
+    () => {
+      Storage.prototype.getItem = () => {
+        throw new DOMException("blocked", "SecurityError");
+      };
+      Storage.prototype.setItem = () => {
+        throw new DOMException("blocked", "SecurityError");
+      };
+    },
+  ],
+] as const) {
+  test(`with ${kind} storage the screen still opens on Start here, and Hide still puts it away`, async ({
+    page,
+    context,
+  }) => {
+    await context.addInitScript(script, [MEMORY]);
+    await ready(page);
+    await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeVisible();
+    await expect(page.locator(`${ORDERED} button`).first()).toBeVisible();
+    await rail(page).getByRole("button", { name: "Hide the guides" }).click();
+    await expect(rail(page)).toHaveCount(0);
+    // Nothing remembers it, but the screen goes on working: Help still brings the guides back.
+    await (await helpItem(page, "Guides")).click();
+    await expect(rail(page).locator("button[data-guide]")).toHaveCount(5);
+  });
+}
 
 /** Holds the page's scripts back, so the server's HTML is on screen before the page runs, as on a slow laptop. */
 const slowScripts = (page: Page) =>
@@ -106,14 +183,14 @@ test("a returning visitor starts with the rail closed and sees what they have se
   );
   await ready(page);
   await expect(rail(page)).toHaveCount(0);
-  const guides = page.getByRole("toolbar").getByRole("button", { name: "Guides" });
+  const guides = await helpItem(page, /^Guides/);
   await expect(guides).toContainText("2 of 5 seen");
   await guides.click();
   await expect(rail(page).getByText("Guides", { exact: true })).toBeVisible();
   const rows = rail(page).locator("button[data-guide]");
   await expect(rows.nth(0)).toContainText("Seen");
   await expect(rows.nth(1)).toContainText("Seen");
-  await expect(rows.nth(3)).toContainText("3 steps");
+  await expect(rows.nth(3)).toContainText("3-step guide");
   await expect(rows.nth(4)).toContainText("Step 2 of 4");
   await expect(rail(page).getByRole("button", { name: "Close guides" })).toBeVisible();
 });
@@ -208,7 +285,7 @@ test("every step sets its screen, rings what it points at and says nothing has m
   expect(memory.done).toEqual(["q1", "q2", "q3", "q4", "q5"]);
 });
 
-test("opening a guide moves focus to its step, and closing the rail hands focus to Guides", async ({
+test("opening a guide moves focus to its step, and closing the rail hands focus to Help, which holds Guides", async ({
   page,
 }) => {
   await ready(page);
@@ -216,8 +293,12 @@ test("opening a guide moves focus to its step, and closing the rail hands focus 
   await expect(stepTitle(page)).toBeFocused();
   await rail(page).getByRole("button", { name: "Skip this guide" }).click();
   await expect(rail(page)).toHaveCount(0);
-  await expect(page.getByRole("toolbar").getByRole("button", { name: "Guides" })).toBeFocused();
-  // By keyboard too: the start list opens with its title focused, and Enter on a guide focuses its step.
+  await expect(helpButton(page)).toBeFocused();
+  // By keyboard too: Help, then Guides, opens the start list with its title focused, and Enter on a guide focuses its
+  // step.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(page.locator("#screening-help-menu [data-region=guides]")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(rail(page).getByRole("heading", { name: "What do you want to find out?" })).toBeFocused();
   await rail(page).locator("button[data-guide=q1]").focus();
@@ -288,7 +369,7 @@ test("opening the rail after the map brought a school into view frames the count
   expect(settled.x).toBeLessThanOrEqual(1600 - 448);
   // The rail makes the list step aside for the card, and the map frames the country again in what is left. That fit
   // must not also count the room the earlier move asked for (MapLibre warns, and the test's console check fails).
-  await page.getByRole("toolbar").getByRole("button", { name: "Guides" }).click();
+  await (await helpItem(page, "Guides")).click();
   await expect(page.locator("[data-slot=column]")).toHaveAttribute("inert", "");
   await expect(page.getByTestId("screening-map")).toHaveAttribute("data-map-moving", "false");
   await page.waitForTimeout(500);
@@ -305,7 +386,7 @@ test("a pasted link to a step reproduces its screen", async ({ page }) => {
   // A link to the urgency guide puts the main rule on screen with What changed against the rule with urgency.
   await ready(page, "?guide=q5&gstep=1");
   await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
-  await expect(page.getByRole("button", { name: /without urgency/, pressed: true })).toBeVisible();
+  await expect.poll(() => workspace(page)).toMatchObject({ rule: "additive_no_u", compare: "additive_u" });
 });
 
 test("a step that follows the selection retitles for the school chosen and keeps it on the next step", async ({
@@ -503,9 +584,9 @@ test("Page Down and Page Up stay with How this works and the glossary while eith
   expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });
   await page.getByRole("button", { name: "Back to the map" }).click();
   await expect(main).toHaveCount(0);
-  await page.getByRole("toolbar").getByRole("button", { name: "Glossary of terms" }).click();
+  await (await helpItem(page, "Glossary of terms")).click();
   const drawer = page.getByRole("complementary", { name: "Glossary of terms" });
-  await drawer.getByRole("button", { name: "Place in the list", exact: true }).click();
+  await drawer.getByRole("button", { name: "Rank in the list", exact: true }).click();
   await page.keyboard.press("PageUp");
   await expect(drawer).toBeVisible();
   expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });
@@ -517,8 +598,8 @@ test("with no schools the guides cannot be started", async ({ page, context, pro
   await expect(page.getByText("No schools came back")).toBeVisible();
   await expect(rail(page).locator("button[data-guide]")).toHaveCount(0);
   await rail(page).getByRole("button", { name: "Explore on my own" }).click();
-  await expect(page.getByRole("toolbar").getByRole("button", { name: "Guides" })).toBeDisabled();
-  await expect(page.getByRole("toolbar").getByRole("button", { name: "Explain this screen" })).toBeDisabled();
+  await expect(await helpItem(page, "Guides")).toBeDisabled();
+  await expect(await helpItem(page, "Explain this screen")).toBeDisabled();
   // The empty dataset answers its reads with the empty-store 404s this test is about.
   problems.splice(0, problems.length, ...problems.filter((p) => !/404/.test(p)));
 });
@@ -537,6 +618,7 @@ test.describe("in the narrow layout", () => {
     await expect(stepTitle(page)).toBeVisible();
     await expect(rail(page).getByText("Try it")).toHaveCount(0);
     await expect(rail(page).getByRole("button", { name: "Presentation mode" })).toHaveCount(0);
+    // Guide 2 left a card over the list region, so All guides brings Start here back in the band, in full.
     await rail(page).getByRole("button", { name: "All guides" }).click();
     await rail(page).locator("button[data-guide=q1]").click();
     await rail(page).getByRole("button", { name: "Next", exact: true }).click();
@@ -587,13 +669,13 @@ test("while the guide copy downloads, the rail, the page and the glossary say wh
   await expect(rail(page).getByRole("status")).toHaveText("Loading the guide");
   await expect(rail(page).locator("[aria-busy=true]")).toHaveCount(1);
 
-  await page.getByRole("toolbar").getByRole("button", { name: "Glossary of terms" }).click();
+  await (await helpItem(page, "Glossary of terms")).click();
   await expect(page.getByRole("complementary", { name: "Glossary of terms" }).getByRole("status")).toHaveText(
     "Loading the glossary"
   );
 
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "How this works" }).first().click();
+  await (await helpItem(page, "How this works")).click();
   await expect(page.getByRole("main").getByRole("status")).toHaveText("Loading How this works");
 
   release();
