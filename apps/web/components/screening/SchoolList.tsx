@@ -124,6 +124,8 @@ export function OrderedList({
           <Fragment key={key}>
             {index === rangeAt ? (
               <li className={`${styles.listNote} ${styles.rangeNote}`} data-region="list-order">
+                {/* The map key's mark for a range, so the list and the key show one sign for it. */}
+                <span className={styles.keyMark} data-mark="range" aria-hidden />
                 {upper ? copy.scope(rule).listOrderUpper : copy.scope(rule).listOrder}
               </li>
             ) : null}
