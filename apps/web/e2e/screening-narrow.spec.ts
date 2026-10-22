@@ -23,6 +23,8 @@
  *                                                                      -> "on a phone, Help's and Menu's choices..."
  * 12. The open full key closes when the reader goes to the list and back to the map
  *                                                                      -> "the full key stays open..."
+ * 13. A guide step's ring round the Menu button is painted under the top bar, so the step points at nothing
+ *                                                                      -> "a guide step's ring round the Menu..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -359,3 +361,74 @@ test.describe("the full key on a phone", () => {
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 });
+
+/** Navy (the ring's colour) at the middle of each side of the ring's box, read from what is painted there. */
+async function ringPainted(
+  page: import("@playwright/test").Page,
+  box: { x: number; y: number; width: number; height: number }
+) {
+  const clip = {
+    x: Math.floor(box.x),
+    y: Math.floor(box.y),
+    width: Math.ceil(box.width),
+    height: Math.ceil(box.height),
+  };
+  const png = (await page.screenshot({ clip, scale: "css" })).toString("base64");
+  return page.evaluate(
+    async ({ png, width, height }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${png}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { willReadFrequently: true })!;
+      context.drawImage(image, 0, 0, width, height);
+      // The ring is a 2 px border at the box's edge: one pixel in from each side, at its middle.
+      const points = [
+        [width / 2, 1],
+        [width / 2, height - 2],
+        [1, height / 2],
+        [width - 2, height / 2],
+      ];
+      return points.filter(([x, y]) => {
+        const [r, g, b] = context.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+        return b > r + 40 && b > g + 20 && r < 90;
+      }).length;
+    },
+    { png, width: clip.width, height: clip.height }
+  );
+}
+
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 360, height: 740 },
+]) {
+  test.describe(`a guide step's ring at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size, deviceScaleFactor: 2 });
+
+    test(`a guide step's ring round the Menu button is painted over the top bar at ${size.width} by ${size.height}`, async ({
+      page,
+    }) => {
+      await page.goto("/screening?guide=q1&gstep=4");
+      await waitForMap(page);
+      await expect(rail(page)).toHaveAttribute("data-step", "true");
+      const menu = (await page.locator("[data-region=actions-menu]:visible").boundingBox())!;
+      const ring = page.locator("[data-testid=guide-rings] > div").first();
+      // Once it has settled round the whole button.
+      await expect
+        .poll(async () => {
+          const r = (await ring.boundingBox())!;
+          return (
+            r.x <= menu.x &&
+            r.y <= menu.y &&
+            r.x + r.width >= menu.x + menu.width &&
+            r.y + r.height >= menu.y + menu.height
+          );
+        })
+        .toBe(true);
+      await page.waitForFunction(() => document.getAnimations().length === 0);
+      expect(await ringPainted(page, (await ring.boundingBox())!)).toBeGreaterThanOrEqual(3);
+    });
+  });
+}
