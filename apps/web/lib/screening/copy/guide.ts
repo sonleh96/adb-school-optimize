@@ -12,7 +12,7 @@ import { KEYS, LAYOUT } from "./words";
 const whyTitle = (who: Segments, place: string | null): Segments =>
   place ? seg`What puts ${who} ${place}` : seg`${who} is not in the list yet`;
 const rangeTitle = (who: Segments, place: string | null): Segments =>
-  place ? seg`${who} could be ${place}` : seg`${who} has no position under this method`;
+  place ? seg`${who} could be ${place}` : seg`${who} has no rank under this method`;
 const rangeTryIt = (names: Segments, n: number): Segments =>
   n === 1
     ? seg`It is ${names}. Select it.`
@@ -22,7 +22,7 @@ const rangeTryIt = (names: Segments, n: number): Segments =>
 const orderBody = (who: Segments, a: Segments, aPlace: string, b: Segments, bPlace: string): Segments =>
   seg`So ${who} sits between ${a}, ${aPlace}, and ${b}, ${bPlace}.`;
 const mapBody = (who: Segments): Segments =>
-  seg`The map draws it without the blue used for positions in the list, so ${who} never looks like it has one position.`;
+  seg`The map draws it without the blue used for ranks in the list, so ${who} never looks like it has one rank.`;
 const schoolTitle = (who: Segments): Segments => seg`What ${who} is missing`;
 const rangesBody = (who: Segments): Segments => seg`The example under it follows ${who} under both methods.`;
 
@@ -89,7 +89,7 @@ export const GUIDE = Object.freeze({
       onScreen: "The list and the map",
     }),
     urgency: Object.freeze({ name: "With and without the urgency rating" }),
-    range: Object.freeze({ name: "A school with a range of positions" }),
+    range: Object.freeze({ name: "A school with a range of ranks" }),
     queue: Object.freeze({
       name: "Schools with missing information",
       onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what is missing`,
@@ -131,7 +131,7 @@ export const GUIDE = Object.freeze({
             title: "The map shows the same order",
             onScreen: "The first school on the map, and the key",
             body: "Numbered dots are the first 10. The darker the blue, the earlier the school comes in the list.",
-            tryIt: "Move the pointer over any dot to read its position in the list.",
+            tryIt: "Move the pointer over any dot to read its rank in the list.",
           },
           {
             key: "download",
@@ -162,20 +162,20 @@ export const GUIDE = Object.freeze({
             key: "adds",
             title: "What each item adds",
             onScreen: '"In numbers", lower in the school card',
-            tryIt: `Turn on "For researchers: show method details" to see each item's share and its position in the list under all ${ruleCountWord()} methods.`,
+            tryIt: `Turn on "For researchers: show method details" to see each item's share and its rank in the list under all ${ruleCountWord()} methods.`,
           },
         ],
       },
       {
         id: "q3",
-        title: "Why some schools show a range of positions",
+        title: "Why some schools show a range of ranks",
         sub: IDEAS.ranges.title,
         steps: [
           {
             key: "range",
             title: (name: string, place: string | null) => textOf(rangeTitle([name], place)),
             onScreen: "The school card",
-            body: "The school card gives its highest and lowest positions in the list, and whether it is in the top 20 either way.",
+            body: "The school card gives its highest and lowest ranks in the list, and whether it is in the top 20 either way.",
             tryIt: (names: string, n: number) => textOf(rangeTryIt([names], n)),
           },
           {
@@ -243,7 +243,7 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "ranges",
-            title: "Schools with a range of positions move more",
+            title: "Schools with a range of ranks move more",
             onScreen: 'The example in "What changed"',
             body: (name: string) => textOf(rangesBody([name])),
           },

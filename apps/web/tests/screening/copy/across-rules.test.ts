@@ -6,7 +6,7 @@
  *     "cannot be put in order under any rule" when the other rules put it in order.
  *  2. Both places are said against the group of the rule shown, though the groups differ between rules (16, 17 and
  *     21 schools with every input recorded in the saved responses).
- *  3. The worked example in How this works compares two possible positions against one group.
+ *  3. The worked example in How this works compares two possible ranks against one group.
  */
 import { describe, expect, it } from "vitest";
 
@@ -145,7 +145,7 @@ describe("the worked example in How this works", () => {
   it("names the group of each rule when they differ", async () => {
     const text = (await example(byRule)) as string;
     expect(text).toContain(
-      "possible positions among all the schools that can be put in order under each rule are"
+      "possible ranks among all the schools that can be put in order under each rule are"
     );
     expect(textProblems(text)).toEqual([]);
   });
@@ -155,12 +155,12 @@ describe("the worked example in How this works", () => {
       additive_u: byRule.additive_u,
       additive_no_u: byRule.additive_u,
     })) as string;
-    expect(same).toContain("possible positions among all 21 schools that can be put in order are");
+    expect(same).toContain("possible ranks among all 21 schools that can be put in order are");
   });
 });
 
 describe("the saved detail of a school", () => {
-  it("still reads a range school's range and the benchmark's single position in the group both count", () => {
+  it("still reads a range school's range and the benchmark's single rank in the group both count", () => {
     const shown = schoolFromDetail(fixtureDetail(KEYS.interval), "additive_u");
     const P = copy.copyFor({ counts: countsFromResults(lists.additive_u), countsByRule: byRule });
     expect(P.rangeComparisonSentence(shown, "additive_u", "benchmark")).toBe(

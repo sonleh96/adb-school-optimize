@@ -4,7 +4,7 @@
  *  1. Map canvases pile up across rule switches and selections         -> "keeps one map"
  *  2. List and map selection drift apart (either direction, either tab)  -> "selecting a row...", "clicking a mark..."
  *  3. The wrong order for range or queue schools                         -> "shows the rows in the API's order"
- *  4. An interval school shown with a single position, even with equal ends -> "shows the rows...", "an exact range..."
+ *  4. An interval school shown with a single rank, even with equal ends -> "shows the rows...", "an exact range..."
  *  5. A rule switch shows another rule's rows, or loses the selection    -> "switching the rule..."
  *  6. A school with no coordinates breaks the map or the card            -> "a school without coordinates"
  *  7. Console errors (hydration, WebGL, style, failed requests)          -> every test, via `problems`
@@ -60,7 +60,7 @@ test("shows the rows in the API's order, with range schools between complete one
     "Sample School 18",
   ]);
 
-  // The range school reads as a range, never as one position.
+  // The range school reads as a range, never as one rank.
   const range = orderedRow(page, "Sample School 17");
   await expect(range.locator("[data-place=range]")).toContainText("10thto17th");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place=point]")).toHaveText("1st");
@@ -84,10 +84,10 @@ test("an exact range keeps the range treatment and carries its scope in the row"
   await row.click();
   await expect(page.getByTestId("card-place")).toHaveText("22ndof 22");
   await expect(page.getByTestId("card-context")).toContainText(
-    "but under this rule that cannot change its position in the list."
+    "but under this rule that cannot change its rank in the list."
   );
 
-  // A range school whose ends differ shows its range, never one position.
+  // A range school whose ends differ shows its range, never one rank.
   await orderedRow(page, "Sample School 17").click();
   await expect(page.getByTestId("card-place")).toHaveText("10thto17th");
 });
@@ -115,7 +115,7 @@ test("names the scope each place is counted in, in the list header, the card and
   );
   await orderedRow(page, "Sample School 17").click();
   await expect(page.getByTestId("card-context")).toContainText(
-    "Possible positions among the 22 schools that can be put in order."
+    "Possible ranks among the 22 schools that can be put in order."
   );
 });
 
@@ -125,7 +125,7 @@ test("an exact range's tooltip carries the exact note", async ({ page }) => {
   await page.mouse.move(point.x, point.y);
   const tooltip = page.getByRole("status").filter({ hasText: "Sample School 25" });
   await expect(tooltip).toContainText("22nd of the 22 schools that can be put in order.");
-  await expect(tooltip).toContainText("No air-quality reading");
+  await expect(tooltip).toContainText("No air-quality figure");
 });
 
 test("keeps one map through rule switches and selections", async ({ page }) => {
@@ -203,7 +203,7 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   await tab(page, /Missing information/).click();
   await queuedRow(page, "Sample School 23").click();
 
-  // Back on the main rule, the school has its position again and the list follows it.
+  // Back on the main rule, the school has its rank again and the list follows it.
   await mainRule(page, RULE.main).click();
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
   await expect(orderedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");

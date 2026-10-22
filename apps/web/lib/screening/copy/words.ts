@@ -37,7 +37,7 @@ export const LAYOUT = Object.freeze({
   amongAll124: "Among all schools that can be put in order",
   orderedTab: "The list",
   incompleteTab: "Missing information",
-  legendNoAirQuality: "No air-quality reading",
+  legendNoAirQuality: "No air-quality figure",
   legendIncomplete: "Missing information",
   workspaceHint: "Select a school to see why it is where it is in the list.",
   tooltipHint: "Select to see why",
@@ -179,8 +179,8 @@ export const LAYOUT = Object.freeze({
   // The compact key over the map: the control that opens the full key, and the words beside each mark.
   keyMore: "What the map shows",
   keyLess: "Hide the full key",
-  keyDot: "One position",
-  keyRange: "A range of positions",
+  keyDot: "One rank",
+  keyRange: "A range of ranks",
   keyRing: "Not in the list yet",
   keyRamp: (first: string, last: string) => `Darker is earlier in the list: ${first} to ${last}`,
   // An empty or failed load: one sentence and Retry.

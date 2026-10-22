@@ -168,7 +168,7 @@ test("a list of one school states only its own counts", async ({ page, context }
   await open(page);
   await expect(tab(page, /The list/)).toHaveText("The list(1)");
   await expect(tab(page, /Missing information/)).toHaveText("Missing information(0)");
-  // Every count the column states is the one school's: its position, its count, and no school in the other groups.
+  // Every count the column states is the one school's: its rank, its count, and no school in the other groups.
   // The rule area's "Other ways to order the list (5)" counts rules, not schools, and each row's Why line states the school's own
   // readings, so only the text that states counts is read: the statement, the tabs, the scope line and the list notes.
   const said = await page

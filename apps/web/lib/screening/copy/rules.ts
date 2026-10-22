@@ -22,7 +22,7 @@ interface RuleInfo {
   readonly relation: string;
   /** One plain line for a first-time reader on how the list is ordered under this rule, with no symbol or term of art. */
   readonly plain: string;
-  /** The method in a few words, to finish "Position in the list under ...". */
+  /** The method in a few words, to finish "Rank in the list under ...". */
   readonly plainName: string;
   readonly name: string;
   readonly usesUrgency: boolean;

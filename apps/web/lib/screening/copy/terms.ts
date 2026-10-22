@@ -86,7 +86,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     rule: {
       technical: "Decision rule",
       label: "Method",
-      line: "A fixed recipe that turns what is known about each school into a position in the list.",
+      line: "A fixed recipe that turns what is known about each school into a rank in the list.",
       help: "Each method combines the same information differently, so each gives a different order. The research team set each method's shares before looking at which schools came out on top. No method has been shown to find true need more accurately than another.",
       where: "Rule headline, rule switch, export header",
     },
@@ -209,7 +209,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       help: [
         `It is the 95th percentile of daily air-quality index values assigned to the school, rescaled against the values near the low and high ends of ${allRecords(c)}.`,
         known(c, "airMissing")
-          ? `${capitalise(countWord(c.airMissing))} ${plural(c.airMissing, "school that can be put in order has", "schools that can be put in order have")} no reading.`
+          ? `${capitalise(countWord(c.airMissing))} ${plural(c.airMissing, "school that can be put in order has", "schools that can be put in order have")} no air-quality figure.`
           : "",
         "It is a separate measure from emissions and land cover and is never added to them.",
       ]
@@ -243,35 +243,35 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Score (S, S0, T, T0, B)",
       label: "Score",
       line: "A number from 0 to 1 that a rule builds from a school's inputs; a higher score puts the school earlier in the list.",
-      help: "It is not a measure of building condition and not a grade. Two schools with close scores can sit several positions apart. The need-first rules have no score; they order schools by school need.",
+      help: "It is not a measure of building condition and not a grade. Two schools with close scores can sit several ranks apart. The need-first rules have no score; they order schools by school need.",
       where: "List score column, breakdown total, export",
     },
     rank: {
       technical: "Point rank",
-      label: "Position in the list",
+      label: "Rank in the list",
       line: "Where the school falls in the suggested order under the chosen method; 1st comes first.",
-      help: `Positions in the list count among ${completePhrase(c, reads)}. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
+      help: `Ranks in the list count among ${completePhrase(c, reads)}. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
       where: "List rank column, school panel, map numerals, export",
     },
     rank_range: {
       technical: "Rank bounds (best and worst rank)",
-      label: "Possible positions in the list",
-      line: "The highest and lowest positions in the list a school could take when its air-quality reading is missing.",
-      help: `${groupsSentence(c, reads)} Rather than guess a missing reading, the tool works out the highest and lowest positions in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing readings added nothing to their score.`,
+      label: "Possible ranks in the list",
+      line: "The highest and lowest ranks in the list a school could take when its air-quality figure is missing.",
+      help: `${groupsSentence(c, reads)} Rather than guess a missing figure, the tool works out the highest and lowest ranks in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing figures added nothing to their score.`,
       where: "List rank column for range schools, school panel, map range mark",
     },
     cohort_complete: {
       technical: `Complete-primary cohort${schoolsSuffix(c, "complete")}`,
       label: `${capitalise(everyInput(reads))}${countSuffix(c, "complete")}`,
       line: groupsSentence(c, reads),
-      help: "These schools have a single position in the list under this rule. To compare two rules, use the schools both put in order.",
+      help: "These schools have a single rank in the list under this rule. To compare two rules, use the schools both put in order.",
       where: "Scope line above the list, rank sentences, comparison sentences",
     },
     cohort_ranked: {
       technical: `Condition-eligible cohort${schoolsSuffix(c, "ranked")}`,
       label: `Can be put in order${countSuffix(c, "ranked")}`,
       line: groupsSentence(c, reads),
-      help: `${GROUPS_MEANING} Schools that show a range have possible positions among ${orderedPhrase(c)} instead of a single position.`,
+      help: `${GROUPS_MEANING} Schools that show a range have possible ranks among ${orderedPhrase(c)} instead of a single rank.`,
       where: "Ranked tab count, range sentences, export scope",
     },
     queue: {
@@ -354,7 +354,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     list_order: {
       technical: "Lower-score placement",
       label: "Where range schools sit",
-      line: `In the list, ${rangePhrase(c)} ${oneRange(c) ? "sits where it would if its" : "sit where they would if their"} missing readings added nothing to ${theirScore(c)} score.`,
+      line: `In the list, ${rangePhrase(c)} ${oneRange(c) ? "sits where it would if its" : "sit where they would if their"} missing figures added nothing to ${theirScore(c)} score.`,
       help: "The research team uses this as its main order. Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
       where: "Note under the scope line, sensitivity toggle",
     },
@@ -362,21 +362,21 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Top K",
       label: "Length of the top list",
       line: "How many schools from the top of the list go into the top list you download.",
-      help: "Choose 10, 20 or 30. Range schools are added after the top list when their highest possible position falls inside it, and they are marked as ranges.",
+      help: "Choose 10, 20 or 30. Range schools are added after the top list when their highest possible rank falls inside it, and they are marked as ranges.",
       where: "Export sheet, top-of-list markers",
     },
     filters: {
       technical: "Display filter",
       label: "Show only",
-      line: "Narrows what the list and map show; positions in the list stay as they are.",
-      help: "Filtering by province or remoteness hides other schools but never recomputes the scale or the positions.",
+      line: "Narrows what the list and map show; ranks in the list stay as they are.",
+      help: "Filtering by province or remoteness hides other schools but never recomputes the scale or the ranks.",
       where: "Filter control and chips, filter note",
     },
     layers: {
       technical: "Map layers",
       label: "Map layers",
       line: "Choose what the map draws: schools, boundaries and context layers.",
-      help: "Layers change the picture only. They do not change any score or position in the list.",
+      help: "Layers change the picture only. They do not change any score or rank in the list.",
       where: "Layers button on the map bar",
     },
     briefing_stops: {
@@ -389,7 +389,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     compare: {
       technical: "Rule comparison",
       label: "Compare rules",
-      line: "Shows which schools join or leave the top of the list when you switch rules, and how far positions move.",
+      line: "Shows which schools join or leave the top of the list when you switch rules, and how far ranks move.",
       help: "Comparisons come from the research team's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next.",
       where: "What changed block, compare mode",
     },
@@ -404,7 +404,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Manifest",
       label: "Method record",
       line: "The lines at the top of the download that say exactly how the list was made.",
-      help: "It names the rule and its shares, which schools the positions count among, how ties are broken, the scaling used and the fingerprints of the source files.",
+      help: "It names the rule and its shares, which schools the ranks count among, how ties are broken, the scaling used and the fingerprints of the source files.",
       where: "Export sheet, top of the downloaded file",
     },
     tie_rule: {
@@ -431,15 +431,15 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     mark_dot: {
       technical: "Point-rank mark",
       label: "Filled dot",
-      line: "A school with one position in the list; the darker the blue, the earlier it comes.",
+      line: "A school with one rank in the list; the darker the blue, the earlier it comes.",
       help: numbersHelp(c, reads),
       where: "Map and key",
     },
     mark_range: {
       technical: "Interval mark",
       label: "Ring with a centre dot",
-      line: "A school with a range of possible positions in the list, because its air-quality reading is missing.",
-      help: "It has none of the blue used for positions in the list, so it never looks like it has one position.",
+      line: "A school with a range of possible ranks in the list, because its air-quality figure is missing.",
+      help: "It has none of the blue used for ranks in the list, so it never looks like it has one rank.",
       where: "Map and key",
     },
     mark_ring: {

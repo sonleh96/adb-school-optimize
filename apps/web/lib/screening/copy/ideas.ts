@@ -24,29 +24,29 @@ export function buildIdeas(c: CountBag = {}) {
   const noQueue = known(c, "queue") && c.queue === 0;
   return Object.freeze({
     notVerdict: {
-      title: "A position in the list is a suggestion, not a verdict",
+      title: "A rank in the list is a suggestion, not a verdict",
       short:
-        "A position in the list suggests which schools to look at first under this method. It is not a verdict on condition, safety or funding.",
-      long: "The list puts schools in the order a method suggests for a closer look. A high position means what is known about the school points to visiting it sooner. It does not show that the school's buildings are in bad shape, and a low position does not mean it is fine. Only an inspection visit can establish the real facts.",
+        "A rank in the list suggests which schools to look at first under this method. It is not a verdict on condition, safety or funding.",
+      long: "The list puts schools in the order a method suggests for a closer look. A high rank means what is known about the school points to visiting it sooner. It does not show that the school's buildings are in bad shape, and a low rank does not mean it is fine. Only an inspection visit can establish the real facts.",
     },
     ranges: noRange
       ? {
-          title: "No school shows a range here, because every school has its readings",
+          title: "No school shows a range here, because every school has its figures",
           short:
-            "No school lacks an air-quality reading, an air-pollution index for its location. One that did would show the highest and lowest positions it could take.",
-          long: "No school lacks an air-quality reading, an air-pollution index for each school's location, so none shows a range here. A school that did would not have its missing reading guessed. The tool would work out the highest and lowest positions it could take among all the schools that can be put in order, listing it where air quality added nothing.",
+            "No school lacks an air-quality figure, an air-pollution index for its location. One that did would show the highest and lowest ranks it could take.",
+          long: "No school lacks an air-quality figure, an air-pollution index for each school's location, so none shows a range here. A school that did would not have its missing figure guessed. The tool would work out the highest and lowest ranks it could take among all the schools that can be put in order, listing it where air quality added nothing.",
         }
       : oneRange
         ? {
-            title: "One school shows a range because a reading is missing",
+            title: "One school shows a range because an air-quality figure is missing",
             short:
-              "One school lacks an air-quality reading, an air-pollution index for its location. It shows the highest and lowest positions it could take in the list.",
-            long: `One school lacks an air-quality reading, an air-pollution index for the school's location, and the tool does not guess it. It works out the highest and lowest positions that school could take among ${ordered} schools that can be put in order. The list shows it where it would sit if air quality added nothing at all to its score.`,
+              "One school lacks an air-quality figure, an air-pollution index for its location. It shows the highest and lowest ranks it could take in the list.",
+            long: `One school lacks an air-quality figure, an air-pollution index for the school's location, and the tool does not guess it. It works out the highest and lowest ranks that school could take among ${ordered} schools that can be put in order. The list shows it where it would sit if air quality added nothing at all to its score.`,
           }
         : {
-            title: `${rangeLead} schools show a range because a reading is missing`,
-            short: `${rangeLead} schools lack an air-quality reading, an air-pollution index for their location. They show the highest and lowest positions they could take in the list.`,
-            long: `${rangeLead} schools lack an air-quality reading, an air-pollution index for each school's location, and the tool does not guess it. It works out the highest and lowest positions each one could take among ${ordered} schools that can be put in order. The list shows them where they would sit if air quality added nothing at all to their score.`,
+            title: `${rangeLead} schools show a range because an air-quality figure is missing`,
+            short: `${rangeLead} schools lack an air-quality figure, an air-pollution index for their location. They show the highest and lowest ranks they could take in the list.`,
+            long: `${rangeLead} schools lack an air-quality figure, an air-pollution index for each school's location, and the tool does not guess it. It works out the highest and lowest ranks each one could take among ${ordered} schools that can be put in order. The list shows them where they would sit if air quality added nothing at all to their score.`,
           },
     queue: noQueue
       ? {

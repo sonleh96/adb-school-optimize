@@ -96,14 +96,14 @@ describe("the compact key beside the map", () => {
     const { keyDot, keyRange, keyRing } = copy.LAYOUT;
     for (const text of [keyDot, keyRange, keyRing])
       expect(textProblems(text, { sentence: false })).toEqual([]);
-    expect(keyDot).toMatch(/position/);
-    expect(keyRange).toMatch(/range of positions/);
+    expect(keyDot).toMatch(/rank/);
+    expect(keyRange).toMatch(/range of ranks/);
     expect(keyRing).toMatch(/not in the list yet/i);
-    expect(copy.TERMS.mark_range.line).toMatch(/range of possible positions/);
+    expect(copy.TERMS.mark_range.line).toMatch(/range of possible ranks/);
     expect(copy.TERMS.mark_ring.line).toMatch(/not in the list yet/);
   });
 
-  it("reads the colour strip from the first and last position it was given", () => {
+  it("reads the colour strip from the first and last rank it was given", () => {
     expect(copy.LAYOUT.keyRamp("1st", "99th")).toBe("Darker is earlier in the list: 1st to 99th");
   });
 });

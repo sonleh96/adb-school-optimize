@@ -80,41 +80,41 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
         : `${formatCount(c.range)} that ${plural(c.range, "shows", "show")}`;
     if (c.ranked === 0) fullShort = "No school can be put in order.";
     else if (noRange) fullShort = `${inOrder}, ${complete} with ${every}.`;
-    else if (noComplete) fullShort = `${inOrder}, ${ranges} a range of positions.`;
-    else fullShort = `${inOrder}, ${complete} with ${every} and ${ranges} a range of positions.`;
+    else if (noComplete) fullShort = `${inOrder}, ${ranges} a range of ranks.`;
+    else fullShort = `${inOrder}, ${complete} with ${every} and ${ranges} a range of ranks.`;
     scopeShort =
       c.ranked === 0
         ? fullShort
         : `${formatCount(c.ranked)} ${plural(c.ranked, "school is", "schools are")} in the list.`;
   } else {
     fullShort = readsReadings
-      ? `Schools with ${every} have one position; schools that show a range have possible positions.`
-      : `Schools with ${every} have one position each.`;
+      ? `Schools with ${every} have one rank; schools that show a range have possible ranks.`
+      : `Schools with ${every} have one rank each.`;
     scopeShort = "The schools that can be put in order are in the list.";
   }
   const groups = groupsSentence(c, reads);
   const rangesAmong = noRange ? "" : ` Ranges count among ${amongAllOrdered(c)}.`;
   return Object.freeze({
     groups,
-    scopeComplete: `${groups} ${GROUPS_MEANING}${noComplete ? "" : ` Single positions count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : `the schools with ${every}`}.`}`,
+    scopeComplete: `${groups} ${GROUPS_MEANING}${noComplete ? "" : ` Single ranks count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : `the schools with ${every}`}.`}`,
     scopeRanked: `${groups} ${GROUPS_MEANING}${rangesAmong}`,
     // Short line for under the tabs; the detail goes in a disclosure or help card.
     scopeShort,
-    scopeDetail: `${fullShort} ${GROUPS_MEANING} Single positions count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}.`,
+    scopeDetail: `${fullShort} ${GROUPS_MEANING} Single ranks count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}.`,
     // The label for the scale of a range, with the number of schools the rule puts in order.
     amongAll: capitalise(amongAllOrdered(c)),
-    filterNote: `Filtered view. Positions in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
+    filterNote: `Filtered view. Ranks in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
     // A rule that reads no air-quality, emissions or land-cover figure shows no range, so it has nothing to place.
     listOrder: !readsReadings
       ? "No school shows a range under this rule, because it does not use the air-quality, emissions or land-cover figures."
       : noRange
         ? "No school shows a range in this list."
-        : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} score. The research team uses this as its main order.`,
+        : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing figures added nothing to ${theirScore(c)} score. The research team uses this as its main order.`,
     listOrderUpper: noRange
       ? !readsReadings
         ? "The sensitivity check for schools that show a range does not apply under this rule, because no school shows one."
         : "The sensitivity check for schools that show a range has nothing to show here, because no school shows one."
-      : `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} score.`,
+      : `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing figures added as much as they can to ${theirScore(c)} score.`,
   });
 }
 
@@ -136,7 +136,7 @@ export function buildStrings(c: CountBag = {}) {
     queueOrderMissing:
       "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority.",
     notRecorded: "Not recorded",
-    noReading: "No reading",
+    noReading: "No figure",
     notPlaced: "Cannot be put in order yet",
     cannotWorkOut: "Cannot be worked out",
     noResult: "No result",

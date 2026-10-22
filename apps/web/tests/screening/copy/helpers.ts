@@ -205,7 +205,7 @@ export const KEYS = {
   complete: "4e65114f0b8790b6b906088a6d549020", // Sample School 08
   interval: "299ec8fe96b5bb7a121b9d6ff0aaddf9", // Sample School 17
   queueTeacherHouses: "52f5775bbd7f52d844925499e8c3aa83", // Sample School 21
-  completeWithRange: "369ff3a44a83d14b6ed9f102fe1b458c", // Sample School 05: one position, and a range once the range schools count
+  completeWithRange: "369ff3a44a83d14b6ed9f102fe1b458c", // Sample School 05: one rank, and a range once the range schools count
 } as const;
 
 /* -------------------------------------------------------- a builder for other shapes */

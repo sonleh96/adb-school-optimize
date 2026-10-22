@@ -7,7 +7,7 @@ export const SEPARATE_MEASURES =
 export const SCHOOL_NEED_DEFINITION =
   "School need is a 0 to 1 measure built from five parts of the school's own record: permanent classrooms, teacher housing, facility types, power and water, and remoteness.";
 export const AIR_DEFINITION =
-  "The air-quality reading is an air-pollution index assigned to the school's location.";
+  "The air-quality figure is an air-pollution index assigned to the school's location.";
 export const SIX_FACILITIES =
   "library, workshop, practical-skills room, home-economics room, computer laboratory and special classroom";
 // Wording kept in one position: no source in the project confirms this is an official national scale.

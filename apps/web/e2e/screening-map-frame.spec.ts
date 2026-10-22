@@ -485,7 +485,7 @@ test.describe("a list of over 700 schools", () => {
     await expect(page.locator(`${ORDERED} > li > button`)).toHaveCount(ordered);
     await expect(page.getByRole("tab", { name: /The list/ })).toHaveText(`The list(${ordered})`);
 
-    // Bands from the data: 10, 20, then about a third and two thirds of the schools with one position, then the last.
+    // Bands from the data: 10, 20, then about a third and two thirds of the schools with one rank, then the last.
     await page.locator("[data-slot=legend]").getByRole("button", { name: "What the map shows" }).click();
     const ramp = page.locator("[data-slot=legend] ol li span");
     await expect(ramp).toHaveCount(5);

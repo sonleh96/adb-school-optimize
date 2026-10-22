@@ -242,7 +242,7 @@ export function missingValueKind(school: CopySchool, key: "need" | InputKey): Mi
 }
 
 const UNRESOLVED_WHAT: Partial<Record<InputKey, string>> = {
-  air: "an air-quality reading",
+  air: "an air-quality figure",
   emissions: "a nearby emissions figure",
   land: "a land-cover figure",
 };
@@ -266,7 +266,7 @@ export function missingValueNote(school: CopySchool, key: "need" | InputKey): st
       : raw == null
         ? `No ${what} is recorded for this school`
         : `The ${what} recorded for this school cannot be used`;
-    return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of positions instead of one position." : ""}`;
+    return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of ranks instead of one rank." : ""}`;
   }
   const other = GATE_OF_KEY[key as InputKey];
   if (kind === "not_calculable") {
@@ -306,7 +306,7 @@ export function rangeRowWhy(school: CopySchool): string | null {
   if (keys.length === 0) return null;
   if (keys.length === 1) return missingValueNote(school, keys[0]);
   const names = keys.map((k) => (UNRESOLVED_WHAT[k] as string).replace(/^an? /, ""));
-  return `Its ${joinList(names)} are missing, so the school shows a range of positions.`;
+  return `Its ${joinList(names)} are missing, so the school shows a range of ranks.`;
 }
 
 // The heading of a school in the list of incomplete records grouped by what is missing: the one cause when there is
@@ -377,7 +377,7 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   else if (others.length === 1 && others[0] === "urgency_unknown")
     parts.push(
       "The rules that leave urgency out do not need it, so they can put this school in order.",
-      "Until the urgency rating is recorded, it has no position in the list under a rule that uses urgency."
+      "Until the urgency rating is recorded, it has no rank in the list under a rule that uses urgency."
     );
   else
     parts.push(

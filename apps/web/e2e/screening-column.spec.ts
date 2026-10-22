@@ -39,9 +39,9 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one position under both methods.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.";
 const REASSURANCE =
-  "Among the 16 schools with one position under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 positions. For the five schools that show a range, adding it back can still move their possible positions.";
+  "Among the 16 schools with one rank under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 ranks. For the five schools that show a range, adding it back can still move their possible ranks.";
 // What changed from the rule with urgency to the main rule, as the statement's link and guide 5 show it.
 const EXAMPLE =
   "Under the combined-factors rule with urgency (S), Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the combined-factors rule without urgency (S0), it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
@@ -50,9 +50,9 @@ const EXAMPLE_BACK =
   "Under the combined-factors rule without urgency (S0), Sample School 17 could be anywhere from 10th to 17th among the 22 schools that can be put in order. Under the combined-factors rule with urgency (S), it could be anywhere from 11th to 18th among the 21 schools that can be put in order.";
 // The scope detail under the rule with urgency, and under the main rule, which reads one input fewer.
 const SCOPE_DETAIL =
-  "21 schools can be put in order, 16 with every input recorded and 5 that show a range of positions. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single positions count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
+  "21 schools can be put in order, 16 with every input recorded and 5 that show a range of ranks. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single ranks count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
 const SCOPE_DETAIL_MAIN =
-  "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of positions. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single positions count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
+  "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of ranks. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single ranks count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
 /** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
 const QUIET_MAIN =
@@ -242,7 +242,7 @@ test("the scope line opens its detail in place, and a range row's place names th
   await less.click();
   await expect(page.locator("#screening-scope-detail")).toHaveCount(0);
 
-  // A range row says which group it counts in, so its number never reads as a single position (R19).
+  // A range row says which group it counts in, so its number never reads as a single rank (R19).
   await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thto17thof 22");
   await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("22ndof 22");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place]")).toHaveText("1st");
@@ -264,8 +264,8 @@ test("each row says why it sits there, and a range row names the reading it lack
   );
   await expect(why("Sample School 12")).toHaveText("Why It has 1 teacher house for its 10 teachers.");
   const range = (what: string) =>
-    `Why No ${what} is recorded for this school, so it is not counted as 0. The school shows a range of positions instead of one position.`;
-  await expect(why("Sample School 17")).toHaveText(range("air-quality reading"));
+    `Why No ${what} is recorded for this school, so it is not counted as 0. The school shows a range of ranks instead of one rank.`;
+  await expect(why("Sample School 17")).toHaveText(range("air-quality figure"));
   await expect(why("Sample School 18")).toHaveText(range("land-cover figure"));
   await expect(why("Sample School 19")).toHaveText(range("nearby emissions figure"));
 });
@@ -274,7 +274,7 @@ test("the range note sits just before the first range school", async ({ page }) 
   await openWorkspace(page);
   const note = page.locator(`${ORDERED} > [data-region=list-order]`);
   await expect(note).toHaveText(
-    "The five schools that show a range are listed where they would sit if their missing readings added nothing to their score. The research team uses this as its main order."
+    "The five schools that show a range are listed where they would sit if their missing figures added nothing to their score. The research team uses this as its main order."
   );
   const next = note.locator("xpath=following-sibling::li[1]//button");
   await expect(next).toContainText("Sample School 17");

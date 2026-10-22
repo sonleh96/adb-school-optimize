@@ -308,7 +308,7 @@ describe("the name in the worked example of How this works", () => {
     const P = await copy.copyFor({ schools, pairwise: [row], top20Changes: [] }).later();
     expect(P.howExample).not.toBeNull();
     expect(namesIn(P.howExample as copy.Segments)).toEqual(["J"]);
-    expect(textOf(P.howExample as copy.Segments)).toContain("but J's possible positions");
+    expect(textOf(P.howExample as copy.Segments)).toContain("but J's possible ranks");
     const limits = P.HOW_IT_WORKS.find((x) => x.key === "limits");
     expect(limits?.sentences).toContain(textOf(P.howExample as copy.Segments));
   });

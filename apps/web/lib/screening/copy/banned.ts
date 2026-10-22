@@ -36,7 +36,7 @@ export const BANNED = Object.freeze([
   { pattern: /(?<!not a )\bverdict/i, why: "Only used to say a place is not a verdict." },
   {
     pattern: /\bprobabilit|\bconfidence|\bmargin of error/i,
-    why: "Ranges are bounds from a missing reading, not statistical uncertainty.",
+    why: "Ranges are bounds from a missing figure, not statistical uncertainty.",
   },
   { pattern: /\bimput|\bestimated value/i, why: "Missing values are never filled in." },
   {

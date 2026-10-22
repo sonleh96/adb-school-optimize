@@ -1,13 +1,13 @@
 /**
- * Sentences about one school: its position, its reasons, its missing details, its name and its ties.
+ * Sentences about one school: its rank, its reasons, its missing details, its name and its ties.
  *
  * Failure modes, each with the test that catches it:
  *  1. The place sentence states the wrong place, or a place for a school that has none. Each cohort and each way
  *     the bounds can relate to the place has its own case, with the expected sentence written out.
- *  2. A range school's headline reads as a single position beside another school's place.
+ *  2. A range school's headline reads as a single rank beside another school's place.
  *  3. The plain card offers a second place, or the method card forgets the one it should add.
  *  4. A blank name, district or province leaks "null" or leaves an empty clause.
- *  5. A missing reading reads as a value ("lists no emission sources", "reaches 0"). Every combination of the
+ *  5. A missing figure reads as a value ("lists no emission sources", "reaches 0"). Every combination of the
  *     three readings missing is checked.
  *  6. Two schools level on score or on school need get no tie note, or a school that is not level gets one.
  *  7. Two schools whose names differ only in spacing read the same.
@@ -52,20 +52,20 @@ describe("the place sentence", () => {
     );
   });
 
-  it("states a range school's highest and lowest positions and which reading is missing", () => {
+  it("states a range school's highest and lowest ranks and which reading is missing", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [12, 24], blank: ["aqi"] });
     expect(rank(s)).toBe(
-      "Anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality reading, an air-pollution index for its location, is missing, so the screen shows the highest and lowest positions in the list it could take."
+      "Anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality figure, an air-pollution index for its location, is missing, so the screen shows the highest and lowest ranks in the list it could take."
     );
     expect(rank(s, "additive_u", { name: true, shortlist: 20 })).toBe(
-      "School r could be anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality reading, an air-pollution index for its location, is missing, so the screen shows the highest and lowest positions in the list it could take. It may or may not be in the top 20, depending on the missing reading."
+      "School r could be anywhere from 12th to 24th of the 21 schools that can be put in order. Its air-quality figure, an air-pollution index for its location, is missing, so the screen shows the highest and lowest ranks in the list it could take. It may or may not be in the top 20, depending on the missing figure."
     );
   });
 
-  it("says a range school whose ends are equal has one position, and why that cannot change", () => {
+  it("says a range school whose ends are equal has one rank, and why that cannot change", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [21, 21], blank: ["aqi"] });
     expect(rank(s, "additive_u", { shortlist: 20 })).toBe(
-      "21st of the 21 schools that can be put in order. Its air-quality reading is missing, but under this rule that cannot change its position in the list. It is outside the top 20 either way."
+      "21st of the 21 schools that can be put in order. Its air-quality figure is missing, but under this rule that cannot change its rank in the list. It is outside the top 20 either way."
     );
     expect(
       rank(school({ id: "r", cohort: "interval", bounds: [3, 3], blank: ["aqi"] }), "additive_u", {
@@ -137,13 +137,13 @@ describe("the card's figure and its context", () => {
   it("says a range school's context and the top-list clause", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [30, 40], blank: ["emissions", "land"] });
     expect(P.placeContext(s, "additive_u", { shortlist: 20 })).toBe(
-      "Possible positions among the 21 schools that can be put in order. Its nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest positions in the list it could take. It is outside the top 20 either way."
+      "Possible ranks among the 21 schools that can be put in order. Its nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest ranks in the list it could take. It is outside the top 20 either way."
     );
   });
 
   it("says what a complete school's place is among all the schools, or that the rule did not count them", () => {
     expect(P.fullRankingSentence(school({ id: "a", place: 5, bounds: [5, 5] }), "additive_u")).toBe(
-      "Counting the five schools that show a range does not change its position in the list."
+      "Counting the five schools that show a range does not change its rank in the list."
     );
     expect(P.fullRankingSentence(school({ id: "a", place: 5, bounds: [7, 9] }), "additive_u")).toBe(
       "Once the five schools that show a range are counted, it would sit between 7th and 9th of all 21 schools that can be put in order."
@@ -154,13 +154,13 @@ describe("the card's figure and its context", () => {
         "additive_u"
       )
     ).toBe(
-      "This rule was not run on all 21 schools that can be put in order, so only its position in the list among the 16 schools with every input recorded is available."
+      "This rule was not run on all 21 schools that can be put in order, so only its rank in the list among the 16 schools with every input recorded is available."
     );
   });
 });
 
 describe("one school under two rules", () => {
-  it("reads a single position under each rule for a complete school", () => {
+  it("reads a single rank under each rule for a complete school", () => {
     const a = {
       ...school({ id: "a", place: 3 }),
       results: { additive_u: { rank_complete120: 3 }, additive_no_u: { rank_complete120: 4 } },
@@ -211,19 +211,19 @@ describe("one school that shows a range", () => {
 
   it("agrees the subject, the verb and the pronouns in the list order", () => {
     expect(one.scope("additive_u").listOrder).toBe(
-      "The one school that shows a range is listed where it would sit if its missing readings added nothing to its score. The research team uses this as its main order."
+      "The one school that shows a range is listed where it would sit if its missing figures added nothing to its score. The research team uses this as its main order."
     );
     expect(one.scope("additive_u").listOrderUpper).toBe(
-      "Sensitivity check: the one school that shows a range is listed where it would sit if its missing readings added as much as they can to its score."
+      "Sensitivity check: the one school that shows a range is listed where it would sit if its missing figures added as much as they can to its score."
     );
     expect(one.termsFor("additive_u").list_order.line).toBe(
-      "In the list, the one school that shows a range sits where it would if its missing readings added nothing to its score."
+      "In the list, the one school that shows a range sits where it would if its missing figures added nothing to its score."
     );
     expect(four.scope("additive_u").listOrder).toBe(
-      "The four schools that show a range are listed where they would sit if their missing readings added nothing to their score. The research team uses this as its main order."
+      "The four schools that show a range are listed where they would sit if their missing figures added nothing to their score. The research team uses this as its main order."
     );
     expect(four.termsFor("additive_u").list_order.line).toBe(
-      "In the list, the four schools that show a range sit where they would if their missing readings added nothing to their score."
+      "In the list, the four schools that show a range sit where they would if their missing figures added nothing to their score."
     );
   });
 
@@ -263,10 +263,10 @@ describe("one school that shows a range", () => {
     const complete = (id: string) => school({ id, place: 1 });
     const text = (schools: copy.CopySchool[]) => copy.urgencyReassurance({ pairwise: rows, schools });
     expect(text([complete("a"), range("r")])).toMatch(
-      /For the one school that shows a range, adding it back can still move its possible positions\.$/
+      /For the one school that shows a range, adding it back can still move its possible ranks\.$/
     );
     expect(text([complete("a"), range("r"), range("q")])).toMatch(
-      /For the two schools that show a range, adding it back can still move their possible positions\.$/
+      /For the two schools that show a range, adding it back can still move their possible ranks\.$/
     );
   });
 });
@@ -304,7 +304,7 @@ describe("one school under two rules, whatever its group under each", () => {
     );
   });
 
-  it("gives a range school's single position under a rule that does not read the missing reading", () => {
+  it("gives a range school's single rank under a rule that does not read the missing figure", () => {
     const r = complete(
       "r",
       {
@@ -522,7 +522,7 @@ describe("ties", () => {
   });
 });
 
-describe("a missing reading", () => {
+describe("a missing figure", () => {
   type Reading = "aqi" | "emissions" | "land";
   const subsets = [
     [],
@@ -554,7 +554,7 @@ describe("a missing reading", () => {
           expect(said, key).not.toMatch(/lists no|none of the area|reaches|account for/);
           expect(P.missingValueKind(s, key), key).toBe("unresolved");
           expect(P.missingValueNote(s, key), key).toMatch(
-            /is recorded for this school, so it is not counted as 0\. The school shows a range of positions instead of one position\.$/
+            /is recorded for this school, so it is not counted as 0\. The school shows a range of ranks instead of one rank\.$/
           );
         } else {
           expect(P.missingValueKind(s, key), key).toBe("recorded");
@@ -568,10 +568,10 @@ describe("a missing reading", () => {
   it("names all three when all three are missing", () => {
     const s = school({ id: "r", cohort: "interval", bounds: [4, 9], blank: ["aqi", "emissions", "land"] });
     expect(P.rankSentence(s, "additive_u")).toContain(
-      "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded, so the screen shows"
+      "Its air-quality figure, nearby emissions figure and land-cover figure are not recorded, so the screen shows"
     );
     expect(P.missingSentence(s, "additive_u")).toBe(
-      "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded. Every other input is recorded."
+      "Its air-quality figure, nearby emissions figure and land-cover figure are not recorded. Every other input is recorded."
     );
     expect(P.missingSentences(s, "additive_u")).toHaveLength(2);
   });
@@ -582,7 +582,7 @@ describe("a missing reading", () => {
       missing_env: { aqi: false, emissions: false, land: false },
     };
     expect(P.missingSentence(s, "additive_u")).toBe(
-      "One of its readings is missing. Every other input is recorded."
+      "One of its figures is missing. Every other input is recorded."
     );
   });
 
@@ -802,7 +802,7 @@ describe("one input at a time", () => {
       "Its air-quality index, a measure of air pollution assigned to its location, reaches 1,234 on its worst 1 day in 20."
     );
     expect(say(s({ Q_raw: null }), "air")).toBe(
-      "Its air-quality reading is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
+      "Its air-quality figure is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
     );
     expect(say(s({ E_raw: 165178 }), "emissions")).toBe(
       "Fixed emission sources within 10 km account for about 165,000 tonnes of CO2-equivalent a year in the Climate TRACE inventory."
@@ -1220,7 +1220,7 @@ describe("what the port refuses where the prototype would have coerced", () => {
 
   it("falls back to the count-free groups sentence when the range count is known but the ordered count is not", () => {
     expect(copy.groupsSentence({ complete: 2, range: 1 })).toBe(
-      "Schools with every input recorded have one position each, and schools that lack a reading such as air quality show a range of positions; together they can be put in order."
+      "Schools with every input recorded have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order."
     );
   });
 });

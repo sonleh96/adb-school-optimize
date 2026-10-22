@@ -62,7 +62,7 @@ const VIEWS_KEY = "rise-screening-saved-views-v1";
 const SEEDS = [
   "Top of the list under the main method",
   "With and without the urgency rating",
-  "A school with a range of positions",
+  "A school with a range of ranks",
   "Schools with missing information",
 ];
 /** The range school the seed chooses by role: the best possible place, then the worst. */
