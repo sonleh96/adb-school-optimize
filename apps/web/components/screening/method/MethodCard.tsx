@@ -487,7 +487,7 @@ export function MethodCard({
               : place.kind === "common"
                 ? method.compare.slopeMid(compare.n)
                 : place.kind === "point"
-                  ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(id))
+                  ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(id))
                   : method.compare.rangesSub()}
           </p>
         </div>

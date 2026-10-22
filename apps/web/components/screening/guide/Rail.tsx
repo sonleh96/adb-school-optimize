@@ -28,7 +28,6 @@ import { canPresent } from "@/lib/screening/guide/layout";
 import { type GuideId, statusOf } from "@/lib/screening/guide/machine";
 import type { Plan, Roles } from "@/lib/screening/guide/roles";
 import { useScreeningCompare } from "@/lib/screening/hooks";
-import { PENDING } from "@/lib/screening/pending-words";
 import { PRIMARY_RULE, SENSITIVITY_RULE, isRulePair } from "@/lib/screening/rule-pair";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
@@ -106,10 +105,10 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
           type="button"
           className={styles.hide}
           data-region="hide-guides"
-          aria-label={PENDING.hideAria}
+          aria-label={GUIDE.hideAria}
           onClick={() => store.dispatch({ type: "close" })}
         >
-          {PENDING.hide}
+          {GUIDE.hide}
           <X size={13} aria-hidden />
         </button>
       </div>
@@ -117,8 +116,8 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
         <h2 ref={title} className={styles.startTitle} tabIndex={-1}>
           {GUIDE.startTitle}
         </h2>
-        {/* What the tool is for; its caveat shows once, at the foot of the map (at the end of the list on a phone). */}
-        <p className={styles.lede}>{PENDING.startLede}</p>
+        {/* What the tool is for; its caveat shows once, at the foot of the map. */}
+        <p className={styles.lede}>{GUIDE.startLede}</p>
         <ol className={styles.tasks} aria-busy={!plan}>
           {guides.map((guide, index) => {
             const status = statusOf(memory, guide.id, guide.steps.length);
@@ -175,7 +174,7 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
         >
           {returning ? GUIDE.close : GUIDE.explore}
         </button>
-        <p className={styles.note}>{PENDING.guidesBack}</p>
+        <p className={styles.note}>{returning ? GUIDE.returningNote : GUIDE.firstNote}</p>
       </div>
     </>
   );

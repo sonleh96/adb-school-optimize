@@ -144,7 +144,7 @@ export function SchoolCard(props: CardProps) {
     ? TERMS.queue.label
     : LAYOUT.underRule(
         listed.cohort === "interval" ? TERMS.rank_range.label : TERMS.rank.label,
-        copy.ruleName(rule)
+        copy.rulePlainName(rule)
       );
 
   return (

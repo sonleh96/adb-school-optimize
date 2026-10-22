@@ -5,7 +5,6 @@ import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "r
 import { createPortal } from "react-dom";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
-import { PENDING } from "@/lib/screening/pending-words";
 import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 
 import type { RuleChoice } from "./useScreeningData";
@@ -90,7 +89,7 @@ export function RuleArea(props: RuleAreaProps) {
   // The plain line describes the rows on screen.
   const listed = shown ?? requested;
   const section = useRef<HTMLElement>(null);
-  const { LAYOUT, TERMS, HELP } = copy;
+  const { LAYOUT, TERMS } = copy;
   const seeWithUrgency = (
     <button
       type="button"
@@ -127,21 +126,25 @@ export function RuleArea(props: RuleAreaProps) {
       data-open={open || undefined}
       aria-label={TERMS.rule.label}
     >
-      <div className={styles.ruleNow}>
+      <div>
         <p className={styles.ruleNowText} data-region="rule-now">
-          {PENDING.ruleNow(copy.ruleLabel(listed), listed === PRIMARY_RULE)}
+          {LAYOUT.ruleNow(listed)}
         </p>
-        <button
-          type="button"
-          className={styles.ruleChange}
-          data-region="rule-change"
-          aria-expanded={open}
-          aria-controls="screening-rule-choices"
-          disabled={disabled}
-          onClick={onToggle}
-        >
-          {open ? HELP.done : LAYOUT.change}
-        </button>
+        {/* Under the line, not beside it: the control's words say what it changes, and the one link sits after it. */}
+        <div className={styles.ruleNowRow}>
+          <button
+            type="button"
+            className={styles.ruleChange}
+            data-region="rule-change"
+            aria-expanded={open}
+            aria-controls="screening-rule-choices"
+            disabled={disabled}
+            onClick={onToggle}
+          >
+            {open ? LAYOUT.changeDone : LAYOUT.orderControl}
+          </button>
+          {open || comparing || !line ? null : line === PRIMARY_RULE ? seeWithUrgency : back}
+        </div>
       </div>
       {open ? (
         <div id="screening-rule-choices" className={styles.ruleChoices}>
@@ -188,9 +191,7 @@ export function RuleArea(props: RuleAreaProps) {
             </p>
           ) : null}
         </div>
-      ) : comparing || !line ? null : (
-        <p className={styles.ruleNowLink}>{line === PRIMARY_RULE ? seeWithUrgency : back}</p>
-      )}
+      ) : null}
     </section>
   );
 }
