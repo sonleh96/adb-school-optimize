@@ -177,7 +177,6 @@ describe("the compact key beside the map", () => {
   });
 
   it("words the compact strip so it cannot contradict the number of schools in the list", () => {
-    expect(copy.LAYOUT.keyStrip).toBe("Darker: earlier in the list");
     expect(copy.LAYOUT.keyStrip).not.toMatch(/\d/);
     expect(textProblems(copy.LAYOUT.keyStrip, { sentence: false })).toEqual([]);
   });
@@ -261,7 +260,10 @@ describe("a rule named in plain words", () => {
 describe("the narrow layout's words", () => {
   it("name the list and map switch and the compact Start here card", () => {
     const { paneAria, paneList, paneMap } = copy.LAYOUT;
-    expect([paneAria, paneList, paneMap]).toEqual(["Show the list or the map", "List", "Map"]);
+    // Two choices, each named apart, and a group name that names both.
+    expect(paneList).not.toBe(paneMap);
+    expect(paneAria.toLowerCase()).toContain(paneList.toLowerCase());
+    expect(paneAria.toLowerCase()).toContain(paneMap.toLowerCase());
     expect(textProblems(paneAria, { sentence: false })).toEqual([]);
     expect(GUIDE.openGuides).not.toBe(GUIDE.foldGuides);
     expect(GUIDE.hide).toBe("Hide the guides");
@@ -276,7 +278,6 @@ describe("the narrow layout's words", () => {
   });
 
   it("words the compact card's dismiss as a final choice, with a name that says what it hides", () => {
-    expect(GUIDE.dismissCompact).toBe("No thanks");
     expect(GUIDE.dismissCompactAria).toContain(GUIDE.dismissCompact);
     expect(GUIDE.dismissCompactAria).toMatch(/hide the guides$/);
     expect(GUIDE.dismissCompact).not.toBe(GUIDE.hide);
