@@ -147,7 +147,8 @@ function Start({
               type="button"
               className={styles.unfold}
               data-region="open-guides"
-              aria-expanded={unfolded}
+              // Named for what pressing it does, open or fold, with no expanded state as well.
+              data-open={unfolded || undefined}
               aria-controls="screening-start-guides"
               onClick={() => setUnfolded((value) => !value)}
             >

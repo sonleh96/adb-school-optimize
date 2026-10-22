@@ -137,7 +137,8 @@ export function RuleArea(props: RuleAreaProps) {
             type="button"
             className={styles.ruleChange}
             data-region="rule-change"
-            aria-expanded={open}
+            // Its name says what pressing it does (open the choice, or Done), so it carries no expanded state too.
+            data-open={open || undefined}
             aria-controls="screening-rule-choices"
             disabled={disabled}
             onClick={onToggle}
