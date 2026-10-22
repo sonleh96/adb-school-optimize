@@ -261,6 +261,18 @@
   border-bottom: 1px solid var(--hair-2);
 }
 /* Closed, the rule area is one plain line, Change beside it, and one link under it. */
+/* The rule line's link wraps when the window is narrower than its words, its arrow after the last word. */
+.ruleNowRow .arrowLink {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+.ruleNowRow .arrowLink svg {
+  display: inline;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
 .ruleNowRow {
   display: flex;
   flex-wrap: wrap;
