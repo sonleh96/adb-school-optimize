@@ -186,9 +186,9 @@ export function urgencyReassurance(data: ComparisonData): string {
 
 // Which list to use, short, for the rule area: a question, the answer, why urgency is left out, and the agreement
 // with the rule that puts it back. data: { pairwise }.
-export function defaultListStatement(data: Pick<ComparisonData, "pairwise">, ruleNames?: RuleNames): string {
+export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead = `Which list should I use? This one, ${ruleNames === "plain" ? "the main method" : "the research paper's main method"}. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.`;
+  const lead = `Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.`;
   if (!row) return lead;
   const n = pairSize(row);
   const among = `among ${pairPhrase(row)}`;
@@ -210,7 +210,7 @@ export function defaultListStatementLong(
     "It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards.";
   const lead =
     ruleNames === "plain"
-      ? `This list uses the main method. ${left} The main method with the urgency rating added back is kept beside it as a check.`
+      ? `This list uses the research paper's main method. ${left} The main method with the urgency rating added back is kept beside it as a check.`
       : `This list uses the research paper's main method, ${rule("additive_no_u").name}. ${left} The earlier paper's method, ${rule("additive_u").name}, which adds the urgency rating back, is kept beside it as a check.`;
   if (!row) return lead;
   return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both methods"))}`;

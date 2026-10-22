@@ -116,6 +116,7 @@ describe("every fixed string follows the writing rules", () => {
       keyRamp: ["1st", "20th"],
       keyRampNote: [20, 4],
       ruleNow: ["additive_no_u"],
+      ruleNowShort: ["additive_no_u"],
       addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],
       notComputedGroup: ["Need first, no urgency", 4],

@@ -55,7 +55,14 @@ export const GUIDE = Object.freeze({
   // Under "What do you want to find out?": what the tool is for, without the caveat the screen shows once at the map's foot.
   startLede: "This tool suggests which schools to look at first, with the main reason for each.",
   hide: "Hide the guides",
-  hideAria: "Hide the guides",
+  // The compact Start here card on narrow screens: one line on what the guides are, and the control that unfolds them.
+  startShort: (n: number) =>
+    `${capitalise(countWord(n))} short ${plural(n, "guide shows", "guides show")} how to read this screen.`,
+  // The compact card's dismiss, worded as a final choice so it is not read as the twin of Open the guides.
+  dismissCompact: "No thanks",
+  dismissCompactAria: "No thanks, hide the guides",
+  openGuides: "Open the guides",
+  foldGuides: "Fold the guides away",
   onScreen: "On screen",
   tryIt: "Try it",
   upNext: "Up next",

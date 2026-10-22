@@ -28,10 +28,11 @@ export const LAYOUT = Object.freeze({
   withUrgency: "With urgency",
   withoutUrgency: "Without urgency",
   guides: "Guides",
-  change: "Change",
   changeDone: "Done",
   // The one plain line of the quiet rule area: how the list is ordered under a rule, with no symbol or term of art.
   ruleNow: (id: CopyRuleId) => rule(id).plain,
+  // The same for the first screen: what comes first, in a line or two with no percentages. `ruleNow` has the shares.
+  ruleNowShort: (id: CopyRuleId) => rule(id).plainShort,
   help: "Help",
   helpAria: "Help and guides",
   amongAll124: "Among all schools that can be put in order",
@@ -48,6 +49,10 @@ export const LAYOUT = Object.freeze({
   otherRulesCount: (n: number) => `Other ways to order the list (${n})`,
   // The control that opens the full choice of how the list is ordered, from the one line that says how it is today.
   orderControl: "Change how the list is ordered",
+  // The narrow layout's choice between the list and the map band.
+  paneAria: "Show the list or the map",
+  paneList: "List",
+  paneMap: "Map",
   rulePair: "How the list is ordered",
   howBack: "Back to the map",
   showMe: "Show me on the screen",
@@ -195,6 +200,9 @@ export const LAYOUT = Object.freeze({
     range > 0
       ? `The colours show the ${formatCount(n)} ${plural(n, "school", "schools")} with one rank. The ${formatCount(range)} ${plural(range, "school", "schools")} with a range of ranks ${plural(range, "is", "are")} shown apart.`
       : `The colours show all ${formatCount(n)} ${plural(n, "school", "schools")} in the list.`,
+  // What the compact strip says beside its swatches instead of a first and last rank, which can end below the number
+  // of schools in the list. `keyRamp` and `keyRampNote` keep the exact numbers, for the full key and the screen reader.
+  keyStrip: "Darker: earlier in the list",
   // The dark numbered circles on the map.
   keyNumbers: "Numbered: the first ten in the list",
   // An empty or failed load: one sentence and Retry.
