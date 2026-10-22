@@ -329,6 +329,8 @@ function Workspace() {
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
+  // The full key's open state lives here, above the foot, which moves in the page between the narrow List and Map.
+  const [keyOpen, setKeyOpen] = useState(false);
   // The narrow Map view puts the map's foot before the list in the page, so the keyboard meets the key first.
   const footFirst = layout.mode === "narrow" && state.pane === "map";
   const footHeight = useFootHeight(foot, [
@@ -551,6 +553,8 @@ function Workspace() {
           ranged={ordered.length - (bands.length ? bands[bands.length - 1].hi : 0)}
           stacked={layout.keyStacked}
           stale={stale}
+          open={keyOpen}
+          onToggle={() => setKeyOpen((value) => !value)}
         />
       ) : null}
       <p className={styles.caveat} data-region="caveat">

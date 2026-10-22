@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
@@ -35,6 +35,8 @@ export function Legend({
   ranged,
   stacked,
   stale,
+  open,
+  onToggle,
 }: {
   copy: BoundCopy;
   rule: CopyRuleId | null;
@@ -43,8 +45,10 @@ export function Legend({
   ranged: number;
   stacked: boolean;
   stale: boolean;
+  /** The full key is open. The workspace holds it, so the key keeps it when the narrow Map view moves it in the page. */
+  open: boolean;
+  onToggle: () => void;
 }) {
-  const [open, setOpen] = useState(false);
   const body = useId();
   const { LAYOUT, TERMS } = copy;
   const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(rule)) : TERMS.rank.label;
@@ -155,7 +159,7 @@ export function Legend({
           data-region="key-toggle"
           aria-expanded={open}
           aria-controls={body}
-          onClick={() => setOpen((value) => !value)}
+          onClick={onToggle}
         >
           {open ? LAYOUT.keyLess : LAYOUT.keyMore}
           <ChevronUp size={12} aria-hidden data-open={open || undefined} />
