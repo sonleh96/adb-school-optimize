@@ -272,10 +272,9 @@ describe("the narrow layout's words", () => {
     expect(paneAria.toLowerCase()).toContain(paneList.toLowerCase());
     expect(paneAria.toLowerCase()).toContain(paneMap.toLowerCase());
     expect(textProblems(paneAria, { sentence: false })).toEqual([]);
-    expect(GUIDE.openGuides).not.toBe(GUIDE.foldGuides);
+    expect(GUIDE.openGuides).not.toBe(GUIDE.hide);
     expect(GUIDE.hide).toBe("Hide the guides");
-    for (const text of [GUIDE.openGuides, GUIDE.foldGuides])
-      expect(textProblems(text, { sentence: false })).toEqual([]);
+    expect(textProblems(GUIDE.openGuides, { sentence: false })).toEqual([]);
   });
 
   it("counts the guides in the card's line, in the singular too", () => {

@@ -62,7 +62,6 @@ export const GUIDE = Object.freeze({
   dismissCompact: "No thanks",
   dismissCompactAria: "No thanks, hide the guides",
   openGuides: "Open the guides",
-  foldGuides: "Fold the guides away",
   onScreen: "On screen",
   tryIt: "Try it",
   upNext: "Up next",
