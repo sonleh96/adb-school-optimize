@@ -333,8 +333,9 @@ test.describe("the key at 200 percent zoom", () => {
   });
 });
 
-/** The caveat in the copy's words: what the tool does not show or decide. */
-const CAVEAT = /It does not show a school's real condition or safety/;
+/** The caveat in the copy's words, in full or in the short form a narrow card keeps at its foot. */
+const CAVEAT =
+  /It does not show a school's real condition or safety|not a verdict on any school's condition or safety/;
 
 for (const size of [
   { width: 1600, height: 1000, scale: 1 },
