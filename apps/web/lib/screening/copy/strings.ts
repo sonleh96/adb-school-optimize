@@ -37,7 +37,7 @@ function marginPoints(se: number | undefined): number | null {
  */
 export const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object.freeze({
   additive_no_u:
-    "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.",
+    "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency rating changes.",
   additive_u:
     "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.",
 });

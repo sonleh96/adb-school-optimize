@@ -221,7 +221,7 @@ function Stepper({
       roles,
       plan,
       agreeK: agree.length ? Math.max(...agree) : null,
-      // Guide 5 shows the main rule, switched to from the rule that puts the urgency value back.
+      // Guide 5 shows the main rule, switched to from the rule that puts the urgency rating back.
       example: exampleSchool(shown.schools, SENSITIVITY_RULE, PRIMARY_RULE),
     };
   }, [data, roles, plan, later, compare.data]);

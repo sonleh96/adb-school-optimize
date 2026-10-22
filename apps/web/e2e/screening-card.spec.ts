@@ -47,7 +47,7 @@ const LOAD_FAILED = "Some of the information did not load, so there is nothing t
 const PERSISTENT =
   "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.";
 const PERSISTENT_REVISED =
-  "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.";
+  "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency rating changes.";
 const near = (points: string) =>
   `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
 const NEAR_LINE = near("0.6");

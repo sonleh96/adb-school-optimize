@@ -43,7 +43,7 @@ const problemsIn = (text: string, name: string | null, sentence = true) =>
 const FACTOR_NAME: Record<string, string> = {
   N: "school need",
   A: "district context",
-  U: "the urgency value",
+  U: "the urgency rating",
 };
 
 /** What the page binds: the shown list alone at first, then with the two combined-factors lists, then every list. */

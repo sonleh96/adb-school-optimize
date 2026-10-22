@@ -83,7 +83,7 @@ describe("the records of a list", () => {
         "4 kinds",
         "Remoteness off the scale, needs checking",
         "Teacher count blank",
-        "Urgency value not recorded",
+        "Urgency rating not recorded",
       ].sort()
     );
   });

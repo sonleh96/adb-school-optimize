@@ -55,7 +55,7 @@ interface RuleAreaProps {
   layer: HTMLElement | null;
   onRule: (rule: CopyRuleId) => void;
   onToggle: () => void;
-  /** Opens What changed on the main rule, compared with the rule that puts the urgency value back. */
+  /** Opens What changed on the main rule, compared with the rule that puts the urgency rating back. */
   onSeeWithUrgency: () => void;
   onBack: () => void;
 }

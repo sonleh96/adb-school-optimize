@@ -798,7 +798,7 @@ describe("one input at a time", () => {
       raw: { ...school({ id: "c" }).raw, ...raw },
     });
     expect(say(school({ id: "c" }), "urgency")).toBe(
-      "Its urgency value is 0.21 on a 0 to 1 scale. No one could trace where that value comes from."
+      "Its urgency rating is 0.21 on a 0 to 1 scale. No one could trace where that value comes from."
     );
     expect(say(s({ Q_raw: 1234 }), "air")).toBe(
       "Its air-quality index, a measure of air pollution assigned to its location, reaches 1,234 on its worst 1 day in 20."
@@ -1111,7 +1111,7 @@ describe("why a school sits where it does, from the engine's own scores", () => 
       /This rule gives an extra share to the larger of school need and district context\. For this school that is school need\.$/
     );
     expect(copy.reasonSentence(s, "bottleneck_u")).toMatch(
-      /the largest of school need, district context and the urgency value\. For this school that is school need\.$/
+      /the largest of school need, district context and the urgency rating\. For this school that is school need\.$/
     );
   });
 
@@ -1215,9 +1215,9 @@ describe("what the port refuses where the prototype would have coerced", () => {
     const base = school({ id: "z" });
     const noUrgency = { ...base, components: { ...base.components, U: null } };
     const noReach = { ...base, components: { ...base.components, R: null } };
-    expect(() => copy.inputSentence(noUrgency, "urgency")).toThrow("has no urgency value");
+    expect(() => copy.inputSentence(noUrgency, "urgency")).toThrow("has no urgency rating");
     expect(() => copy.inputSentence(noReach, "reach")).toThrow("has no reach value");
-    expect(() => copy.contributions(noUrgency, "benchmark")).toThrow("has no urgency value");
+    expect(() => copy.contributions(noUrgency, "benchmark")).toThrow("has no urgency rating");
   });
 
   it("falls back to the count-free groups sentence when the range count is known but the ordered count is not", () => {

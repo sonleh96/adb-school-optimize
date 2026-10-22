@@ -61,7 +61,7 @@ export const countWord = (n: number): string => (n < 10 ? SMALL[n] : formatCount
 export const countSuffix = (c: CountBag | undefined, k: string): string =>
   known(c, k) ? ` (${formatCount(c[k])})` : "";
 
-/** Which inputs a rule reads: the urgency value, and the air-quality, emissions and land-cover figures. */
+/** Which inputs a rule reads: the urgency rating, and the air-quality, emissions and land-cover figures. */
 export interface Reads {
   readonly urgency: boolean;
   readonly readings: boolean;
@@ -139,7 +139,7 @@ export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
 // The urgency definition; with counts it says how many schools have 0.
 export function urgencyDefinition(c: CountBag | undefined): string {
   const head =
-    "The urgency value is a number supplied with the original school data and described as hazard-related; how it was made could not be traced, so what it measures is not known";
+    "The urgency rating is a number supplied with the original school data and described as hazard-related; how it was made could not be traced, so what it measures is not known";
   if (!known(c, "urgencyZero") || !known(c, "all") || c.all === 0) return `${head}.`;
   let who: string;
   if (c.urgencyZero === 0) who = "no school has 0";

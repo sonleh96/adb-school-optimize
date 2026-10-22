@@ -4,7 +4,7 @@
  * Failure modes, each with the test that catches it:
  *  1. One rule's broken contributions fail the whole card, though the card shows another rule.
  *  2. The reasons for a rule whose contributions are missing say "none of its inputs adds", which is false.
- *  3. An urgency value that no loaded rule read reads as recorded when it is unknown, or as unknown when it is
+ *  3. An urgency rating that no loaded rule read reads as recorded when it is unknown, or as unknown when it is
  *     recorded. It comes from the stored input.
  *  4. Two scores a rounding error apart are called a tie, though the engine orders them.
  */
@@ -96,7 +96,7 @@ describe("one rule's contributions are broken", () => {
   });
 });
 
-describe("an urgency value that no loaded rule reads", () => {
+describe("an urgency rating that no loaded rule reads", () => {
   const withoutUrgencyRules = () => {
     const b = body();
     b.rules = b.rules.filter(

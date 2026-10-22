@@ -49,7 +49,7 @@ const flaggedLine = (c: CountBag): string => {
  */
 function persistentHelp(c: CountBag, ruleId?: CopyRuleId): string {
   if (ruleId === "additive_no_u")
-    return `That test was run for the paper's main rule: new shares were drawn for the six factors it uses, so it is a fresh run for this rule and not a measure of what the urgency value changes. The flag shows only under the combined-factors rule without urgency (S0); the rule with urgency has its own.${flaggedLine(c)}`;
+    return `That test was run for the paper's main rule: new shares were drawn for the six factors it uses, so it is a fresh run for this rule and not a measure of what the urgency rating changes. The flag shows only under the combined-factors rule without urgency (S0); the rule with urgency has its own.${flaggedLine(c)}`;
   if (ruleId === "additive_u")
     return `That test is the circulated paper's experiment, which included urgency. It is not a result for the rule without urgency, which has its own, so the flag shows only under the combined-factors rule with urgency (S).${flaggedLine(c)}`;
   return "The paper ran the test for two rules, the combined-factors rule without urgency (S0) and the combined-factors rule with urgency (S), each as its own experiment. A flag shows only under the rule whose test found it, and is never read as the other rule's result.";
@@ -94,7 +94,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Rule role and provenance",
       label: "Role",
       line: "The job a rule does on the screen, shown with where the rule comes from.",
-      help: "The role is main rule for the combined-factors rule without urgency, strict alternative for the need-first rule without urgency, and sensitivity check for the largest-factor rule without urgency. The three rules from the circulated paper that use urgency, the combined-factors, need-first and largest-factor rules, are urgency sensitivities: they show what the urgency value changes. The conventional benchmark is the reference. The source is the revised paper, for the three rules that leave urgency out, or the circulated paper, for the four that use it. The screen opens on the combined-factors rule without urgency (S0).",
+      help: "The role is main rule for the combined-factors rule without urgency, strict alternative for the need-first rule without urgency, and sensitivity check for the largest-factor rule without urgency. The three rules from the circulated paper that use urgency, the combined-factors, need-first and largest-factor rules, are urgency sensitivities: they show what the urgency rating changes. The conventional benchmark is the reference. The source is the revised paper, for the three rules that leave urgency out, or the circulated paper, for the four that use it. The screen opens on the combined-factors rule without urgency (S0).",
       where: "Under the rule name in the headline, rule switch tooltips",
     },
     school_need: {
@@ -190,7 +190,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     urgency: {
       technical: "Urgency, U",
-      label: "Urgency value (source not traced)",
+      label: "Urgency rating (source not traced)",
       line: urgencyDefinition(c),
       help: "A value of 0 does not mean nothing was found. The paper's main rule, the combined-factors rule without urgency (S0), leaves it out because its source is not documented; that says nothing about whether schools face real hazards. The combined-factors rule with urgency (S) gives it a 5% share and the conventional benchmark (B) 15%, as sensitivity checks. The largest-factor rule with urgency (T) can let it outweigh everything else for a school, because it boosts whichever input is largest.",
       where: "Breakdown row under rules that use it, rule explanations, urgency note",

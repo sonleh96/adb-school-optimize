@@ -123,7 +123,7 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
     const out: Contribution = {};
     for (const k of NEED_KEYS) out[k] = (0.55 / 5) * required(parts[NEED_FIELDS[k]], NEED_FIELDS[k]);
     out.area = 0.2 * required(c.A, "district-context value");
-    out.urgency = 0.15 * required(c.U, "urgency value");
+    out.urgency = 0.15 * required(c.U, "urgency rating");
     out.reach = 0.1 * required(c.R, "reach value");
     return out;
   }
@@ -156,7 +156,7 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
 const LARGEST_NAME: Record<Largest, string> = {
   N: "school need",
   A: "district context",
-  U: "the urgency value",
+  U: "the urgency rating",
 };
 
 export const INPUT_KEYS: readonly InputKey[] = Object.freeze([...ORDER]);
@@ -234,8 +234,8 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
         return gateSentence(otherCause(school, "urgency_unknown"));
       // A school whose urgency is known but whose figure is not loaded says only that it is recorded.
       if (school.components.U === undefined)
-        return "Its urgency value is recorded. No one could trace where that value comes from.";
-      return `Its urgency value is ${required(school.components.U, "urgency value").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
+        return "Its urgency rating is recorded. No one could trace where that value comes from.";
+      return `Its urgency rating is ${required(school.components.U, "urgency rating").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
     case "reach": {
       if (school.cohort === "queue" && school.components.R === null)
         return gateSentence(otherCause(school, "unresolved_reach"));
@@ -402,7 +402,7 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
   if (ruleId === "bottleneck_u" || ruleId === "bottleneck_no_u") {
     const which =
       ruleId === "bottleneck_u"
-        ? "the largest of school need, district context and the urgency value"
+        ? "the largest of school need, district context and the urgency rating"
         : "the larger of school need and district context";
     const named = (school.contributions?.[ruleId]?.largest?.factors ?? []).map((f) => LARGEST_NAME[f]);
     parts.push(

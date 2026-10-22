@@ -216,8 +216,8 @@ export const GUIDE = Object.freeze({
       },
       {
         id: "q5",
-        title: "What changes without the urgency value",
-        sub: "What did leaving the uncertain urgency value out change?",
+        title: "What changes without the urgency rating",
+        sub: "What did leaving the uncertain urgency rating out change?",
         steps: [
           {
             key: "agree",
@@ -230,7 +230,7 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "why",
-            title: "Why the urgency value is left out",
+            title: "Why the urgency rating is left out",
             onScreen: "The main rule and the urgency sensitivity, above the list",
           },
           {
@@ -244,7 +244,7 @@ export const GUIDE = Object.freeze({
             title: "Switch between the two rules yourself",
             onScreen: "The main rule and the urgency sensitivity, above the list",
             tryIt: (label: string) =>
-              `Choose "${label}" to put the urgency value back and see the circulated paper's rule. "See the full comparison" opens the method details.`,
+              `Choose "${label}" to put the urgency rating back and see the circulated paper's rule. "See the full comparison" opens the method details.`,
           },
         ],
       },

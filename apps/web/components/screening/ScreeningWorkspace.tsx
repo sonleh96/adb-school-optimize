@@ -370,7 +370,7 @@ function Workspace() {
     // never on screen, so it is not the one compared with.
     store.setState({ rule, compare: shown?.rule ?? data.requested });
   };
-  // What changed for the main rule, against the rule that puts the urgency value back: the list stays on the main
+  // What changed for the main rule, against the rule that puts the urgency rating back: the list stays on the main
   // rule, as guide 5 and the saved view "With and without urgency" show it.
   const seeWithUrgency = () => {
     store.setState({ rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, view: "ranked" });

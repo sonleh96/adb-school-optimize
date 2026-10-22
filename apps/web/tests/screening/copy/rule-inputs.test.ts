@@ -5,7 +5,7 @@
  *  1. The benchmark reads no air-quality, emissions or land-cover figure, so a school with a missing reading is
  *     complete under it. The copy said all of that school's inputs are recorded, and that the benchmark's group of
  *     21 schools all have every input recorded, when five of them lack a reading.
- *  2. The rules that leave urgency out put a school with no urgency value in order. The copy said the same of it.
+ *  2. The rules that leave urgency out put a school with no urgency rating in order. The copy said the same of it.
  *  3. A rule that reads every input is worded as before.
  * The records are the API's own saved lists.
  */
@@ -110,7 +110,7 @@ describe("a school with a missing reading, under the benchmark", () => {
   });
 });
 
-describe("a school with no urgency value, under a rule that leaves urgency out", () => {
+describe("a school with no urgency rating, under a rule that leaves urgency out", () => {
   const P = copy.copyFor({
     schools: underNoUrgency,
     counts: countsFromResults(lists.additive_no_u),
@@ -118,11 +118,11 @@ describe("a school with no urgency value, under a rule that leaves urgency out",
   });
   const s23 = named(underNoUrgency, "Sample School 23");
 
-  it("is complete there, and says its urgency value is not recorded but not needed", () => {
+  it("is complete there, and says its urgency rating is not recorded but not needed", () => {
     expect(s23.cohort).toBe("complete");
     expect(P.missingSentences(s23, "additive_no_u")).toEqual([
       "All of the inputs this rule uses are recorded.",
-      "Its urgency value is not recorded, but this rule does not use it.",
+      "Its urgency rating is not recorded, but this rule does not use it.",
     ]);
   });
 });

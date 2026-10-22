@@ -288,7 +288,7 @@ describe("which list to use", () => {
       }
       expect(P.defaultListStatement().length).toBeLessThanOrEqual(260);
       expect(P.defaultListStatementLong()).toBe(
-        `This list uses the paper's main rule, the combined-factors rule without urgency (S0). It leaves out the urgency value, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is kept beside it as a sensitivity check. Among the 84 schools with every input recorded, ${
+        `This list uses the paper's main rule, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is kept beside it as a sensitivity check. Among the 84 schools with every input recorded, ${
           overlaps[1] === 20
             ? `the same 20 schools make the top 20 under both${K && K > 20 ? `, and the same ${K} make the top ${K}` : ""}.`
             : `${overlaps[1]} of the top 20 schools are the same under both.`
@@ -307,7 +307,7 @@ describe("which list to use", () => {
   it("gives the plain lead alone when there is no recorded comparison", () => {
     expect(copyFor({}).defaultListStatement()).toBe(LEAD);
     expect(copyFor({}).defaultListStatementLong()).toBe(
-      "This list uses the paper's main rule, the combined-factors rule without urgency (S0). It leaves out the urgency value, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is kept beside it as a sensitivity check."
+      "This list uses the paper's main rule, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is kept beside it as a sensitivity check."
     );
     expect(copyFor({}).urgencyReassurance()).toBe(
       "No recorded comparison exists for the combined-factors rules with and without urgency."
@@ -341,7 +341,7 @@ describe("which list to use", () => {
       pairwise,
     }).urgencyReassurance();
     expect(text).toBe(
-      "Among the 84 schools with every input recorded, the same 20 schools make the top 20 with or without the urgency value, and the same 40 make the top 40. Putting it back changes the order in the list, and the largest move for any school is 9 places. For the three schools that show a range, putting it back can still move their possible places."
+      "Among the 84 schools with every input recorded, the same 20 schools make the top 20 with or without the urgency rating, and the same 40 make the top 40. Putting it back changes the order in the list, and the largest move for any school is 9 places. For the three schools that show a range, putting it back can still move their possible places."
     );
     const P = copyFor({
       schools: full,
