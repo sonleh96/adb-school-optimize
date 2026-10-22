@@ -21,8 +21,8 @@
  *                                                                      -> "in the Map view the key comes before..."
  * 11. Help's or Menu's choices open under Start here or a guide step, or the Menu stays open after a Tab out
  *                                                                      -> "on a phone, Help's and Menu's choices..."
- * 12. The open full key closes when the reader goes to the list and back to the map
- *                                                                      -> "the full key stays open..."
+ * 12. The open full key, plain or with the method details, closes when the reader goes to the list and back to the
+ *     map                                                              -> "the full key stays open...", "the method key..."
  * 13. A guide step's ring round the Menu button is painted under the top bar, so the step points at nothing
  *                                                                      -> "a guide step's ring round the Menu..."
  * 14. Under reduced motion one disclosure's chevron still turns while another's does not
@@ -360,6 +360,21 @@ test.describe("the full key on a phone", () => {
     await pane(page, "List").click();
     await pane(page, "Map").click();
     await expect(page.getByTestId("legend-rule")).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("the method key stays open when the reader goes to the list and back to the map", async ({ page }) => {
+    await page.goto("/screening?analyst=1");
+    await waitForMap(page);
+    await pane(page, "Map").click();
+    // The method details' key, folded to its title on a phone; Key opens it.
+    const toggle = page.locator("[data-slot=legend] button[aria-expanded]");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    // One name for both states, as the other disclosures have.
+    await expect(toggle).toHaveAccessibleName("Key");
+    await pane(page, "List").click();
+    await pane(page, "Map").click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 });
