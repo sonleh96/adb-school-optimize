@@ -412,6 +412,7 @@ function PopMenu({
 }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
+  const tabbing = useRef(false);
   const menu = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
@@ -446,11 +447,17 @@ function PopMenu({
     <span
       className={styles.menuWrap}
       data-menu-open={open || undefined}
-      // Tab out of the list, or focus moved anywhere outside it, closes it, so it never stays open over the map. A
-      // blur with nowhere to go (a press Safari does not focus) is left to the pointer handler above.
+      // Tabbing out of the list closes it, so it never stays open over the map. Only the reader's Tab does: the
+      // workspace moving focus itself (a card taking it as the list steps aside) leaves the list as the reader left
+      // it, and a press elsewhere is the pointer handler's.
+      onKeyDown={(event) => {
+        tabbing.current = event.key === "Tab";
+      }}
       onBlur={(event) => {
         const next = event.relatedTarget as Node | null;
-        if (open && next && !event.currentTarget.contains(next)) setOpen(false);
+        const leaving = tabbing.current && !(next && event.currentTarget.contains(next));
+        tabbing.current = false;
+        if (open && leaving) setOpen(false);
       }}
     >
       <button
