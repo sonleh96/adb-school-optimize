@@ -2115,14 +2115,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     color: var(--ink-2);
     text-wrap: pretty;
   }
-  /* Above the guide rail (5), which can hold the band under it, so Help's and the Menu's lists open over Start here
-     or a step; a guide's rings (6) come later in the page and still draw over the Menu button they point at. */
+  /* The guide rail's layer (5), so a step's rings, which live inside the rail, still draw over the Menu button they
+     point at. While Help's or the Menu's list is open the bar rises over the rail (below), so the list opens over
+     Start here or a step in the band. */
   .topBar {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 6;
+    z-index: 5;
     display: grid;
     grid-template-columns: 26px minmax(0, 1fr) auto;
     column-gap: 10px;
@@ -2131,6 +2132,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     padding: 0 12px 0 16px;
     background: var(--panel);
     border-bottom: 1px solid var(--hair);
+  }
+  .topBar:has([data-menu-open]) {
+    z-index: 6;
   }
   .topBar .mastSub {
     display: none;
