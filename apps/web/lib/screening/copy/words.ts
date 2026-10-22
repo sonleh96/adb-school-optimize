@@ -29,8 +29,11 @@ export const LAYOUT = Object.freeze({
   withoutUrgency: "Without urgency",
   guides: "Guides",
   change: "Change",
+  changeDone: "Done",
   // The one plain line of the quiet rule area: how the list is ordered under a rule, with no symbol or term of art.
   ruleNow: (id: CopyRuleId) => rule(id).plain,
+  help: "Help",
+  helpAria: "Help and guides",
   amongAll124: "Among all schools that can be put in order",
   orderedTab: "The list",
   incompleteTab: "Missing information",
@@ -173,6 +176,13 @@ export const LAYOUT = Object.freeze({
   keyLabel: "Key",
   keyShow: "Show the map key",
   keyHide: "Hide the map key",
+  // The compact key over the map: the control that opens the full key, and the words beside each mark.
+  keyMore: "What the map shows",
+  keyLess: "Hide the full key",
+  keyDot: "One position",
+  keyRange: "A range of positions",
+  keyRing: "Not in the list yet",
+  keyRamp: (first: string, last: string) => `Darker is earlier in the list: ${first} to ${last}`,
   // An empty or failed load: one sentence and Retry.
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",

@@ -113,6 +113,7 @@ describe("every fixed string follows the writing rules", () => {
     const corpus = new Corpus();
     const LAYOUT_ARGS: Record<string, unknown[]> = {
       otherRulesCount: [5],
+      keyRamp: ["1st", "20th"],
       ruleNow: ["additive_no_u"],
       addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],
