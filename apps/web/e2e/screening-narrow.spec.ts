@@ -19,6 +19,10 @@
  *                                                                      -> "with a school open, Start here in the band..."
  * 10. In the Map view the keyboard crosses the whole list before it reaches the key
  *                                                                      -> "in the Map view the key comes before..."
+ * 11. Help's or Menu's choices open under Start here or a guide step, or the Menu stays open after a Tab out
+ *                                                                      -> "on a phone, Help's and Menu's choices..."
+ * 12. The open full key closes when the reader goes to the list and back to the map
+ *                                                                      -> "the full key stays open..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -175,9 +179,9 @@ test.describe("Start here on a phone", () => {
     const start = rail(page);
     await expect(start).toBeVisible();
     const open = start.locator("[data-region=open-guides]");
-    // Its name says what it will do; it is not also a disclosure with a state.
+    // A disclosure: one name, its state in aria-expanded.
     await expect(open).toHaveText("Open the guides");
-    await expect(open).not.toHaveAttribute("aria-expanded", /./);
+    await expect(open).toHaveAttribute("aria-expanded", "false");
     // A control names what it controls only while that is in the page, unless it says it is closed.
     for (const control of await page.locator("[aria-controls]:not([aria-expanded=false])").all()) {
       const id = await control.getAttribute("aria-controls");
@@ -193,7 +197,8 @@ test.describe("Start here on a phone", () => {
     expect(box.height).toBeLessThan(844 / 4);
 
     await open.click();
-    await expect(open).toHaveText("Fold the guides away");
+    await expect(open).toHaveText("Open the guides");
+    await expect(open).toHaveAttribute("aria-expanded", "true");
     await expect(start.locator("[data-guide]")).toHaveCount(5);
 
     await dismiss.click();
@@ -205,7 +210,7 @@ test.describe("Start here on a phone", () => {
 
     await (await helpItem(page, "Guides")).click();
     await expect(rail(page)).toBeVisible();
-    await expect(rail(page).locator("[data-region=open-guides]")).toHaveText("Open the guides");
+    await expect(rail(page).locator("[data-region=open-guides]")).toHaveAttribute("aria-expanded", "false");
   });
 
   test("the key names the numbered circles, and the list says what the tool is for", async ({ page }) => {
@@ -290,5 +295,67 @@ test.describe("the card's count on a dataset that teaches fewer guides", () => {
       "Four short guides show",
     ];
     await expect(start.locator("h2")).toHaveText(`${words[count]} how to read this screen.`);
+  });
+});
+
+test.describe("the top bar's lists on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, firstVisit: true });
+
+  /** The element at a choice's centre is the choice: nothing is drawn over it. */
+  const onTop = (choice: import("@playwright/test").Locator) =>
+    choice.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!hit && el.contains(hit);
+    });
+
+  for (const [what, search] of [
+    ["Start here with a school open", `?school=${KEY}`],
+    ["a guide step", "?guide=q1&gstep=1"],
+  ] as const) {
+    test(`on a phone, Help's and Menu's choices are on top of ${what}`, async ({ page }) => {
+      await page.goto(`/screening${search}`);
+      await waitForMap(page);
+      await expect(rail(page)).toBeVisible();
+      for (const [button, list] of [
+        ["[data-region=help-button]:visible", "#screening-help-menu"],
+        ["[data-region=actions-menu]:visible", "#screening-menu"],
+      ]) {
+        await page.locator(button).click();
+        const choices = page.locator(`${list} button`);
+        await expect(choices.first()).toBeVisible();
+        for (const choice of await choices.all())
+          expect(await onTop(choice), `${await choice.textContent()} is on top`).toBe(true);
+        await page.keyboard.press("Escape");
+        await expect(page.locator(list)).toHaveCount(0);
+      }
+    });
+  }
+
+  test("on a phone, the Menu closes when the reader tabs out of it", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await page.locator("[data-region=actions-menu]:visible").click();
+    const menu = page.locator("#screening-menu");
+    await expect(menu).toBeVisible();
+    for (let step = 0; step < 8 && (await menu.count()) > 0; step += 1) await page.keyboard.press("Tab");
+    await expect(menu).toHaveCount(0);
+  });
+});
+
+test.describe("the full key on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+
+  test("the full key stays open when the reader goes to the list and back to the map", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await pane(page, "Map").click();
+    const toggle = page.locator("[data-slot=legend] [data-region=key-toggle]");
+    await toggle.click();
+    await expect(page.getByTestId("legend-rule")).toBeVisible();
+    await pane(page, "List").click();
+    await pane(page, "Map").click();
+    await expect(page.getByTestId("legend-rule")).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 });

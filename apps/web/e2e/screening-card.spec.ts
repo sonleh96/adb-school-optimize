@@ -236,16 +236,15 @@ test("the key starts as one line, opens to name the rule, cuts its rank bands fr
 
   // What the map shows opens the full key, and closes it again.
   await more.click();
-  await expect(key.getByRole("button", { name: "Hide the full key" })).toHaveAttribute(
-    "aria-expanded",
-    "true"
-  );
+  // A disclosure: one name, its state in aria-expanded.
+  await expect(more).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByTestId("legend-rule")).toHaveText("Rank in the list under the main method");
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
     "Ring with a centre dotA school with a range of possible ranks in the list, because its air-quality figure is missing."
   );
-  await key.getByRole("button", { name: "Hide the full key" }).click();
+  await more.click();
+  await expect(more).toHaveAttribute("aria-expanded", "false");
   await expect(bands).toHaveCount(0);
 
   // One school: one band, "1st", and one dot.
