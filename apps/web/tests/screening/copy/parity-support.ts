@@ -37,6 +37,10 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     ["bottleneck_no_u"],
     ["benchmark"],
   ],
+  "LAYOUT.keyRamp": [
+    ["1st", "20th"],
+    ["1st", "1st"],
+  ],
   "LAYOUT.backToCirculated": [["Combined factors, with urgency"], ["x"]],
   "LAYOUT.notComputedGroup": [["Need first, no urgency", 4]],
   "LAYOUT.listTitle": [[20, "the combined-factors rule with urgency (S)"]],
