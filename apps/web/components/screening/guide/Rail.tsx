@@ -120,9 +120,11 @@ function Start({
           type="button"
           className={styles.hide}
           data-region="hide-guides"
+          // The short card's dismiss sounds final beside Open the guides; it hides and remembers as Hide does.
+          aria-label={compact ? GUIDE.dismissCompactAria : undefined}
           onClick={() => store.dispatch({ type: "close" })}
         >
-          {GUIDE.hide}
+          {compact ? GUIDE.dismissCompact : GUIDE.hide}
           <X size={13} aria-hidden />
         </button>
       </div>

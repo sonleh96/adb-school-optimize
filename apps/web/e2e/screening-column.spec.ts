@@ -54,8 +54,11 @@ const SCOPE_DETAIL =
 const SCOPE_DETAIL_MAIN =
   "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of ranks. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single ranks count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
-/** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
+/** The rule area's plain line on the main rule: a line or two in words, with no shares. */
 const QUIET_MAIN =
+  "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and a few smaller things also count.";
+/** The same rule with its shares, which the open rule area says above the choice. */
+const SHARES_MAIN =
   "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
@@ -157,7 +160,9 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
   await expect(statement(page)).toHaveCount(0);
+  await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);
   expect(await area.innerText()).not.toMatch(/\bS0?\b/);
+  expect(await area.innerText()).not.toMatch(/%/);
 
   // What the urgency rating changes is one click away, and answers on the main rule's list.
   await area.locator("[data-region=see-with-urgency]").click();
@@ -170,6 +175,12 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await ruleChange(page).click();
   await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
   await expect(ruleChange(page)).toHaveText("Done");
+  // The shares wait behind the control: open, they come first, above the switch; the line above keeps its words.
+  await expect(area.locator("[data-region=rule-shares]")).toHaveText(SHARES_MAIN);
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+  const shares = (await area.locator("[data-region=rule-shares]").boundingBox())!;
+  const pair = (await page.locator("[data-region=rule-switch]").boundingBox())!;
+  expect(shares.y + shares.height).toBeLessThanOrEqual(pair.y);
   await expect(page.locator("[data-region=rule-switch] button")).toHaveCount(2);
   await expect(page.getByRole("button", { name: "Other ways to order the list (5)" })).toBeVisible();
   await expect(statement(page)).toHaveText(
@@ -186,6 +197,10 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await ruleChange(page).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(
+    "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and smaller things, the urgency rating among them, also count."
+  );
+  await openRules(page);
+  await expect(area.locator("[data-region=rule-shares]")).toHaveText(
     "Ordered mainly by school need (60% of the score), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each)."
   );
   await area.getByRole("button", { name: "Back to the paper's main rule" }).click();

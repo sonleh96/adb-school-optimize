@@ -120,13 +120,13 @@ export function Legend({
             role="img"
             aria-label={LAYOUT.keyRamp(copy.ordinal(first.lo), copy.ordinal(last.hi), last.hi)}
           >
-            <span>{copy.ordinal(first.lo)}</span>
             <span className={styles.miniSwatches} aria-hidden>
               {bands.map((band, index) => (
                 <i key={band.lo} style={{ background: RAMP_HEX[index] }} />
               ))}
             </span>
-            <span>{copy.ordinal(last.hi)}</span>
+            {/* In words, not ranks: the strip ends at the last school with one rank, before the list's count. */}
+            <span>{LAYOUT.keyStrip}</span>
           </span>
         ) : null}
         {open ? null : (

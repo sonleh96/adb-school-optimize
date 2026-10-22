@@ -368,7 +368,7 @@ test("an API that names another default still opens the main rule, so the screen
     "This one, the research paper's main method."
   );
   await expect(page.locator("[data-region=rule-now]")).toHaveText(
-    "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each)."
+    "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and a few smaller things also count."
   );
   expect(new URL(page.url()).search).toBe("");
   await waitForMap(page);
