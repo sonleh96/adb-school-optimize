@@ -47,12 +47,12 @@ describe("the scope lines", () => {
   it("are said for the benchmark by what it reads, with no range schools to mention", () => {
     const s = P.scope("benchmark");
     expect(s.groups).toBe(
-      "21 schools have every input the rule reads recorded, so 21 schools can be put in order."
+      "21 schools have a record for every input the rule uses, so 21 schools can be put in order."
     );
     expect(s.scopeShort).toBe(
-      "21 schools can be put in order, all with every input the rule reads recorded."
+      "21 schools can be put in order, all with a record for every input the rule uses."
     );
-    expect(s.scopeComplete).toMatch(/^21 schools have every input the rule reads recorded, so 21 /);
+    expect(s.scopeComplete).toMatch(/^21 schools have a record for every input the rule uses, so 21 /);
     expect(s.scopeComplete).toMatch(/Single places count among the 21\.$/);
     for (const text of Object.values(s)) expect(text, text).not.toMatch(/every input recorded|0 that show/);
   });
@@ -60,9 +60,9 @@ describe("the scope lines", () => {
   it("are said for a rule that leaves urgency out by its own group, not the main rule's", () => {
     const s = P.scope("additive_no_u");
     expect(s.scopeShort).toBe(
-      "22 schools can be put in order, 17 with every input the rule reads recorded and 5 that show a range of places."
+      "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of places."
     );
-    expect(s.groups).toMatch(/^17 schools have every input the rule reads recorded, and /);
+    expect(s.groups).toMatch(/^17 schools have a record for every input the rule uses, and /);
   });
 
   it("are not on the fixed strings, where no rule could be named", () => {
@@ -100,7 +100,7 @@ describe("the missing-input sentences of a school that lacks a reading", () => {
 
   it("say the rule's inputs are recorded and name the reading it does not read", () => {
     expect(P.missingSentence(s17, "benchmark")).toBe(
-      "All of the inputs this rule reads are recorded. Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not read it."
+      "All of the inputs this rule uses are recorded. Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not use it."
     );
   });
 });

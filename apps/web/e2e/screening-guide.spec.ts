@@ -16,6 +16,8 @@
  *  9. The guide copy fails to download and the rail is stuck                           -> "a failed download ..."
  * 10. Guides can be started before there is anything to guide (R14)                    -> "with no schools ..."
  * 11. The narrow layout keeps the rail beside the map, or a map step hides the map     -> "in the narrow layout ..."
+ * 12. A link to guide 5 is dropped when the rules answer after the list, so the screen opens without the step
+ *                                                                                      -> "a link to guide 5 ..."
  */
 import type { Page } from "@playwright/test";
 
@@ -118,26 +120,36 @@ test("a returning visitor starts with the rail closed and sees what they have se
 
 /** What each step must leave on screen: the workspace keys it sets, and a region its ring is round. */
 const SCRIPT: { guide: string; step: number; state: Record<string, unknown>; shows: string }[] = [
-  { guide: "q1", step: 1, state: { rule: "additive_u", school: null, view: "ranked" }, shows: ORDERED },
-  { guide: "q1", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=rule-identity]" },
-  { guide: "q1", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend]" },
+  { guide: "q1", step: 1, state: { rule: "additive_no_u", school: null, view: "ranked" }, shows: ORDERED },
+  {
+    guide: "q1",
+    step: 2,
+    state: { rule: "additive_no_u", school: null },
+    shows: "[data-region=rule-identity]",
+  },
+  { guide: "q1", step: 3, state: { rule: "additive_no_u", school: null }, shows: "[data-region=legend]" },
   {
     guide: "q1",
     step: 4,
-    state: { rule: "additive_u", school: null, panel: null },
+    state: { rule: "additive_no_u", school: null, panel: null },
     shows: "[data-region=export-button]",
   },
   {
     guide: "q2",
     step: 1,
-    state: { rule: "additive_u", view: "ranked" },
+    state: { rule: "additive_no_u", view: "ranked" },
     shows: "[data-region=inspector-why]",
   },
-  { guide: "q2", step: 2, state: { rule: "additive_u" }, shows: "[data-region=need-box]" },
-  { guide: "q2", step: 3, state: { rule: "additive_u" }, shows: "[data-region=inspector-breakdown]" },
-  { guide: "q3", step: 1, state: { rule: "additive_u" }, shows: "[data-region=inspector-place]" },
-  { guide: "q3", step: 2, state: { rule: "additive_u", school: null }, shows: "[data-region=list-order]" },
-  { guide: "q3", step: 3, state: { rule: "additive_u", school: null }, shows: "[data-region=legend-range]" },
+  { guide: "q2", step: 2, state: { rule: "additive_no_u" }, shows: "[data-region=need-box]" },
+  { guide: "q2", step: 3, state: { rule: "additive_no_u" }, shows: "[data-region=inspector-breakdown]" },
+  { guide: "q3", step: 1, state: { rule: "additive_no_u" }, shows: "[data-region=inspector-place]" },
+  { guide: "q3", step: 2, state: { rule: "additive_no_u", school: null }, shows: "[data-region=list-order]" },
+  {
+    guide: "q3",
+    step: 3,
+    state: { rule: "additive_no_u", school: null },
+    shows: "[data-region=legend-range]",
+  },
   { guide: "q4", step: 1, state: { view: "queue", school: null }, shows: "[data-region=queue-list]" },
   {
     guide: "q4",
@@ -290,7 +302,7 @@ test("a pasted link to a step reproduces its screen", async ({ page }) => {
   expect(school).not.toBeNull();
   await expect(page.locator("[data-region=inspector]")).toBeVisible();
   await expect(page.locator(`[data-school-key="${school}"]`)).toHaveAttribute("aria-pressed", "true");
-  // A link to the urgency guide puts the proposed revision on screen with What changed.
+  // A link to the urgency guide puts the main rule on screen with What changed against the rule with urgency.
   await ready(page, "?guide=q5&gstep=1");
   await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
   await expect(page.getByRole("button", { name: /without urgency/, pressed: true })).toBeVisible();
@@ -321,7 +333,7 @@ test("when the screen moves on from a step the rail says so, and puts it back", 
   await page.evaluate(() => window.__screeningWorkspace!.setState({ rule: "benchmark" }));
   await expect(page.getByTestId("guide-drift")).toContainText("The screen has moved on from this step.");
   await page.getByRole("button", { name: "Show this step again" }).click();
-  await expect.poll(async () => (await workspace(page)).rule).toBe("additive_u");
+  await expect.poll(async () => (await workspace(page)).rule).toBe("additive_no_u");
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
   // Every key a step sets counts: opening the scope detail moves the screen on too.
   await page.evaluate(() => window.__screeningWorkspace!.setState({ scope: true }));
@@ -357,6 +369,18 @@ test("presenting widens the rail, shows Up next and the key hints, and Page Down
   await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
   await rail(page).getByRole("button", { name: "Leave presentation mode" }).click();
   expect((await rail(page).boundingBox())!.width).toBe(312);
+});
+
+test("a link to guide 5 lands on its step when the rules answer after the list", async ({ page }) => {
+  // The list is asked for beside the rules; held back, the rules come in after it.
+  await page.route("**/api/v1/screening/rules", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto("/screening?guide=q5&gstep=1");
+  await expect(stepTitle(page)).toBeVisible({ timeout: 10_000 });
+  await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q5", step: 1 });
+  await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
 });
 
 test("on data with one school the rail offers the guides it can teach and they run", async ({
@@ -556,7 +580,9 @@ test("while the guide copy downloads, the rail, the page and the glossary say wh
     if (body.includes("What do you want to find out?")) await held;
     return route.fulfill({ response, body });
   });
-  await page.goto("/screening");
+  // Not the load event: when the held chunk starts before it, the load event waits for the release, which waits
+  // for the load event.
+  await page.goto("/screening", { waitUntil: "domcontentloaded" });
   await waitForMap(page);
   await expect(rail(page).getByRole("status")).toHaveText("Loading the guide");
   await expect(rail(page).locator("[aria-busy=true]")).toHaveCount(1);

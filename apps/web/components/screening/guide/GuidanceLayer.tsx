@@ -63,9 +63,12 @@ export function GuidanceLayer({
     [data.shown]
   );
   const { export: canExport, grouping } = data.features;
+  // The plan waits for the rules as well as the list, so a link to a guide is read against every guide the data offers.
+  const { urgencyRule } = data;
   const plan = useMemo(
-    () => (roles ? planOf(roles, { export: canExport, grouping, proposed: data.proposed }) : null),
-    [roles, canExport, grouping, data.proposed]
+    () =>
+      roles && urgencyRule !== null ? planOf(roles, { export: canExport, grouping, urgencyRule }) : null,
+    [roles, canExport, grouping, urgencyRule]
   );
   useEffect(() => {
     if (plan) store.setCatalog(catalogOf(plan));

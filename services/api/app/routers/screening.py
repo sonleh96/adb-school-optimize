@@ -114,8 +114,9 @@ Text = Annotated[str, AfterValidator(_no_control_characters)]
 
 router = APIRouter(prefix="/api/v1/screening", tags=["screening"])
 
-# The circulated paper's additive rule S stays the default list.
-DEFAULT_RULE_ID = "additive_u"
+# The revised paper's main rule, S0, which leaves urgency out, is the default list. The circulated paper's rule S is
+# kept beside it as the urgency sensitivity and is asked for by name.
+DEFAULT_RULE_ID = "additive_no_u"
 K_MAX = 10_000
 CSV_TYPE = "text/csv; charset=utf-8"
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

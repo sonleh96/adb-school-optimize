@@ -7,7 +7,7 @@
  * Reads, all started together so none waits for another before the first list paints:
  *  - the rules;
  *  - the list of the rule asked for (speculatively the expected default, before the rules say otherwise);
- *  - the recorded comparison of the two main rules, which the statement under the switch reads.
+ *  - the recorded comparison of the main rule and the urgency sensitivity, which the statement under the switch reads.
  * Later reads follow the state: the list of the rule being compared with, and the comparison of another pair.
  */
 import { useEffect, useMemo } from "react";
@@ -16,8 +16,6 @@ import {
   type BoundCopy,
   type CopyRuleId,
   type CopySchool,
-  DEFAULT_RULE,
-  PROPOSED_RULE,
   RULE_IDS,
   bindCopy,
   copyFor,
@@ -32,24 +30,27 @@ import {
   useScreeningResults,
   useScreeningRules,
 } from "@/lib/screening/hooks";
+import { PRIMARY_RULE, RULE_PAIR, SENSITIVITY_RULE, inRulePair } from "@/lib/screening/rule-pair";
 import type { Placement, ResultsResponse, RuleId } from "@/lib/screening/types";
 import { shownRule } from "@/lib/screening/workspace/state";
 
 import { EXPECTED_DEFAULT_RULE, useUrlRead, useWorkspaceState, useWorkspaceStore } from "./WorkspaceProvider";
 
-const MAIN_PAIR: RulePair = { a: DEFAULT_RULE as RuleId, b: PROPOSED_RULE as RuleId };
-
 /** Two rules in the order the API's comparisons are asked for, so a pair is one cached read whichever way round. */
-function canonicalPair(x: RuleId, y: RuleId): RulePair {
+export function canonicalPair(x: RuleId, y: RuleId): RulePair {
   const order = (id: RuleId) => RULE_IDS.indexOf(id as CopyRuleId);
   return order(x) <= order(y) ? { a: x, b: y } : { a: y, b: x };
 }
 const samePair = (p: RulePair, q: RulePair) => p.a === q.a && p.b === q.b;
 
+/** The comparison of the main rule and the urgency sensitivity, asked for as every other pair is. */
+export const MAIN_PAIR: RulePair = canonicalPair(PRIMARY_RULE as RuleId, SENSITIVITY_RULE as RuleId);
+
 /** A rule the API offers and the copy has words for. */
 export interface RuleChoice {
   id: CopyRuleId;
-  primary: boolean;
+  /** One of the two rules of the switch: the main rule or the urgency sensitivity. */
+  inPair: boolean;
 }
 
 /** The list on screen, with the copy bound to the run it came from. */
@@ -106,12 +107,17 @@ export function useScreeningData(): ScreeningData {
   const urlRead = useUrlRead();
 
   const rules = useScreeningRules();
-  const defaultRule = rules.data?.default_rule_id ?? EXPECTED_DEFAULT_RULE;
+  // A link with no rule opens the web app's main rule, the one its words call the main rule, whatever rule the API
+  // names as its own default. Only an API that does not offer the main rule falls back to its default.
+  const defaultRule =
+    rules.data && !rules.data.rules.some((r) => r.rule_id === PRIMARY_RULE)
+      ? rules.data.default_rule_id
+      : EXPECTED_DEFAULT_RULE;
   const ruleIds = useMemo(
     () => (rules.data ? rules.data.rules.map((r) => r.rule_id).filter((id) => isCopyRuleId(id)) : null),
     [rules.data]
   );
-  // The store checks rules against what the API offers, and resolves `rule: null` to the API's default.
+  // The store checks rules against what the API offers, and resolves `rule: null` to the default above.
   useEffect(() => {
     if (ruleIds) store.setKnown({ ruleIds: new Set(ruleIds), defaultRule });
   }, [store, ruleIds, defaultRule]);
@@ -131,16 +137,14 @@ export function useScreeningData(): ScreeningData {
   const isMainPair = pair !== null && samePair(pair, MAIN_PAIR);
   const otherCompare = useScreeningCompare(pair && !isMainPair ? pair : null);
 
-  // The other lists the copy reads: both combined-factors rules (what each input adds, the persistence flag) and the
-  // rule being compared with (a school's places under both). The shown rule's own list is `results`.
+  // The other lists the copy reads: both combined-factors rules (what each input adds, each one's persistence flag)
+  // and the rule being compared with (a school's places under both). The shown rule's own list is `results`.
   const extra = (rule: RuleId | null) =>
     // Asked for once the shown list is in: the first list never waits on them, and no data means no request.
     data && rule !== null && rule !== requested ? { rule, placement } : null;
-  const circulated = useScreeningResults(extra(MAIN_PAIR.a));
-  const proposed = useScreeningResults(extra(MAIN_PAIR.b));
-  const fromList = useScreeningResults(
-    extra(from && from !== MAIN_PAIR.a && from !== MAIN_PAIR.b ? (from as RuleId) : null)
-  );
+  const mainList = useScreeningResults(extra(PRIMARY_RULE as RuleId));
+  const urgencyList = useScreeningResults(extra(SENSITIVITY_RULE as RuleId));
+  const fromList = useScreeningResults(extra(from && !inRulePair(from) ? (from as RuleId) : null));
 
   const schoolKeys = useMemo(
     () => (data ? new Set(data.rows.map((r) => r.school.school_key)) : null),
@@ -151,7 +155,7 @@ export function useScreeningData(): ScreeningData {
   }, [store, schoolKeys]);
 
   const pairCompare = pair ? (isMainPair ? mainCompare.data : otherCompare.data) : mainCompare.data;
-  const others = [circulated.data, proposed.data, fromList.data];
+  const others = [mainList.data, urgencyList.data, fromList.data];
   const shown = useMemo((): ShownList | null => {
     if (!data || !shownId || !inputs.data) return null;
     // A list kept while another loads is the previous rule's: only lists of their own rule count.
@@ -163,7 +167,7 @@ export function useScreeningData(): ScreeningData {
     const bound = bindCopy({ view: shownId, inputs: inputs.data, lists: unique, compare: pairCompare });
     return { rule: shownId, response: data, schools: bound.schools, copy: bound.copy };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `others` is rebuilt each render; its members are the key.
-  }, [data, shownId, inputs.data, pairCompare, circulated.data, proposed.data, fromList.data]);
+  }, [data, shownId, inputs.data, pairCompare, mainList.data, urgencyList.data, fromList.data]);
 
   const idleCopy = useMemo(() => copyFor({}), []);
 
@@ -200,7 +204,8 @@ export function useScreeningData(): ScreeningData {
         }
       : null;
 
-  // The statement is about the two main rules, so it reads their comparison even while What changed reads another.
+  // The statement is about the main rule and the urgency sensitivity, so it reads their comparison even while What
+  // changed reads another.
   const statement = useMemo(
     () =>
       shown && !mainCompare.isPending
@@ -214,12 +219,12 @@ export function useScreeningData(): ScreeningData {
   const rulesList = useMemo((): RuleChoice[] | null => {
     if (!rules.data) return null;
     const offered = new Map(rules.data.rules.map((r) => [r.rule_id as string, r]));
-    // The two main rules are the pair the page compares. They are not read from the API's policy role, because the
-    // revised paper names one rule alone as primary and the circulated rule is a labelled urgency sensitivity.
-    return RULE_IDS.filter((id) => offered.has(id)).map((id) => ({
-      id,
-      primary: id === MAIN_PAIR.a || id === MAIN_PAIR.b,
-    }));
+    // The pair first, main rule first, then the other rules in the API's order. The pair is not read from the API's
+    // policy role, because the revised paper names the main rule alone as primary and the circulated rule is a
+    // labelled urgency sensitivity.
+    return [...RULE_PAIR, ...RULE_IDS.filter((id) => !inRulePair(id))]
+      .filter((id) => offered.has(id))
+      .map((id) => ({ id, inPair: inRulePair(id) }));
   }, [rules.data]);
 
   return {

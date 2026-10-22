@@ -46,6 +46,7 @@ sys.path.append(str(REPO / "services" / "api" / "tests"))
 
 from app.ingestion.load_screening_inputs import read_persistence_source  # noqa: E402
 from app.main import app  # noqa: E402
+from app.routers.screening import DEFAULT_RULE_ID  # noqa: E402
 from app.screening_queries import school_key  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -64,6 +65,8 @@ API = "/api/v1/screening"
 MAIN_RULES = ("additive_u", "additive_no_u")
 CIRCULATED_RULE = "additive_u"
 REVISED_RULE = "additive_no_u"
+# The rule the screen opens on: the revised paper's main rule, as the API says.
+DEFAULT_RULE = DEFAULT_RULE_ID
 
 # What the web tests rely on in the default dataset, written down so a reviewer sees the shape of the data
 # without reading the loop.
@@ -172,7 +175,7 @@ class Dataset:
     # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
     claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
     # The top lists saved as CSV, as (rule, length). The export sheet previews and downloads these.
-    top_lists: tuple[tuple[str, int], ...] = ((CIRCULATED_RULE, 20),)
+    top_lists: tuple[tuple[str, int], ...] = ((DEFAULT_RULE, 20),)
     # Every pair of rules compared, not only the circulated rule against each other: compare mode can pick any two.
     every_pair: bool = False
     # Top lists cut by a province, as (rule, length, province, file suffix): the export follows the screen's filter.
@@ -392,7 +395,7 @@ def datasets() -> tuple[Dataset, ...]:
             without_coordinates=WITHOUT_COORDINATES,
             top_lists=tuple((rule_id, k) for rule_id in RULES for k in TOP_LENGTHS),
             every_pair=True,
-            filtered_top_lists=((CIRCULATED_RULE, 20, "South Province", "south"),),
+            filtered_top_lists=((DEFAULT_RULE, 20, "South Province", "south"),),
         ),
         Dataset(
             name="worst-names",
@@ -537,20 +540,20 @@ def school_detail_file(cap: Capture, name: str) -> None:
 
 
 def capture_comparisons(cap: Capture, every_pair: bool = False) -> None:
-    """The circulated rule against each of the others: What changed reads one of these after any switch from it.
-    Where the data cannot be compared (one school, no data at all), the API's own refusal is what the mock answers.
+    """Each of the two main rules against each of the others: What changed reads one of these after any switch from
+    the rule the screen opens on, or from the rule beside it in the switch. Where the data cannot be compared (one
+    school, no data at all), the API's own refusal is what the mock answers.
 
     With ``every_pair``, the other pairs too, for compare mode. The web app asks for a pair in the rules' own order
-    (the earlier rule as ``a``) whichever way round the screen shows it, so that order is the one saved."""
+    (the earlier rule as ``a``) whichever way round the screen shows it, so that order is the one saved. The pairs of
+    the circulated rule were saved first; the others come later (see ``pin``)."""
     for rule_id in RULES:
         if rule_id != CIRCULATED_RULE:
             cap.get_as_answered(
                 f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
             )
-    if not every_pair:
-        return
     for a, b in combinations(RULES, 2):
-        if CIRCULATED_RULE not in (a, b):
+        if CIRCULATED_RULE not in (a, b) and (every_pair or DEFAULT_RULE in (a, b)):
             file = f"compare/{a}__{b}.json"
             cap.late.add(file)
             cap.get_as_answered(f"{API}/compare", file, a=a, b=b)
@@ -575,7 +578,8 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
     cap = Capture(client)
     cap.get(f"{API}/rules", "rules.json")
     if not ds.records:
-        cap.get(f"{API}/results", "results/additive_u.json", status=404, rule="additive_u")
+        # The screen asks for the default rule's list before the rules say which rule that is.
+        cap.get(f"{API}/results", f"results/{DEFAULT_RULE}.json", status=404, rule=DEFAULT_RULE)
         cap.get(f"{API}/inputs", "inputs.json", status=404)
         capture_comparisons(cap)
         capture_top_lists(cap, ds)
@@ -587,14 +591,14 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
         cap.get(f"{API}/results", f"results/{rule_id}.upper.json", rule=rule_id, placement="upper")
     cap.get(f"{API}/inputs", "inputs.json")
     cap.get(f"{API}/inputs", "inputs.pinned.json", input_version=VERSION)
-    default_rows = rows_by_rule["additive_u"]
+    circulated_rows = rows_by_rule[CIRCULATED_RULE]
 
     # School detail for every school, so a test can open any card. The order is the list's, so a rerun is identical.
-    for row in default_rows:
+    for row in circulated_rows:
         school_detail_file(cap, row["school"]["source_school_name"])
     capture_comparisons(cap, ds.every_pair)
     capture_top_lists(cap, ds)
-    return cap, default_rows
+    return cap, circulated_rows
 
 
 def check_claims(ds: Dataset, rows: list[dict]) -> None:

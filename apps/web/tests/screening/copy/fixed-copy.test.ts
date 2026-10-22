@@ -19,11 +19,23 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
-import { copyFor } from "@/lib/screening/copy";
+import { bindCopy, copyFor } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
-import { METHOD } from "@/lib/screening/copy/method";
+import { METHOD, buildMethod } from "@/lib/screening/copy/method";
+import { parseWith } from "@/lib/screening/schema";
+import { resultsResponse } from "@/lib/screening/types";
 
-import { Corpus, RULES, addFixedCopy, withLater, type FixedCopy } from "./helpers";
+import { readFixture } from "../fixtures";
+
+import {
+  Corpus,
+  RULES,
+  addFixedCopy,
+  fixtureInputs,
+  fixtureResults,
+  withLater,
+  type FixedCopy,
+} from "./helpers";
 
 const FULL = {
   all: 148,
@@ -118,7 +130,8 @@ describe("every fixed string follows the writing rules", () => {
       savedToast: [3],
       removeView: ["Top of the list"],
       viewsFull: [50],
-      viewPartMissing: [["rule", "school", "hover"]],
+      viewPartMissing: [["rule", "school", "hover"], "upper"],
+      partAdds: ["Remoteness"],
     };
     const LAYOUT_SENTENCES = new Set([
       "workspaceHint",
@@ -214,15 +227,16 @@ describe("every fixed string follows the writing rules", () => {
 });
 
 describe("rules", () => {
-  const ROLES = ["Main rule", "Strict alternative", "Sensitivity check", "Reference"];
-  const SOURCES = ["As circulated in the paper", "Proposed, awaiting the research team's review"];
+  const ROLES = ["Main rule", "Strict alternative", "Sensitivity check", "Urgency sensitivity", "Reference"];
+  const SOURCES = ["As circulated in the earlier paper", "As set out in the revised paper"];
 
   it.each(RULES)(
-    "%s has one of the four roles and one of the two sources, and a proposed rule leaves urgency out",
+    "%s has one of the five roles and one of the two sources, and a rule of the revised paper leaves urgency out",
     (id) => {
       expect(ROLES).toContain(copy.ruleRole(id));
       expect(SOURCES).toContain(copy.ruleSource(id));
-      if (copy.ruleSource(id) === SOURCES[1]) expect(copy.ruleUsesUrgency(id)).toBe(false);
+      // The revised paper's three rules leave urgency out; the four rules of the circulated paper all use it.
+      expect(copy.ruleUsesUrgency(id)).toBe(copy.ruleSource(id) === SOURCES[0]);
       expect(copy.ruleName(id).endsWith(`(${copy.ruleSymbol(id)})`)).toBe(true);
       expect(copy.ruleShortName(id)).toMatch(/^[A-Z][a-z]+( [a-z]+)*(, no urgency)?$/);
       expect(copy.ruleLabel(id)).not.toMatch(/weight/i);
@@ -254,12 +268,34 @@ describe("rules", () => {
     expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency value.")).toBe(true);
   });
 
-  it("reads the two main rules differently", () => {
-    expect(copy.ruleRoleLine("additive_u")).toBe("The paper's main rule");
+  it("reads the main rule and the urgency sensitivity differently, and the rest by role and paper", () => {
     expect(copy.ruleRoleLine("additive_no_u")).toBe(
-      "A proposed revision of the main rule that leaves urgency out, awaiting the research team's review"
+      "The main rule of the revised paper, which leaves urgency out"
     );
-    expect(copy.ruleRoleLine("benchmark")).toBe("Reference, as circulated in the paper");
+    expect(copy.ruleRoleLine("additive_u")).toBe(
+      "A sensitivity check that puts the urgency value back, from the circulated paper"
+    );
+    expect(copy.ruleRoleLine("need_first_no_u")).toBe("Strict alternative, from the revised paper");
+    expect(copy.ruleRoleLine("bottleneck_no_u")).toBe("Sensitivity check, from the revised paper");
+    expect(copy.ruleRoleLine("need_first_u")).toBe("Urgency sensitivity, from the circulated paper");
+    expect(copy.ruleRoleLine("bottleneck_u")).toBe("Urgency sensitivity, from the circulated paper");
+    expect(copy.ruleRoleLine("benchmark")).toBe("Reference, from the circulated paper");
+  });
+
+  it("is the rule without urgency that is the main rule, and nothing is pending, proposed or awaiting review", () => {
+    expect(RULES.filter((id) => copy.ruleRole(id) === "Main rule")).toEqual(["additive_no_u"]);
+    const everything = RULES.flatMap((id) => [
+      copy.ruleRole(id),
+      copy.ruleSource(id),
+      copy.ruleRoleLine(id),
+      copy.ruleRelation(id),
+      copy.ruleExplanation(id),
+      copy.ruleOneLine(id),
+    ]).join(" ");
+    expect(everything).not.toMatch(/proposed|pending|awaiting|has not been|not yet reviewed/i);
+    expect(copy.TERMS.rule_roles.help + copy.TERMS.source.help).not.toMatch(
+      /proposed|pending|awaiting|not yet/i
+    );
   });
 
   it.each([
@@ -383,7 +419,9 @@ describe("the explainer and the questions", async () => {
   it("explains the two group sizes together, in the groups sentence, before it states either alone", () => {
     const flat = P.HOW_IT_WORKS.flatMap((s) => s.sentences);
     const firstCount = flat.find((t) => new RegExp(`\\b(${FULL.complete}|${FULL.ranked})\\b`).test(t));
-    expect(firstCount).toBe(`Under the paper's main rule, ${P.groupsSentence("additive_u")}`);
+    expect(firstCount).toBe(
+      `Under the paper's main rule, ${P.groupsSentence("additive_no_u").replace(/^./, (c) => c.toLowerCase())}`
+    );
     expect(P.scope("additive_u").groups).toBe(
       "96 schools have every input recorded, and three more lack a reading such as air quality and show a range of places, so 99 schools can be put in order."
     );
@@ -421,14 +459,117 @@ describe("the fixed strings that carry a rule of the project", () => {
     );
   });
 
+  it("states how each persistence test was drawn from the data, per rule, never from a literal", async () => {
+    const lists = RULES.map((r) => fixtureResults(r));
+    const bound = bindCopy({ view: "additive_no_u", inputs: fixtureInputs(), lists });
+    const s0 = (await bound.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u");
+    const s = (await bound.copy.methodFor("additive_u")).insp.persistent("additive_u");
+    const want =
+      "at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80)";
+    expect(s0).toContain(`membership in ${want}, drawn fresh over the six components`);
+    expect(s).toContain(`membership in ${want} of the circulated, urgency-included experiment`);
+    // Another draw count and threshold, in one rule's list only, change that rule's words and not the other's.
+    const body = structuredClone(readFixture("results/additive_no_u.json")) as {
+      persistence: { draws: number; threshold: number; settings: unknown[] };
+    };
+    Object.assign(body.persistence, { draws: 2000, threshold: 0.9 });
+    body.persistence.settings.splice(1);
+    const other = parseWith(resultsResponse, body, "results");
+    const changed = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) => (l.run.rule_id === "additive_no_u" ? other : l)),
+    });
+    expect((await changed.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u")).toContain(
+      "at least 90% of 2,000 Dirichlet weight draws in the concentration setting (20/15)"
+    );
+    expect((await changed.copy.methodFor("additive_u")).insp.persistent("additive_u")).toContain(want);
+    // A block that gives none of it says none.
+    body.persistence = { standard_error: 0.005 } as never;
+    const bare = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) =>
+        l.run.rule_id === "additive_no_u" ? parseWith(resultsResponse, body, "results") : l
+      ),
+    });
+    expect(
+      (await bare.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u").replace("top-20", "")
+    ).not.toMatch(/\d/);
+  });
+
+  it("states a test only when its numbers are usable, and prints a concentration as the data gives it", () => {
+    const test = (over: object) => ({
+      draws: 3000,
+      threshold: 0.75,
+      settings: [{ topLevel: 17.5, schoolNeed: 12.5 }],
+      ...over,
+    });
+    const say = (t: object) =>
+      buildMethod({ tests: { additive_no_u: t as never } }).insp.persistent("additive_no_u");
+    // Not rounded: 17.5 and 12.5 are not 18 and 13.
+    expect(say(test({}))).toContain(
+      "at least 75% of 3,000 Dirichlet weight draws in the concentration setting (17.5/12.5)"
+    );
+    expect(
+      say(
+        test({
+          settings: [
+            { topLevel: 20.25, schoolNeed: 15 },
+            { topLevel: 1000, schoolNeed: 80.5 },
+          ],
+        })
+      )
+    ).toContain("in each of the two concentration settings (20.25/15 and 1000/80.5)");
+    // A count of draws that is not a positive whole number, a threshold off the 0 to 1 scale, or a setting at or below
+    // 0 is missing, and the words state no number rather than "80% of 0 draws".
+    const none = say({ draws: undefined, threshold: undefined, settings: [] });
+    for (const bad of [
+      { draws: 0 },
+      { draws: -5 },
+      { draws: 2.5 },
+      { threshold: 0 },
+      { threshold: 1.2 },
+      { settings: [] },
+      { settings: [{ topLevel: 0, schoolNeed: 15 }] },
+      { settings: [{ topLevel: 20, schoolNeed: -1 }] },
+    ])
+      expect(say(test(bad)), JSON.stringify(bad)).toBe(none);
+    expect(none.replace("top-20", "")).not.toMatch(/\d/);
+  });
+
+  it("names the method card's extra-share row by the factor or factors that attain the largest value", () => {
+    expect(METHOD.insp.largestRow(["School need"])).toBe("Extra share for the largest factor: school need");
+    expect(METHOD.insp.largestRow(["School need", "District context"])).toBe(
+      "Extra share for the largest factor: school need and district context"
+    );
+    expect(METHOD.insp.largestRow([])).toBe("Extra share for the largest factor");
+    expect(METHOD.insp.largestRow(["School need"])).not.toBe(copy.TERMS.school_need.label);
+  });
+
   it("names a missing reading as listed where it would sit if air quality added nothing, never as 0", () => {
     expect(copy.buildScope({}).listOrder).toContain("added nothing");
     expect(copy.TERMS.list_order.line).toContain("added nothing");
   });
 
-  it("keeps method detail out of the plain flag text", () => {
-    expect(copy.STRINGS.persistentFlag).not.toMatch(/5,000|Dirichlet/);
-    expect(METHOD.insp.persistent).toMatch(/5,000/);
+  it("keeps method detail out of the plain flag text, and gives each rule's flag its own words", () => {
+    const { additive_no_u: revised, additive_u: circulated } = copy.STRINGS.persistentFlag;
+    for (const t of [revised, circulated]) expect(t).not.toMatch(/5,000|Dirichlet/);
+    expect(revised).not.toBe(circulated);
+    // No draw count, threshold or setting is typed: without the data the words state none, and with it they state its own.
+    for (const r of ["additive_no_u", "additive_u"] as const) {
+      expect(METHOD.insp.persistent(r).replace("top-20", ""), r).not.toMatch(/\d/);
+      expect(METHOD.insp.persistent(r), r).toMatch(/Dirichlet weight draws in each concentration setting/);
+    }
+    // Each test is said to be its own: the fresh six-component run is not an isolated estimate of urgency's effect, and
+    // the circulated experiment is never relabelled as an urgency-omitted result.
+    expect(METHOD.insp.persistent("additive_no_u")).toMatch(/six components.*not an isolated estimate/);
+    expect(METHOD.insp.persistent("additive_u")).toMatch(/circulated, urgency-included experiment/);
+    expect(METHOD.insp.persistent("additive_u")).toMatch(/not a result for the rule without urgency/);
+    expect(circulated).toMatch(/not a result for the rule without urgency/);
+    expect(`${revised} ${METHOD.insp.persistent("additive_no_u")}`).not.toMatch(
+      /proposed|has not been redone/i
+    );
   });
 
   it("opens every scope sentence with the groups sentence", () => {

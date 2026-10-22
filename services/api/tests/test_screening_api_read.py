@@ -12,7 +12,7 @@ import pytest
 from app import screening_store as store
 from app.screening_queries import school_key
 from school_scoring.screening import PACKAGE_VERSION, RULES, pairwise_metrics
-from screening_api_helpers import api_records, load_synthetic
+from screening_api_helpers import api_records, load_synthetic, parse_csv_export
 from screening_db_factories import AWKWARD_NAMES as AWK
 from screening_db_factories import record
 from screening_db_helpers import load
@@ -52,8 +52,8 @@ def test_rules_list_the_registry_with_weights_as_fractions_and_floats(api, loade
 
     rules = {r["rule_id"]: r for r in body["rules"]}
     assert list(rules) == RULE_IDS
-    assert body["default_rule_id"] == "additive_u"
-    assert [r["rule_id"] for r in body["rules"] if r["is_default"]] == ["additive_u"]
+    assert body["default_rule_id"] == "additive_no_u"
+    assert [r["rule_id"] for r in body["rules"] if r["is_default"]] == ["additive_no_u"]
 
     circulated = rules["additive_u"]
     assert circulated["provenance"] == "circulated_paper"
@@ -130,7 +130,11 @@ def test_the_default_input_version_is_the_latest_and_is_marked(api, connection):
     default_run = fetch(api, "/api/v1/screening/results")["run"]
     pinned_run = fetch(api, "/api/v1/screening/results", input_version="paper-v1")["run"]
     assert (default_run["input_version"], pinned_run["input_version"]) == ("paper-v2", "paper-v1")
-    assert default_run["rule_id"] == "additive_u"
+    assert default_run["rule_id"] == "additive_no_u"
+    # The downloads default to the same rule as the list, so a link without a rule exports what the screen opens on.
+    for path in ("top.csv", "incomplete.csv"):
+        method, _ = parse_csv_export(api.get(f"/api/v1/screening/exports/{path}").content)
+        assert method["rule_id"] == "additive_no_u", path
 
 
 # ---------------------------------------------------------------------------------------------
@@ -715,7 +719,10 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
     )
     for export in ("top.csv", "top.xlsx", "incomplete.csv"):
         assert (
-            api.get(f"/api/v1/screening/exports/{export}", params={"package_version": "0.9.0"}).status_code
+            api.get(
+                f"/api/v1/screening/exports/{export}",
+                params={"rule": "additive_u", "package_version": "0.9.0"},
+            ).status_code
             == 200
         )
         assert (
@@ -725,12 +732,14 @@ def test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinne
 
     # The body carries each school's link to `schools`, which a reload changes, so naming both versions is not enough
     # to make a list immutable. It gets the lifetime of a named version.
-    both = api.get(path, params={"input_version": loaded.input_version, "package_version": "0.9.0"})
+    both = api.get(
+        path, params={"rule": "additive_u", "input_version": loaded.input_version, "package_version": "0.9.0"}
+    )
     assert both.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     version_only = api.get(path, params={"input_version": loaded.input_version})
     assert version_only.headers["cache-control"] == "private, max-age=300, stale-while-revalidate=600"
     assert (
-        api.get(path, params={"package_version": "0.9.0"})
+        api.get(path, params={"rule": "additive_u", "package_version": "0.9.0"})
         .headers["cache-control"]
         .startswith("private, max-age=60")
     )
@@ -798,7 +807,9 @@ def test_every_school_has_a_key_and_a_detail_route_even_when_it_is_not_linked(ap
     assert [e["rule"]["rule_id"] for e in detail["rules"]] == RULE_IDS
     # The same row, listed under the same rule, is the one the detail shows.
     row = next(r for r in rows if r["school"]["school_key"] == by_name[AWK[7]])
-    assert detail["rules"][0]["result"]["point_rank"] == row["point_rank"]
+    listed_rule = fetch(api, "/api/v1/screening/rules")["default_rule_id"]
+    entry = next(e for e in detail["rules"] if e["rule"]["rule_id"] == listed_rule)
+    assert entry["result"]["point_rank"] == row["point_rank"]
     # A name with surrounding spaces and a queued school are reachable too.
     leading = fetch(api, f"/api/v1/screening/schools/by-key/{by_name[AWK[0]]}")
     assert leading["school"]["source_school_name"] == AWK[0]

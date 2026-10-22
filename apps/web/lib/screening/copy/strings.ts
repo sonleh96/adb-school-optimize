@@ -19,7 +19,7 @@ import {
   urgencyDefinition,
   type Reads,
 } from "./counts";
-import type { CountBag } from "./model";
+import type { CountBag, PersistenceRule } from "./model";
 
 /* ------------------------------------------------------ the persistence flag */
 
@@ -31,12 +31,25 @@ function marginPoints(se: number | undefined): number | null {
 }
 
 /**
- * A flagged school whose lowest frequency is within one standard error of the line, in one sentence. The margin is
- * the test's standard error from the circulated list's provenance block, as a fraction; without it the sentence
+ * What the flag means under each rule the stochastic test ran for, in one sentence each. Each rule has its own
+ * experiment: neither is read as the other's result, and the rule without urgency is not a re-labelled copy of the
+ * circulated one.
+ */
+export const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object.freeze({
+  additive_no_u:
+    "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency value changes.",
+  additive_u:
+    "Often in the top 20 when the circulated paper changed the factors' shares at random. That test included urgency, so it is the circulated experiment's result and not a result for the rule without urgency.",
+});
+
+/**
+ * A flagged school whose lowest frequency is just above the line, in one sentence. The margin is how far above the
+ * line the rule's test counts as just above, as a fraction: its standard error times the number of standard errors
+ * its band spans, from the provenance block of the list of the rule the test was run for. Without it the sentence
  * states no number.
  */
-export function persistentNearLine(standardError?: number): string {
-  const pts = marginPoints(standardError);
+export function persistentNearLine(margin?: number): string {
+  const pts = marginPoints(margin);
   return `In that test it stayed in the top 20 only just often enough to be flagged${pts === null ? "" : `, within ${pts} percentage points of the line`}, so another round of random changes to the shares could take the flag away.`;
 }
 
@@ -45,7 +58,7 @@ export function persistentNearLine(standardError?: number): string {
 /**
  * The lines that say what the groups of schools are, for one rule: its counts and the inputs it reads. A rule that
  * leaves out urgency or the air-quality, emissions and land-cover figures puts a school in order without them, so
- * its group is "every input the rule reads", and the benchmark, which reads no air-quality figure, has no range
+ * its group is "a record for every input the rule uses", and the benchmark, which reads no air-quality figure, has no range
  * schools to mention. They are bound per rule (`scope(ruleId)`) so a screen cannot show the main rule's words
  * under another rule.
  */
@@ -86,7 +99,7 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
     filterNote: `Filtered view. Places in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
     // A rule that reads no air-quality, emissions or land-cover figure shows no range, so it has nothing to place.
     listOrder: !readsReadings
-      ? "No school shows a range under this rule, because it does not read the air-quality, emissions or land-cover figures."
+      ? "No school shows a range under this rule, because it does not use the air-quality, emissions or land-cover figures."
       : noRange
         ? "No school shows a range in this list."
         : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,
@@ -121,11 +134,9 @@ export function buildStrings(c: CountBag = {}) {
     cannotWorkOut: "Cannot be worked out",
     noResult: "No result",
     scoreNote: "Each input runs from 0 to 1; higher means more reason to look.",
-    persistentFlag:
-      "Often in the top 20 when the paper changed the factors' shares at random. That test used the paper's main rule, with urgency, and has not been redone for the proposed revision.",
+    persistentFlag: PERSISTENT_FLAG,
     defaultRuleNote:
-      "The screen opens on the paper's main rule, the combined-factors rule with urgency (S). The proposed revision, the combined-factors rule without urgency (S0), is one click away.",
-    proposedPending: "Proposed revision. Awaiting the research team's review.",
+      "The screen opens on the paper's main rule, the combined-factors rule without urgency (S0). The circulated paper's rule with urgency, the combined-factors rule with urgency (S), is one click away as a sensitivity check.",
     source: SOURCE_LINE,
     schoolNeedDefinition: SCHOOL_NEED_DEFINITION,
     airQualityDefinition: AIR_DEFINITION,

@@ -58,20 +58,20 @@ describe("the group of schools with their inputs recorded", () => {
   it("is worded by the inputs the benchmark reads, which includes schools with a missing reading", () => {
     const text = P.groupsSentence("benchmark");
     expect(text).toBe(
-      "21 schools have every input the rule reads recorded, so 21 schools can be put in order."
+      "21 schools have a record for every input the rule uses, so 21 schools can be put in order."
     );
     expect(textProblems(text)).toEqual([]);
   });
 
   it("is worded by the inputs a rule that leaves urgency out reads", () => {
     expect(P.groupsSentence("additive_no_u")).toMatch(
-      /^17 schools have every input the rule reads recorded, and /
+      /^17 schools have a record for every input the rule uses, and /
     );
   });
 
   it("says no number it was not given", () => {
     expect(copy.groupsSentence(undefined, { urgency: true, readings: false })).toBe(
-      "Schools with every input the rule reads recorded have one place each, and can be put in order."
+      "Schools with a record for every input the rule uses have one place each, and can be put in order."
     );
   });
 });
@@ -91,15 +91,15 @@ describe("a school with a missing reading, under the benchmark", () => {
 
   it("does not have all of its inputs recorded, and still names the reading that is missing", () => {
     expect(P.missingSentences(s17, "benchmark")).toEqual([
-      "All of the inputs this rule reads are recorded.",
-      "Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not read it.",
+      "All of the inputs this rule uses are recorded.",
+      "Its air-quality reading, an air-pollution index for its location, is missing, but this rule does not use it.",
     ]);
     expect(P.missingSentence(s17, "benchmark")).not.toMatch(/all of its inputs/i);
   });
 
   it("is placed among the schools that have the benchmark's inputs, not every input", () => {
     const text = P.rankSentence(s17, "benchmark");
-    expect(text).toMatch(/^12th of the 21 schools with every input the rule reads recorded/);
+    expect(text).toMatch(/^12th of the 21 schools with a record for every input the rule uses/);
     expect(textProblems(text)).toEqual([]);
   });
 
@@ -121,7 +121,7 @@ describe("a school with no urgency value, under a rule that leaves urgency out",
   it("is complete there, and says its urgency value is not recorded but not needed", () => {
     expect(s23.cohort).toBe("complete");
     expect(P.missingSentences(s23, "additive_no_u")).toEqual([
-      "All of the inputs this rule reads are recorded.",
+      "All of the inputs this rule uses are recorded.",
       "Its urgency value is not recorded, but this rule does not use it.",
     ]);
   });

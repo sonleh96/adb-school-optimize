@@ -96,7 +96,10 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
   const titles = ready ? views.map((view) => viewTitle(later.copy, view)) : [];
   const page = typeof window === "undefined" ? "" : `${window.location.origin}${window.location.pathname}`;
   const items = ready
-    ? views.map((view, i) => ({ name: plainViewTitle(later.copy, view), link: linkOf(page, states[i]) }))
+    ? views.map((view, i) => ({
+        name: plainViewTitle(later.copy, view),
+        link: linkOf(page, states[i], known),
+      }))
     : [];
   const ruleOf = (state: WorkspaceState) => (state.rule ?? known.defaultRule) as CopyRuleId;
   const schoolName = (state: WorkspaceState): Segments | null => {
@@ -157,7 +160,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
               </span>
               {lost(view).length > 0 ? (
                 <span className={styles.packLost} data-region="view-dropped">
-                  {LAYOUT.viewPartMissing(lost(view))}
+                  {LAYOUT.viewPartMissing(lost(view), states[i].place)}
                 </span>
               ) : null}
             </li>
@@ -214,7 +217,7 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
                     <Sentence segments={shows} />
                     {lost(view).length > 0 ? (
                       <span className={styles.packLost} data-region="view-dropped">
-                        {LAYOUT.viewPartMissing(lost(view))}
+                        {LAYOUT.viewPartMissing(lost(view), states[i].place)}
                       </span>
                     ) : null}
                   </td>

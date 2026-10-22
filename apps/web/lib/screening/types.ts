@@ -47,6 +47,9 @@ const policyRole = looseEnum<
   "primary" | "strict_alternative" | "policy_sensitivity" | "urgency_sensitivity" | "conventional_reference"
 >();
 
+/** Which paper a rule comes from. The earlier "proposed, pending review" value is retired. */
+const provenance = looseEnum<"circulated_paper" | "revised_paper">();
+
 // ---------------------------------------------------------------------------------------------
 // Rules.
 // ---------------------------------------------------------------------------------------------
@@ -55,6 +58,7 @@ const rule = obj({
   rule_id: RuleId,
   label: str,
   policy_role: policyRole,
+  provenance: optional(provenance),
   uses_urgency: bool,
   /** The rule as the paper writes it, and each input's share as a fraction and a number; method details only. */
   formula: str,
@@ -168,8 +172,9 @@ const rawListedRow = obj({
   school: schoolIdentity,
   /**
    * Whether the school stayed in the top 20 when the paper changed the factors' shares at random: true or false,
-   * or null when it was not in that experiment. Present only in the list of the circulated rule, `additive_u`,
-   * because the experiment included urgency. It must never be shown for another rule.
+   * or null when it was not in that experiment. Present only in the lists of the two rules the stochastic test ran
+   * for, `additive_no_u` (the revised paper's) and `additive_u` (the circulated paper's), each from its own
+   * experiment. It must never be shown for another rule, nor one rule's flag under the other.
    */
   persistent_candidate: optional(nullable(bool)),
   /**
@@ -250,11 +255,28 @@ export const resultsResponse = obj({
   }),
   rows: list(listedRow),
   /**
-   * Where the persistence flag came from, in the circulated rule's list only; null when the version has none. Only
-   * the standard error is read: it is the margin inside which a school counts as only just above the line. The block
-   * adds a margin to a sentence, so a change to it reads as absent instead of blanking the list.
+   * Where the persistence flag came from, in the list of each rule the stochastic test ran for, from that rule's own
+   * experiment; null when the rule has none. Only the standard error and the number of standard errors the rule's
+   * band spans are read: together they are the margin inside which a school counts as only just above the line. The
+   * draws, the threshold and the settings are read for the method details' words, each on its own: one that is not
+   * the shape the page expects reads as absent and costs only its own words. The block adds a margin or a count to a
+   * sentence, so a change to it reads as absent instead of blanking the list.
    */
-  persistence: tolerant(nullable(obj({ standard_error: num }))),
+  persistence: tolerant(
+    nullable(
+      obj({
+        standard_error: num,
+        adjacency_standard_errors: optional(int),
+        /**
+         * How the test was drawn: the number of draws, the line a school must reach, and the settings drawn in. Each
+         * only adds to a sentence, so one of another shape reads as absent by itself and leaves the margin standing.
+         */
+        draws: tolerant(int),
+        threshold: tolerant(num),
+        settings: tolerant(list(obj({ top_level_concentration: num, school_need_concentration: num }))),
+      })
+    )
+  ),
 });
 export type ResultsResponse = Infer<typeof resultsResponse>;
 
@@ -274,7 +296,7 @@ export const schoolDetailResponse = obj({
       rank_bounds_scope: str,
       rank_bounds_scope_code: scopeCode,
       result: detailResult,
-      /** As on a listed row: only the circulated rule's entry has these three. */
+      /** As on a listed row: only the entry of a rule the stochastic test ran for has these. */
       persistent_candidate: optional(nullable(bool)),
       threshold_adjacent: optional(nullable(bool)),
     })

@@ -115,7 +115,7 @@ test.describe("at 1024 by 768 with the rail and a card open", () => {
   test("at 1024 by 768 with the rail and a card open, the card leaves the key, its Key button and the caveat clear", async ({
     page,
   }) => {
-    await page.goto(`/screening?school=${keyOf("additive_u", "Sample School 08")}&guide=start`);
+    await page.goto(`/screening?school=${keyOf("additive_no_u", "Sample School 08")}&guide=start`);
     await waitForMap(page);
     await expect(page.locator(RAIL)).toBeVisible();
     await expect(page.locator("[data-slot=school-card]")).toBeVisible();

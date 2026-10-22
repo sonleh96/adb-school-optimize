@@ -3,14 +3,15 @@
  * they play, never by name or id (robustness R13). The repository is public and the data changes, so no school is
  * written into the code, and a guide whose example does not exist in the data is not offered at all.
  *
- * Roles are read under the paper's main rule, whose list the workspace always loads, so they do not change when the
- * screen shows another rule. Ties go to the earlier place, then to the name, so the choice is the same every load.
+ * Roles are read under the paper's main rule, the rule without urgency that the screen opens on and whose list the
+ * workspace always loads, so they do not change when the screen shows another rule. Ties go to the earlier place, then to the name, so the choice is the same every load.
  */
-import { type BoundCopy, type CopySchool, DEFAULT_RULE, type InputKey, type NeedKey } from "../copy";
+import type { BoundCopy, CopySchool, InputKey, NeedKey } from "../copy";
+import { PRIMARY_RULE } from "../rule-pair";
 
 import type { Catalog, GuideId } from "./machine";
 
-const MAIN = DEFAULT_RULE;
+const MAIN = PRIMARY_RULE;
 const NEED_KEYS: readonly NeedKey[] = ["classrooms", "housing", "facilities", "services", "locality"];
 const NEED_GATES = [
   "permanent_classroom_deficit",
@@ -95,8 +96,8 @@ export const onlyRemoteness = (s: CopySchool): boolean =>
 export interface Features {
   /** "Download the top list" is on screen. */
   readonly export: boolean;
-  /** The API offers the proposed revision, so the urgency guide can switch to it. */
-  readonly proposed: boolean;
+  /** The API offers the circulated rule with urgency, so the urgency guide can compare the main rule with it. */
+  readonly urgencyRule: boolean;
   /** The incomplete records can be grouped by what is missing. */
   readonly grouping: boolean;
 }
@@ -112,7 +113,7 @@ export function planOf(roles: Roles, features: Features): Plan {
   if (roles.complete.length > 0) plan.q2 = roles.reasons ? ["why", "need", "adds"] : ["why", "adds"];
   if (roles.ranges.length > 0) plan.q3 = ["range", "order", "map"];
   if (roles.incomplete.length > 0) plan.q4 = ["list", ...(features.grouping ? ["group"] : []), "school"];
-  if (features.proposed && roles.complete.length > 0)
+  if (features.urgencyRule && roles.complete.length > 0)
     plan.q5 = ["agree", "why", ...(roles.ranges.length > 0 ? ["ranges"] : []), "use"];
   return plan;
 }

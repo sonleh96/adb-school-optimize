@@ -16,9 +16,11 @@ import type { Page } from "@playwright/test";
 
 import { LAYOUT } from "../lib/screening/copy";
 import {
+  MAIN_RULE,
   ORDERED,
   ORDERED_COUNT,
   RULE,
+  URGENCY_RULE,
   mainRule,
   tab,
   expect,
@@ -47,20 +49,20 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   // The page may ask for this list before the switch (it reads both main rules); it is held until the test lets go.
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(RESULTS("additive_no_u"), async (route) => {
+  await page.route(RESULTS(URGENCY_RULE), async (route) => {
     await held;
     await route.continue();
   });
   await openWorkspace(page);
   await orderedRow(page, "Sample School 15").click();
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
+    "Place in the list under the combined-factors rule without urgency (S0)"
   );
 
-  await mainRule(page, RULE.proposed).click();
+  await mainRule(page, RULE.urgency).click();
 
   // The switch shows what was asked for; everything else names the rows actually on screen.
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   const legend = page.locator("[data-slot=legend]");
   const card = page.locator("[data-slot=school-card]");
   const list = page.locator(ORDERED);
@@ -72,27 +74,27 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(page.locator("[data-rank-label][data-stale=true]").first()).toBeVisible();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(0);
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
-  );
-  await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
-  );
-  await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
-
-  // A stale mark cannot be picked: the click does nothing.
-  const point = await settledMark(page, keyOf("additive_u", "Sample School 12"));
-  await page.mouse.click(point.x, point.y);
-  await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "false");
-
-  // Then the new rule's rows arrive and everything is relabelled together.
-  release();
-  await expect(page.getByTestId("legend-rule")).toHaveText(
     "Place in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
     "Place in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
+
+  // A stale mark cannot be picked: the click does nothing.
+  const point = await settledMark(page, keyOf(MAIN_RULE, "Sample School 12"));
+  await page.mouse.click(point.x, point.y);
+  await expect(orderedRow(page, "Sample School 12")).toHaveAttribute("aria-pressed", "false");
+
+  // Then the new rule's rows arrive and everything is relabelled together.
+  release();
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule with urgency (S)"
+  );
+  await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
+    "Place in the list under the combined-factors rule with urgency (S)"
+  );
+  await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
   await expect(legend).toHaveAttribute("aria-busy", "false");
   await expect(card).toHaveAttribute("aria-busy", "false");
   await expect(list).toHaveAttribute("aria-busy", "false");
@@ -102,7 +104,7 @@ test("while the next rule loads, everything on screen is labelled by the rows it
 });
 
 test("a slow first load shows that it is loading, with no counts, then the counts", async ({ page }) => {
-  await page.route(RESULTS("additive_u"), async (route) => {
+  await page.route(RESULTS(MAIN_RULE), async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue();
   });
@@ -120,7 +122,7 @@ test("the map's scripts are not fetched until the list has loaded, so they never
 }) => {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(RESULTS("additive_u"), async (route) => {
+  await page.route(RESULTS(MAIN_RULE), async (route) => {
     await held;
     await route.continue();
   });
@@ -155,7 +157,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
 
   for (const { name, status, body, failure } of cases) {
     test(`${name} is worded as ${failure}`, async ({ page, problems }) => {
-      await page.route(RESULTS("additive_u"), (route) =>
+      await page.route(RESULTS(MAIN_RULE), (route) =>
         route.fulfill({ status, contentType: "application/json", body })
       );
       await page.goto("/screening");
@@ -188,7 +190,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
     page,
     problems,
   }) => {
-    await page.route(RESULTS("additive_u"), (route) =>
+    await page.route(RESULTS(MAIN_RULE), (route) =>
       route.fulfill({ status: 200, contentType: "application/json", body: '{"rows": 5}' })
     );
     await page.goto("/screening");
@@ -206,7 +208,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
     page,
     problems,
   }) => {
-    await page.route(RESULTS("additive_u"), async (route) => {
+    await page.route(RESULTS(MAIN_RULE), async (route) => {
       const response = await route.fetch();
       const body = await response.json();
       body.persistence = { standard_error: "n/a" };
@@ -224,7 +226,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
   });
 
   test("an answer that is not JSON is worded as unreadable and logged", async ({ page, problems }) => {
-    await page.route(RESULTS("additive_u"), (route) =>
+    await page.route(RESULTS(MAIN_RULE), (route) =>
       route.fulfill({ status: 200, contentType: "text/html", body: "<html>sign in</html>" })
     );
     await page.goto("/screening");
@@ -236,7 +238,7 @@ test.describe("tells a session that ended, a missing list, a failing service and
 
   test("a retry after a failure loads the list", async ({ page, problems }) => {
     let failing = true;
-    await page.route(RESULTS("additive_u"), (route) =>
+    await page.route(RESULTS(MAIN_RULE), (route) =>
       failing ? route.fulfill({ status: 503, contentType: "application/json", body: "{}" }) : route.continue()
     );
     await page.goto("/screening");
@@ -268,7 +270,7 @@ test("without the basemap the page says so, the marks still draw and a selection
     await page.waitForTimeout(400);
   }
   const target = await (async () => {
-    for (const row of rowsOf("additive_u").filter((r) => r.cohort !== "verification_queue")) {
+    for (const row of rowsOf(MAIN_RULE).filter((r) => r.cohort !== "verification_queue")) {
       const point = await markAt(page, row.school.school_key);
       if (point && (point.x < 480 || point.x > 1550 || point.y < 120 || point.y > 940)) {
         return { name: row.school.source_school_name, key: row.school.school_key };
@@ -304,20 +306,24 @@ test("without the basemap the page says so, the marks still draw and a selection
 /**
  * The page asks for the expected default rule's list before the rules say which rule is the default. This holds
  * the rules back until the returned function releases them, refuses that speculative list (its one retry is
- * refused too), and answers the rules with `rulesDefault` as the default. It resolves once the page is holding.
+ * refused too), and answers the rules with `rulesDefault` as the default, without the main rule when `withoutMain`
+ * (an API that does not offer it). It resolves once the page is holding.
  */
-async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: string) {
+async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: string, withoutMain = false) {
   let release!: () => void;
   const rulesHeld = new Promise<void>((resolve) => (release = resolve));
   let speculativeRequests = 0;
-  await page.route(RESULTS("additive_u"), (route) => {
+  await page.route(RESULTS(MAIN_RULE), (route) => {
     speculativeRequests += 1;
     return route.fulfill({ status: 503, contentType: "application/json", body: "{}" });
   });
   await page.route("**/api/v1/screening/rules", async (route) => {
     await rulesHeld;
     const body = await (await route.fetch()).json();
-    await route.fulfill({ json: { ...body, default_rule_id: rulesDefault } });
+    const rules = withoutMain
+      ? body.rules.filter((rule: { rule_id: string }) => rule.rule_id !== MAIN_RULE)
+      : body.rules;
+    await route.fulfill({ json: { ...body, rules, default_rule_id: rulesDefault } });
   });
   await page.goto("/screening");
   // A failed list is retried once, so the failure is final after the second refusal.
@@ -329,25 +335,47 @@ async function refuseSpeculativeListWhileRulesHeld(page: Page, rulesDefault: str
   return release;
 }
 
-test("a failed speculative list is not an error while the rules load, and the list loads when they name another default", async ({
+test("a failed speculative list is not an error while the rules load, and an API without the main rule opens its own default", async ({
   page,
   problems,
 }) => {
-  const release = await refuseSpeculativeListWhileRulesHeld(page, "additive_no_u");
+  const release = await refuseSpeculativeListWhileRulesHeld(page, URGENCY_RULE, true);
 
   release();
-  await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames("additive_no_u").length);
-  expect(await listNames(page)).toEqual(orderedNames("additive_no_u"));
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames(URGENCY_RULE).length);
+  expect(await listNames(page)).toEqual(orderedNames(URGENCY_RULE));
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   // The two refused requests were expected; they are not problems.
   problems.length = 0;
+});
+
+test("an API that names another default still opens the main rule, so the screen and its words agree", async ({
+  page,
+}) => {
+  // An older API, whose default is the rule with urgency, and which offers the main rule as well.
+  await page.route("**/api/v1/screening/rules", async (route) => {
+    const body = await (await route.fetch()).json();
+    await route.fulfill({ json: { ...body, default_rule_id: URGENCY_RULE } });
+  });
+  await page.goto("/screening");
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(orderedNames(MAIN_RULE).length);
+  expect(await listNames(page)).toEqual(orderedNames(MAIN_RULE));
+  await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("[data-region=list-statement]")).toContainText(
+    "This one, the paper's main rule."
+  );
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule without urgency (S0)"
+  );
+  expect(new URL(page.url()).search).toBe("");
+  await waitForMap(page);
 });
 
 test("a failed speculative list shows its failure once the rules name the same default", async ({
   page,
   problems,
 }) => {
-  const release = await refuseSpeculativeListWhileRulesHeld(page, "additive_u");
+  const release = await refuseSpeculativeListWhileRulesHeld(page, MAIN_RULE);
 
   release();
   const failure = page.locator("[role=alert][data-failure]");

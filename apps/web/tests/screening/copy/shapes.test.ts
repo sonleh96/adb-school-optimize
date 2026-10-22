@@ -189,7 +189,6 @@ describe("data of other sizes", () => {
       emissionsNone: 0,
       airMissing: 2,
       remotenessOnly: 1,
-      flagged: 0,
     });
     expect(P.scope("additive_u").groups).toBe(
       "5 schools have every input recorded, and two more lack a reading such as air quality and show a range of places, so 7 schools can be put in order."
@@ -238,9 +237,21 @@ describe("data of other sizes", () => {
     expect(countsFrom(noEmissions).emissionsNone).toBe(5 + 1);
     expect(countsFrom(noEmissions).airMissing).toBe(2);
     expect(
-      countsFrom(base.map((s) => ({ ...s, persistent_candidate_circulated: s.id === "c1" || s.id === "c2" })))
-        .flagged
+      countsFrom(
+        base.map((s) => ({
+          ...s,
+          persistence: { additive_u: { persistent: s.id === "c1" || s.id === "c2", adjacent: false } },
+        })),
+        "additive_u"
+      ).flagged
     ).toBe(2);
+    // The same schools carry no flag under the other rule's test, and without a rule no flag is counted.
+    const flagged = base.map((s) => ({
+      ...s,
+      persistence: { additive_u: { persistent: s.id === "c1" || s.id === "c2", adjacent: false } },
+    }));
+    expect(countsFrom(flagged, "additive_no_u").flagged).toBe(0);
+    expect(countsFrom(flagged)).not.toHaveProperty("flagged");
   });
 
   it("reads one range school and one incomplete record in the singular", async () => {
@@ -360,7 +371,6 @@ describe("no schools, and one school", () => {
       emissionsNone: 0,
       airMissing: 0,
       remotenessOnly: 0,
-      flagged: 0,
     });
     expect(P.STRINGS.urgencyDefinition).toMatch(/not known\.$/);
     expect(P.scope("additive_u").amongAll).toBe("All schools that can be put in order");
