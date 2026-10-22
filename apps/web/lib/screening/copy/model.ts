@@ -91,7 +91,7 @@ export type UnreadableInput = keyof CopyCondition | "aqi" | "emissions" | "land"
 export interface CopyComponents {
   readonly N: number | null;
   readonly A: number | null;
-  /** `null` is an urgency value that is unknown. Absent means no rule that reads urgency has a run, so it was not read. */
+  /** `null` is an urgency rating that is unknown. Absent means no rule that reads urgency has a run, so it was not read. */
   readonly U?: number | null;
   readonly R: number | null;
   readonly Q: number | null;

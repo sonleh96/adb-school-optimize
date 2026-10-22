@@ -49,7 +49,7 @@ export const INPUT_NAMES: Record<UnreadableInput, string> = {
   aqi: "the air-quality reading",
   emissions: "the nearby emissions figure",
   land: "the land-cover figure",
-  urgency: "the urgency value",
+  urgency: "the urgency rating",
 };
 
 /** The inputs of `names` that the record holds but the copy could not read, in reading order. */
@@ -108,8 +108,8 @@ export function otherCause(school: CopySchool, gate: OtherGate): OtherCause {
     case "urgency_unknown":
       return {
         kind: "blank",
-        text: "its urgency value is not recorded",
-        label: "Urgency value not recorded",
+        text: "its urgency rating is not recorded",
+        label: "Urgency rating not recorded",
         effect: "and the rules that use urgency need it",
       };
     default:

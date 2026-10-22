@@ -171,14 +171,14 @@ export const comparisonSentence = (
 
 // Answers "what did leaving urgency out change?" from the recorded comparison of the two combined-factors rules. The
 // main rule leaves urgency out and the circulated rule puts it back, so it reads the same from either side: how many
-// of the top stay, and how far a school moves when the urgency value is put back. data: { pairwise }.
+// of the top stay, and how far a school moves when the urgency rating is put back. data: { pairwise }.
 export function urgencyReassurance(data: ComparisonData): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
   if (!row) return "No recorded comparison exists for the combined-factors rules with and without urgency.";
   const most = row.maximum_absolute_rank_shift;
   const rc = data.schools ? countsFrom(data.schools) : null;
   return [
-    `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency value"))}`,
+    `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency rating"))}`,
     `Putting it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "place", "places")}.`,
     `For ${rangePhrase(rc)}, putting it back can still move ${theirScore(rc)} possible places.`,
   ].join(" ");
@@ -207,7 +207,7 @@ export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): st
 // The long form, for a help card or disclosure. data: { pairwise }.
 export function defaultListStatementLong(data: Pick<ComparisonData, "pairwise">): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead = `This list uses the paper's main rule, ${rule("additive_no_u").name}. It leaves out the urgency value, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, ${rule("additive_u").name}, is kept beside it as a sensitivity check.`;
+  const lead = `This list uses the paper's main rule, ${rule("additive_no_u").name}. It leaves out the urgency rating, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, ${rule("additive_u").name}, is kept beside it as a sensitivity check.`;
   if (!row) return lead;
   return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both"))}`;
 }

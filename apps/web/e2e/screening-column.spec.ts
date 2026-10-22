@@ -41,7 +41,7 @@ test.describe.configure({ timeout: 60_000 });
 const STATEMENT =
   "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
+  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency rating. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
 // What changed from the rule with urgency to the main rule, as the statement's link and guide 5 show it.
 const EXAMPLE =
   "Under the combined-factors rule with urgency (S), Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the combined-factors rule without urgency (S0), it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
@@ -99,11 +99,11 @@ test("the statement shows under the main rule only, never beside What changed, a
   // The main rule comes first in the switch, pressed, named in words: the letters stay in the method details.
   await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(RULE.main);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency rating`);
   await expect(changed(page)).toHaveCount(0);
 
   // The statement's link opens What changed for the main rule against the rule with urgency, on the main rule's list.
-  await statement(page).getByRole("button", { name: "See what changes with the urgency value" }).click();
+  await statement(page).getByRole("button", { name: "See what changes with the urgency rating" }).click();
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
   await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE}`);
@@ -114,7 +114,7 @@ test("the statement shows under the main rule only, never beside What changed, a
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency rating`);
   expect(search(page)).toBe("");
 
   // The switch shows What changed too, and from the rule with urgency What changed has the way back.
@@ -132,7 +132,7 @@ test("the statement shows under the main rule only, never beside What changed, a
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   const line = page.locator("[data-region=rule-role]");
   await expect(line).toHaveText(
-    "The screening score adds up several factors, each with a fixed share, and urgency is one of them. A sensitivity check that puts the urgency value back, from the circulated paper. Back to the paper's main rule"
+    "The screening score adds up several factors, each with a fixed share, and urgency is one of them. A sensitivity check that puts the urgency rating back, from the circulated paper. Back to the paper's main rule"
   );
   await expect(statement(page)).toHaveCount(0);
   await line.getByRole("button", { name: "Back to the paper's main rule" }).click();
@@ -274,7 +274,7 @@ test("the range note sits just before the first range school", async ({ page }) 
 test("the incomplete records are grouped by province or by what is missing, with each row's missing details", async ({
   page,
 }) => {
-  // Under the rule with urgency, so the list holds a school held back only for its urgency value as well.
+  // Under the rule with urgency, so the list holds a school held back only for its urgency rating as well.
   await openWorkspace(page, "?rule=additive_u&view=queue");
   const headings = page.locator(`${INCOMPLETE} > li > div`);
   const rows = page.locator(`${INCOMPLETE} button`);
@@ -290,7 +290,7 @@ test("the incomplete records are grouped by province or by what is missing, with
     "Teacher count blank",
     "District figure missing or unusable",
     "Walking reach missing or unusable",
-    "Urgency value not recorded",
+    "Urgency rating not recorded",
   ]);
 
   // By what is missing: one heading per school's gap, the largest group first and then by heading; each row names
@@ -302,7 +302,7 @@ test("the incomplete records are grouped by province or by what is missing, with
     "4 kinds of detail missing1",
     "Remoteness off the scale, needs checking1",
     "Teacher count blank1",
-    "Urgency value not recorded1",
+    "Urgency rating not recorded1",
   ]);
   await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
   // Each grouping says how the list is ordered.

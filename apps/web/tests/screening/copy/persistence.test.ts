@@ -238,7 +238,7 @@ describe("each rule's flag shows under its own rule only", () => {
   });
 
   it("words the fresh run and the circulated experiment differently, and relabels neither", () => {
-    expect(FLAG[S0]).toMatch(/fresh run for this rule, not a measure of what the urgency value changes/);
+    expect(FLAG[S0]).toMatch(/fresh run for this rule, not a measure of what the urgency rating changes/);
     expect(FLAG[S]).toMatch(/circulated/);
     expect(FLAG[S]).toMatch(/not a result for the rule without urgency/);
     expect(FLAG[S0]).not.toMatch(/circulated|proposed|redone/);

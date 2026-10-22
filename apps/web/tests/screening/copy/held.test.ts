@@ -48,7 +48,7 @@ function held(change: (b: Body) => void, only?: readonly string[], view: copy.Co
 }
 const everyRule = (b: Body, f: (e: Entry) => void) => b.rules.forEach(f);
 
-describe("a school held back only because its urgency value is unknown", () => {
+describe("a school held back only because its urgency rating is unknown", () => {
   const s = held(
     (b) =>
       b.rules.forEach((e) => {
@@ -73,19 +73,19 @@ describe("a school held back only because its urgency value is unknown", () => {
   });
 
   it("names the cause in a chip, in the sentences and in the note", () => {
-    expect(copy.missingLabels(s)).toEqual(["Urgency value not recorded"]);
+    expect(copy.missingLabels(s)).toEqual(["Urgency rating not recorded"]);
     expect(copy.missingSentences(s, "additive_u")).toEqual([
-      "Its urgency value is not recorded, and the rules that use urgency need it.",
+      "Its urgency rating is not recorded, and the rules that use urgency need it.",
       "The rules that leave urgency out do not need it, so they can put this school in order.",
-      "Until the urgency value is recorded, it has no place in the list under a rule that uses urgency.",
+      "Until the urgency rating is recorded, it has no place in the list under a rule that uses urgency.",
       "Having no place in the list yet does not mean its need is low.",
     ]);
     expect(copy.missingValueKind(s, "urgency")).toBe("blank");
     expect(copy.missingValueNote(s, "urgency")).toBe(
-      "Its urgency value is not recorded, and the rules that use urgency need it. The tool does not fill it in or count it as 0."
+      "Its urgency rating is not recorded, and the rules that use urgency need it. The tool does not fill it in or count it as 0."
     );
     expect(copy.inputSentence(s, "urgency")).toBe(
-      "Its urgency value is not recorded, and the rules that use urgency need it."
+      "Its urgency rating is not recorded, and the rules that use urgency need it."
     );
   });
 
@@ -304,7 +304,7 @@ describe("a school held back for several reasons", () => {
       "Teacher count blank",
       "District figure missing or unusable",
       "Walking reach missing or unusable",
-      "Urgency value not recorded",
+      "Urgency rating not recorded",
     ]);
   });
 

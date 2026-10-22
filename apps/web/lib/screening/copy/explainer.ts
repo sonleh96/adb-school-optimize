@@ -105,9 +105,9 @@ export function buildHow(
         sentences: [
           "The paper's main rule, the combined-factors rule without urgency (S0), adds up the inputs, each with a fixed share, to give a screening score: school need about 63%, district context about 16%, and about 5% each for walking reach, air quality, emissions and land cover.",
           "A rise of 0.1 in school need moves the screening score by about 0.06, which is more than any one environment measure can add.",
-          "The circulated paper's rule, the combined-factors rule with urgency (S), puts the urgency value back and keeps the other shares as that paper set them: school need 60%, district context 15%, and 5% each for urgency, walking reach, air quality, emissions and land cover. The revised paper keeps it as a sensitivity check, to show what the urgency value changes.",
+          "The circulated paper's rule, the combined-factors rule with urgency (S), puts the urgency rating back and keeps the other shares as that paper set them: school need 60%, district context 15%, and 5% each for urgency, walking reach, air quality, emissions and land cover. The revised paper keeps it as a sensitivity check, to show what the urgency rating changes.",
           "The need-first rules order schools by school need alone, and other inputs only break exact ties.",
-          "The largest-factor rules take 60% of a combined-factors rule's screening score and add 40% of the school's largest input: school need or district context, or also the urgency value in the rule with urgency.",
+          "The largest-factor rules take 60% of a combined-factors rule's screening score and add 40% of the school's largest input: school need or district context, or also the urgency rating in the rule with urgency.",
           "The conventional benchmark (B) gives school need 55%, district context 20%, urgency 15% and walking reach 10%.",
           "When two schools are exactly level, the school name decides, in alphabetical order.",
           "The shares were set before anyone looked at which schools came out on top, and the rules without urgency keep them in proportion.",
@@ -145,7 +145,7 @@ export function buildHow(
 export const HOW_IT_WORKS = buildHow();
 
 // The explainer's example: the range school whose possible places move most between the main rule and the rule that
-// puts the urgency value back.
+// puts the urgency rating back.
 export function howExampleSegments(
   data: ComparisonData,
   c: CountBag,
@@ -222,10 +222,10 @@ export function buildQuestions(
       },
       {
         key: "trust",
-        question: "What did leaving the uncertain urgency value out change?",
+        question: "What did leaving the uncertain urgency rating out change?",
         answer:
           trust ||
-          `The comparison shows how many of the top schools stay the same with or without the urgency value. ${TRUST_TAIL}`,
+          `The comparison shows how many of the top schools stay the same with or without the urgency rating. ${TRUST_TAIL}`,
         live: "urgencyReassurance",
       },
     ].map((q) => Object.freeze(q))

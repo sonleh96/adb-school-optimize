@@ -339,7 +339,7 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
         `${missingReadingsClause(school)}, but this rule does not use ${readings.length === 1 ? "it" : "them"}.`
       );
     if (!reads.urgency && school.components.U === null)
-      out.push("Its urgency value is not recorded, but this rule does not use it.");
+      out.push("Its urgency rating is not recorded, but this rule does not use it.");
     return out;
   };
   if (school.cohort === "complete")
@@ -377,7 +377,7 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   else if (others.length === 1 && others[0] === "urgency_unknown")
     parts.push(
       "The rules that leave urgency out do not need it, so they can put this school in order.",
-      "Until the urgency value is recorded, it has no place in the list under a rule that uses urgency."
+      "Until the urgency rating is recorded, it has no place in the list under a rule that uses urgency."
     );
   else
     parts.push(

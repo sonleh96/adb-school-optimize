@@ -354,7 +354,7 @@ const LARGEST_RULES = ["bottleneck_u", "bottleneck_no_u"] as const;
 /**
  * The record the API sends for a largest-factor rule, built from the design's combined-factors record and
  * components: 60% of each figure, and the 40% share of the largest of school need, district context and (with
- * urgency) the urgency value, naming every factor that ties for it. Undefined where the school lacks a part.
+ * urgency) the urgency rating, naming every factor that ties for it. Undefined where the school lacks a part.
  */
 export function largestRecord(s: any, id: (typeof LARGEST_RULES)[number]): any {
   const base = s.contributions?.[id === "bottleneck_u" ? "additive_u" : "additive_no_u"];

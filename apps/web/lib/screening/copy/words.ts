@@ -44,8 +44,8 @@ export const LAYOUT = Object.freeze({
   howBack: "Back to the map",
   showMe: "Show me on the screen",
   // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
-  // puts the urgency value back.
-  seeWithUrgency: "See what changes with the urgency value",
+  // puts the urgency rating back.
+  seeWithUrgency: "See what changes with the urgency rating",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
   whatChanged: "What changed",

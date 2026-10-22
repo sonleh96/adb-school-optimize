@@ -7,7 +7,7 @@ export const BANNED = Object.freeze([
   { pattern: /\brisk/i, why: "No input measures risk; the screen proposes inspection attention only." },
   {
     pattern: /(?<!real )\bhazard(?!-related)/i,
-    why: "The urgency value is described as hazard-related, but how it was made could not be traced. Only say what leaving it out does not say, about real hazards.",
+    why: "The urgency rating is described as hazard-related, but how it was made could not be traced. Only say what leaving it out does not say, about real hazards.",
   },
   {
     pattern: /\bflood(?!ed vegetation)/i,

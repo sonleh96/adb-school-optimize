@@ -35,8 +35,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     line: "The screening score adds up several factors, each with a fixed share, and urgency is one of them.",
     role: "Urgency sensitivity",
     source: CIRCULATED,
-    roleLine: "A sensitivity check that puts the urgency value back, from the circulated paper",
-    relation: "The main rule of the circulated paper, kept to show what the urgency value changes.",
+    roleLine: "A sensitivity check that puts the urgency rating back, from the circulated paper",
+    relation: "The main rule of the circulated paper, kept to show what the urgency rating changes.",
     name: "the combined-factors rule with urgency (S)",
     usesUrgency: true,
     readsReadings: true,
@@ -44,7 +44,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
       "Adds up several factors for each school, each with a fixed share, to give its screening score. " +
       "School need, built from five parts of the school's own record, counts for 60%, district context for 15%, and urgency, walking reach, air quality, emissions and land cover for 5% each. " +
       "A high value in one input can make up for a low value in another. " +
-      "This was the main rule in the circulated paper. The revised paper keeps it as a sensitivity check that puts the urgency value back, because no one could trace where that value comes from.",
+      "This was the main rule in the circulated paper. The revised paper keeps it as a sensitivity check that puts the urgency rating back, because no one could trace where that value comes from.",
   },
   additive_no_u: {
     symbol: "S0",
@@ -59,7 +59,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     usesUrgency: false,
     readsReadings: true,
     explanation:
-      "The main rule of the revised paper. It leaves the urgency value out because no one could trace where it comes from; that says nothing about whether schools face real hazards. " +
+      "The main rule of the revised paper. It leaves the urgency rating out because no one could trace where it comes from; that says nothing about whether schools face real hazards. " +
       "The other factors keep their shares in proportion: school need, built from five parts of the school's own record, about 63%, district context about 16%, and walking reach, air quality, emissions and land cover about 5% each. " +
       "A high value in one input can make up for a low value in another.",
   },
@@ -108,7 +108,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     usesUrgency: true,
     readsReadings: true,
     explanation:
-      "Takes 60% of the screening score from the combined-factors rule with urgency and adds 40% of whichever is largest: the school's need, its district context or its urgency value. " +
+      "Takes 60% of the screening score from the combined-factors rule with urgency and adds 40% of whichever is largest: the school's need, its district context or its urgency rating. " +
       "School need is built from five parts of the school's own record. " +
       "This gives an extra share to a school's single largest input. " +
       "It is still a blend of inputs, not a cut-off or a safety threshold.",
@@ -202,7 +202,7 @@ export const ruleReads = (id: CopyRuleId): Reads => ({
 });
 export const urgencyNote = (id: CopyRuleId, opts: { counts?: CountBag } = {}): string =>
   rule(id).usesUrgency
-    ? `This rule uses the urgency value. ${urgencyDefinition(opts.counts)}`
+    ? `This rule uses the urgency rating. ${urgencyDefinition(opts.counts)}`
     : `Left out by this rule. ${urgencyDefinition(opts.counts)}`;
 
 // A rule's share for one factor, in words, for breakdown rows in place of "x 0.60".
@@ -211,7 +211,7 @@ export type FactorKey = "N" | "A" | "U" | "R" | "Q" | "E" | "L" | "need_part";
 const FACTOR_NAME: Record<FactorKey, string> = {
   N: "School need",
   A: "District context",
-  U: "The urgency value",
+  U: "The urgency rating",
   R: "Walking reach",
   Q: "Air quality",
   E: "Nearby emissions",

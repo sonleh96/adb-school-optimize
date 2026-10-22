@@ -263,9 +263,9 @@ describe("rules", () => {
   });
 
   it("says a rule that leaves urgency out leaves it out", () => {
-    expect(copy.shareSentence("additive_no_u", "U")).toBe("The urgency value is left out by this rule.");
+    expect(copy.shareSentence("additive_no_u", "U")).toBe("The urgency rating is left out by this rule.");
     expect(copy.urgencyNote("additive_no_u").startsWith("Left out by this rule.")).toBe(true);
-    expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency value.")).toBe(true);
+    expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency rating.")).toBe(true);
   });
 
   it("reads the main rule and the urgency sensitivity differently, and the rest by role and paper", () => {
@@ -273,7 +273,7 @@ describe("rules", () => {
       "The main rule of the revised paper, which leaves urgency out"
     );
     expect(copy.ruleRoleLine("additive_u")).toBe(
-      "A sensitivity check that puts the urgency value back, from the circulated paper"
+      "A sensitivity check that puts the urgency rating back, from the circulated paper"
     );
     expect(copy.ruleRoleLine("need_first_no_u")).toBe("Strict alternative, from the revised paper");
     expect(copy.ruleRoleLine("bottleneck_no_u")).toBe("Sensitivity check, from the revised paper");
@@ -312,7 +312,7 @@ describe("rules", () => {
     [
       "bottleneck_u",
       "U",
-      "The urgency value counts for 3 percent of the screening score, and a further 40 percent of the screening score when the urgency value is the school's largest factor.",
+      "The urgency rating counts for 3 percent of the screening score, and a further 40 percent of the screening score when the urgency rating is the school's largest factor.",
     ],
     [
       "bottleneck_no_u",

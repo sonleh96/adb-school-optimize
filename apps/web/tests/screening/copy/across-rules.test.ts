@@ -50,7 +50,7 @@ describe("a school held back under the rule shown, from the list route", () => {
     counts: countsFromResults(lists.additive_u),
     countsByRule: byRule,
   });
-  // Sample School 23 lacks an urgency value, so the rules that read urgency hold it back.
+  // Sample School 23 lacks an urgency rating, so the rules that read urgency hold it back.
   const s23 = placed.find((s) => s.name === "Sample School 23");
 
   it("keeps its results under the rules that put it in order", () => {
