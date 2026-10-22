@@ -107,7 +107,15 @@ function Start({
   const [unfolded, setUnfolded] = useState(false);
   const folded = compact && !unfolded;
   useEffect(() => {
-    if (acted()) title.current?.focus({ preventScroll: true });
+    if (!acted()) return;
+    title.current?.focus({ preventScroll: true });
+    // On a narrow screen the card heads the list region, which the reader may have scrolled well past: asked for, it
+    // comes into view, at once when the reader prefers less motion.
+    if (compact)
+      title.current?.closest('[data-testid="guide-rail"]')?.scrollIntoView({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- when the start list opens.
   }, []);
   const guides = plan ? guidesOf({ later, plan }) : [];
