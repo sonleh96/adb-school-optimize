@@ -161,6 +161,11 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   // Its name says what pressing it does; it carries no expanded state as well.
   await expect(ruleChange(page)).not.toHaveAttribute("aria-expanded", /./);
+  // A control names what it controls only while that is in the page, unless it says it is closed.
+  for (const control of await page.locator("[aria-controls]:not([aria-expanded=false])").all()) {
+    const id = await control.getAttribute("aria-controls");
+    await expect(page.locator(`[id="${id}"]`), `${id} is in the page`).toHaveCount(1);
+  }
   await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
   await expect(statement(page)).toHaveCount(0);
   await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);

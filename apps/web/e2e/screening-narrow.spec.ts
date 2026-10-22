@@ -178,6 +178,11 @@ test.describe("Start here on a phone", () => {
     // Its name says what it will do; it is not also a disclosure with a state.
     await expect(open).toHaveText("Open the guides");
     await expect(open).not.toHaveAttribute("aria-expanded", /./);
+    // A control names what it controls only while that is in the page, unless it says it is closed.
+    for (const control of await page.locator("[aria-controls]:not([aria-expanded=false])").all()) {
+      const id = await control.getAttribute("aria-controls");
+      await expect(page.locator(`[id="${id}"]`), `${id} is in the page`).toHaveCount(1);
+    }
     // Its dismiss reads as a choice of its own beside Open the guides, and says in full what it does.
     const dismiss = start.locator("[data-region=hide-guides]");
     await expect(dismiss).toHaveText("No thanks");
