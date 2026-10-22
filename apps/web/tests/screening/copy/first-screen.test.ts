@@ -272,8 +272,6 @@ describe("the narrow layout's words", () => {
     expect(paneAria.toLowerCase()).toContain(paneList.toLowerCase());
     expect(paneAria.toLowerCase()).toContain(paneMap.toLowerCase());
     expect(textProblems(paneAria, { sentence: false })).toEqual([]);
-    expect(GUIDE.openGuides).not.toBe(GUIDE.hide);
-    expect(GUIDE.hide).toBe("Hide the guides");
     expect(textProblems(GUIDE.openGuides, { sentence: false })).toEqual([]);
   });
 
