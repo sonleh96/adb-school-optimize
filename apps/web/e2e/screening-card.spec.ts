@@ -60,7 +60,7 @@ test("a complete school's card states one rank, its reasons with the school need
 
   await expect(place(page)).toHaveText("1st");
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Rank in the list under the research paper's main method"
+    "Rank in the list under the main method"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
     "Among the 17 schools with a record for every input the rule uses."
@@ -156,7 +156,7 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
   await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Rank in the list under the earlier paper's method"
+    "Rank in the list under the main method with the urgency rating added back"
   );
   await orderedRow(page, "Sample School 02").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
@@ -236,9 +236,7 @@ test("the key starts as one line, opens to name the rule, cuts its rank bands fr
     "aria-expanded",
     "true"
   );
-  await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Rank in the list under the research paper's main method"
-  );
+  await expect(page.getByTestId("legend-rule")).toHaveText("Rank in the list under the main method");
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
     "Ring with a centre dotA school with a range of possible ranks in the list, because its air-quality figure is missing."

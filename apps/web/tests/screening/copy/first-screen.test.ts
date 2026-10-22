@@ -52,23 +52,32 @@ describe("the list intro", () => {
 });
 
 describe("the one-line description of each rule", () => {
-  it("exists for all seven rules, as one short sentence in plain words", () => {
+  it("exists for all seven rules, as plain words with no symbol or term of art", () => {
     expect(copy.RULE_IDS).toHaveLength(7);
     for (const id of copy.RULE_IDS) {
       const line = copy.LAYOUT.ruleNow(id);
       expect(textProblems(line), id).toEqual([]);
-      expect(line.split(/\s+/).length, id).toBeLessThanOrEqual(26);
-      expect(line, id).not.toMatch(/\brules?\b|\(S0?\)|\(B\)|combined[- ]factors|\bS0\b/i);
+      expect(line.split(/\s+/).length, id).toBeLessThanOrEqual(40);
+      expect(line, id).not.toMatch(/\brules?\b|\(S0?\)|\(B\)|combined[- ]factors|\bS0\b|research paper/i);
       expect(textProblems(copy.rulePlainName(id), { sentence: false }), id).toEqual([]);
     }
   });
 
-  it("names the urgency rating when the rule uses it or leaves it out, and never the bare word urgency", () => {
-    expect(copy.LAYOUT.ruleNow("additive_no_u")).toBe(
-      "Ordered by the research paper's main method, which leaves out the uncertain urgency rating."
-    );
+  it("says what the list uses, and leaves urgency out of a rule that does not use it", () => {
     for (const id of copy.RULE_IDS) {
-      expect(copy.LAYOUT.ruleNow(id), id).not.toMatch(/\burgency\b(?! rating)/i);
+      const line = copy.LAYOUT.ruleNow(id);
+      expect(line, id).not.toMatch(/\b(leaves?|left) out\b|\buncertain\b/i);
+      expect(line, id).not.toMatch(/\burgency\b(?! rating)/i);
+      if (copy.ruleUsesUrgency(id)) expect(line, id).toMatch(/urgency rating/);
+      else expect(line, id).not.toMatch(/urgency/i);
+    }
+    expect(copy.LAYOUT.ruleNow("additive_no_u")).toMatch(/^Ordered mainly by school need \(about 63%\)/);
+  });
+
+  it("states only shares that the rule's own explanation states", () => {
+    for (const id of copy.RULE_IDS) {
+      for (const share of copy.LAYOUT.ruleNow(id).match(/\d+%/g) ?? [])
+        expect(copy.ruleExplanation(id), `${id} ${share}`).toContain(share);
     }
   });
 
@@ -105,5 +114,24 @@ describe("the compact key beside the map", () => {
 
   it("reads the colour strip from the first and last rank it was given", () => {
     expect(copy.LAYOUT.keyRamp("1st", "99th")).toBe("Darker is earlier in the list: 1st to 99th");
+  });
+
+  it("says the strip covers the schools with one rank, so it can end below the number in the list", () => {
+    expect(copy.LAYOUT.keyRamp("1st", "131st", 131)).toBe(
+      "Darker is earlier in the list: 1st to 131st, among the 131 schools with one rank"
+    );
+    expect(copy.LAYOUT.keyRamp("1st", "1st", 1)).toMatch(/among the one school with one rank$/);
+    expect(copy.LAYOUT.keyRampNote(131, 7)).toBe(
+      "The colours show the 131 schools with one rank. The 7 schools with a range of ranks are shown apart."
+    );
+    expect(copy.LAYOUT.keyRampNote(7, 1)).toMatch(/The 1 school with a range of ranks is shown apart\.$/);
+    expect(copy.LAYOUT.keyRampNote(20, 0)).toBe("The colours show all 20 schools in the list.");
+    for (const text of [copy.LAYOUT.keyRampNote(131, 7), copy.LAYOUT.keyRampNote(20, 0)])
+      expect(textProblems(text)).toEqual([]);
+  });
+
+  it("names the numbered circles", () => {
+    expect(textProblems(copy.LAYOUT.keyNumbers, { sentence: false })).toEqual([]);
+    expect(copy.LAYOUT.keyNumbers).toMatch(/first ten in the list/);
   });
 });

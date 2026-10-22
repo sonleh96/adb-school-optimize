@@ -41,8 +41,9 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     source: CIRCULATED,
     roleLine: "A sensitivity check that puts the urgency rating back, from the circulated paper",
     relation: "The main rule of the circulated paper, kept to show what the urgency rating changes.",
-    plain: "Ordered by the earlier paper's method, which adds back the uncertain urgency rating.",
-    plainName: "the earlier paper's method",
+    plain:
+      "Ordered mainly by school need (60%), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each).",
+    plainName: "the main method with the urgency rating added back",
     name: "the combined-factors rule with urgency (S)",
     usesUrgency: true,
     readsReadings: true,
@@ -61,8 +62,9 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     source: REVISED,
     roleLine: "The main rule of the revised paper, which leaves urgency out",
     relation: "The main rule of the revised paper, which leaves urgency out.",
-    plain: "Ordered by the research paper's main method, which leaves out the uncertain urgency rating.",
-    plainName: "the research paper's main method",
+    plain:
+      "Ordered mainly by school need (about 63%), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).",
+    plainName: "the main method",
     name: "the combined-factors rule without urgency (S0)",
     usesUrgency: false,
     readsReadings: true,
@@ -79,7 +81,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     role: "Urgency sensitivity",
     source: CIRCULATED,
     relation: "The circulated paper's strict alternative, with urgency, kept as a sensitivity check.",
-    plain: "Ordered by school need alone; everything else, the urgency rating included, only settles ties.",
+    plain:
+      "Ordered by school need alone. Everything else, the urgency rating included, only separates schools whose school need is exactly equal.",
     plainName: "school need alone, with the urgency rating settling ties",
     name: "the need-first rule with urgency (NF)",
     usesUrgency: true,
@@ -98,7 +101,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     source: REVISED,
     relation: "The revised paper's strict alternative, which puts school need first and leaves urgency out.",
     plain:
-      "Ordered by school need alone; everything else only settles ties, and the uncertain urgency rating is left out.",
+      "Ordered by school need alone. Everything else only separates schools whose school need is exactly equal.",
     plainName: "school need alone",
     name: "the need-first rule without urgency (NF0)",
     usesUrgency: false,
@@ -118,7 +121,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation:
       "The circulated paper's largest-factor rule, with urgency, kept as a sensitivity check that gives an extra share to each school's largest factor.",
     plain:
-      "Ordered by a combined score that gives extra weight to a school's largest factor, school need, district conditions or the urgency rating.",
+      "Ordered 60% by a combined score of school need, district conditions, the urgency rating and four smaller factors, and 40% by whichever of school need, district conditions or the urgency rating is highest for that school.",
     plainName: "a combined score with extra weight on a school's largest factor, urgency rating included",
     name: "the largest-factor rule with urgency (T)",
     usesUrgency: true,
@@ -139,7 +142,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation:
       "A sensitivity check from the revised paper that gives an extra share to each school's largest factor and leaves urgency out.",
     plain:
-      "Ordered by a combined score that gives extra weight to a school's larger factor, school need or district conditions; the uncertain urgency rating is left out.",
+      "Ordered 60% by a combined score of school need, district conditions and four smaller factors, and 40% by whichever of school need or district conditions is higher for that school.",
     plainName: "a combined score with extra weight on a school's larger factor",
     name: "the largest-factor rule without urgency (T0)",
     usesUrgency: false,
@@ -159,7 +162,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     source: CIRCULATED,
     relation: "A conventional mix of factors, with urgency, from the circulated paper, kept for comparison.",
     plain:
-      "Ordered by a conventional mix of school need, district conditions, the urgency rating and how many people live nearby, kept for comparison.",
+      "Ordered by a conventional mix: school need 55%, district conditions 20%, the urgency rating 15% and how many people live within walking distance 10%. Kept for comparison.",
     plainName: "the conventional mix, kept for comparison",
     name: "the conventional benchmark (B)",
     usesUrgency: true,

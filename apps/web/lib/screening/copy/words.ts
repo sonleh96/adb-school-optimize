@@ -1,6 +1,6 @@
 /** Short interface words, keyboard hints and help-mode words, so every screen names the same controls the same way. */
 import { countWord } from "./counts";
-import { joinList, lowerFirst, plural, slug } from "./format";
+import { formatCount, joinList, lowerFirst, plural, slug } from "./format";
 import type { CopyRuleId } from "./model";
 import { RULE_IDS, rule } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
@@ -182,7 +182,21 @@ export const LAYOUT = Object.freeze({
   keyDot: "One rank",
   keyRange: "A range of ranks",
   keyRing: "Not in the list yet",
-  keyRamp: (first: string, last: string) => `Darker is earlier in the list: ${first} to ${last}`,
+  // The colour strip covers the schools with one rank, so it can end below the number of schools in the list; the
+  // schools with a range are shown apart. `n` is the number of schools with one rank.
+  keyRamp: (first: string, last: string, n?: number) =>
+    `Darker is earlier in the list: ${first} to ${last}${
+      n === undefined
+        ? ""
+        : `, among ${n === 1 ? "the one school" : `the ${formatCount(n)} schools`} with one rank`
+    }`,
+  // Why the strip's last rank is not the number of schools in the list.
+  keyRampNote: (n: number, range: number) =>
+    range > 0
+      ? `The colours show the ${formatCount(n)} ${plural(n, "school", "schools")} with one rank. The ${formatCount(range)} ${plural(range, "school", "schools")} with a range of ranks ${plural(range, "is", "are")} shown apart.`
+      : `The colours show all ${formatCount(n)} ${plural(n, "school", "schools")} in the list.`,
+  // The dark numbered circles on the map.
+  keyNumbers: "Numbered: the first ten in the list",
   // An empty or failed load: one sentence and Retry.
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
