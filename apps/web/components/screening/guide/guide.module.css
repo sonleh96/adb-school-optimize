@@ -926,8 +926,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The chevron of Open the guides changes as the other disclosures' do: no turn. */
   .rail,
-  .menu {
+  .menu,
+  .unfold svg {
     transition-property: opacity;
   }
   @starting-style {

@@ -2335,6 +2335,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .card,
   .toast,
   .keyToggle svg,
+  .ruleChange svg,
   .actionButton,
   .iconButton {
     transition-property: opacity;
