@@ -128,6 +128,9 @@ export function buildStrings(c: CountBag = {}) {
       "This screen proposes schools for inspection. It does not establish school condition, site safety, intervention benefit or an optimal investment plan.",
     caveatPlain:
       "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money.",
+    // The same truth in one line, for the foot of a card on a narrow screen where the full words crowd the list.
+    caveatShort:
+      "A suggested order to look in, not a verdict on any school's condition or safety, repairs or funding.",
     groupsMeaning: GROUPS_MEANING,
     queueIntro:
       "These schools are not in the list yet because information about them is missing. Not being in the list yet does not mean their need is low.",

@@ -171,7 +171,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       topBoth: (k: number) => `in the top ${k} under both methods`,
       topEnters: (k: number) => `joins the top ${k}`,
       topLeaves: (k: number) => `leaves the top ${k}`,
-      legendTitle: (a: string, b: string) => `Places moved from ${a} to ${b}`,
+      legendTitle: (a: string, b: string) => `Ranks moved from ${a} to ${b}`,
       legendSub: (n: number | undefined, numerals?: number) =>
         `among ${commonPhrase(n)}${numerals === undefined ? "" : ` · numbers mark the first ${numerals}`}`,
       legendUp: "up",
@@ -182,8 +182,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       // The headings of the chart's accessible table.
       table: Object.freeze({
         school: "School",
-        place: (rule: string) => `Place under ${rule}`,
-        move: "Places moved",
+        place: (rule: string) => `Rank under ${rule}`,
+        move: "Ranks moved",
       }),
       tipMove: (a: string, ra: string, b: string, rb: string, words: string) =>
         `${a}: <b>${ra}</b> → ${b}: <b>${rb}</b><br><span class="tip-x">${words}</span>`,
@@ -346,7 +346,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       shortlist: (n: number) =>
         `${T.shortlist.label}: first ${n} ranks in the list among ${completePhrase(c, reads)}`,
       ranges: (has124: boolean) =>
-        `Possible positions: ${among(c, c)}, ${has124 ? "listed separately" : "no result for this rule"}`,
+        `Possible ranks: ${among(c, c)}, ${has124 ? "listed separately" : "no result for this rule"}`,
       filters: (v: string) => `Display filters: ${v || "none"}`,
       filterProvince: (v: string) => `province ${v}`,
       filterLocality: (v: string) => `remoteness ${v}`,

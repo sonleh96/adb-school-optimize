@@ -156,7 +156,7 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
   await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Rank in the list under the main method with the urgency rating added back"
+    "Rank in the list under the earlier method with its urgency rating"
   );
   await orderedRow(page, "Sample School 02").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();

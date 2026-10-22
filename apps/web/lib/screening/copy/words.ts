@@ -58,7 +58,7 @@ export const LAYOUT = Object.freeze({
   showMe: "Show me on the screen",
   // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
   // puts the urgency rating back.
-  seeWithUrgency: "See what changes if the urgency rating is added back",
+  seeWithUrgency: "Compare with the earlier method, which also counts an urgency rating",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
   whatChanged: "What changed",
@@ -204,7 +204,7 @@ export const LAYOUT = Object.freeze({
   // of schools in the list. `keyRamp` and `keyRampNote` keep the exact numbers, for the full key and the screen reader.
   keyStrip: "Darker: earlier in the list",
   // The dark numbered circles on the map.
-  keyNumbers: "Numbered: the first ten in the list",
+  keyNumbers: "Numbered: ranks 1 to 10",
   // An empty or failed load: one sentence and Retry.
   emptyData: "No schools came back, so there is nothing to show until you try again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",

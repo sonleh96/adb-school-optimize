@@ -210,7 +210,7 @@ export function defaultListStatementLong(
     "It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards.";
   const lead =
     ruleNames === "plain"
-      ? `This list uses the research paper's main method. ${left} The main method with the urgency rating added back is kept beside it as a check.`
+      ? `This list uses the research paper's main method. ${left} The earlier method, which also counts the urgency rating, is kept beside it as a check.`
       : `This list uses the research paper's main method, ${rule("additive_no_u").name}. ${left} The earlier paper's method, ${rule("additive_u").name}, which adds the urgency rating back, is kept beside it as a check.`;
   if (!row) return lead;
   return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both methods"))}`;
