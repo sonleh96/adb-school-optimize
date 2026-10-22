@@ -39,7 +39,7 @@ function measure(
 
 /**
  * The rings round what a guide step points at: 2 px navy with a 4 px halo, `aria-hidden` (the step's "On screen"
- * line names the same place in words). They follow their regions as panels scroll, cards open and the layout
+ * line names the same position in words). They follow their regions as panels scroll, cards open and the layout
  * changes, and move in 220 ms after a click but jump after a key.
  *
  * They measure only when something could have moved them: a resize of the workspace or of a ringed element, a

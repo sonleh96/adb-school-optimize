@@ -42,9 +42,9 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one position under both methods.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency rating. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
+  "Among the 16 schools with one position under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 positions. For the five schools that show a range, adding it back can still move their possible positions.";
 
 const statement = (page: Page) => page.locator("[data-region=list-statement]");
 const changed = (page: Page) => page.locator("[data-region=what-changed]");
@@ -180,7 +180,7 @@ test("each column control that removes itself on use hands focus to the rule's o
   page,
 }) => {
   await openWorkspace(page);
-  const other = page.getByRole("button", { name: "Other rules (5)" });
+  const other = page.getByRole("button", { name: "Other ways to order the list (5)" });
 
   // Closed, the rule area's own link opens What changed and hands focus to Change, as Hide then does.
   await page.locator("[data-region=rule-identity] [data-region=see-with-urgency]").press("Enter");
@@ -226,7 +226,7 @@ test("the arrow keys move between the tabs and show the one they reach, with one
 }) => {
   await openWorkspace(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Incomplete records/);
+  const queue = tab(page, /Missing information/);
   await expect(list).toHaveAttribute("tabindex", "0");
   await expect(queue).toHaveAttribute("tabindex", "-1");
 

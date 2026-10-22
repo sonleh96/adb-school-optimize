@@ -190,7 +190,7 @@ test("a returning visitor starts with the rail closed and sees what they have se
   const rows = rail(page).locator("button[data-guide]");
   await expect(rows.nth(0)).toContainText("Seen");
   await expect(rows.nth(1)).toContainText("Seen");
-  await expect(rows.nth(3)).toContainText("3 steps");
+  await expect(rows.nth(3)).toContainText("3-step guide");
   await expect(rows.nth(4)).toContainText("Step 2 of 4");
   await expect(rail(page).getByRole("button", { name: "Close guides" })).toBeVisible();
 });
@@ -586,7 +586,7 @@ test("Page Down and Page Up stay with How this works and the glossary while eith
   await expect(main).toHaveCount(0);
   await (await helpItem(page, "Glossary of terms")).click();
   const drawer = page.getByRole("complementary", { name: "Glossary of terms" });
-  await drawer.getByRole("button", { name: "Place in the list", exact: true }).click();
+  await drawer.getByRole("button", { name: "Position in the list", exact: true }).click();
   await page.keyboard.press("PageUp");
   await expect(drawer).toBeVisible();
   expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });

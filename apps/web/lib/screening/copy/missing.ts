@@ -174,7 +174,7 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
         };
       return {
         kind: "unusable",
-        text: "the recorded power or water type is not on the study's scale",
+        text: "the recorded power or water type is not on the research team's scale",
         label: "Power or water type off the scale, needs checking",
         effect: "which needs checking, and until then power and water cannot be worked out",
       };
@@ -183,7 +183,7 @@ function partCause(school: CopySchool, key: NeedKey): PartCause {
       if (!isBlankLocality(school.locality) && !REMOTENESS_CATEGORIES.includes(norm(school.locality)))
         return {
           kind: "unusable",
-          text: "the recorded remoteness category is not on the study's scale",
+          text: "the recorded remoteness category is not on the research team's scale",
           label: "Remoteness off the scale, needs checking",
           effect: "which needs checking, and until then remoteness cannot be worked out",
         };
@@ -266,7 +266,7 @@ export function missingValueNote(school: CopySchool, key: "need" | InputKey): st
       : raw == null
         ? `No ${what} is recorded for this school`
         : `The ${what} recorded for this school cannot be used`;
-    return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of places instead of one place." : ""}`;
+    return `${lead}, so it is not counted as 0.${school.cohort === "interval" ? " The school shows a range of positions instead of one position." : ""}`;
   }
   const other = GATE_OF_KEY[key as InputKey];
   if (kind === "not_calculable") {
@@ -306,7 +306,7 @@ export function rangeRowWhy(school: CopySchool): string | null {
   if (keys.length === 0) return null;
   if (keys.length === 1) return missingValueNote(school, keys[0]);
   const names = keys.map((k) => (UNRESOLVED_WHAT[k] as string).replace(/^an? /, ""));
-  return `Its ${joinList(names)} are missing, so the school shows a range of places.`;
+  return `Its ${joinList(names)} are missing, so the school shows a range of positions.`;
 }
 
 // The heading of a school in the list of incomplete records grouped by what is missing: the one cause when there is
@@ -371,21 +371,21 @@ function sentencesFor(school: CopySchool, ruleId: CopyRuleId): string[] {
   for (const g of others) parts.push(gateSentence(otherCause(school, g)));
   if (needs.length)
     parts.push(
-      "Until these are checked, its school need cannot be worked out, so it has no place in the list yet."
+      "Until these are checked, its school need cannot be worked out, so it is not in the list yet."
     );
   else if (others.length === 0) parts.push("Its record needs checking before it can be put in order.");
   else if (others.length === 1 && others[0] === "urgency_unknown")
     parts.push(
       "The rules that leave urgency out do not need it, so they can put this school in order.",
-      "Until the urgency rating is recorded, it has no place in the list under a rule that uses urgency."
+      "Until the urgency rating is recorded, it has no position in the list under a rule that uses urgency."
     );
   else
     parts.push(
       others.length === 1
-        ? "Until this is checked, it has no place in the list yet."
-        : "Until these are checked, it has no place in the list yet."
+        ? "Until this is checked, it is not in the list yet."
+        : "Until these are checked, it is not in the list yet."
     );
-  parts.push("Having no place in the list yet does not mean its need is low.");
+  parts.push("Not being in the list yet does not mean its need is low.");
   return parts;
 }
 

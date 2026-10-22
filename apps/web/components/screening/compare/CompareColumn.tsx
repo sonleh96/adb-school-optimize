@@ -107,7 +107,7 @@ function Picker({
   );
 }
 
-/** A small strip of a range school's possible places among every school that can be put in order. */
+/** A small strip of a range school's possible positions among every school that can be put in order. */
 function RangeGlyph({ best, worst, k, count }: { best: number; worst: number; k: number; count: number }) {
   const w = 120;
   const x = (v: number) => 2 + ((v - 1) / Math.max(1, count - 1)) * (w - 4);

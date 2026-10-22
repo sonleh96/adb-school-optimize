@@ -93,7 +93,7 @@ test("the switch turns the method details on over the same screen, survives a re
   const first = methodRow(page, "Sample School 08");
   await expect(first).toContainText("1Sample School 08South One, South Province0.708");
   await expect(page.getByTestId("legend-rule")).toContainText(
-    "Place in the list under combined factors, without urgency"
+    "Position in the list under combined factors, without urgency"
   );
   await page.getByRole("button", { name: "Formula" }).click();
   await expect(page.locator("#screening-formula")).toHaveText(FORMULA);
@@ -114,20 +114,18 @@ test("the switch turns the method details on over the same screen, survives a re
     expect(text, `plain view shows "${word}"`).not.toContain(word);
 });
 
-test("the card's method layer states the API's place, screening score, shares and record", async ({
-  page,
-}) => {
+test("the card's method layer states the API's place, score, shares and record", async ({ page }) => {
   await openWorkspace(page, "?analyst=1");
   await methodRow(page, "Sample School 08").click();
   const c = card(page);
   await expect(c.locator("[data-region=inspector-place]")).toContainText(
-    "1Place in the listunder combined factors, without urgency, among the 17 schools with a record for every input the rule uses"
+    "1Position in the listunder combined factors, without urgency, among the 17 schools with a record for every input the rule uses"
   );
-  await expect(c).toContainText("Screening score0.708");
+  await expect(c).toContainText("Score0.708");
   const breakdown = c.locator("[data-region=inspector-breakdown]");
   await expect(breakdown).toContainText("School need× 12/19");
   await expect(breakdown).toContainText("District context× 3/19");
-  await expect(breakdown.getByRole("row").last()).toContainText("Screening score0.708");
+  await expect(breakdown.getByRole("row").last()).toContainText("Score0.708");
   await expect(c.locator("[data-region=inspector-across] dt")).toHaveCount(7);
   await expect(c).toContainText(ROWS[0].school.school_key);
   // The parts of school need open and close in place, and the link keeps the choice.
@@ -222,7 +220,7 @@ test("the map bar holds Map layers, and steps down or keeps its icons rather tha
 });
 
 const LEAD_20 =
-  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with every input recorded.";
+  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with one position under both methods.";
 
 test("compare mode reproduces a pasted pair, says the agreement in What changed's words, swaps and goes back", async ({
   page,
@@ -339,7 +337,7 @@ test("the card in compare mode shows the school under both rules and how far it 
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined");
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined, no urgency");
   await expect(c.locator("[data-region=inspector-breakdown]")).toHaveCount(2);
-  await expect(c).toContainText(/Same place in the list under|(Up|Down) \d+ places? under/);
+  await expect(c).toContainText(/Same position in the list under|(Up|Down) \d+ places? under/);
 });
 
 test("no raw null, undefined or NaN renders in the method states on the worst-case data (R8)", async ({
@@ -407,7 +405,7 @@ test("the chart has a table a keyboard and a screen reader can use", async ({ pa
   await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   const pair = json("compare/additive_u__additive_no_u.json");
   const table = page.getByRole("table", {
-    name: "Places in the list under the two rules, joined by a line per school",
+    name: "Positions in the list under the two rules, joined by a line per school",
   });
   await expect(table.getByRole("row")).toHaveCount(pair.ranks.length + 1);
   const first = pair.ranks[0];
@@ -510,7 +508,7 @@ test("the incomplete records filter by what is missing, count each choice and re
 
   await openWorkspace(page, "?analyst=1&view=queue");
   const chips = page.getByRole("group", { name: "Show only schools missing this detail" });
-  const rows = page.locator("ol[aria-label='Incomplete records'] button[data-school-key]");
+  const rows = page.locator("ol[aria-label='Missing information'] button[data-school-key]");
   await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(queued.length);
   await expect(page.locator("[class*=missLabel]")).toHaveText("Missing detail");

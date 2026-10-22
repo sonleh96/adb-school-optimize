@@ -2,7 +2,7 @@
 import type { CopyResult } from "../copy";
 
 /**
- * The lowest and highest screening score of a school that shows a range, as the engine states them. The page does
+ * The lowest and highest score of a school that shows a range, as the engine states them. The page does
  * not rebuild the range from the contributions: under a rule that adds a share that is not among them the sum is not
  * the score, and a sum off by a rounding error is a number the engine never gave.
  */

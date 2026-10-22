@@ -51,7 +51,7 @@ describe("the group of schools with their inputs recorded", () => {
 
   it("is worded as before under a rule that reads every input", () => {
     expect(P.groupsSentence("additive_u")).toBe(
-      "16 schools have every input recorded, and five more lack a reading such as air quality and show a range of places, so 21 schools can be put in order."
+      "16 schools have every input recorded, and five more lack a reading such as air quality and show a range of positions, so 21 schools can be put in order."
     );
   });
 
@@ -71,7 +71,7 @@ describe("the group of schools with their inputs recorded", () => {
 
   it("says no number it was not given", () => {
     expect(copy.groupsSentence(undefined, { urgency: true, readings: false })).toBe(
-      "Schools with a record for every input the rule uses have one place each, and can be put in order."
+      "Schools with a record for every input the rule uses have one position each, and can be put in order."
     );
   });
 });

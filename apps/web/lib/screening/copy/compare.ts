@@ -1,5 +1,5 @@
 /**
- * Comparing two rules, from the study's recorded comparison. These functions take the comparison as an argument
+ * Comparing two rules, from the research team's recorded comparison. These functions take the comparison as an argument
  * because this module never fetches. `urgencyReassurance` and the list statements answer "which list should I use".
  */
 import { countsFrom, rangePhrase, theSchools, theirScore } from "./counts";
@@ -23,18 +23,18 @@ type TopSize = 10 | 20 | 30 | 40;
 const overlapAt = (row: PairwiseRow, k: TopSize): number | undefined =>
   ({ 10: row.top10_overlap, 20: row.top20_overlap, 30: row.top30_overlap, 40: row.top40_overlap })[k];
 
-// One framing for agreement everywhere: "The same 20 schools make the top 20 under both, and the same 40 make the top 40."
-// base: the top-list length to lead with (10 or 20). both: how to name the pair, such as "under both".
+// One framing for agreement everywhere: "The same 20 schools make the top 20 under both methods, and the same 40 make the top 40."
+// base: the top-list length to lead with (10 or 20). both: how to name the pair, such as "under both methods".
 export const pairSize = (row: PairwiseRow): number | null =>
   Number.isInteger(row.n) ? (row.n as number) : null;
 export const pairPhrase = (row: PairwiseRow): string =>
-  theSchools({ n: pairSize(row) ?? undefined }, "n", "with every input recorded");
+  theSchools({ n: pairSize(row) ?? undefined }, "n", "with one position under both methods");
 export function agreementSentence(row: PairwiseRow, base: 10 | 20, both: string): string {
   const n = pairSize(row);
   if (n != null && n <= base) {
     return n === 1
-      ? `The one school with every input recorded is in the top ${base} ${both}.`
-      : `All ${formatCount(n)} schools with every input recorded are in the top ${base} ${both}.`;
+      ? `The one school being compared is in the top ${base} ${both}.`
+      : `All ${formatCount(n)} schools being compared are in the top ${base} ${both}.`;
   }
   const shared = overlapAt(row, base);
   const lead =
@@ -104,7 +104,7 @@ function topChanges(
     }));
 }
 
-// data: { pairwise, top20Changes, schools? }, the study's recorded comparison, its top-20 changes,
+// data: { pairwise, top20Changes, schools? }, the research team's recorded comparison, its top-20 changes,
 // and the schools (needed only for the top-10 names). opts.top: 20 (default) or 10.
 export function comparisonSegments(
   ruleA: CopyRuleId,
@@ -121,7 +121,7 @@ export function comparisonSegments(
 
   const sentences: Segments[] = [
     seg`This compares ${a.name} with ${b.name} among ${pairPhrase(row)}.`,
-    seg`${agreementSentence(row, k, "under both")}`,
+    seg`${agreementSentence(row, k, "under both methods")}`,
   ];
   const changes = topChanges(ruleA, ruleB, data, row, k);
   if (changes) {
@@ -157,8 +157,8 @@ export function comparisonSegments(
   const most = row.maximum_absolute_rank_shift;
   sentences.push(
     half === 0
-      ? seg`At least half of the schools keep the same place in the list, and the largest move is ${most} ${plural(most, "place", "places")}.`
-      : seg`Half of the schools move ${half} ${plural(half, "place", "places")} or fewer, and the largest move is ${most} ${plural(most, "place", "places")}.`
+      ? seg`At least half of the schools keep the same position in the list, and the largest move is ${most} ${plural(most, "position", "positions")}.`
+      : seg`Half of the schools move ${half} ${plural(half, "position", "positions")} or fewer, and the largest move is ${most} ${plural(most, "position", "positions")}.`
   );
   return joinSegments(sentences);
 }
@@ -179,8 +179,8 @@ export function urgencyReassurance(data: ComparisonData): string {
   const rc = data.schools ? countsFrom(data.schools) : null;
   return [
     `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency rating"))}`,
-    `Putting it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "place", "places")}.`,
-    `For ${rangePhrase(rc)}, putting it back can still move ${theirScore(rc)} possible places.`,
+    `Adding it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "position", "positions")}.`,
+    `For ${rangePhrase(rc)}, adding it back can still move ${theirScore(rc)} possible positions.`,
   ].join(" ");
 }
 
@@ -189,25 +189,22 @@ export function urgencyReassurance(data: ComparisonData): string {
 export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
   const lead =
-    "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards.";
+    "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.";
   if (!row) return lead;
   const n = pairSize(row);
-  const among =
-    n != null
-      ? `among the ${formatCount(n)} with every input recorded`
-      : "among the schools with every input recorded";
-  if (n != null && n <= 20) return `${lead} Putting it back keeps the same schools at the top ${among}.`;
+  const among = `among ${pairPhrase(row)}`;
+  if (n != null && n <= 20) return `${lead} Adding it back keeps the same schools at the top ${among}.`;
   if (row.top20_overlap !== 20)
-    return `${lead} Putting it back keeps ${row.top20_overlap} of the top 20 ${among}.`;
+    return `${lead} Adding it back keeps ${row.top20_overlap} of the top 20 ${among}.`;
   const larger = ([30, 40] as const).filter((k) => overlapAt(row, k) === k);
   const tail = larger.length ? ` and top ${Math.max(...larger)}` : "";
-  return `${lead} Putting it back keeps the same top 20${tail} ${among}.`;
+  return `${lead} Adding it back keeps the same top 20${tail} ${among}.`;
 }
 
 // The long form, for a help card or disclosure. data: { pairwise }.
 export function defaultListStatementLong(data: Pick<ComparisonData, "pairwise">): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead = `This list uses the paper's main rule, ${rule("additive_no_u").name}. It leaves out the urgency rating, because no one could trace where it comes from; that says nothing about whether schools face real hazards. The circulated paper's rule with urgency, ${rule("additive_u").name}, is kept beside it as a sensitivity check.`;
+  const lead = `This list uses the research paper's main method, ${rule("additive_no_u").name}. It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, ${rule("additive_u").name}, which adds the urgency rating back, is kept beside it as a check.`;
   if (!row) return lead;
-  return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both"))}`;
+  return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both methods"))}`;
 }

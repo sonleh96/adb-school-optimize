@@ -115,9 +115,9 @@ test.describe("in the narrow layout", () => {
     await expect(menu.getByRole("button", { name: LAYOUT.signOut, exact: true })).toBeVisible();
     // The kinds of help are under Help, beside it; the Menu holds the workspace's own actions.
     expect((await menu.getByRole("button").allTextContents()).map((text) => text.trim())).toEqual([
-      "Show method details",
+      "For researchers: show method details",
       "Copy link",
-      "Download the top list",
+      "Download the top list as a spreadsheet",
       "Sign out",
     ]);
   });

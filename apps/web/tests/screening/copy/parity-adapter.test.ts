@@ -91,7 +91,7 @@ const leftOut = {
 const leftOutCounts = () => Object.fromEntries(Object.entries(leftOut).map(([k, v]) => [k, v.length]));
 
 /**
- * The page parser refuses a row whose places contradict its group (a complete school with no single place, say),
+ * The page parser refuses a row whose places contradict its group (a complete school with no single position, say),
  * which the API cannot send. Where the design record holds one, the result under that rule is dropped from the
  * record itself, so both sides read the same school, and the drop is counted.
  */
@@ -624,7 +624,7 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       expect(x.blank.length).toBeLessThan(x.gate.length);
       expect(x.blank.every((f) => x.gate.includes(f))).toBe(true);
     }
-    // A school whose places contradict its group under a rule (a complete school with no single place, say) is a row
+    // A school whose places contradict its group under a rule (a complete school with no single position, say) is a row
     // the API cannot send, and the page parser refuses.
     for (const x of leftOut.badRanks) {
       const res = x.school.results[x.rule];

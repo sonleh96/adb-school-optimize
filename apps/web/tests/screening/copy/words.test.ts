@@ -70,8 +70,8 @@ describe("copy link", () => {
 
 describe("the guide rail's status lines", () => {
   it("count steps and sections, in the singular for one", () => {
-    expect(GUIDE.stepCount(4)).toBe("4 steps");
-    expect(GUIDE.stepCount(1)).toBe("1 step");
+    expect(GUIDE.stepCount(4)).toBe("4-step guide");
+    expect(GUIDE.stepCount(1)).toBe("1-step guide");
     expect(GUIDE.howCount(6)).toBe("6 short sections on how the list is made");
     expect(GUIDE.howCount(1)).toBe("1 short section on how the list is made");
     expect(GUIDE.stepOf(2, 4)).toBe("Step 2 of 4");
@@ -84,19 +84,19 @@ describe("the guide rail's status lines", () => {
   it("names the saved views a meeting starts with, and where to look for each", () => {
     const v = GUIDE.seedViews;
     expect([v.top.name, v.urgency.name, v.range.name, v.queue.name]).toEqual([
-      "Top of the list under the paper's main rule",
-      "With and without urgency",
-      "A school with possible places",
-      "Schools with incomplete records",
+      "Top of the list under the main method",
+      "With and without the urgency rating",
+      "A school with a range of positions",
+      "Schools with missing information",
     ]);
     expect(v.queue.onScreen(LAYOUT.incompleteTab)).toBe(
-      'The "Incomplete records" tab, grouped by what is missing'
+      'The "Missing information" tab, grouped by what is missing'
     );
     // A name a user may save is at most 60 characters, and the seeds fit.
     for (const n of Object.values(v).map((x) => x.name)) expect(n.length).toBeLessThanOrEqual(60);
   });
 
-  it("fills a step title's place slot with a range or a single place", () => {
+  it("fills a step title's place slot with a range or a single position", () => {
     expect(GUIDE.rangeWords(5, 6)).toBe("anywhere from 5th to 6th");
     expect(GUIDE.rangeWords(5, 5)).toBe("5th");
   });
@@ -107,8 +107,8 @@ describe("the words that join values", () => {
     expect(LAYOUT.placeRange("3rd", "12th")).toBe("3rd to 12th");
     expect(LAYOUT.valueRange("0.487", "0.537")).toBe("0.487 to 0.537");
     expect(LAYOUT.positionOf(3, 20)).toBe("3 of 20");
-    expect(LAYOUT.underRule("Place in the list", "the combined-factors rule with urgency (S)")).toBe(
-      "Place in the list under the combined-factors rule with urgency (S)"
+    expect(LAYOUT.underRule("Position in the list", "the combined-factors rule with urgency (S)")).toBe(
+      "Position in the list under the combined-factors rule with urgency (S)"
     );
     expect(LAYOUT.savedToast(3)).toBe("Saved as view 3");
     expect(LAYOUT.removeView("J")).toBe("Remove the saved view J");
@@ -234,7 +234,7 @@ describe("the rows of a school card's numbers", () => {
 
 describe("the link from the main rule to the rule that puts urgency back", () => {
   it("says what it opens, in plain words", () => {
-    expect(LAYOUT.seeWithUrgency).toBe("See what changes with the urgency rating");
+    expect(LAYOUT.seeWithUrgency).toBe("See what changes if the urgency rating is added back");
     expect(textProblems(LAYOUT.seeWithUrgency, { sentence: false })).toEqual([]);
   });
 });

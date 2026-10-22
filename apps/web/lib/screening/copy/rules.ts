@@ -20,6 +20,10 @@ interface RuleInfo {
   readonly source: string;
   readonly roleLine?: string;
   readonly relation: string;
+  /** One plain line for a first-time reader on how the list is ordered under this rule, with no symbol or term of art. */
+  readonly plain: string;
+  /** The method in a few words, to finish "Position in the list under ...". */
+  readonly plainName: string;
   readonly name: string;
   readonly usesUrgency: boolean;
   /** Whether the rule reads the air-quality, emissions and land-cover figures. Only the benchmark does not. */
@@ -32,16 +36,18 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     symbol: "S",
     label: "Combined factors, with urgency",
     short: "Combined",
-    line: "The screening score adds up several factors, each with a fixed share, and urgency is one of them.",
+    line: "The score adds up several factors, each with a fixed share, and urgency is one of them.",
     role: "Urgency sensitivity",
     source: CIRCULATED,
     roleLine: "A sensitivity check that puts the urgency rating back, from the circulated paper",
     relation: "The main rule of the circulated paper, kept to show what the urgency rating changes.",
+    plain: "Ordered by the earlier paper's method, which adds back the uncertain urgency rating.",
+    plainName: "the earlier paper's method",
     name: "the combined-factors rule with urgency (S)",
     usesUrgency: true,
     readsReadings: true,
     explanation:
-      "Adds up several factors for each school, each with a fixed share, to give its screening score. " +
+      "Adds up several factors for each school, each with a fixed share, to give its score. " +
       "School need, built from five parts of the school's own record, counts for 60%, district context for 15%, and urgency, walking reach, air quality, emissions and land cover for 5% each. " +
       "A high value in one input can make up for a low value in another. " +
       "This was the main rule in the circulated paper. The revised paper keeps it as a sensitivity check that puts the urgency rating back, because no one could trace where that value comes from.",
@@ -50,11 +56,13 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     symbol: "S0",
     label: "Combined factors, without urgency",
     short: "Combined, no urgency",
-    line: "The screening score adds up several factors, each with a fixed share, and leaves urgency out.",
+    line: "The score adds up several factors, each with a fixed share, and leaves urgency out.",
     role: "Main rule",
     source: REVISED,
     roleLine: "The main rule of the revised paper, which leaves urgency out",
     relation: "The main rule of the revised paper, which leaves urgency out.",
+    plain: "Ordered by the research paper's main method, which leaves out the uncertain urgency rating.",
+    plainName: "the research paper's main method",
     name: "the combined-factors rule without urgency (S0)",
     usesUrgency: false,
     readsReadings: true,
@@ -71,6 +79,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     role: "Urgency sensitivity",
     source: CIRCULATED,
     relation: "The circulated paper's strict alternative, with urgency, kept as a sensitivity check.",
+    plain: "Ordered by school need alone; everything else, the urgency rating included, only settles ties.",
+    plainName: "school need alone, with the urgency rating settling ties",
     name: "the need-first rule with urgency (NF)",
     usesUrgency: true,
     readsReadings: true,
@@ -87,6 +97,9 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     role: "Strict alternative",
     source: REVISED,
     relation: "The revised paper's strict alternative, which puts school need first and leaves urgency out.",
+    plain:
+      "Ordered by school need alone; everything else only settles ties, and the uncertain urgency rating is left out.",
+    plainName: "school need alone",
     name: "the need-first rule without urgency (NF0)",
     usesUrgency: false,
     readsReadings: true,
@@ -99,16 +112,19 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     symbol: "T",
     label: "Largest-factor rule, with urgency",
     short: "Largest factor",
-    line: "Most of the screening score comes from the combined factors with urgency, plus an extra share for the school's largest single factor.",
+    line: "Most of the score comes from the combined factors with urgency, plus an extra share for the school's largest single factor.",
     role: "Urgency sensitivity",
     source: CIRCULATED,
     relation:
       "The circulated paper's largest-factor rule, with urgency, kept as a sensitivity check that gives an extra share to each school's largest factor.",
+    plain:
+      "Ordered by a combined score that gives extra weight to a school's largest factor, school need, district conditions or the urgency rating.",
+    plainName: "a combined score with extra weight on a school's largest factor, urgency rating included",
     name: "the largest-factor rule with urgency (T)",
     usesUrgency: true,
     readsReadings: true,
     explanation:
-      "Takes 60% of the screening score from the combined-factors rule with urgency and adds 40% of whichever is largest: the school's need, its district context or its urgency rating. " +
+      "Takes 60% of the score from the combined-factors rule with urgency and adds 40% of whichever is largest: the school's need, its district context or its urgency rating. " +
       "School need is built from five parts of the school's own record. " +
       "This gives an extra share to a school's single largest input. " +
       "It is still a blend of inputs, not a cut-off or a safety threshold.",
@@ -117,16 +133,19 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     symbol: "T0",
     label: "Largest-factor rule, without urgency",
     short: "Largest factor, no urgency",
-    line: "Most of the screening score comes from the combined factors without urgency, plus an extra share for the school's largest single factor.",
+    line: "Most of the score comes from the combined factors without urgency, plus an extra share for the school's largest single factor.",
     role: "Sensitivity check",
     source: REVISED,
     relation:
       "A sensitivity check from the revised paper that gives an extra share to each school's largest factor and leaves urgency out.",
+    plain:
+      "Ordered by a combined score that gives extra weight to a school's larger factor, school need or district conditions; the uncertain urgency rating is left out.",
+    plainName: "a combined score with extra weight on a school's larger factor",
     name: "the largest-factor rule without urgency (T0)",
     usesUrgency: false,
     readsReadings: true,
     explanation:
-      "Takes 60% of the screening score from the combined-factors rule without urgency and adds 40% of whichever is larger: the school's need or its district context. " +
+      "Takes 60% of the score from the combined-factors rule without urgency and adds 40% of whichever is larger: the school's need or its district context. " +
       "School need is built from five parts of the school's own record. " +
       "It shows how much the list changes when one large input gets an extra share. " +
       "It is a sensitivity check, not a cut-off or a safety threshold.",
@@ -139,6 +158,9 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     role: "Reference",
     source: CIRCULATED,
     relation: "A conventional mix of factors, with urgency, from the circulated paper, kept for comparison.",
+    plain:
+      "Ordered by a conventional mix of school need, district conditions, the urgency rating and how many people live nearby, kept for comparison.",
+    plainName: "the conventional mix, kept for comparison",
     name: "the conventional benchmark (B)",
     usesUrgency: true,
     readsReadings: false,
@@ -187,6 +209,9 @@ const SOURCE_IN_LINE: Record<string, string> = {
 };
 export const ruleRoleLine = (id: CopyRuleId): string =>
   rule(id).roleLine || `${rule(id).role}, ${SOURCE_IN_LINE[rule(id).source]}`;
+// The method in a few words, to finish "under ..." in plain views. The one plain line on how the list is ordered
+// under a rule is LAYOUT.ruleNow.
+export const rulePlainName = (id: CopyRuleId) => rule(id).plainName;
 // How a rule relates to the revised paper's main rule, in one sentence.
 export const ruleRelation = (id: CopyRuleId) => rule(id).relation;
 // The letter is analyst shorthand. Plain copy always pairs it with words, as ruleName does.
@@ -245,11 +270,11 @@ export function shareSentence(id: CopyRuleId, key: FactorKey): string {
   const k = key === "need_part" ? "N" : key;
   const w = ((base[k] ?? 0) * (largest ? 0.6 : 1)) / (key === "need_part" ? 5 : 1);
   if (w === 0) return `${name} is left out by this rule.`;
-  const head = `${name} counts for ${percentWords(w)} of the screening score`;
+  const head = `${name} counts for ${percentWords(w)} of the score`;
   if (largest && (k === "N" || k === "A" || (k === "U" && id === "bottleneck_u"))) {
     const extra = key === "need_part" ? "a further 8 percent" : "a further 40 percent";
     const subject = key === "need_part" ? "school need" : name.charAt(0).toLowerCase() + name.slice(1);
-    return `${head}, and ${extra} of the screening score when ${subject} is the school's largest factor.`;
+    return `${head}, and ${extra} of the score when ${subject} is the school's largest factor.`;
   }
   return `${head}.`;
 }

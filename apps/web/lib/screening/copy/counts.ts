@@ -119,27 +119,27 @@ export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
   // The prototype read `ranked` unchecked; a bag that lacks it now gets the count-free sentence instead of "NaN".
   if (!known(c, "complete") || !known(c, "range") || !known(c, "ranked")) {
     return readsReadings
-      ? `Schools with ${every} have one place each, and schools that lack a reading such as air quality show a range of places; together they can be put in order.`
-      : `Schools with ${every} have one place each, and can be put in order.`;
+      ? `Schools with ${every} have one position each, and schools that lack a reading such as air quality show a range of positions; together they can be put in order.`
+      : `Schools with ${every} have one position each, and can be put in order.`;
   }
   const { ranked } = c;
   const showsRanges = readsReadings && c.range > 0;
   // A group of none is said as none, and a clause about a group that is empty is left out.
   if (c.complete === 0) {
     if (!showsRanges) return `No school has ${every}, so no school can be put in order.`;
-    return `No school has ${every}, but ${countWord(c.range)} ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of places, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
+    return `No school has ${every}, but ${countWord(c.range)} ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of positions, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
   }
   const done = `${formatCount(c.complete)} ${plural(c.complete, "school has", "schools have")} ${every}`;
   if (!showsRanges)
     return `${done}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
-  const more = `${countWord(c.range)} more ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of places`;
+  const more = `${countWord(c.range)} more ${plural(c.range, "lacks", "lack")} a reading such as air quality and ${plural(c.range, "shows", "show")} a range of positions`;
   return `${done}, and ${more}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
 }
 
 // The urgency definition; with counts it says how many schools have 0.
 export function urgencyDefinition(c: CountBag | undefined): string {
   const head =
-    "The urgency rating is a number supplied with the original school data and described as hazard-related; how it was made could not be traced, so what it measures is not known";
+    "The urgency rating is a number that came with the original school data, described as hazard-related. How it was made could not be traced, so what it measures is not known";
   if (!known(c, "urgencyZero") || !known(c, "all") || c.all === 0) return `${head}.`;
   let who: string;
   if (c.urgencyZero === 0) who = "no school has 0";

@@ -251,7 +251,7 @@ export type Counts = {
   readonly ranked: number;
 };
 
-/** The study's recorded comparison of two rules, one row. */
+/** The research team's recorded comparison of two rules, one row. */
 export interface PairwiseRow {
   readonly left_rule: string;
   readonly right_rule: string;

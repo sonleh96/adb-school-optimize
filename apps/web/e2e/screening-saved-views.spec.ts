@@ -60,10 +60,10 @@ test.describe.configure({ timeout: 90_000 });
 
 const VIEWS_KEY = "rise-screening-saved-views-v1";
 const SEEDS = [
-  "Top of the list under the paper's main rule",
-  "With and without urgency",
-  "A school with possible places",
-  "Schools with incomplete records",
+  "Top of the list under the main method",
+  "With and without the urgency rating",
+  "A school with a range of positions",
+  "Schools with missing information",
 ];
 /** The range school the seed chooses by role: the best possible place, then the worst. */
 const RANGE_KEY = rowsOf("additive_no_u")
@@ -228,7 +228,9 @@ test("save a fifth view of the screen, open it after a reload, and remove it", a
   await expect
     .poll(() => workspace(page))
     .toMatchObject({ school: key, rule: "additive_no_u", view: "ranked" });
-  await expect(page.getByTestId("guide-step-body")).toContainText("Rule: Combined factors, without urgency.");
+  await expect(page.getByTestId("guide-step-body")).toContainText(
+    "Method: Combined factors, without urgency."
+  );
   await expect(rail(page).getByText("The list, the map and the school card")).toBeVisible();
   await expect(drift(page)).toHaveCount(0);
 
@@ -358,7 +360,7 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   const items = sheet(page).locator("[data-region=pack-table] li");
   await expect(items).toHaveCount(4);
   await expect(items.nth(1)).toContainText("Combined factors, without urgency");
-  await expect(items.nth(3)).toContainText("Incomplete records");
+  await expect(items.nth(3)).toContainText("Missing information");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("Rules the saved views use");
@@ -422,7 +424,7 @@ test("with the method details on, the tab shows each rule's formula and the file
   await expect(shows.nth(0)).toHaveText("Schools in order");
   await expect(shows.nth(1)).toHaveText("Schools in order · compared with Combined");
   await expect(shows.nth(2)).toHaveText(/^Schools in order · /);
-  await expect(shows.nth(3)).toHaveText("Incomplete records, grouped by what is missing");
+  await expect(shows.nth(3)).toHaveText("Missing information, grouped by what is missing");
   await expect(table.locator("tbody tr").nth(1)).toContainText("compared with");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
@@ -447,7 +449,7 @@ test("restoring the starting views asks before it drops a saved view, and not wh
 
   // Removing a starting view alone: restoring brings it back at once, with no question.
   await section(page)
-    .getByRole("button", { name: /^Remove the saved view With and without urgency/ })
+    .getByRole("button", { name: /^Remove the saved view With and without the urgency rating/ })
     .click();
   await expect(viewButtons(page)).toHaveCount(3);
   await expect(restore).toHaveText("Restore the starting views");

@@ -3,7 +3,7 @@
  *
  * Failure modes, each with the test that catches it:
  *  1. A range row sits beside a bare place that counts a different group, so "5th" and "5th to 6th" read as one
- *     scale (R19). A range carries its group when, and only when, the list also shows single places.
+ *     scale (R19). A range carries its group when, and only when, the list also shows single positions.
  *  2. The group a range counts comes from the wrong rule's run, or is invented when the data does not give it.
  *  3. A blank province becomes an empty heading, or one made of spaces or zero-width characters.
  *  4. A school missing several details is filed under one of them, or under a count of zero or one.
@@ -22,7 +22,7 @@ const counts = { all: 12, complete: 8, range: 2, ranked: 10, queue: 2 };
 describe("a list row's figure", () => {
   const P = copyFor({ schools: [...complete, range, exact], counts, countsByRule: "shared" });
 
-  it("adds the group a range counts when the list shows single places and ranges together", () => {
+  it("adds the group a range counts when the list shows single positions and ranges together", () => {
     expect(P.scopesMix()).toBe(true);
     expect(P.rowPlace(range, "additive_u")).toBe("3rd to 4th of 10");
     expect(P.rowPlace(exact, "additive_u")).toBe("5th of 10");
@@ -30,14 +30,14 @@ describe("a list row's figure", () => {
     expect(textProblems(P.rowPlace(range, "additive_u"), { sentence: false })).toEqual([]);
   });
 
-  it("leaves the range as the card writes it when the list holds no single place", () => {
+  it("leaves the range as the card writes it when the list holds no single position", () => {
     const only = [range, exact];
     expect(P.scopesMix(only)).toBe(false);
     expect(P.rowPlace(range, "additive_u", only)).toBe(P.placeHeadline(range, "additive_u"));
     expect(P.rowPlace(range, "additive_u", only)).toBe("3rd to 4th");
   });
 
-  it("does not count a list of single places and incomplete records as mixed", () => {
+  it("does not count a list of single positions and incomplete records as mixed", () => {
     const held = school({ id: "q", cohort: "queue", gate: ["service_deficit"] });
     expect(P.scopesMix([...complete, held])).toBe(false);
   });

@@ -52,7 +52,7 @@ export interface WorkspaceState {
   readonly hover: SchoolKey | null;
   readonly view: ListView;
   readonly qgroup: QueueGrouping;
-  /** Where range schools sit: at the lower end of their scores (the study's main order) or the upper end. */
+  /** Where range schools sit: at the lower end of their scores (the research team's main order) or the upper end. */
   readonly place: Placement;
   /** The scope detail under the scope line is open. */
   readonly scope: boolean;

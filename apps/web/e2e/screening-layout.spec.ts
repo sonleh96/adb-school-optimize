@@ -214,7 +214,7 @@ test.describe("at 1600 the card opens beside the list", () => {
 
     // The popover over the column closes first; the card stays.
     await openRules(page);
-    await page.getByRole("button", { name: "Other rules (5)" }).click();
+    await page.getByRole("button", { name: "Other ways to order the list (5)" }).click();
     await expect(page.locator("#screening-other-rules")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.locator("#screening-other-rules")).toHaveCount(0);

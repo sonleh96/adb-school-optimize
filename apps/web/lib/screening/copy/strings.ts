@@ -68,6 +68,8 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
   // No school shows a range when the rule reads no air-quality figure or when none lacks a reading.
   const noRange = !readsReadings || (known(c, "range") && c.range === 0);
   const noComplete = known(c, "complete") && c.complete === 0;
+  let fullShort: string;
+  // The line under the tabs says only how many schools are in the list; the groups behind it go behind Read more.
   let scopeShort: string;
   if (known(c, "ranked") && known(c, "complete") && known(c, "range")) {
     const inOrder = `${formatCount(c.ranked)} ${plural(c.ranked, "school", "schools")} can be put in order`;
@@ -76,38 +78,43 @@ export function buildScope(c: CountBag = {}, reads?: Reads) {
       c.range === c.ranked
         ? "all showing"
         : `${formatCount(c.range)} that ${plural(c.range, "shows", "show")}`;
-    if (c.ranked === 0) scopeShort = "No school can be put in order.";
-    else if (noRange) scopeShort = `${inOrder}, ${complete} with ${every}.`;
-    else if (noComplete) scopeShort = `${inOrder}, ${ranges} a range of places.`;
-    else scopeShort = `${inOrder}, ${complete} with ${every} and ${ranges} a range of places.`;
+    if (c.ranked === 0) fullShort = "No school can be put in order.";
+    else if (noRange) fullShort = `${inOrder}, ${complete} with ${every}.`;
+    else if (noComplete) fullShort = `${inOrder}, ${ranges} a range of positions.`;
+    else fullShort = `${inOrder}, ${complete} with ${every} and ${ranges} a range of positions.`;
+    scopeShort =
+      c.ranked === 0
+        ? fullShort
+        : `${formatCount(c.ranked)} ${plural(c.ranked, "school is", "schools are")} in the list.`;
   } else {
-    scopeShort = readsReadings
-      ? `Schools with ${every} have one place; schools that show a range have possible places.`
-      : `Schools with ${every} have one place each.`;
+    fullShort = readsReadings
+      ? `Schools with ${every} have one position; schools that show a range have possible positions.`
+      : `Schools with ${every} have one position each.`;
+    scopeShort = "The schools that can be put in order are in the list.";
   }
   const groups = groupsSentence(c, reads);
   const rangesAmong = noRange ? "" : ` Ranges count among ${amongAllOrdered(c)}.`;
   return Object.freeze({
     groups,
-    scopeComplete: `${groups} ${GROUPS_MEANING}${noComplete ? "" : ` Single places count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : `the schools with ${every}`}.`}`,
+    scopeComplete: `${groups} ${GROUPS_MEANING}${noComplete ? "" : ` Single positions count among ${known(c, "complete") ? `the ${formatCount(c.complete)}` : `the schools with ${every}`}.`}`,
     scopeRanked: `${groups} ${GROUPS_MEANING}${rangesAmong}`,
     // Short line for under the tabs; the detail goes in a disclosure or help card.
     scopeShort,
-    scopeDetail: `${GROUPS_MEANING} Single places count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}.`,
+    scopeDetail: `${fullShort} ${GROUPS_MEANING} Single positions count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}.`,
     // The label for the scale of a range, with the number of schools the rule puts in order.
     amongAll: capitalise(amongAllOrdered(c)),
-    filterNote: `Filtered view. Places in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
+    filterNote: `Filtered view. Positions in the list still count among ${completePhrase(c, reads)}${noRange ? "" : `, and ranges among ${amongAllOrdered(c)}`}, because filtering never changes the scale.`,
     // A rule that reads no air-quality, emissions or land-cover figure shows no range, so it has nothing to place.
     listOrder: !readsReadings
       ? "No school shows a range under this rule, because it does not use the air-quality, emissions or land-cover figures."
       : noRange
         ? "No school shows a range in this list."
-        : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} screening score. The study uses this as its main order.`,
+        : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} score. The research team uses this as its main order.`,
     listOrderUpper: noRange
       ? !readsReadings
         ? "The sensitivity check for schools that show a range does not apply under this rule, because no school shows one."
         : "The sensitivity check for schools that show a range has nothing to show here, because no school shows one."
-      : `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} screening score.`,
+      : `Sensitivity check: ${lowerFirst(rangeSubject(c))} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added as much as they can to ${theirScore(c)} score.`,
   });
 }
 
@@ -123,7 +130,7 @@ export function buildStrings(c: CountBag = {}) {
       "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money.",
     groupsMeaning: GROUPS_MEANING,
     queueIntro:
-      "These schools have no place in the list yet because their records are incomplete. Having no place in the list yet does not mean their need is low.",
+      "These schools are not in the list yet because information about them is missing. Not being in the list yet does not mean their need is low.",
     queueOrder: "Listed by province, district and school name. This is not an order of priority.",
     // The order when the incomplete records are grouped by what is missing, the largest group first.
     queueOrderMissing:
@@ -142,7 +149,7 @@ export function buildStrings(c: CountBag = {}) {
     airQualityDefinition: AIR_DEFINITION,
     urgencyDefinition: urgencyDefinition(c),
     separateMeasures: SEPARATE_MEASURES,
-    comparisonSource: "These figures come from the study's recorded comparison of the rules.",
+    comparisonSource: "These figures come from the research team's recorded comparison of the rules.",
     persistentNearLine: persistentNearLine(),
   });
 }
