@@ -149,7 +149,7 @@ function Start({
               data-region="open-guides"
               // Named for what pressing it does, open or fold, with no expanded state as well.
               data-open={unfolded || undefined}
-              aria-controls="screening-start-guides"
+              aria-controls={unfolded ? "screening-start-guides" : undefined}
               onClick={() => setUnfolded((value) => !value)}
             >
               {unfolded ? GUIDE.foldGuides : GUIDE.openGuides}

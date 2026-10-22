@@ -262,7 +262,7 @@ export function stepView(
         title: staticTitle,
         body: [para(TERMS.export.line), para(TERMS.shortlist_size.help), para(TERMS.manifest.line)],
         // The narrow layout keeps Download the top list in its menu; a ring takes in whichever of the two shows.
-        targets: [[region("export-button"), '[aria-controls="screening-menu"]']],
+        targets: [[region("export-button"), region("actions-menu")]],
       };
     case "q2.why":
       return {

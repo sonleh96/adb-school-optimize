@@ -467,7 +467,8 @@ function PopMenu({
         data-region={region}
         aria-label={name}
         aria-expanded={open}
-        aria-controls={id}
+        // It names its list only while the list is in the page.
+        aria-controls={open ? id : undefined}
         onClick={() => setOpen((v) => !v)}
       >
         {icon}
