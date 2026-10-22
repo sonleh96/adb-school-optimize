@@ -219,10 +219,14 @@ test("the key starts as one line, opens to name the rule, cuts its rank bands fr
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
   const more = key.getByRole("button", { name: "What the map shows" });
-  // Compact: the colour strip from the first rank to the last, read out as one sentence, and the three marks
-  // in a few words.
-  await expect(key.locator("[class*=miniRamp]")).toHaveText("1st17th");
-  await expect(key.getByRole("img", { name: "Darker is earlier in the list: 1st to 17th" })).toBeVisible();
+  // Compact: the colour strip in words, not ranks (it ends at the last school with one rank, before the list's
+  // count), read out with its first and last rank, and the marks in a few words.
+  await expect(key.locator("[class*=miniRamp]")).toHaveText("Darker: earlier in the list");
+  await expect(
+    key.getByRole("img", {
+      name: "Darker is earlier in the list: 1st to 17th, among the 17 schools with one rank",
+    })
+  ).toBeVisible();
   await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
   await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of ranks");
   await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in the list yet");
@@ -248,7 +252,7 @@ test("the key starts as one line, opens to name the rule, cuts its rank bands fr
   await useMockDataset(context, "one");
   await page.goto("/screening");
   await waitForMap(page);
-  await expect(key.locator("[class*=miniRamp]")).toHaveText("1st1st");
+  await expect(key.getByRole("img", { name: /^Darker is earlier in the list: 1st to 1st/ })).toBeVisible();
   await more.click();
   await expect(bands).toHaveText(["1st"]);
   await expect(page.locator("[data-rank-label]")).toHaveCount(1);

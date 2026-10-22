@@ -1,7 +1,7 @@
 /**
  * The narrow layout leads with the list. Failure modes and the test for each:
  *  1. On a first visit, with Start here open, the first school's name or its Why line is below the fold on a phone or
- *     a tablet                                                         -> "on a first visit at <size>, the first school..."
+ *     a tablet, or at 1024 px beside Start here                        -> "on a first visit at <size>, the first school..."
  *  2. The list is not what shows first, the map hidden behind it can still be reached, or Map does not open the band
  *     and its key                                                      -> "List shows first, and Map opens the band..."
  *  3. A school chosen in one view is lost in the other                 -> "a school chosen in the list..." and "...on the map..."
@@ -45,6 +45,8 @@ for (const size of [
   { width: 360, height: 740, scale: 2 },
   { width: 768, height: 1024, scale: 1 },
   { width: 800, height: 500, scale: 2 },
+  // The widest common laptop size that still shows Start here beside a narrowed list.
+  { width: 1024, height: 768, scale: 1 },
 ]) {
   test.describe(`a first visit at ${size.width} by ${size.height}`, () => {
     test.use({
@@ -59,7 +61,8 @@ for (const size of [
       await page.goto("/screening");
       await waitForMap(page);
       await expect(rail(page)).toBeVisible();
-      await expect(rail(page)).toHaveAttribute("data-inflow", "true");
+      // A short card in the list region on a narrow screen; the full panel beside the list from 1024 px.
+      if (size.width <= 1023) await expect(rail(page)).toHaveAttribute("data-inflow", "true");
       const first = page.locator(`${ORDERED} button`).first();
       await expect(first).toContainText(SCHOOL);
       // The name and the Why line, not the row's padding, are inside the window.
@@ -162,6 +165,10 @@ test.describe("Start here on a phone", () => {
     await expect(start).toBeVisible();
     const open = start.locator("[data-region=open-guides]");
     await expect(open).toHaveAttribute("aria-expanded", "false");
+    // Its dismiss reads as a choice of its own beside Open the guides, and says in full what it does.
+    const dismiss = start.locator("[data-region=hide-guides]");
+    await expect(dismiss).toHaveText("No thanks");
+    await expect(dismiss).toHaveAccessibleName("No thanks, hide the guides");
     await expect(start.locator("[data-guide]")).toHaveCount(0);
     // A short card: well under half the window.
     const box = (await start.boundingBox())!;
@@ -171,7 +178,7 @@ test.describe("Start here on a phone", () => {
     await expect(open).toHaveAttribute("aria-expanded", "true");
     await expect(start.locator("[data-guide]")).toHaveCount(5);
 
-    await rail(page).locator("[data-region=hide-guides]").click();
+    await dismiss.click();
     await expect(rail(page)).toHaveCount(0);
     await page.reload();
     await waitForMap(page);

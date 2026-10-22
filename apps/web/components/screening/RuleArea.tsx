@@ -127,8 +127,9 @@ export function RuleArea(props: RuleAreaProps) {
       aria-label={TERMS.rule.label}
     >
       <div>
+        {/* A line or two in words, with no shares: the shares wait behind the control, above the choice. */}
         <p className={styles.ruleNowText} data-region="rule-now">
-          {LAYOUT.ruleNow(listed)}
+          {LAYOUT.ruleNowShort(listed)}
         </p>
         {/* Under the line, not beside it: the control's words say what it changes, and the one link sits after it. */}
         <div className={styles.ruleNowRow}>
@@ -163,6 +164,9 @@ export function RuleArea(props: RuleAreaProps) {
               />
             ) : null}
           </div>
+          <p className={styles.ruleShares} data-region="rule-shares">
+            {LAYOUT.ruleNow(listed)}
+          </p>
           <div className={styles.ruleSeg} role="group" aria-label={LAYOUT.rulePair} data-region="rule-switch">
             {main.map((r) => (
               <button

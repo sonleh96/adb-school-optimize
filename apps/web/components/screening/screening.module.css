@@ -303,6 +303,14 @@
     background: rgba(21, 24, 29, 0.05);
   }
 }
+/* What the rule on screen weighs, with its shares: the first thing the open choice says. */
+.ruleShares {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
 /* Open: the choices under the plain line, set off by a hairline. */
 .ruleChoices {
   margin-top: 10px;
