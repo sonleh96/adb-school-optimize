@@ -6,7 +6,7 @@ import { countsFrom, rangePhrase, theSchools, theirScore } from "./counts";
 import { displayName, formatCount, lowerFirst, ordinal, plural } from "./format";
 import type { ComparisonData, CopyRuleId, PairwiseRow, PlacedSchool, Top20Change } from "./model";
 import { distinctName, hasPlace, resultFor } from "./rank";
-import { rule } from "./rules";
+import { type RuleNames, rule, ruleFor } from "./rules";
 import { joinSegments, nameList, nameSegment, seg, textOf, type Segments } from "./segments";
 
 export const findPair = (
@@ -110,10 +110,10 @@ export function comparisonSegments(
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
   data: ComparisonData & { top20Changes: readonly Top20Change[] },
-  opts: { top?: number } = {}
+  opts: { top?: number; ruleNames?: RuleNames } = {}
 ): Segments {
-  const a = rule(ruleA),
-    b = rule(ruleB);
+  const a = ruleFor(ruleA, opts.ruleNames),
+    b = ruleFor(ruleB, opts.ruleNames);
   const k = opts.top === 10 ? 10 : 20;
   if (ruleA === ruleB) return seg`Both sides use the same rule, so nothing moves.`;
   const row = findPair(data.pairwise, ruleA, ruleB);
@@ -166,7 +166,7 @@ export const comparisonSentence = (
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
   data: ComparisonData & { top20Changes: readonly Top20Change[] },
-  opts: { top?: number } = {}
+  opts: { top?: number; ruleNames?: RuleNames } = {}
 ): string => textOf(comparisonSegments(ruleA, ruleB, data, opts));
 
 // Answers "what did leaving urgency out change?" from the recorded comparison of the two combined-factors rules. The
@@ -186,10 +186,9 @@ export function urgencyReassurance(data: ComparisonData): string {
 
 // Which list to use, short, for the rule area: a question, the answer, why urgency is left out, and the agreement
 // with the rule that puts it back. data: { pairwise }.
-export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): string {
+export function defaultListStatement(data: Pick<ComparisonData, "pairwise">, ruleNames?: RuleNames): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead =
-    "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.";
+  const lead = `Which list should I use? This one, ${ruleNames === "plain" ? "the main method" : "the research paper's main method"}. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.`;
   if (!row) return lead;
   const n = pairSize(row);
   const among = `among ${pairPhrase(row)}`;
@@ -202,9 +201,17 @@ export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): st
 }
 
 // The long form, for a help card or disclosure. data: { pairwise }.
-export function defaultListStatementLong(data: Pick<ComparisonData, "pairwise">): string {
+export function defaultListStatementLong(
+  data: Pick<ComparisonData, "pairwise">,
+  ruleNames?: RuleNames
+): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead = `This list uses the research paper's main method, ${rule("additive_no_u").name}. It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, ${rule("additive_u").name}, which adds the urgency rating back, is kept beside it as a check.`;
+  const left =
+    "It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards.";
+  const lead =
+    ruleNames === "plain"
+      ? `This list uses the main method. ${left} The main method with the urgency rating added back is kept beside it as a check.`
+      : `This list uses the research paper's main method, ${rule("additive_no_u").name}. ${left} The earlier paper's method, ${rule("additive_u").name}, which adds the urgency rating back, is kept beside it as a check.`;
   if (!row) return lead;
   return `${lead} Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "under both methods"))}`;
 }

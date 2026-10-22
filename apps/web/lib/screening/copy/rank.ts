@@ -26,7 +26,7 @@ import type {
   PlacedSchool,
 } from "./model";
 import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
-import { rule, ruleReads } from "./rules";
+import { type RuleNames, rule, ruleFor, ruleReads } from "./rules";
 import { STRINGS, persistentNearLine } from "./strings";
 import { LAYOUT } from "./words";
 
@@ -75,6 +75,8 @@ export interface PlaceOpts {
   countsByRule?: CountsByRuleArg;
   /** The schools of the list, so a name is told apart from a twin's. */
   schools?: readonly NamedSchool[];
+  /** How a rule is named: with its letter (the default) or in plain words. */
+  ruleNames?: RuleNames;
 }
 
 /* ------------------------------------------------------- rank sentences */
@@ -135,7 +137,7 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
 // opts.name: start with the school's name. opts.shortlist: a top-list length such as 20,
 // which adds whether a range school is inside it either way. opts.counts: from countsFrom.
 export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): Segments {
-  const r = rule(ruleId);
+  const r = ruleFor(ruleId, opts.ruleNames);
   const c = countsOf(opts, ruleId);
   const nm = opts.name ? nameSegment(distinctName(school, opts.schools)) : null;
   if (school.cohort === "queue") {
@@ -219,7 +221,7 @@ export function rowPlace(
 // What the large figure counts among. Plain views give one rank only; opts.method adds
 // what counting the range schools could do. opts.shortlist as in rankSentence. opts.counts: from countsFrom.
 export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
-  const r = rule(ruleId);
+  const r = ruleFor(ruleId, opts.ruleNames);
   const c = countsOf(opts, ruleId);
   if (school.cohort === "queue")
     return "Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
@@ -282,10 +284,10 @@ export function rangeComparisonSegments(
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "schools"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "schools" | "ruleNames"> = {}
 ): Segments {
-  const a = rule(ruleA),
-    b = rule(ruleB);
+  const a = ruleFor(ruleA, opts.ruleNames),
+    b = ruleFor(ruleB, opts.ruleNames);
   const cA = countsOf(opts, ruleA),
     cB = countsOf(opts, ruleB);
   const nm = nameSegment(distinctName(school, opts.schools));
@@ -350,12 +352,17 @@ export const rangeComparisonSentence = (
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "ruleNames"> = {}
 ): string => textOf(rangeComparisonSegments(school, ruleA, ruleB, opts));
 
 // Question 1: which schools a rule puts first. schools: the full schools array; counts come from it.
-export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): Segments {
-  const r = rule(ruleId);
+export function listStartsSegments(
+  schools: readonly PlacedSchool[],
+  ruleId: CopyRuleId,
+  n = 3,
+  ruleNames?: RuleNames
+): Segments {
+  const r = ruleFor(ruleId, ruleNames);
   const c = countsFrom(schools);
   const firsts = schools
     .flatMap((s) => {
@@ -380,8 +387,12 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
   if (!ranges.length) return sentence;
   return seg`${sentence} ${nameList(ranges.map((s) => distinctName(s, schools)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
 }
-export const listStartsSentence = (schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): string =>
-  textOf(listStartsSegments(schools, ruleId, n));
+export const listStartsSentence = (
+  schools: readonly PlacedSchool[],
+  ruleId: CopyRuleId,
+  n = 3,
+  ruleNames?: RuleNames
+): string => textOf(listStartsSegments(schools, ruleId, n, ruleNames));
 
 /* ------------------------------------------------- names, places and ties */
 

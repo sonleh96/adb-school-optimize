@@ -549,6 +549,66 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       flush();
     });
 
+    it("says the same with the rules named in plain words", () => {
+      const { data } = dataset();
+      const P = proto.copyFor({ ...data, ruleNames: "plain" });
+      const Q: Api = port.copyFor({ ...data, ruleNames: "plain" } as unknown as CopyData);
+      const rules = proto.RULE_IDS as string[];
+      for (const a of rules) {
+        sameOutcome(
+          `ruleName(${a})`,
+          run(() => P.ruleName(a)),
+          run(() => Q.ruleName(a))
+        );
+        sameOutcome(
+          `listStartsSentence(${a})`,
+          run(() => P.listStartsSentence(data.schools, a)),
+          run(() => Q.listStartsSentence(data.schools, a))
+        );
+        for (const b of rules)
+          for (const top of [undefined, 10])
+            sameOutcome(
+              `comparisonSentence(${a}, ${b}, top ${top})`,
+              run(() => P.comparisonSentence(a, b, undefined, { top })),
+              run(() => Q.comparisonSentence(a, b, undefined, { top }))
+            );
+        for (const s of data.schools.slice(0, 40)) {
+          sameOutcome(
+            `${s.id} ${a} reasonSentence`,
+            run(() => P.reasonSentence(s, a)),
+            run(() => Q.reasonSentence(s, a))
+          );
+          sameOutcome(
+            `${s.id} ${a} rankSentence`,
+            run(() => P.rankSentence(s, a, { name: true })),
+            run(() => Q.rankSentence(s, a, { name: true }))
+          );
+          sameOutcome(
+            `${s.id} ${a} placeContext`,
+            run(() => P.placeContext(s, a)),
+            run(() => Q.placeContext(s, a))
+          );
+          for (const b of rules)
+            sameOutcome(
+              `${s.id} ${a} ${b} rangeComparisonSentence`,
+              run(() => P.rangeComparisonSentence(s, a, b)),
+              run(() => Q.rangeComparisonSentence(s, a, b))
+            );
+        }
+      }
+      sameOutcome(
+        "defaultListStatement",
+        run(() => P.defaultListStatement()),
+        run(() => Q.defaultListStatement())
+      );
+      sameOutcome(
+        "defaultListStatementLong",
+        run(() => P.defaultListStatementLong()),
+        run(() => Q.defaultListStatementLong())
+      );
+      flush();
+    });
+
     it("says the same about every school under every rule", { timeout: 900_000 }, () => {
       const { data } = dataset();
       const P = proto.copyFor(data);
