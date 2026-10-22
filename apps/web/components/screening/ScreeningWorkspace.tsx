@@ -856,6 +856,7 @@ function Workspace() {
               copy={copy}
               rule={shown?.rule ?? null}
               bands={bands}
+              ranged={ordered.length - (bands.length ? bands[bands.length - 1].hi : 0)}
               stacked={layout.keyStacked}
               stale={stale}
             />

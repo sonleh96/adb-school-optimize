@@ -1230,6 +1230,18 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   line-height: 18px;
   color: var(--ink-2);
 }
+/* The numbers' words are a label alone, with no line after them: they take the line's width. */
+.keys li[data-region="legend-number"] b {
+  grid-column: 2 / -1;
+}
+/* Why the strip can end before the list does. */
+.rampNote {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
 .keys b {
   font-weight: 500;
   color: var(--ink);

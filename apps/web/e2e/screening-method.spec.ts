@@ -38,6 +38,8 @@
  * 25. The method card states one rule's persistence test under the other rule, or says a school is near the line
  *     where that rule's own band does not put it, or leaves the near-line sentence out where it does
  *                                                                                                -> "each rule's persistence test..."
+ * 26. A sentence on the plain screen names a rule by its letters (S0, S), the method details lose them, or turning the
+ *     method details on or off needs a reload to re-word the screen   -> "the method details name rules by letter..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -735,4 +737,30 @@ test.describe("the narrow layout", () => {
     await expect(sheet).toHaveCount(0);
     await expect(menuButton).toBeFocused();
   });
+});
+
+test("the method details name rules by letter, the plain screen in words, and turning them on or off re-words it in place", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await page.locator("ol[aria-label='The list'] button", { hasText: "Sample School 08" }).click();
+  const plain = page.getByText("Three things add most to its score under the main method.", { exact: false });
+  const lettered = page.getByText(
+    "Three things add most to its score under the combined-factors rule without urgency (S0).",
+    {
+      exact: false,
+    }
+  );
+  await expect(plain).toBeVisible();
+  // A mark on the page that a reload would wipe.
+  await page.evaluate(() => ((window as unknown as { kept: boolean }).kept = true));
+
+  const methodSwitch = page.getByRole("switch", { name: "Show method details" });
+  await methodSwitch.click();
+  await expect(lettered.first()).toBeVisible();
+  await expect(plain).toHaveCount(0);
+  await methodSwitch.click();
+  await expect(plain).toBeVisible();
+  await expect(lettered).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { kept?: boolean }).kept)).toBe(true);
 });

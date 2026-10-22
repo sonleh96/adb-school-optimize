@@ -71,7 +71,7 @@ test("a complete school's card states one rank, its reasons with the school need
 
   const why = card(page).locator("[data-region=inspector-why]");
   await expect(why.locator("p").first()).toHaveText(
-    "Three things add most to its score under the combined-factors rule without urgency (S0). All three are parts of its school need, the measure built from five parts of its own record."
+    "Three things add most to its score under the main method. All three are parts of its school need, the measure built from five parts of its own record."
   );
   // The named parts come first, numbered in reading order; the other parts follow, quieter and unnumbered.
   const parts = why.locator("[data-region=need-box] li");

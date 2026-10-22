@@ -5,7 +5,6 @@ import { useId, useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
-import { PENDING } from "@/lib/screening/pending-words";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import styles from "./screening.module.css";
@@ -13,6 +12,15 @@ import styles from "./screening.module.css";
 /** The three marks, drawn as the map draws them. */
 function Mark({ kind }: { kind: "dot" | "range" | "ring" }) {
   return <span className={styles.keyMark} data-mark={kind} aria-hidden />;
+}
+
+/** The number on each of the map's first ten dots, as the map draws it: a "1" on the darkest blue. */
+function NumberMark() {
+  return (
+    <span className={styles.keyNumber} style={{ background: RAMP_HEX[0] }} aria-hidden>
+      1
+    </span>
+  );
 }
 
 /**
@@ -24,12 +32,15 @@ export function Legend({
   copy,
   rule,
   bands,
+  ranged,
   stacked,
   stale,
 }: {
   copy: BoundCopy;
   rule: CopyRuleId | null;
   bands: readonly Band[];
+  /** How many schools in the list show a range: the strip leaves them out, and the full key says so. */
+  ranged: number;
   stacked: boolean;
   stale: boolean;
 }) {
@@ -73,7 +84,16 @@ export function Legend({
               ))}
             </ol>
           ) : null}
+          {last ? (
+            <p className={styles.rampNote} data-region="legend-ramp-note">
+              {LAYOUT.keyRampNote(last.hi, ranged)}
+            </p>
+          ) : null}
           <ul className={styles.keys}>
+            <li data-region="legend-number">
+              <NumberMark />
+              <b>{LAYOUT.keyNumbers}</b>
+            </li>
             <li data-region="legend-point">
               <Mark kind="dot" />
               <b data-term="mark_dot">{TERMS.mark_dot.label}</b>
@@ -98,7 +118,7 @@ export function Legend({
             className={styles.miniRamp}
             data-term="rank"
             role="img"
-            aria-label={LAYOUT.keyRamp(copy.ordinal(first.lo), copy.ordinal(last.hi))}
+            aria-label={LAYOUT.keyRamp(copy.ordinal(first.lo), copy.ordinal(last.hi), last.hi)}
           >
             <span>{copy.ordinal(first.lo)}</span>
             <span className={styles.miniSwatches} aria-hidden>
@@ -111,12 +131,9 @@ export function Legend({
         ) : null}
         {open ? null : (
           <ul className={styles.keysShort}>
-            {/* The numbers on the map's first ten dots, drawn as the map draws them: a "1" on the darkest blue. */}
             <li data-region="legend-number">
-              <span className={styles.keyNumber} style={{ background: RAMP_HEX[0] }} aria-hidden>
-                1
-              </span>
-              <span>{PENDING.keyNumbers}</span>
+              <NumberMark />
+              <span>{LAYOUT.keyNumbers}</span>
             </li>
             <li data-region="legend-point">
               <Mark kind="dot" />

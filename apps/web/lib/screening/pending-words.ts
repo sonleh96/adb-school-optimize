@@ -11,6 +11,4 @@ export const PENDING = Object.freeze({
   startShort: "Five short guides show how to read this screen.",
   openGuides: "Open the guides",
   foldGuides: "Fold the guides away",
-  // The compact key's entry for the numbered circles; the copy owner is writing LAYOUT.keyNumbers.
-  keyNumbers: "The first ten in the list",
 });
