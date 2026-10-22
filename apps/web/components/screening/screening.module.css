@@ -2106,12 +2106,14 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     color: var(--ink-2);
     text-wrap: pretty;
   }
+  /* Above the guide rail (5), which can hold the band under it, so Help's and the Menu's lists open over Start here
+     or a step; a guide's rings (6) come later in the page and still draw over the Menu button they point at. */
   .topBar {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    z-index: 5;
+    z-index: 6;
     display: grid;
     grid-template-columns: 26px minmax(0, 1fr) auto;
     column-gap: 10px;
