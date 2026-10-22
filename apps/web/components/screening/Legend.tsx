@@ -50,6 +50,7 @@ export function Legend({
   onToggle: () => void;
 }) {
   const body = useId();
+  const heading = useId();
   const { LAYOUT, TERMS } = copy;
   const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(rule)) : TERMS.rank.label;
   const label = (band: Band) =>
@@ -71,8 +72,10 @@ export function Legend({
       data-stale={stale || undefined}
     >
       {open ? (
-        <div id={body} className={styles.legendBody}>
-          <p className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
+        // On a phone the open key can be taller than the band leaves it and scrolls, so it is a named stop for the
+        // keyboard, which can then scroll it to what is out of view.
+        <div id={body} className={styles.legendBody} role="region" aria-labelledby={heading} tabIndex={0}>
+          <p id={heading} className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
             {title}
           </p>
           {bands.length > 0 ? (

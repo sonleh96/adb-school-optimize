@@ -27,6 +27,8 @@
  *                                                                      -> "a guide step's ring round the Menu..."
  * 14. Under reduced motion one disclosure's chevron still turns while another's does not
  *                                                                      -> "under reduced motion, every disclosure's..."
+ * 15. The open full key scrolls in the band, but the keyboard cannot reach what is scrolled out of view
+ *                                                                      -> "the open full key can be scrolled..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -471,3 +473,34 @@ test.describe("the disclosures' chevrons under reduced motion", () => {
     expect(transitions).toEqual(["opacity", "opacity", "opacity"]);
   });
 });
+
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 360, height: 740 },
+]) {
+  test.describe(`the open full key at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size, deviceScaleFactor: 2 });
+
+    test(`the open full key can be scrolled from the keyboard at ${size.width} by ${size.height}`, async ({
+      page,
+    }) => {
+      await page.goto("/screening");
+      await waitForMap(page);
+      await pane(page, "Map").click();
+      const toggle = page.locator("[data-slot=legend] [data-region=key-toggle]");
+      await toggle.click();
+      const body = page.locator("[data-slot=legend] [class*=legendBody]");
+      await expect(body).toBeVisible();
+      // At this size the open key is taller than the band leaves it, so it scrolls.
+      expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+      // The scrolling part is a named stop for the keyboard, just before the toggle that opened it.
+      await toggle.focus();
+      await page.keyboard.press("Shift+Tab");
+      await expect(body).toBeFocused();
+      await expect(body).toHaveAccessibleName(await page.getByTestId("legend-rule").innerText());
+      // And the keyboard scrolls it to what was out of view.
+      await page.keyboard.press("End");
+      await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    });
+  });
+}
