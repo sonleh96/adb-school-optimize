@@ -408,24 +408,44 @@ export function provinceLabel(province: string | null | undefined): string | nul
 export const provinceHeading = (province: string | null | undefined): string =>
   cleanedOrNull(province ?? null) ?? LAYOUT.provinceNotRecorded;
 
-// The schools of a list by the name they display, built once per list so naming each school stays cheap. Only a
-// frozen list is kept, because a list that can change in place would leave the index out of date; the bound copy
-// binds a frozen snapshot of its schools. Any other list is indexed afresh on each call.
-const NAME_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
-function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
-  const kept = Object.isFrozen(schools);
-  let index = kept ? NAME_INDEX.get(schools) : undefined;
-  if (!index) {
-    index = new Map();
-    for (const x of schools) {
-      const name = displayName(x);
-      const same = index.get(name);
-      if (same) same.push(x);
-      else index.set(name, [x]);
-    }
-    if (kept) NAME_INDEX.set(schools, index);
+// The schools of a list by the name they display, built once per list so naming each school stays cheap. A frozen list
+// is kept as it is, because the bound copy binds a frozen snapshot of its schools. Any other list could change in
+// place, so what is kept for it is checked against the list on each call: the same schools in the same order with the
+// same names, one cheap comparison each. Only a list that no longer matches is indexed afresh, so asking for each
+// school in a long list never rebuilds the index each time.
+interface NameIndex {
+  readonly refs: readonly NamedSchool[];
+  readonly names: readonly unknown[];
+  readonly byName: Map<string, NamedSchool[]>;
+}
+const FROZEN_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
+const LOOSE_INDEX = new WeakMap<readonly NamedSchool[], NameIndex>();
+function indexByName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
+  const byName = new Map<string, NamedSchool[]>();
+  for (const x of schools) {
+    const name = displayName(x);
+    const same = byName.get(name);
+    if (same) same.push(x);
+    else byName.set(name, [x]);
   }
-  return index;
+  return byName;
+}
+function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
+  if (Object.isFrozen(schools)) {
+    let index = FROZEN_INDEX.get(schools);
+    if (!index) FROZEN_INDEX.set(schools, (index = indexByName(schools)));
+    return index;
+  }
+  const kept = LOOSE_INDEX.get(schools);
+  if (kept && kept.refs.length === schools.length) {
+    let same = true;
+    for (let i = 0; same && i < schools.length; i += 1)
+      same = schools[i] === kept.refs[i] && schools[i].name === kept.names[i];
+    if (same) return kept.byName;
+  }
+  const byName = indexByName(schools);
+  LOOSE_INDEX.set(schools, { refs: [...schools], names: schools.map((x) => x.name), byName });
+  return byName;
 }
 
 // A display name that tells apart two schools whose names differ only in spacing.
