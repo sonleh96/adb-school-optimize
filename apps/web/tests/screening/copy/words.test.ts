@@ -35,16 +35,10 @@ describe("an empty or failed load", () => {
 });
 
 describe("the narrow layout and the key", () => {
-  it("names the menu and the key disclosure in each state", () => {
-    expect([LAYOUT.menu, LAYOUT.keyLabel, LAYOUT.keyShow, LAYOUT.keyHide]).toEqual([
-      "Menu",
-      "Key",
-      "Show the map key",
-      "Hide the map key",
-    ]);
-    // The accessible name contains the visible label.
-    expect(LAYOUT.keyShow.toLowerCase()).toContain(LAYOUT.keyLabel.toLowerCase());
-    expect(LAYOUT.keyHide.toLowerCase()).toContain(LAYOUT.keyLabel.toLowerCase());
+  it("names the menu and the key by one visible word each, which the key's toggle keeps open or closed", () => {
+    expect([LAYOUT.menu, LAYOUT.keyLabel]).toEqual(["Menu", "Key"]);
+    expect(LAYOUT).not.toHaveProperty("keyShow");
+    expect(LAYOUT).not.toHaveProperty("keyHide");
   });
 
   it("calls the legend the key everywhere a user reads it", () => {
