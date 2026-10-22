@@ -280,6 +280,29 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       for (const r of proto.RULE_IDS as string[]) {
         const reads = proto.ruleReads(r);
         same("METHOD", proto.buildMethod({ counts: bag, reads }), method.buildMethod({ counts: bag, reads }));
+        // With the way each persistence test was drawn bound from the data, one setting and several.
+        for (const settings of [
+          [{ topLevel: 20, schoolNeed: 15 }],
+          [{ topLevel: 17.5, schoolNeed: 12.5 }],
+          [{ topLevel: 0, schoolNeed: 12.5 }],
+          [
+            { topLevel: 20, schoolNeed: 15 },
+            { topLevel: 40, schoolNeed: 35 },
+            { topLevel: 100, schoolNeed: 80 },
+          ],
+        ]) {
+          for (const draws of [4000, 0, 2.5]) {
+            const tests = {
+              additive_no_u: { draws, threshold: 0.8, settings },
+              additive_u: { draws: 5000, threshold: draws === 0 ? 1.5 : 0.75, settings },
+            };
+            same(
+              "METHOD",
+              proto.buildMethod({ counts: bag, reads, tests }),
+              method.buildMethod({ counts: bag, reads, tests })
+            );
+          }
+        }
       }
     flush();
   });
@@ -603,9 +626,18 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           one(`${t} fullRankingSentence`, (api, mode) => api.fullRankingSentence(s, r, counts(api, mode)));
           one(`${t} tieNote card`, (api) => api.tieNote(s, r, data.schools, "card"));
           one(`${t} tieNote row`, (api) => api.tieNote(s, r, data.schools, "row"));
-          // The design records carry the flag but no margin, so every other flagged school is made threshold-adjacent.
-          const near = { ...s, threshold_adjacent_circulated: s.id.length % 2 === 0 };
-          for (const opts of [{}, { standardError: 0.005656854249492379 }, { standardError: 0.00001 }])
+          // The design records carry the flag but no margin, so every other flagged school is made threshold-adjacent
+          // under the circulated rule, and (to exercise it) under the revised rule's made-up flag as well.
+          const near = s.persistence
+            ? {
+                ...s,
+                persistence: {
+                  additive_u: { ...s.persistence.additive_u, adjacent: s.id.length % 2 === 0 },
+                  additive_no_u: { ...s.persistence.additive_no_u, adjacent: s.id.length % 2 === 1 },
+                },
+              }
+            : s;
+          for (const opts of [{}, { margin: 0.005656854249492379 }, { margin: 0.00001 }])
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));

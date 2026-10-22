@@ -715,10 +715,10 @@
    }
   },
   {
-   "file": "exports/top_additive_u_20_south.csv",
+   "file": "exports/top_additive_no_u_20_south.csv",
    "headers": {
     "cache-control": "private, no-store",
-    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_u.csv\"",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_no_u.csv\"",
     "content-type": "text/csv; charset=utf-8",
     "referrer-policy": "no-referrer",
     "x-content-type-options": "nosniff",
@@ -728,7 +728,7 @@
    "query": {
     "k": "20",
     "province": "South Province",
-    "rule": "additive_u"
+    "rule": "additive_no_u"
    }
   }
  ]

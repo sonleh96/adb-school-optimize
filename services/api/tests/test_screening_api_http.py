@@ -75,7 +75,7 @@ def test_every_screening_route_rejects_an_unauthenticated_request(api, monkeypat
         algorithm="HS256",
     )
     allowed = api.get("/api/v1/screening/rules", headers={"Authorization": f"Bearer {token}"})
-    assert allowed.status_code == 200 and allowed.json()["default_rule_id"] == "additive_u"
+    assert allowed.status_code == 200 and allowed.json()["default_rule_id"] == "additive_no_u"
 
 
 # ---------------------------------------------------------------------------------------------

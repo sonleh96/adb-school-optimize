@@ -36,6 +36,8 @@ import type {
   CountBag,
   CountsByRuleArg,
   PairwiseRow,
+  PersistenceRule,
+  PersistenceTest,
   PlacedSchool,
   Top20Change,
   ComparisonData,
@@ -63,7 +65,7 @@ import {
 } from "./rank";
 import { contributions, inputSentence, reasonSentence, topDrivers } from "./reasons";
 import {
-  DEFAULT_RULE,
+  PRIMARY_RULE,
   RULE_IDS,
   ruleExplanation,
   ruleLabel,
@@ -94,8 +96,10 @@ export type CopyData = {
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
   readonly countsByRule?: CountsByRuleArg;
-  /** The persistence test's standard error as a fraction (the circulated list's provenance block). */
-  readonly standardError?: number;
+  /** Each persistence test's margin as a fraction (its own list's provenance block), by rule. */
+  readonly margins?: Partial<Record<PersistenceRule, number>>;
+  /** How each persistence test was drawn (its own list's provenance block), by rule, for the method details. */
+  readonly tests?: Partial<Record<PersistenceRule, PersistenceTest>>;
 } & (
   | { readonly schools?: readonly CopySchool[]; readonly counts?: CountBag }
   | { readonly schools?: readonly PlacedSchool[]; readonly counts: CountBag }
@@ -136,17 +140,19 @@ export function copyFor(data: CopyData = {}) {
   // The sizes of the groups belong to one rule, and the definitions of the whole method belong to none: the bound
   // TERMS and the ideas are worded without any group size, the explainer from the paper's main rule, and what a
   // screen shows under a rule comes from that rule's own counts (`termsFor`, `scope`).
-  const main = countsOf(withCounts(), DEFAULT_RULE) ?? {};
+  const main = countsOf(withCounts(), PRIMARY_RULE) ?? {};
   const terms = buildTerms(groupFree(c));
   const countsFor = (ruleId: CopyRuleId): CountBag => {
     const own = countsOf(withCounts(), ruleId);
-    if (own === c || !own) return own ?? groupFree(c);
+    if (own === c) return own;
+    if (!own) return { ...groupFree(c), flagged: undefined };
     // Counts taken from the rows of the list bound describe that list, not another rule's.
     const rest =
       own.ranked === c.ranked
         ? groupFree(c)
         : { ...groupFree(c), emissionsNone: undefined, airMissing: undefined };
-    return { ...rest, ...own };
+    // The flag count belongs to the one rule whose test it counts, so no other rule reads it.
+    return { ...rest, flagged: undefined, ...own };
   };
   // Resolves to the same object every time, and tries again after a download that failed.
   const loadLater = retryable(() =>
@@ -180,9 +186,11 @@ export function copyFor(data: CopyData = {}) {
      * guide, so a plain view never ships them.
      */
     methodFor: (ruleId: CopyRuleId): Promise<Method> =>
-      loadMethod().then((m) => m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId) })),
+      loadMethod().then((m) =>
+        m.buildMethod({ counts: countsFor(ruleId), reads: ruleReads(ruleId), tests: data.tests })
+      ),
     /** The terms worded for one rule: its group sizes and the inputs it reads. */
-    termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId)),
+    termsFor: (ruleId: CopyRuleId) => buildTerms(countsFor(ruleId), ruleReads(ruleId), ruleId),
     groupsSentence: (ruleId: CopyRuleId) => groupsSentence(countsOf(withCounts(), ruleId), ruleReads(ruleId)),
     urgencyDefinition: () => urgencyDefinition(c),
     urgencyNote: (id: CopyRuleId, opts?: WithoutCounts) => urgencyNote(id, withCounts(opts)),
@@ -190,7 +198,7 @@ export function copyFor(data: CopyData = {}) {
       rankSentence(school, ruleId, withCounts(opts)),
     placeHeadline: (school: PlacedSchool, ruleId: CopyRuleId, opts?: WithoutCounts) =>
       placeHeadline(school, ruleId, withCounts(opts)),
-    scopesMix: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = DEFAULT_RULE) =>
+    scopesMix: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = PRIMARY_RULE) =>
       scopesMix(list, ruleId),
     rowPlace: (
       school: PlacedSchool,
@@ -204,7 +212,7 @@ export function copyFor(data: CopyData = {}) {
       fullRankingSentence(school, ruleId, withCounts(opts)),
     rangeComparisonSentence: (school: PlacedSchool, a: CopyRuleId, b: CopyRuleId, opts?: WithoutCounts) =>
       rangeComparisonSentence(school, a, b, withCounts(opts)),
-    listStartsSentence: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = DEFAULT_RULE, n = 3) =>
+    listStartsSentence: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = PRIMARY_RULE, n = 3) =>
       listStartsSentence(list, ruleId, n),
     comparisonSentence: (
       a: CopyRuleId,
@@ -222,7 +230,9 @@ export function copyFor(data: CopyData = {}) {
       form: "card" | "row" = "card"
     ) => tieNote(school, ruleId, list, form),
     persistenceNote: (school: CopySchool, ruleId: CopyRuleId) =>
-      persistenceNote(school, ruleId, { standardError: data.standardError }),
+      persistenceNote(school, ruleId, {
+        margin: (data.margins as Record<string, number | undefined> | undefined)?.[ruleId],
+      }),
     distinctName: (school: PlacedSchool, list: readonly PlacedSchool[] = schools) =>
       distinctName(school, list),
     /**
@@ -237,7 +247,7 @@ export function copyFor(data: CopyData = {}) {
         rangeComparisonSegments(school, a, b, withCounts(opts)),
       listStartsSentence: (
         list: readonly PlacedSchool[] = schools,
-        ruleId: CopyRuleId = DEFAULT_RULE,
+        ruleId: CopyRuleId = PRIMARY_RULE,
         n = 3
       ) => listStartsSegments(list, ruleId, n),
       comparisonSentence: (

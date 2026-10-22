@@ -51,7 +51,7 @@ test.describe("the mock API's datasets", () => {
     expect(rules.status()).toBe(200);
     expect((await rules.json()).input_versions).toEqual([]);
 
-    for (const route of ["results?rule=additive_u", "inputs"]) {
+    for (const route of ["results?rule=additive_no_u", "inputs"]) {
       const response = await request.get(`${MOCK}/${route}`, { headers });
       expect(response.status(), route).toBe(404);
       expect(await response.json()).toEqual({

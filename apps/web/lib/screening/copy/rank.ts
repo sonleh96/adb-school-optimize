@@ -486,19 +486,24 @@ export function tieNote(
 /* ------------------------------------------------------ the persistence flag */
 
 /**
- * What to say about the persistence flag of a school, for the circulated rule only. The flag comes from the paper's
- * test under the rule with urgency, so it is said under no other rule. A flagged school whose lowest frequency is
- * only just above the line also says that another run could change it, with the size of that margin when known.
- * `opts.standardError`: the test's standard error as a fraction, from the circulated list's provenance block.
+ * What to say about the persistence flag of a school, under a rule the stochastic test ran for. Each such rule has
+ * its own test and its own flag, so the flag is said only under the rule it belongs to and in that rule's words;
+ * a rule with no test in the data, or a school the data does not flag under the rule, says nothing. A flagged school
+ * whose lowest frequency is only just above the line also says that another run could change it, with the size of
+ * that margin when known. Under a rule where the data flags no school as adjacent, that sentence never appears.
+ * `opts.margin`: how far above the line counts as just above, as a fraction (`marginFromResults`), from that rule's
+ * list's provenance block.
  */
 export function persistenceNote(
-  school: Pick<CopySchool, "persistent_candidate_circulated" | "threshold_adjacent_circulated">,
+  school: Pick<CopySchool, "persistence">,
   ruleId: CopyRuleId,
-  opts: { standardError?: number } = {}
+  opts: { margin?: number } = {}
 ): string[] {
   rule(ruleId);
-  if (ruleId !== "additive_u" || !school.persistent_candidate_circulated) return [];
-  const out: string[] = [STRINGS.persistentFlag];
-  if (school.threshold_adjacent_circulated) out.push(persistentNearLine(opts.standardError));
+  if (ruleId !== "additive_u" && ruleId !== "additive_no_u") return [];
+  const flag = school.persistence?.[ruleId];
+  if (!flag?.persistent) return [];
+  const out: string[] = [STRINGS.persistentFlag[ruleId]];
+  if (flag.adjacent) out.push(persistentNearLine(opts.margin));
   return out;
 }

@@ -16,6 +16,27 @@ export type CopyRuleId =
   | "bottleneck_no_u"
   | "benchmark";
 
+/** The rules the paper's stochastic test was run for: each has its own experiment and its own flag. */
+export type PersistenceRule = "additive_u" | "additive_no_u";
+
+/** What one rule's stochastic test says about one school. */
+export interface PersistenceFlag {
+  /** The school stayed in the top 20 often enough, in every setting, under that rule's test. */
+  readonly persistent: boolean;
+  /** A flagged school whose lowest frequency is only just above the line. */
+  readonly adjacent: boolean;
+}
+
+/** How a rule's stochastic test was drawn, from its list's provenance block. */
+export interface PersistenceTest {
+  /** How many weight draws were made in each setting. */
+  readonly draws: number;
+  /** The share of the draws in which a school must be certainly in the top 20, as a fraction. */
+  readonly threshold: number;
+  /** The concentrations drawn at, one pair per setting. */
+  readonly settings: readonly { readonly topLevel: number; readonly schoolNeed: number }[];
+}
+
 /** The group a school falls in under the rule being shown. The API calls the last one `verification_queue`. */
 export type CopyCohort = "complete" | "interval" | "queue";
 
@@ -178,9 +199,11 @@ export interface CopySchool extends PlacedSchool {
   readonly contributions?: Partial<Record<RecordedRule, RecordedContribution>>;
   /** The stored inputs that could not be read, in reading order. Absent when every input was read. */
   readonly unreadable?: readonly UnreadableInput[];
-  readonly persistent_candidate_circulated?: boolean;
-  /** A flagged school whose lowest frequency is only just above the line (circulated rule only). */
-  readonly threshold_adjacent_circulated?: boolean;
+  /**
+   * What each rule's stochastic test says about the school. A rule absent here has no test in the data, so the flag
+   * is unknown for it, never false.
+   */
+  readonly persistence?: Partial<Record<PersistenceRule, PersistenceFlag>>;
 }
 
 /** What `countsFrom` reads. Every field is optional because a caller may only know some of the school. */
@@ -192,7 +215,7 @@ export interface CountableSchool {
   readonly gate_failures?: readonly string[];
   readonly missing_env?: Partial<MissingEnv>;
   readonly condition?: Readonly<Record<string, unknown>>;
-  readonly persistent_candidate_circulated?: boolean;
+  readonly persistence?: Partial<Record<PersistenceRule, PersistenceFlag>>;
 }
 
 /**
@@ -223,7 +246,8 @@ export type Counts = {
   readonly emissionsNone: number;
   readonly airMissing: number;
   readonly remotenessOnly: number;
-  readonly flagged: number;
+  /** Schools flagged under the rule asked for; absent when `countsFrom` was not told which rule. */
+  readonly flagged?: number;
   readonly ranked: number;
 };
 

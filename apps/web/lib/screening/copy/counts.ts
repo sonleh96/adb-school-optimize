@@ -4,7 +4,7 @@
  */
 import { SMALL, capitalise, formatCount, plural } from "./format";
 import { isNeedGate } from "./gates";
-import type { CountBag, CountableSchool, Counts } from "./model";
+import type { CountBag, CountableSchool, Counts, PersistenceRule } from "./model";
 
 /** A school whose record gives only its remoteness category and nothing else. */
 export function isRemotenessOnly(school: CountableSchool): boolean {
@@ -17,7 +17,11 @@ export function isRemotenessOnly(school: CountableSchool): boolean {
   );
 }
 
-export function countsFrom(schools: readonly CountableSchool[] = []): Counts {
+/**
+ * Counts taken from the schools. `flaggedRule` says which rule's stochastic test the flag count is for; without it
+ * no flag count is made, because a count of "the flag" means nothing until it says which test.
+ */
+export function countsFrom(schools: readonly CountableSchool[] = [], flaggedRule?: PersistenceRule): Counts {
   const c = {
     all: schools.length,
     complete: 0,
@@ -38,10 +42,11 @@ export function countsFrom(schools: readonly CountableSchool[] = []): Counts {
     if (s.cohort !== "queue" && s.raw && s.raw.E_raw === 0) c.emissionsNone += 1;
     if (s.cohort !== "queue" && ((s.raw && s.raw.Q_raw == null) || s.missing_env?.aqi)) c.airMissing += 1;
     if (s.cohort === "queue" && isRemotenessOnly(s)) c.remotenessOnly += 1;
-    if (s.persistent_candidate_circulated) c.flagged += 1;
+    if (flaggedRule && s.persistence?.[flaggedRule]?.persistent) c.flagged += 1;
   }
   c.ranked = c.complete + c.range;
-  return Object.freeze(c);
+  const { flagged, ...rest } = c;
+  return Object.freeze(flaggedRule ? { ...rest, flagged } : rest);
 }
 
 /** True when the count is known: present and a whole number. Narrows `c` so the count can be read. */
@@ -62,9 +67,9 @@ export interface Reads {
   readonly readings: boolean;
 }
 const READS_ALL: Reads = { urgency: true, readings: true };
-/** "every input recorded" for a rule that reads every input, and "every input the rule reads recorded" otherwise. */
+/** "every input recorded" for a rule that reads every input, and "a record for every input the rule uses" otherwise. */
 export const everyInput = (reads: Reads = READS_ALL): string =>
-  reads.urgency && reads.readings ? "every input recorded" : "every input the rule reads recorded";
+  reads.urgency && reads.readings ? "every input recorded" : "a record for every input the rule uses";
 
 /** "the 36 schools with every input recorded" or, without counts, "the schools with every input recorded". */
 export function theSchools(c: CountBag | undefined, k: string, rest: string): string {

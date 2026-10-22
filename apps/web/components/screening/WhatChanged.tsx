@@ -2,26 +2,18 @@
 
 import { useEffect, useRef } from "react";
 
-import {
-  type BoundCopy,
-  type CopyRuleId,
-  DEFAULT_RULE,
-  PROPOSED_RULE,
-  type ListedSchool,
-} from "@/lib/screening/copy";
-
+import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
+import { PRIMARY_RULE, isRulePair } from "@/lib/screening/rule-pair";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
 import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
 
-const isUrgencyPair = (a: CopyRuleId, b: CopyRuleId) =>
-  (a === DEFAULT_RULE && b === PROPOSED_RULE) || (a === PROPOSED_RULE && b === DEFAULT_RULE);
-
 /**
  * What changed after a rule change: it answers the click the user just made, at the top of the list.
- * One agreement framing per screen: the two main rules speak through `urgencyReassurance`, any other pair through
- * `comparisonSentence`. The example is a teaching school chosen from the loaded data by its role, never by name.
+ * One agreement framing per screen: the main rule and the urgency sensitivity speak through `urgencyReassurance`, any
+ * other pair through `comparisonSentence`. The example is a teaching school chosen from the loaded data by its role,
+ * never by name.
  * A comparison that failed to load says so and offers Retry: it never reads as the study having recorded none.
  */
 export function WhatChanged({
@@ -56,7 +48,7 @@ export function WhatChanged({
     if (document.activeElement === document.body) hide.current?.focus({ preventScroll: true });
   }, [failed]);
 
-  const pair = isUrgencyPair(from, to);
+  const pair = isRulePair(from, to);
   // The lead names schools only for another pair; names are set apart either way (R18).
   const lead = failed
     ? null
@@ -98,7 +90,7 @@ export function WhatChanged({
         </p>
       ) : null}
       {failed ? null : <p className={styles.changedSource}>{STRINGS.comparisonSource}</p>}
-      {to !== DEFAULT_RULE ? (
+      {to !== PRIMARY_RULE ? (
         <p className={styles.changedActions}>
           <button type="button" className={styles.linkButton} onClick={onBack}>
             {LAYOUT.backToMainRule}

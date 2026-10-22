@@ -29,7 +29,8 @@ import {
 } from "@/lib/screening/workspace/state";
 import { createWorkspaceStore } from "@/lib/screening/workspace/store";
 
-const S = "additive_u" as RuleId;
+// The rule the API names as its default, the revised paper's main rule.
+const S = "additive_no_u" as RuleId;
 const RULES = new Set(["additive_u", "additive_no_u", "need_first_u"]);
 const loaded: Known = {
   ruleIds: RULES,
@@ -46,7 +47,7 @@ describe("compare mode", () => {
       mode: "compare",
       analyst: true,
       rule: "need_first_u",
-      compare: "additive_u",
+      compare: "additive_no_u",
     });
     expect(applyPatch(DEFAULT_STATE, { mode: "compare" }, loaded).analyst).toBe(true);
   });
@@ -54,12 +55,12 @@ describe("compare mode", () => {
   it("returns to the plain list on the compared rule, with What changed, when the method details go off (2)", () => {
     const comparing = applyPatch(
       DEFAULT_STATE,
-      { mode: "compare", a: "need_first_u", b: "additive_no_u" },
+      { mode: "compare", a: "need_first_u", b: "additive_u" },
       loaded
     );
     expect(applyPatch(comparing, { analyst: false }, loaded)).toEqual({
       ...DEFAULT_STATE,
-      rule: "additive_no_u",
+      rule: "additive_u",
       compare: "need_first_u",
     });
     expect(applyPatch(comparing, { analyst: null }, loaded).mode).toBe("screen");
@@ -67,18 +68,18 @@ describe("compare mode", () => {
 
   it("always holds two rules: the main rule's comparison is the next rule the API lists (3)", () => {
     expect(applyPatch(DEFAULT_STATE, { mode: "compare" }, loaded)).toMatchObject({
-      rule: "additive_no_u",
-      compare: "additive_u",
+      rule: "additive_u",
+      compare: "additive_no_u",
     });
     const other = applyPatch(DEFAULT_STATE, { mode: "compare", rule: "need_first_u" }, loaded);
-    expect(other).toMatchObject({ rule: "need_first_u", compare: "additive_u" });
+    expect(other).toMatchObject({ rule: "need_first_u", compare: "additive_no_u" });
   });
 
   it("reads a and b as the two rules and writes them under rule and compare (4)", () => {
-    const state = stateFromSearch("?mode=compare&a=need_first_u&b=additive_no_u&guide=q1", loaded);
-    expect(state).toMatchObject({ compare: "need_first_u", rule: "additive_no_u" });
+    const state = stateFromSearch("?mode=compare&a=need_first_u&b=additive_u&guide=q1", loaded);
+    expect(state).toMatchObject({ compare: "need_first_u", rule: "additive_u" });
     expect(searchWithState("?a=x&b=y&guide=q1", state)).toBe(
-      "?analyst=1&mode=compare&rule=additive_no_u&compare=need_first_u&guide=q1"
+      "?analyst=1&mode=compare&rule=additive_u&compare=need_first_u&guide=q1"
     );
   });
 });

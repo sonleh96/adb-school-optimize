@@ -68,7 +68,7 @@ async function settled(page: Page) {
   await expect(page.getByTestId("screening-map")).toHaveAttribute("data-map-moving", "false");
 }
 
-const FIRST = rowsOf("additive_u").find((r) => r.point_rank?.rank === 1)!.school;
+const FIRST = rowsOf("additive_no_u").find((r) => r.point_rank?.rank === 1)!.school;
 
 for (const size of [
   { width: 1600, height: 1000 },
@@ -84,7 +84,7 @@ for (const size of [
       await page.goto("/screening");
       await waitForMap(page);
       await settled(page);
-      const numbered = numberedPlaces("additive_u").map((p) => p.key);
+      const numbered = numberedPlaces("additive_no_u").map((p) => p.key);
       expect(await coveredMarks(page, numbered)).toEqual([]);
 
       // The selected school is brought clear of the key too, once its card is open and the key has settled.
@@ -102,7 +102,7 @@ test.describe("at 1600 by 1000", () => {
   test("a panned map stays where the user left it when a key is pressed", async ({ page }) => {
     await page.goto("/screening");
     await waitForMap(page);
-    const key = keyOf("additive_u", "Sample School 08");
+    const key = keyOf("additive_no_u", "Sample School 08");
     await orderedRow(page, "Sample School 08").click();
     await settledMark(page, key);
     await settled(page);
@@ -139,7 +139,7 @@ test.describe("at 1600 by 1000", () => {
     await settled(page);
     // Two schools whose marks are off the clear part of the map, far apart.
     const away = [];
-    for (const row of rowsOf("additive_u").filter((r) => r.cohort !== "verification_queue")) {
+    for (const row of rowsOf("additive_no_u").filter((r) => r.cohort !== "verification_queue")) {
       const point = await markAt(page, row.school.school_key);
       if (point && (point.x < 480 || point.x > 1550 || point.y < 100 || point.y > 940))
         away.push({ row, point });
@@ -206,14 +206,14 @@ async function outsideClear(page: Page, keys: readonly string[]) {
   }, keys);
 }
 
-const MAPPED = rowsOf("additive_u")
+const MAPPED = rowsOf("additive_no_u")
   .filter((r) => r.school.latitude !== null && r.school.longitude !== null)
   .map((r) => r.school.school_key);
 
 /** The ordered school whose mark lies furthest right on the first view: the card will open over that side. */
 async function rightmost(page: Page) {
   let best: { name: string; key: string; x: number } | null = null;
-  for (const row of rowsOf("additive_u").filter((r) => r.cohort !== "verification_queue")) {
+  for (const row of rowsOf("additive_no_u").filter((r) => r.cohort !== "verification_queue")) {
     const at = await markAt(page, row.school.school_key);
     if (at && (!best || at.x > best.x))
       best = { name: row.school.source_school_name, key: row.school.school_key, x: at.x };
@@ -267,7 +267,7 @@ test.describe("at 1600 by 1000, a pick during a refit", () => {
   test("a school picked during a refit waits for it, and the country and the school end in the clear part", async ({
     page,
   }) => {
-    const ordered = rowsOf("additive_u").filter(
+    const ordered = rowsOf("additive_no_u").filter(
       (r) => r.cohort !== "verification_queue" && r.school.latitude !== null
     );
     const first = ordered[0].school.school_key;
@@ -477,7 +477,7 @@ test.describe("a list of over 700 schools", () => {
     await page.goto("/screening");
     await waitForMap(page);
 
-    const original = rowsOf("additive_u");
+    const original = rowsOf("additive_no_u");
     const ordered = original.filter((r) => r.cohort !== "verification_queue").length * COPIES;
     const single = original.filter((r) => r.cohort === "complete").length * COPIES;
     expect(original.length * COPIES).toBeGreaterThanOrEqual(700);
@@ -489,7 +489,7 @@ test.describe("a list of over 700 schools", () => {
     await expect(ramp).toHaveCount(5);
     const labels = await ramp.allTextContents();
     expect(labels.slice(0, 2)).toEqual(["1st to 10th", "11th to 20th"]);
-    expect(labels[4]).toMatch(new RegExp(` to ${single}th$`));
+    expect(labels[4]).toMatch(new RegExp(` to ${single}(st|nd|rd|th)$`));
 
     // Every band's colour is drawn on the map, above the key (whose own swatches carry the same colours).
     await settled(page);

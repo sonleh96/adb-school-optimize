@@ -34,73 +34,93 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the paper's main rule, until the research team decides. Leaving urgency out keeps the same schools at the top among the 16 with every input recorded.";
+  "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Leaving it out changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, leaving it out can still move their possible places.";
+  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
+// What changed from the rule with urgency to the main rule, as the statement's link and guide 5 show it.
 const EXAMPLE =
   "Under the combined-factors rule with urgency (S), Sample School 17 could be anywhere from 11th to 18th among the 21 schools that can be put in order. Under the combined-factors rule without urgency (S0), it could be anywhere from 10th to 17th among the 22 schools that can be put in order.";
+// The same, read the other way: from the main rule to the rule with urgency.
+const EXAMPLE_BACK =
+  "Under the combined-factors rule without urgency (S0), Sample School 17 could be anywhere from 10th to 17th among the 22 schools that can be put in order. Under the combined-factors rule with urgency (S), it could be anywhere from 11th to 18th among the 21 schools that can be put in order.";
+// The scope detail under the rule with urgency, and under the main rule, which reads one input fewer.
 const SCOPE_DETAIL =
   "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 16 schools with every input recorded, and ranges among all 21 schools that can be put in order.";
+const SCOPE_DETAIL_MAIN =
+  "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
 const search = (page: import("@playwright/test").Page) => new URL(page.url()).search;
 
 test("a pasted link reproduces the screen, and the URL follows every change", async ({ page }) => {
-  await openWorkspace(page, "?rule=additive_no_u&compare=additive_u&scope=1&guide=start");
+  await openWorkspace(page, "?rule=additive_u&compare=additive_no_u&scope=1&guide=start");
 
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
-  await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE}`);
-  await expect(page.locator("#screening-scope-detail")).toHaveText(
-    "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with every input the rule reads recorded, and ranges among all 22 schools that can be put in order."
-  );
-  // The run's own counts: one more school can be put in order without urgency.
-  await expect(tab(page, /The list/)).toHaveText("The list(22)");
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
+  await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE_BACK}`);
+  await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
+  // The run's own counts: one school fewer can be put in order with urgency.
+  await expect(tab(page, /The list/)).toHaveText("The list(21)");
+  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(4)");
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
-  expect(search(page)).toBe("?rule=additive_no_u&scope=1&guide=start");
+  expect(search(page)).toBe("?rule=additive_u&scope=1&guide=start");
 
   await tab(page, /Incomplete records/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
-  expect(search(page)).toBe("?rule=additive_no_u&view=queue&scope=1&guide=start");
+  expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
   // The same link, opened again, is the same screen.
   await page.reload();
   await waitForMap(page);
   await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(3);
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(4);
 });
 
 test("the statement shows under the main rule only, never beside What changed, and the way back restores it", async ({
   page,
 }) => {
   await openWorkspace(page);
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes without urgency`);
+  // The main rule comes first in the switch, pressed.
+  await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(`S0${RULE.main}`);
+  await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
+  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
   await expect(changed(page)).toHaveCount(0);
 
-  await statement(page).getByRole("button", { name: "See what changes without urgency" }).click();
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  // The statement's link opens What changed for the main rule against the rule with urgency, on the main rule's list.
+  await statement(page).getByRole("button", { name: "See what changes with the urgency value" }).click();
+  await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
+  await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE}`);
   await expect(statement(page)).toHaveCount(0);
-  expect(search(page)).toBe("?rule=additive_no_u&compare=additive_u");
+  expect(search(page)).toBe("?compare=additive_u");
+  // The screen is on the main rule already, so What changed offers no way back to it, only Hide.
+  await expect(changed(page).getByRole("button", { name: "Back to the paper's main rule" })).toHaveCount(0);
 
+  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
+  await expect(changed(page)).toHaveCount(0);
+  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  expect(search(page)).toBe("");
+
+  // The switch shows What changed too, and from the rule with urgency What changed has the way back.
+  await mainRule(page, RULE.urgency).click();
+  await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE_BACK}`);
   await changed(page).getByRole("button", { name: "Back to the paper's main rule" }).click();
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page)).toHaveCount(0);
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes without urgency`);
+  await expect(statement(page)).toBeVisible();
   expect(search(page)).toBe("");
 
-  // The switch itself shows What changed too; hiding it leaves the rule's own line with a way back.
-  await mainRule(page, RULE.proposed).click();
+  // Hiding What changed leaves the rule's own line with a way back.
+  await mainRule(page, RULE.urgency).click();
   await expect(changed(page)).toBeVisible();
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   const line = page.locator("[data-region=rule-role]");
   await expect(line).toHaveText(
-    "The screening score adds up several factors, each with a fixed share, and leaves urgency out. A proposed revision of the main rule that leaves urgency out, awaiting the research team's review. Back to the paper's main rule"
+    "The screening score adds up several factors, each with a fixed share, and urgency is one of them. A sensitivity check that puts the urgency value back, from the circulated paper. Back to the paper's main rule"
   );
   await expect(statement(page)).toHaveCount(0);
   await line.getByRole("button", { name: "Back to the paper's main rule" }).click();
@@ -119,7 +139,7 @@ test("Other rules lists all seven, closes on a choice or on Escape, and the rule
   await expect(popover.getByRole("button")).toHaveCount(7);
   await expect(popover.getByRole("button", { pressed: true })).toContainText(RULE.main);
   await expect(popover.getByRole("button", { name: new RegExp(`^${RULE.needFirst}`) })).toContainText(
-    "Strict alternative, as circulated in the paper"
+    "Urgency sensitivity, from the circulated paper"
   );
   await expect(popover).not.toHaveAttribute("data-instant", /.*/);
 
@@ -134,11 +154,11 @@ test("Other rules lists all seven, closes on a choice or on Escape, and the rule
   await expect(popover).toHaveCount(0);
 
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "false");
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "false");
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("[data-region=rule-role]")).toContainText(
     "Need-first rule, with urgency. Schools go in order of school need"
   );
-  expect(search(page)).toBe("?rule=need_first_u&compare=additive_u");
+  expect(search(page)).toBe("?rule=need_first_u&compare=additive_no_u");
 });
 
 test("the scope line opens its detail in place, and a range row's place names the group it counts in", async ({
@@ -152,13 +172,13 @@ test("the scope line opens its detail in place, and a range row's place names th
   const less = page.getByRole("button", { name: "Show less" });
   await expect(less).toHaveAttribute("aria-expanded", "true");
   await expect(less).toHaveAttribute("aria-controls", "screening-scope-detail");
-  await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
+  await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL_MAIN);
   await less.click();
   await expect(page.locator("#screening-scope-detail")).toHaveCount(0);
 
   // A range row says which group it counts in, so its number never reads as a single place (R19).
-  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("11thto18thof 21");
-  await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("21stof 21");
+  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thto17thof 22");
+  await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("22ndof 22");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place]")).toHaveText("1st");
 
   // Under the need-first rule a range school sits at exactly 10th beside a complete school's 10th; the detail stays
@@ -193,13 +213,14 @@ test("the range note sits just before the first range school", async ({ page }) 
   const next = note.locator("xpath=following-sibling::li[1]//button");
   await expect(next).toContainText("Sample School 17");
   const before = note.locator("xpath=preceding-sibling::li[1]//button");
-  await expect(before).toContainText("Sample School 01");
+  await expect(before).toContainText("Sample School 05");
 });
 
 test("the incomplete records are grouped by province or by what is missing, with each row's missing details", async ({
   page,
 }) => {
-  await openWorkspace(page, "?view=queue");
+  // Under the rule with urgency, so the list holds a school held back only for its urgency value as well.
+  await openWorkspace(page, "?rule=additive_u&view=queue");
   const headings = page.locator(`${INCOMPLETE} > li > div`);
   const rows = page.locator(`${INCOMPLETE} button`);
   const byProvince = page.getByRole("button", { name: "Province", exact: true });
@@ -261,18 +282,18 @@ test("the controller ignores invalid values, clears with null, reports each chan
     const heard: string[] = [];
     ws.onChange((now, before) => heard.push(`${before.rule}>${now.rule} ${now.view}`));
     ws.setState({ rule: "not_a_rule", view: "sideways" });
-    ws.setState({ rule: "additive_no_u", view: "queue" });
+    ws.setState({ rule: "additive_u", view: "queue" });
     const after = ws.getState();
     ws.setState({ view: null });
     return { drawn, heard, rule: after.rule, view: after.view, end: ws.getState().view };
   });
   expect(report).toEqual({
     drawn: true,
-    heard: ["additive_u>additive_no_u queue", "additive_no_u>additive_no_u ranked"],
-    rule: "additive_no_u",
+    heard: ["additive_no_u>additive_u queue", "additive_u>additive_u ranked"],
+    rule: "additive_u",
     view: "queue",
     end: "ranked",
   });
-  await expect(mainRule(page, RULE.proposed)).toHaveAttribute("aria-pressed", "true");
+  await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
 });

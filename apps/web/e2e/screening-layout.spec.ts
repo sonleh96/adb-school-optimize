@@ -11,6 +11,9 @@
  *     does nothing                                               -> "a card that steps the list aside takes focus..."
  *  7. At 200 percent zoom the open key runs under the top bar, hiding its title and the toggle that closes it
  *     -> "the open key stays inside the map band..."
+ *  8. On a phone a rule's label in the switch wraps to a third line, pushing the list down, fits with too little room
+ *     to spare for another platform's wider text, or spills out of its button or the switch
+ *                                                                -> "on a phone each label in the rule switch..."
  */
 import type { Page } from "@playwright/test";
 
@@ -18,7 +21,7 @@ import { ORDERED, expect, keyOf, orderedRow, test, waitForMap } from "./screenin
 
 test.describe.configure({ timeout: 60_000 });
 
-const SCHOOL = keyOf("additive_u", "Sample School 08");
+const SCHOOL = keyOf("additive_no_u", "Sample School 08");
 
 interface Box {
   name: string;
@@ -105,6 +108,69 @@ for (const size of SIZES) {
       await waitForMap(page);
       await expect(page.locator("[data-slot=school-card] [data-region=inspector-why]")).toBeVisible();
       await expectSound(page, size.minMap);
+    });
+  });
+}
+
+/**
+ * The room a label's longest unbreakable run of words ("Combined factors,") may take. Text sets wider on Linux than on
+ * macOS, and differently again on phones, so a label that only just fits on one platform wraps on another.
+ */
+const LABEL_HEADROOM = 0.92;
+
+for (const size of [
+  { width: 360, height: 740 },
+  { width: 375, height: 667 },
+  { width: 390, height: 844 },
+  { width: 412, height: 915 },
+]) {
+  test.describe(`at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size });
+
+    test(`on a phone each label in the rule switch takes at most two lines and stays inside its button, at ${size.width} by ${size.height}`, async ({
+      page,
+    }) => {
+      await page.goto("/screening");
+      await waitForMap(page);
+      const buttons = page.locator("[data-region=rule-switch] button");
+      await expect(buttons).toHaveCount(2);
+      await page.evaluate(() => document.fonts.ready);
+      const report = await page.evaluate(() => {
+        const group = document.querySelector("[data-region=rule-switch]")!;
+        const outer = group.getBoundingClientRect();
+        return [...group.querySelectorAll("button")].map((button) => {
+          const label = button.querySelector("[class*=ruleButtonLabel]")!;
+          const box = button.getBoundingClientRect();
+          const text = label.getBoundingClientRect();
+          // The widest line the label can be broken into: the words up to and including its comma, set on one line.
+          const probe = document.createElement("span");
+          probe.style.cssText = "position:absolute;visibility:hidden;white-space:nowrap";
+          probe.style.font = getComputedStyle(label).font;
+          probe.textContent = `${(label.textContent ?? "").split(", ")[0]},`;
+          document.body.append(probe);
+          const longest = probe.getBoundingClientRect().width;
+          probe.remove();
+          return {
+            label: label.textContent,
+            share: longest / text.width,
+            lines: Math.round(text.height / parseFloat(getComputedStyle(label).lineHeight)),
+            spills: button.scrollWidth > button.clientWidth || label.scrollWidth > label.clientWidth,
+            outside:
+              text.right > box.right + 0.5 ||
+              text.bottom > box.bottom + 0.5 ||
+              box.left < outer.left - 0.5 ||
+              box.right > outer.right + 0.5,
+          };
+        });
+      });
+      for (const button of report) {
+        expect(button.lines, `${button.label} lines`).toBeLessThanOrEqual(2);
+        expect(button.share, `${button.label}: its longest line's share of the room`).toBeLessThanOrEqual(
+          LABEL_HEADROOM
+        );
+        expect(button.spills, `${button.label} spills`).toBe(false);
+        expect(button.outside, `${button.label} leaves its button or the switch`).toBe(false);
+      }
     });
   });
 }

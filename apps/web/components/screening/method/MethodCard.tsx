@@ -3,7 +3,6 @@
 import { ChevronRight } from "lucide-react";
 
 import type { BoundCopy, CopyRuleId, CopySchool, InputKey } from "@/lib/screening/copy";
-import { joinList } from "@/lib/screening/copy/format";
 import type { Method } from "@/lib/screening/copy/method";
 import { type ComparedSchool, type MoveEdges, topStatus } from "@/lib/screening/method/compare";
 import { moveHex } from "@/lib/screening/method/moves";
@@ -82,12 +81,6 @@ function Missing({ copy, school, input }: { copy: BoundCopy; school: CopySchool;
   );
 }
 
-/**
- * The row for a largest-factor rule's extra share, named by the factor or factors that attain the largest value.
- * Interim words until the method copy names this row.
- */
-const largestLabel = (names: string) => (names ? `Largest factor: ${names}` : "Largest factor");
-
 /** A share as the rule states it: its fraction from the rules when they name the same share, else the number. */
 function shareOf(rule: Rule | undefined, component: string, weight: number): string {
   const stated = rule?.weights.find((w) => w.component === component && Math.abs(w.value - weight) < 1e-12);
@@ -137,13 +130,7 @@ function Breakdown({
     <section className={styles.sec} data-region="inspector-breakdown" aria-label={method.insp.produces}>
       <div className={styles.secHead}>
         <span className={base.eyebrow}>{method.insp.produces}</span>
-        <span className={base.eyebrow}>
-          {named
-            ? copy.ruleShortName(rule)
-            : rule === "additive_no_u"
-              ? method.insp.derivedSplit
-              : method.insp.recordedSplit}
-        </span>
+        <span className={base.eyebrow}>{named ? copy.ruleShortName(rule) : method.insp.recordedSplit}</span>
       </div>
       <div className={styles.table} role="table" aria-label={method.insp.produces}>
         <div className={styles.tr} role="row">
@@ -251,11 +238,7 @@ function Breakdown({
           <div className={styles.tr} role="row" data-row="largest">
             <span role="cell" className={styles.dotCell} />
             <span role="rowheader" className={styles.label}>
-              {largestLabel(
-                largest.attained_by.length
-                  ? joinList(largest.attained_by.map((f) => TERMS[TERM[f]].label))
-                  : ""
-              )}
+              {method.insp.largestRow(largest.attained_by.map((f) => TERMS[TERM[f]].label))}
               <span className={styles.times}>
                 {method.insp.times(
                   shareText({ component: "max", value: largest.share, fraction: String(largest.share) })
@@ -297,10 +280,7 @@ function Breakdown({
           </span>
         </div>
       </div>
-      <p className={styles.note}>
-        {method.insp.trackNote(lcFirst(copy.ruleLabel(rule)))}
-        {rule === "additive_no_u" ? method.insp.derivedNote : ""}
-      </p>
+      <p className={styles.note}>{method.insp.trackNote(lcFirst(copy.ruleLabel(rule)))}</p>
     </section>
   );
 }
@@ -382,9 +362,11 @@ function Record({
   detail: SchoolDetailResponse;
   rules: readonly CopyRuleId[];
 }) {
-  const persistent =
-    rules.includes("additive_u") &&
-    detail.rules.some((e) => e.rule.rule_id === "additive_u" && e.persistent_candidate === true);
+  // Each rule the stochastic test ran for has its own flag and its own words, and shows only where it is on screen.
+  const persistent = (["additive_no_u", "additive_u"] as const).filter(
+    (id) =>
+      rules.includes(id) && detail.rules.some((e) => e.rule.rule_id === id && e.persistent_candidate === true)
+  );
   const cond = method.insp.cond;
   const values = school.condition as Record<string, number | string | null>;
   return (
@@ -395,7 +377,16 @@ function Record({
           {detail.school.school_key}
         </span>
       </div>
-      {persistent ? <p className={styles.flag}>{method.insp.persistent}</p> : null}
+      {persistent.map((id) => (
+        <p key={id} className={styles.flag} data-persistence={id}>
+          {method.insp.persistent(id)}
+          {/* The near-line sentence, only where this rule's own band puts the school, with this rule's margin. */}
+          {copy
+            .persistenceNote(school, id)
+            .slice(1)
+            .map((sentence) => ` ${sentence}`)}
+        </p>
+      ))}
       <dl className={styles.cond}>
         {(Object.keys(cond) as (keyof typeof cond)[]).map((key) => {
           const value = values[key] ?? null;

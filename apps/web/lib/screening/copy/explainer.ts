@@ -17,18 +17,24 @@ import {
   theirScore,
   theyWould,
   urgencyDefinition,
+  type Reads,
 } from "./counts";
 import { agreementSentence, findPair, pairPhrase } from "./compare";
 import { IDEAS } from "./ideas";
 import type { ComparisonData, CountBag, CountsByRule, CountsByRuleArg } from "./model";
 import { distinctName, hasBounds, perRule, resultFor, sharedSize } from "./rank";
+import { PRIMARY_RULE, ruleReads } from "./rules";
 import { nameSegment, seg, textOf, type Segments } from "./segments";
 
 /* ------------------------------------------- explainer and first questions */
 
 // Six sections for the How this works page, each a title and its sentences in order.
 // example: an optional data-driven example sentence for the last section (copyFor supplies one).
-export function buildHow(c: CountBag = {}, example: string | null = null) {
+export function buildHow(
+  c: CountBag = {},
+  example: string | null = null,
+  reads: Reads = ruleReads(PRIMARY_RULE)
+) {
   const noRange = known(c, "range") && c.range === 0;
   return Object.freeze(
     [
@@ -50,8 +56,9 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
         sentences: [
           "A school can be put in order only when its record has everything school need uses.",
           "That means a classroom count above 0 and how many classrooms are built of permanent materials, a teacher count above 0 and the number of teacher houses, all six facility counts, a power and a water source, and a remoteness category.",
-          // The counts here are the paper's main rule's; another rule can put a different number of schools in a group.
-          `Under the paper's main rule, ${lowerFirst(groupsSentence(c))}`,
+          // The counts here are the paper's main rule's, which leaves urgency out; another rule can put a different
+          // number of schools in a group, so the group says which inputs the rule reads.
+          `Under the paper's main rule, ${lowerFirst(groupsSentence(c, reads))}`,
           GROUPS_MEANING,
           // With none held back there is no "other" to describe.
           known(c, "queue") && c.queue === 0
@@ -88,7 +95,7 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
           SEPARATE_MEASURES,
           "By the study's convention, a higher value on each asks for a closer look; that is not evidence of harm.",
           urgencyDefinition(c),
-          "The rules without urgency leave it out for that reason.",
+          "The paper's main rule leaves it out for that reason, and the rules that use it are kept as sensitivity checks.",
           `Most inputs are rescaled from 0 to 1 against the values near the low and high ends of ${allRecords(c)}, and filtering the screen never changes that scale.`,
         ],
       },
@@ -96,14 +103,15 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
         key: "rules",
         title: "How a rule turns inputs into an order",
         sentences: [
-          "The paper's main rule, the combined-factors rule with urgency (S), adds up the inputs, each with a fixed share, to give a screening score: school need 60%, district context 15%, and 5% each for urgency, walking reach, air quality, emissions and land cover.",
-          "A rise of 0.1 in school need moves the screening score by 0.06, which is more than any one environment measure can add.",
-          "The proposed revision, the combined-factors rule without urgency (S0), drops urgency and keeps the other shares in proportion: school need about 63%, district context about 16% and the other four about 5% each.",
+          "The paper's main rule, the combined-factors rule without urgency (S0), adds up the inputs, each with a fixed share, to give a screening score: school need about 63%, district context about 16%, and about 5% each for walking reach, air quality, emissions and land cover.",
+          "A rise of 0.1 in school need moves the screening score by about 0.06, which is more than any one environment measure can add.",
+          "The circulated paper's rule, the combined-factors rule with urgency (S), puts the urgency value back and keeps the other shares as that paper set them: school need 60%, district context 15%, and 5% each for urgency, walking reach, air quality, emissions and land cover. The revised paper keeps it as a sensitivity check, to show what the urgency value changes.",
           "The need-first rules order schools by school need alone, and other inputs only break exact ties.",
           "The largest-factor rules take 60% of a combined-factors rule's screening score and add 40% of the school's largest input: school need or district context, or also the urgency value in the rule with urgency.",
           "The conventional benchmark (B) gives school need 55%, district context 20%, urgency 15% and walking reach 10%.",
           "When two schools are exactly level, the school name decides, in alphabetical order.",
           "The shares were set before anyone looked at which schools came out on top, and the rules without urgency keep them in proportion.",
+          "The paper also changed the shares at random, many times over, and noted which schools stayed in the top 20 each time. That test was run separately for the main rule and for the rule with urgency, and each result is shown only under its own rule.",
           "No rule sets a threshold for safety or funding, and none has been shown to find true need more accurately than another.",
         ],
       },
@@ -136,18 +144,19 @@ export function buildHow(c: CountBag = {}, example: string | null = null) {
 }
 export const HOW_IT_WORKS = buildHow();
 
-// The explainer's example: the range school whose possible places move most between the two main rules.
+// The explainer's example: the range school whose possible places move most between the main rule and the rule that
+// puts the urgency value back.
 export function howExampleSegments(
   data: ComparisonData,
   c: CountBag,
   byRule?: CountsByRuleArg
 ): Segments | null {
-  const row = findPair(data.pairwise || [], "additive_u", "additive_no_u");
+  const row = findPair(data.pairwise || [], "additive_no_u", "additive_u");
   if (!row) return null;
   const moved = (data.schools || [])
     .flatMap((x) => {
-      const a = resultFor(x, "additive_u"),
-        b = resultFor(x, "additive_no_u");
+      const a = resultFor(x, "additive_no_u"),
+        b = resultFor(x, "additive_u");
       return x.cohort === "interval" && hasBounds(a) && hasBounds(b)
         ? [{ x, a, b, d: Math.abs(a.rank_best - b.rank_best) + Math.abs(a.rank_worst - b.rank_worst) }]
         : [];
@@ -162,12 +171,12 @@ export function howExampleSegments(
       : `${ordinal(r.rank_best)} to ${ordinal(r.rank_worst)}`;
   const agree = lowerFirst(agreementSentence(row, 20, "with or without urgency")).replace(/\.$/, "");
   const strict = perRule({ countsByRule: byRule });
-  const cA = strict ? (byRule as CountsByRule).additive_u : c,
-    cB = strict ? (byRule as CountsByRule).additive_no_u : c;
+  const cA = strict ? (byRule as CountsByRule).additive_no_u : c,
+    cB = strict ? (byRule as CountsByRule).additive_u : c;
   const among = sharedSize(cA, cB, "ranked", strict)
     ? amongAllOrdered(cA)
     : "all the schools that can be put in order under each rule";
-  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(distinctName(x, data.schools))}'s possible places among ${among} move from ${span(a)} with urgency to ${span(b)} without it.`;
+  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(distinctName(x, data.schools))}'s possible places among ${among} are ${span(a)} without urgency and ${span(b)} with it.`;
 }
 export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRuleArg): string | null {
   const s = howExampleSegments(data, c, byRule);
@@ -178,7 +187,7 @@ export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByR
 // live names the function that gives the answer for the current rule and school.
 // The trust answer matches urgencyReassurance() on the recorded comparison; check.mjs holds them equal.
 export const TRUST_TAIL =
-  "The research team is reviewing the revision that leaves it out, so the screen opens on the paper's main rule.";
+  "The paper's main rule leaves it out because no one could trace where it comes from, so the screen opens on that rule.";
 export function buildQuestions(
   ideas: Pick<typeof IDEAS, "ranges" | "queue"> = IDEAS,
   trust: string | null = null
@@ -213,7 +222,7 @@ export function buildQuestions(
       },
       {
         key: "trust",
-        question: "What changes if the uncertain urgency value is left out?",
+        question: "What did leaving the uncertain urgency value out change?",
         answer:
           trust ||
           `The comparison shows how many of the top schools stay the same with or without the urgency value. ${TRUST_TAIL}`,

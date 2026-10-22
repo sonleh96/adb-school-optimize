@@ -8,9 +8,9 @@
  * so no number is typed here and no group is called the same under every rule.
  */
 import { allRecords, amongAllOrdered, completePhrase, countWord, orderedPhrase, type Reads } from "./counts";
-import { formatCount, ordinal } from "./format";
+import { formatCount, formatPercent, joinList, ordinal } from "./format";
 import { IDEAS } from "./ideas";
-import type { CopyRuleId, CountBag } from "./model";
+import type { CopyRuleId, CountBag, PersistenceRule, PersistenceTest } from "./model";
 import { sharedSize } from "./rank";
 import { RULE_IDS, urgencyNote } from "./rules";
 import { type Segments, nameSegment, seg, textOf } from "./segments";
@@ -22,6 +22,8 @@ export interface MethodContext {
   readonly counts?: CountBag;
   /** The inputs the rule shown reads. */
   readonly reads?: Reads;
+  /** How each persistence test was drawn, by rule, from the data. Without it the words state no draws or settings. */
+  readonly tests?: Partial<Record<PersistenceRule, PersistenceTest>>;
 }
 
 // "the 16 schools both rules put in order", or the same without a count.
@@ -53,6 +55,42 @@ const shareDenominator = (weights: Record<string, number | null | undefined>): n
 /** The sheet's title with the rule's name marked, so the page can set it in italics without reading markup. */
 const sheetTitle = (n: number, name: string): Segments => seg`First ${n}, ${nameSegment(name, "rule")}`;
 
+/**
+ * The persistence test in the research team's terms, for a rule it was run for. The draws, the threshold and the
+ * settings come from the data (`test`); without them the words say the same without a number.
+ */
+// A concentration as the data gives it, with no rounding: 17.5 stays 17.5.
+const plainNumber = (n: number): string => String(Number(n.toPrecision(12)));
+// A test the words can state: a positive whole number of draws, a threshold above 0 and up to 1, and settings whose
+// concentrations are all above 0. Anything else is missing, and the words state no number.
+const usable = (test?: PersistenceTest): test is PersistenceTest =>
+  !!test &&
+  Number.isInteger(test.draws) &&
+  test.draws > 0 &&
+  test.threshold > 0 &&
+  test.threshold <= 1 &&
+  test.settings.length > 0 &&
+  test.settings.every((s) => s.topLevel > 0 && s.schoolNeed > 0);
+
+function persistentMethod(ruleId: PersistenceRule, test?: PersistenceTest): string {
+  let how =
+    "at least the paper's threshold share of the Dirichlet weight draws in each concentration setting";
+  if (usable(test)) {
+    const n = test.settings.length;
+    const pairs = joinList(
+      test.settings.map((s) => `${plainNumber(s.topLevel)}/${plainNumber(s.schoolNeed)}`)
+    );
+    const where =
+      n === 1
+        ? `the concentration setting (${pairs})`
+        : `each of the ${countWord(n)} concentration settings (${pairs})`;
+    how = `at least ${formatPercent(test.threshold)} of ${formatCount(test.draws)} Dirichlet weight draws in ${where}`;
+  }
+  return ruleId === "additive_no_u"
+    ? `Persistent candidate: certain top-20 membership in ${how}, drawn fresh over the six components this rule uses. It is a revised sensitivity result, not an isolated estimate of what urgency changes.`
+    : `Persistent candidate: certain top-20 membership in ${how} of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.`;
+}
+
 export function buildMethod(ctx: MethodContext = {}) {
   const c = ctx.counts || {};
   const reads = ctx.reads;
@@ -66,7 +104,7 @@ export function buildMethod(ctx: MethodContext = {}) {
     rule: Object.freeze({
       formula: "Formula",
       hideFormula: "Hide formula",
-      primaryAria: "Main rules",
+      primaryAria: "Main rule and urgency sensitivity",
       leaveCompare: "Back to the list",
     }),
     list: Object.freeze({
@@ -112,7 +150,7 @@ export function buildMethod(ctx: MethodContext = {}) {
     compare: Object.freeze({
       eyebrow: "Comparing two rules",
       swap: "Swap the two rules",
-      pickPrimary: "Main rules",
+      pickPrimary: "Main rule and urgency sensitivity",
       pickAria: (slot: string) => `Choose the rule to compare ${slot}`,
       statementAria: "What changes between the two rules",
       enteringK: (k: number) => `Joins the top ${k}`,
@@ -185,13 +223,17 @@ export function buildMethod(ctx: MethodContext = {}) {
       zeroToOne: "0 to 1",
       inputsUnder: (s: string) => `Inputs under ${s}`,
       valueZeroToOne: "value, 0 to 1",
-      // The test behind the persistence flag, in the research team's own terms.
-      persistent:
-        "Persistent candidate: certain top-20 membership in at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80) of the circulated, urgency-included experiment.",
+      // The test behind the persistence flag, in the research team's own terms. Each rule the test ran for is its own
+      // experiment, so each has its own words, and neither is read as the other's result.
+      persistent: (ruleId: PersistenceRule) => persistentMethod(ruleId, ctx.tests?.[ruleId]),
+      // The row for a largest-factor rule's extra share, named by the factor or factors that attain the largest value.
+      largestRow: (factors: readonly string[]) =>
+        factors.length
+          ? `Extra share for the largest factor: ${joinList(factors.map(lcFirst))}`
+          : "Extra share for the largest factor",
       noSplit:
         "The study records what each input adds for the two combined-factors rules only, so this rule shows input values.",
       produces: `What adds to the ${lcFirst(T.score.label)}`,
-      derivedSplit: "worked out from the rule with urgency",
       recordedSplit: "as recorded",
       inputAndWeight: "Input and its share",
       value: "Value",
@@ -199,8 +241,6 @@ export function buildMethod(ctx: MethodContext = {}) {
       topReason: "One of the things that add most",
       trackNote: (s: string) =>
         `Each bar's grey track is the most that input can add under ${s}. ${S.separateMeasures}`,
-      derivedNote:
-        " What each input adds without urgency is worked out from the recorded split with urgency.",
       addsBetween: (lo: string, hi: string) => `Adds between ${lo} and ${hi}`,
       across: (ruleCount: number = RULE_IDS.length) => `Across the ${countWord(ruleCount)} rules`,
       // Each rule counts its own group, so the headings name no group size.
@@ -223,7 +263,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       component: "Input",
       noSplitCell: "no split",
       notUsed: "left out",
-      bothNote: `What each input adds is recorded for the rule with urgency and worked out for the rule without it; other rules record no split. ${S.separateMeasures}`,
+      bothNote: `What each input adds is recorded for the two combined-factors rules; other rules record no split. ${S.separateMeasures}`,
       noSplitBoth: (rules: string) => `No split is recorded for ${rules}.`,
       times: (share: string) => `× ${share}`,
       partRecorded: (part: string) => `${part}: recorded`,

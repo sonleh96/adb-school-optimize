@@ -21,6 +21,8 @@
  *     the other tab moved there; the other tab's rail never hears of the change.
  * 14. A view that names a school or rule the data no longer holds opens without it, and nothing can tell.
  * 15. A link to a saved view names its position, so a colleague's list opens a different screen.
+ * 16. A view or a pack link saved on the default rule leaves the rule out, so it opens another rule once the default
+ *     changes; or a view kept without a rule, from before views named it, can no longer be read.
  */
 import { describe, expect, it } from "vitest";
 
@@ -147,8 +149,8 @@ describe("the list a person sees", () => {
       { school: "k1", hover: "k2", panel: "export", pack: true, view: "queue" },
       { ruleIds: null, defaultRule: "additive_u" as RuleId, schoolKeys: null }
     );
-    const q = viewQuery(state);
-    expect(q).toBe("view=queue&school=k1");
+    const q = viewQuery(state, { defaultRule: "additive_u" as RuleId });
+    expect(q).toBe("rule=additive_u&view=queue&school=k1");
     expect(resolve(withSaved(null, " Board ", q), ALL_SEEDS).map((v) => v.seed ?? v.name)).toEqual([
       "top",
       "urgency",
@@ -173,17 +175,17 @@ describe("seeds, by role", () => {
       [queued, first, early, second, wide],
     ])
       expect(seedsOf(rolesOf(order, copy)!, true)).toEqual({
-        top: "rule=additive_u",
+        top: "rule=additive_no_u",
         urgency: "rule=additive_no_u&compare=additive_u",
         range: "school=r1",
         queue: "view=queue&qgroup=evidence",
       });
   });
 
-  it("offers only what the data holds: one complete school, and no proposed revision (6)", () => {
-    expect(seedsOf(rolesOf([first], copy)!, false)).toEqual({ top: "rule=additive_u" });
+  it("offers only what the data holds: one complete school, and no rule with urgency (6)", () => {
+    expect(seedsOf(rolesOf([first], copy)!, false)).toEqual({ top: "rule=additive_no_u" });
     expect(seedsOf(rolesOf([first, queued], copy)!, true)).toEqual({
-      top: "rule=additive_u",
+      top: "rule=additive_no_u",
       urgency: "rule=additive_no_u&compare=additive_u",
       queue: "view=queue&qgroup=evidence",
     });
@@ -199,9 +201,28 @@ describe("the pack", () => {
 
   it("links each view to its state as the workspace reads it, never to junk or an unknown school (9)", () => {
     const page = "https://rise.example/screening";
-    expect(linkOf(page, stateOf({ q: "rule=additive_u" }, known))).toBe(page);
-    expect(linkOf(page, stateOf({ q: "school=k1&junk=1&rule=nope" }, known))).toBe(`${page}?school=k1`);
-    expect(linkOf(page, stateOf({ q: "school=gone" }, known))).toBe(page);
+    expect(linkOf(page, stateOf({ q: "rule=additive_u" }, known), known)).toBe(`${page}?rule=additive_u`);
+    expect(linkOf(page, stateOf({ q: "school=k1&junk=1&rule=nope" }, known), known)).toBe(
+      `${page}?rule=additive_u&school=k1`
+    );
+    expect(linkOf(page, stateOf({ q: "school=gone" }, known), known)).toBe(`${page}?rule=additive_u`);
+  });
+
+  it("keeps a view's rule when the default changes, and still reads a view kept without one (16)", () => {
+    const before = { defaultRule: "additive_u" as RuleId };
+    const after: Known = { ...known, defaultRule: "additive_no_u" as RuleId };
+    // Saved, and linked, on the rule that was the default.
+    const onDefault = applyPatch(DEFAULT_STATE, { school: "k1" }, known);
+    const q = viewQuery(onDefault, before);
+    expect(q).toBe("rule=additive_u&school=k1");
+    expect(linkOf("p", onDefault, before)).toBe("p?rule=additive_u&school=k1");
+    // Read once the default has changed: still the rule it was saved on.
+    expect(stateOf({ q }, after)).toMatchObject({ rule: "additive_u", school: "k1" });
+    expect(stateOf({ q: "rule=additive_u&school=k1" }, after).rule).toBe("additive_u");
+    // A view or a pack link from before views named their rule still opens, on the default of the day.
+    const old = stateOf({ q: "school=k1&view=ranked" }, after);
+    expect(old).toMatchObject({ rule: null, school: "k1" });
+    expect(rulesUsed([old], after)).toEqual(["additive_no_u"]);
   });
 
   it("names every rule the views show, the compared one too, once each (9)", () => {

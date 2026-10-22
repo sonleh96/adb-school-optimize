@@ -23,7 +23,7 @@ import {
   urgencyDefinition,
   type Reads,
 } from "./counts";
-import type { CountBag, Term } from "./model";
+import type { CopyRuleId, CountBag, Term } from "./model";
 
 /* ------------------------------------------------------------- term map */
 // label: what the interface shows. line: one sentence, for tooltips and legends.
@@ -44,11 +44,23 @@ const flaggedLine = (c: CountBag): string => {
 };
 
 /**
+ * What the flag means, per rule: each test is its own experiment and each flag shows only under its own rule. Without
+ * a rule the help says so for both, and states no count, because a count belongs to one rule's test.
+ */
+function persistentHelp(c: CountBag, ruleId?: CopyRuleId): string {
+  if (ruleId === "additive_no_u")
+    return `That test was run for the paper's main rule: new shares were drawn for the six factors it uses, so it is a fresh run for this rule and not a measure of what the urgency value changes. The flag shows only under the combined-factors rule without urgency (S0); the rule with urgency has its own.${flaggedLine(c)}`;
+  if (ruleId === "additive_u")
+    return `That test is the circulated paper's experiment, which included urgency. It is not a result for the rule without urgency, which has its own, so the flag shows only under the combined-factors rule with urgency (S).${flaggedLine(c)}`;
+  return "The paper ran the test for two rules, the combined-factors rule without urgency (S0) and the combined-factors rule with urgency (S), each as its own experiment. A flag shows only under the rule whose test found it, and is never read as the other rule's result.";
+}
+
+/**
  * The term map for a set of counts. `reads` says which inputs the rule shown reads, which decides what "every input
  * recorded" means for its groups; without it the terms are worded for a rule that reads every input. Bound
  * per rule as `termsFor(ruleId)`; the bound `TERMS` is worded without group sizes (see `groupFree`).
  */
-export function buildTerms(c: CountBag = {}, reads?: Reads) {
+export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId) {
   const terms = {
     screening: {
       technical: "Inspection screening",
@@ -65,10 +77,10 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       where: "Caveat, the first idea, How this works",
     },
     source: {
-      technical: "Circulated manuscript, 12 October 2026",
+      technical: "Revised manuscript, urgency omitted",
       label: "Source",
       line: SOURCE_LINE,
-      help: "The research team circulated the paper for review. The three rules without urgency are a proposed change that the research team has not yet reviewed.",
+      help: "The research team revised the paper so that its main rule leaves urgency out. The rules with urgency come from the circulated paper and are kept as sensitivity checks.",
       where: "Footer, How this works, export method record",
     },
     rule: {
@@ -82,7 +94,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       technical: "Rule role and provenance",
       label: "Role",
       line: "The job a rule does on the screen, shown with where the rule comes from.",
-      help: "The role is main rule for the two combined-factors rules, strict alternative for the two need-first rules, sensitivity check for the two largest-factor rules, and reference for the conventional benchmark. The source is either as circulated in the paper, for the four rules that use urgency, or proposed and awaiting the research team's review, for the three that leave it out. The screen opens on the combined-factors rule with urgency (S).",
+      help: "The role is main rule for the combined-factors rule without urgency, strict alternative for the need-first rule without urgency, and sensitivity check for the largest-factor rule without urgency. The three rules from the circulated paper that use urgency, the combined-factors, need-first and largest-factor rules, are urgency sensitivities: they show what the urgency value changes. The conventional benchmark is the reference. The source is the revised paper, for the three rules that leave urgency out, or the circulated paper, for the four that use it. The screen opens on the combined-factors rule without urgency (S0).",
       where: "Under the rule name in the headline, rule switch tooltips",
     },
     school_need: {
@@ -180,7 +192,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       technical: "Urgency, U",
       label: "Urgency value (source not traced)",
       line: urgencyDefinition(c),
-      help: "A value of 0 does not mean nothing was found. The combined-factors rule with urgency (S) gives it a 5% share and the conventional benchmark (B) 15%. The largest-factor rule with urgency (T) can let it outweigh everything else for a school, because it boosts whichever input is largest. The combined-factors rule without urgency (S0) leaves it out until its source is documented.",
+      help: "A value of 0 does not mean nothing was found. The paper's main rule, the combined-factors rule without urgency (S0), leaves it out because its source is not documented; that says nothing about whether schools face real hazards. The combined-factors rule with urgency (S) gives it a 5% share and the conventional benchmark (B) 15%, as sensitivity checks. The largest-factor rule with urgency (T) can let it outweigh everything else for a school, because it boosts whichever input is largest.",
       where: "Breakdown row under rules that use it, rule explanations, urgency note",
     },
     reach: {
@@ -403,11 +415,11 @@ export function buildTerms(c: CountBag = {}, reads?: Reads) {
       where: "Provenance strip, method record",
     },
     persistent_flag: {
-      technical: "Persistent candidate (circulated 0.80 list)",
-      label: "Often in the top 20 when shares change (paper's main rule only)",
+      technical: "Persistent candidate (0.80 list, per rule)",
+      label: "Often in the top 20 when shares change",
       line: "In the paper's test that changed the factors' shares at random, it stayed in the top 20 in at least 8 of every 10 tries, in each of the three test settings.",
-      help: `That test used the paper's main rule, which includes urgency, and has not been redone for the proposed revision, so the flag shows only under the combined-factors rule with urgency (S).${flaggedLine(c)}`,
-      where: "School panel under S only",
+      help: persistentHelp(c, ruleId),
+      where: "School panel under the rules with a test, each with its own",
     },
     shortlist: {
       technical: "Shortlist (top K)",
