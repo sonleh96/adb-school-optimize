@@ -27,6 +27,11 @@ const firstOnly =
     index === 0 ? `term:${key}` : null;
 
 export const MARKS: readonly MarkRule[] = [
+  // The closed rule area: its plain line and the control that opens the choice explain the rule on screen, as the
+  // open area's shares line does.
+  { selector: '[data-region="rule-now"]', card: (_, __, ctx) => `rule:${ctx.rule}`, block: true },
+  { selector: '[data-region="rule-change"]', card: (_, __, ctx) => `rule:${ctx.rule}` },
+  { selector: '[data-region="rule-shares"]', card: (_, __, ctx) => `rule:${ctx.rule}`, block: true },
   {
     selector: '[data-region="rule-switch"] [data-rule]',
     card: (e) => `rule:${(e as HTMLElement).dataset.rule}`,
@@ -43,7 +48,12 @@ export const MARKS: readonly MarkRule[] = [
     card: firstOnly("rank_range"),
   },
   { selector: '[data-region="changed-lead"]', card: () => "compare", block: true },
-  { selector: '[data-region="caveat"]', card: term("inspection"), block: true },
+  // The caveat, wherever the layout shows it: the map's foot, the narrow list's head, a narrow card's foot.
+  {
+    selector: ':is([data-region="caveat"], [data-region="list-caveat"], [data-region="card-caveat"])',
+    card: term("inspection"),
+    block: true,
+  },
   { selector: '[data-region="export-button"]', card: term("export") },
   {
     selector: '[data-region="inspector-place"]',
