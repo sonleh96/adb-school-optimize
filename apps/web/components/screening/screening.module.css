@@ -288,8 +288,11 @@
   text-wrap: pretty;
 }
 .ruleChange {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: none;
-  padding: 2px 10px 3px;
+  padding: 2px 8px 3px 10px;
   border: 1px solid var(--hair);
   border-radius: 6px;
   background: var(--panel);
@@ -307,7 +310,13 @@
   color: var(--ink-3);
   cursor: default;
 }
-.ruleChange[data-open] {
+.ruleChange svg {
+  transition: transform 200ms var(--ease-out);
+}
+.ruleChange svg[data-open] {
+  transform: rotate(180deg);
+}
+.ruleChange[aria-expanded="true"] {
   background: var(--navy-wash);
 }
 @media (hover: hover) and (pointer: fine) {

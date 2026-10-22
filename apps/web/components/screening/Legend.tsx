@@ -157,11 +157,12 @@ export function Legend({
           type="button"
           className={styles.keyToggle}
           data-region="key-toggle"
+          // A disclosure: one name, its state in aria-expanded and in the chevron.
           aria-expanded={open}
-          aria-controls={body}
+          aria-controls={open ? body : undefined}
           onClick={onToggle}
         >
-          {open ? LAYOUT.keyLess : LAYOUT.keyMore}
+          {LAYOUT.keyMore}
           <ChevronUp size={12} aria-hidden data-open={open || undefined} />
         </button>
       </div>

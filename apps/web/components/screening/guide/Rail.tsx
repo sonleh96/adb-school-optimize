@@ -147,12 +147,12 @@ function Start({
               type="button"
               className={styles.unfold}
               data-region="open-guides"
-              // Named for what pressing it does, open or fold, with no expanded state as well.
-              data-open={unfolded || undefined}
+              // A disclosure: one name, its state in aria-expanded and in the chevron.
+              aria-expanded={unfolded}
               aria-controls={unfolded ? "screening-start-guides" : undefined}
               onClick={() => setUnfolded((value) => !value)}
             >
-              {unfolded ? GUIDE.foldGuides : GUIDE.openGuides}
+              {GUIDE.openGuides}
               <ChevronDown size={14} aria-hidden data-open={unfolded || undefined} />
             </button>
           </div>
