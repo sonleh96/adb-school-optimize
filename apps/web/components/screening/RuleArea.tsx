@@ -139,7 +139,7 @@ export function RuleArea(props: RuleAreaProps) {
             data-region="rule-change"
             // Its name says what pressing it does (open the choice, or Done), so it carries no expanded state too.
             data-open={open || undefined}
-            aria-controls="screening-rule-choices"
+            aria-controls={open ? "screening-rule-choices" : undefined}
             disabled={disabled}
             onClick={onToggle}
           >

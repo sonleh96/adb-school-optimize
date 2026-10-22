@@ -268,7 +268,7 @@ export function useMethodMounts(input: MountInput): Mounts {
           requestAnimationFrame(() => {
             const opener = exportOpener.current;
             const shown = opener && opener.getClientRects().length > 0 ? opener : null;
-            (shown ?? document.querySelector<HTMLElement>('[aria-controls="screening-menu"]'))?.focus({
+            (shown ?? document.querySelector<HTMLElement>('[data-region="actions-menu"]'))?.focus({
               preventScroll: true,
             });
           });
