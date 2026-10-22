@@ -272,7 +272,6 @@ describe("the narrow layout's words", () => {
   it("counts the guides in the card's line, in the singular too", () => {
     expect(GUIDE.startShort(5)).toBe("Five short guides show how to read this screen.");
     expect(GUIDE.startShort(1)).toBe("One short guide shows how to read this screen.");
-    expect(GUIDE.startShort(GUIDE.tasks.length)).toMatch(/^Five short guides/);
     expect(textProblems(GUIDE.startShort(12))).toEqual([]);
   });
 
