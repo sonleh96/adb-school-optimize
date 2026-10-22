@@ -60,7 +60,7 @@ test("a complete school's card states one position, its reasons with the school 
 
   await expect(place(page)).toHaveText("1st");
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Position in the list under the combined-factors rule without urgency (S0)"
+    "Position in the list under the research paper's main method"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
     "Among the 17 schools with a record for every input the rule uses."
@@ -155,7 +155,9 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
   // its one-standard-error band says that another run could take the flag away, and by how much.
   await openRules(page);
   await mainRule(page, RULE.urgency).click();
-  await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("with urgency (S)");
+  await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
+    "Position in the list under the earlier paper's method"
+  );
   await orderedRow(page, "Sample School 02").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
   await expect(flag).toHaveText(`${PERSISTENT} ${NEAR_LINE}`);
@@ -217,11 +219,13 @@ test("the key starts as one line, opens to name the rule, cuts its position band
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
   const more = key.getByRole("button", { name: "What the map shows" });
-  // Compact: the colour strip from the first place to the last, and the three marks in a few words.
+  // Compact: the colour strip from the first position to the last, read out as one sentence, and the three marks
+  // in a few words.
   await expect(key.locator("[class*=miniRamp]")).toHaveText("1st17th");
-  await expect(key.locator("[data-region=legend-point]")).toHaveText("One place");
-  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of places");
-  await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in order yet");
+  await expect(key.getByRole("img", { name: "Darker is earlier in the list: 1st to 17th" })).toBeVisible();
+  await expect(key.locator("[data-region=legend-point]")).toHaveText("One position");
+  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of positions");
+  await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in the list yet");
   await expect(bands).toHaveCount(0);
   await expect(page.getByTestId("legend-rule")).toHaveCount(0);
   await expect(more).toHaveAttribute("aria-expanded", "false");
@@ -233,7 +237,7 @@ test("the key starts as one line, opens to name the rule, cuts its position band
     "true"
   );
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Place in the list under the combined-factors rule without urgency (S0)"
+    "Position in the list under the research paper's main method"
   );
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(

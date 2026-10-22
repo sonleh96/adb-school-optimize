@@ -55,7 +55,8 @@ const SCOPE_DETAIL_MAIN =
   "22 schools can be put in order, 17 with a record for every input the rule uses and 5 that show a range of positions. Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single positions count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
 /** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
-const QUIET_MAIN = "Schools are listed by the main rule, which leaves out the uncertain urgency rating.";
+const QUIET_MAIN =
+  "Ordered by the research paper's main method, which leaves out the uncertain urgency rating.";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
@@ -150,26 +151,30 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
 }) => {
   await openWorkspace(page);
   const area = page.locator("[data-region=rule-identity]");
-  // Closed: one plain line and Change; no switch, no statement, no analyst letters.
+  // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
-  await expect(ruleChange(page)).toHaveText("Change");
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
   await expect(statement(page)).toHaveCount(0);
   expect(await area.innerText()).not.toMatch(/\bS0?\b/);
 
-  // What the urgency value changes is one click away, and answers on the main rule's list.
+  // What the urgency rating changes is one click away, and answers on the main rule's list.
   await area.locator("[data-region=see-with-urgency]").click();
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
   expect(search(page)).toBe("?compare=additive_u");
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
 
-  // Change opens the switch, Other rules and the statement; Done closes them, and the address never keeps either.
+  // The control opens the switch, the other ways and the statement; Done closes them, and the address never keeps
+  // either.
   await ruleChange(page).click();
   await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(ruleChange(page)).toHaveText("Done");
   await expect(page.locator("[data-region=rule-switch] button")).toHaveCount(2);
-  await expect(page.getByRole("button", { name: "Other rules (5)" })).toBeVisible();
-  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  await expect(page.getByRole("button", { name: "Other ways to order the list (5)" })).toBeVisible();
+  await expect(statement(page)).toHaveText(
+    `${STATEMENT} See what changes if the urgency rating is added back`
+  );
   expect(search(page)).toBe("");
   await ruleChange(page).click();
   await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
@@ -181,7 +186,7 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await ruleChange(page).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(
-    `Schools are listed by another rule: ${RULE.urgency}.`
+    "Ordered by the earlier paper's method, which adds back the uncertain urgency rating."
   );
   await area.getByRole("button", { name: "Back to the paper's main rule" }).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);

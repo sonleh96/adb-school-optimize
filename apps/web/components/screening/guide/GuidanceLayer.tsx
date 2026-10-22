@@ -16,7 +16,6 @@ import { createPortal } from "react-dom";
 import { type BoundCopy, LAYOUT } from "@/lib/screening/copy";
 import { isStepping, seenCount } from "@/lib/screening/guide/machine";
 import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
-import { PENDING } from "@/lib/screening/pending-words";
 
 import { useWorkspaceState } from "../WorkspaceProvider";
 import { reducedMotion } from "./dom";
@@ -200,40 +199,54 @@ export function GuidanceLayer({
 function ClearOfActions({ root, rail }: { root: HTMLElement | null; rail: number }) {
   useLayoutEffect(() => {
     if (!root) return;
-    let wait = 0;
-    let gone = false;
+    let frame = 0;
     const check = () => {
-      if (gone) return;
       const box = root.getBoundingClientRect();
       const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
       const zoom = root.querySelector(".maplibregl-ctrl-top-left")?.getBoundingClientRect();
       const shown = !!actions && actions.width > 0;
-      const under = shown ? Math.round(actions.bottom - box.top) + BELOW_ACTIONS : HINT_TOP;
-      root.style.setProperty("--hint-top", `${Math.max(HINT_TOP, under)}px`);
+      const under = Math.max(
+        HINT_TOP,
+        shown ? Math.round(actions.bottom - box.top) + BELOW_ACTIONS : HINT_TOP
+      );
+      root.style.setProperty("--hint-top", `${under}px`);
+      root.style.setProperty("--actions-under", `${under}px`);
       const over = shown && !!zoom && zoom.width > 0 && actions.left < zoom.right + AFTER_BAR;
       if (over) root.style.setProperty("--zoom-top", `${under}px`);
       else root.style.removeProperty("--zoom-top");
-      // The zoom buttons come with the map, which loads after the list: look again until they are there. One wait at a
-      // time, and none after cleanup: a wait left running would keep the old root, and with it the old map's WebGL
-      // context, alive after the workspace is left.
-      window.clearTimeout(wait);
-      if (!zoom || zoom.width === 0) wait = window.setTimeout(check, 250);
     };
-    check();
-    let frame = requestAnimationFrame(check);
-    const observer = new ResizeObserver(() => {
+    const sized = new ResizeObserver(() => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(check);
     });
-    observer.observe(root);
-    const actions = root.querySelector('[data-region="actions"]');
-    if (actions) observer.observe(actions);
+    sized.observe(root);
+    // The actions can be put back and the zoom buttons come with the map, after the list. Each time one of them
+    // appears, look at once, in the same task, so no frame shows the zoom buttons under the actions.
+    // MapLibre puts the zoom buttons' corner in empty, then the buttons into it: it counts once it has a size.
+    let actions: Element | null = null;
+    let zoom: Element | null = null;
+    const placed = () => {
+      const nextActions = root.querySelector('[data-region="actions"]');
+      const corner = root.querySelector(".maplibregl-ctrl-top-left");
+      const nextZoom =
+        corner === zoom ? zoom : corner && corner.getBoundingClientRect().width > 0 ? corner : null;
+      if (nextActions === actions && nextZoom === zoom) return;
+      if (actions) sized.unobserve(actions);
+      if (nextActions) sized.observe(nextActions);
+      actions = nextActions;
+      zoom = nextZoom;
+      check();
+    };
+    const added = new MutationObserver(placed);
+    added.observe(root, { childList: true, subtree: true });
+    placed();
+    check();
     return () => {
-      gone = true;
       cancelAnimationFrame(frame);
-      window.clearTimeout(wait);
-      observer.disconnect();
+      sized.disconnect();
+      added.disconnect();
       root.style.removeProperty("--hint-top");
+      root.style.removeProperty("--actions-under");
       root.style.removeProperty("--zoom-top");
     };
     // The rail opening or widening narrows the map under the same actions.
@@ -315,6 +328,7 @@ function MapBar({
         barTop < underActions + hint.height &&
         barBottom > underActions;
       root.style.setProperty("--bar-top", `${barTop}px`);
+      root.style.setProperty("--actions-under", `${underActions}px`);
       root.style.setProperty("--hint-top", `${hintMeetsBar ? barBottom + AFTER_BAR : underActions}px`);
     };
     check();
@@ -346,6 +360,7 @@ function MapBar({
       root?.removeAttribute("data-bar-tight");
       root?.style.removeProperty("--bar-top");
       root?.style.removeProperty("--hint-top");
+      root?.style.removeProperty("--actions-under");
     };
   }, [root]);
 
@@ -381,12 +396,15 @@ export type MenuAct = (fn: () => void) => () => void;
 function PopMenu({
   id,
   label,
+  name,
   icon,
   region,
   children,
 }: {
   id: string;
   label: string;
+  /** The accessible name, when it says more than the visible label; it starts with the label. */
+  name?: string;
   icon: ReactNode;
   region: string;
   children: (act: MenuAct) => ReactNode;
@@ -430,6 +448,7 @@ function PopMenu({
         type="button"
         className={styles.menuButton}
         data-region={region}
+        aria-label={name}
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((v) => !v)}
@@ -438,7 +457,7 @@ function PopMenu({
         {label}
       </button>
       {open ? (
-        <div ref={menu} id={id} className={styles.menu} role="group" aria-label={label}>
+        <div ref={menu} id={id} className={styles.menu} role="group" aria-label={name ?? label}>
           {children(act)}
         </div>
       ) : null}
@@ -459,7 +478,8 @@ export function HelpMenu({ copy, ready }: { copy: BoundCopy; ready: boolean }) {
   return (
     <PopMenu
       id="screening-help-menu"
-      label={PENDING.help}
+      label={LAYOUT.help}
+      name={LAYOUT.helpAria}
       region="help-button"
       icon={<CircleHelp size={15} aria-hidden />}
     >

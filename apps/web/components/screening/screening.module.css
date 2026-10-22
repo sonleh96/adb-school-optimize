@@ -261,11 +261,12 @@
   border-bottom: 1px solid var(--hair-2);
 }
 /* Closed, the rule area is one plain line, Change beside it, and one link under it. */
-.ruleNow {
+.ruleNowRow {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
 }
 .ruleNowText {
   margin: 0;
@@ -276,7 +277,6 @@
 }
 .ruleChange {
   flex: none;
-  margin-top: -2px;
   padding: 2px 10px 3px;
   border: 1px solid var(--hair);
   border-radius: 6px;
@@ -302,10 +302,6 @@
   .ruleChange:not(:disabled):hover {
     background: rgba(21, 24, 29, 0.05);
   }
-}
-.ruleNowLink {
-  margin: 6px 0 0;
-  line-height: 18px;
 }
 /* Open: the choices under the plain line, set off by a hairline. */
 .ruleChoices {
@@ -1283,9 +1279,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 
 /* ---------- the school card ---------- */
+/* Under the actions: 64 px for one row, lower when they wrap to a second (the layer sets --actions-under). */
 .card {
   position: absolute;
-  top: 64px;
+  top: var(--actions-under, 64px);
   right: var(--gap);
   bottom: 40px;
   z-index: 3;

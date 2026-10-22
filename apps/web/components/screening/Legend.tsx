@@ -5,7 +5,6 @@ import { useId, useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
-import { PENDING } from "@/lib/screening/pending-words";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import styles from "./screening.module.css";
@@ -36,7 +35,7 @@ export function Legend({
   const [open, setOpen] = useState(false);
   const body = useId();
   const { LAYOUT, TERMS } = copy;
-  const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(rule)) : TERMS.rank.label;
+  const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(rule)) : TERMS.rank.label;
   const label = (band: Band) =>
     band.lo === band.hi
       ? copy.ordinal(band.lo)
@@ -94,7 +93,12 @@ export function Legend({
       ) : null}
       <div className={styles.keyLine}>
         {first && last && !open ? (
-          <span className={styles.miniRamp} data-term="rank">
+          <span
+            className={styles.miniRamp}
+            data-term="rank"
+            role="img"
+            aria-label={LAYOUT.keyRamp(copy.ordinal(first.lo), copy.ordinal(last.hi))}
+          >
             <span>{copy.ordinal(first.lo)}</span>
             <span className={styles.miniSwatches} aria-hidden>
               {bands.map((band, index) => (
@@ -108,15 +112,15 @@ export function Legend({
           <ul className={styles.keysShort}>
             <li data-region="legend-point">
               <Mark kind="dot" />
-              <span data-term="mark_dot">{PENDING.keyDot}</span>
+              <span data-term="mark_dot">{LAYOUT.keyDot}</span>
             </li>
             <li data-region="legend-range">
               <Mark kind="range" />
-              <span data-term="mark_range">{PENDING.keyRange}</span>
+              <span data-term="mark_range">{LAYOUT.keyRange}</span>
             </li>
             <li data-region="legend-queue">
               <Mark kind="ring" />
-              <span data-term="mark_ring">{PENDING.keyRing}</span>
+              <span data-term="mark_ring">{LAYOUT.keyRing}</span>
             </li>
           </ul>
         )}
@@ -128,7 +132,7 @@ export function Legend({
           aria-controls={body}
           onClick={() => setOpen((value) => !value)}
         >
-          {open ? PENDING.keyLess : PENDING.keyMore}
+          {open ? LAYOUT.keyLess : LAYOUT.keyMore}
           <ChevronUp size={12} aria-hidden data-open={open || undefined} />
         </button>
       </div>
