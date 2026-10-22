@@ -174,24 +174,23 @@ for (const size of [
 test.describe("the rail's start at 200 percent zoom", () => {
   test.use({ viewport: { width: 800, height: 500 }, deviceScaleFactor: 2, firstVisit: true });
 
-  test("the rail's start lets every guide, the saved view's name and Explore on my own be reached at 200 percent zoom", async ({
+  test("the rail's start lets every guide, the saved view's name and Hide be reached at 200 percent zoom", async ({
     page,
   }) => {
     await openWorkspace(page, "?");
     const rail = page.locator(RAIL);
+    // Start here is a short card at the head of the list region; Open the guides unfolds the five under it.
+    await rail.locator("[data-region=open-guides]").click();
     await expect(rail.locator("button[data-guide]")).toHaveCount(5);
     for (const target of [
       ...(await rail.locator("button[data-guide]").all()),
       rail.getByRole("textbox", { name: "Name this view" }),
       rail.getByRole("button", { name: "Save this view" }),
-      rail.getByRole("button", { name: "Explore on my own" }),
+      rail.locator("[data-region=hide-guides]"),
     ]) {
       await target.scrollIntoViewIfNeeded();
-      const box = (await target.boundingBox())!;
-      const band = (await rail.boundingBox())!;
-      // Wholly inside the band the rail takes, and not under anything pinned in it.
-      expect(box.y).toBeGreaterThanOrEqual(band.y - 1);
-      expect(box.y + box.height).toBeLessThanOrEqual(band.y + band.height + 1);
+      // Wholly inside the window, and not under the top bar, the switch or anything else.
+      await expect(target).toBeInViewport({ ratio: 1 });
       await expectUncovered(target, (await target.textContent()) || "the name field");
     }
   });
@@ -209,20 +208,19 @@ for (const size of [
     }) => {
       await openWorkspace(page, "?");
       const rail = page.locator(RAIL);
-      await expect(rail.locator("button[data-guide]")).toHaveCount(5);
-      // It sits under the map band, in the list region that scrolls as one; the map and its key keep the band.
-      const band = (await page.getByTestId("screening-map").boundingBox())!;
+      // It sits in the list region, under the switch, which scrolls as one; folded, it is one line and two controls.
+      const region = (await page.locator("[data-slot=column]").boundingBox())!;
+      const switchBox = (await page.locator("[data-region=pane-switch]").boundingBox())!;
       const railBox = (await rail.boundingBox())!;
-      expect(railBox.y).toBeGreaterThanOrEqual(band.y + band.height - 1);
+      expect(railBox.y).toBeGreaterThanOrEqual(switchBox.y + switchBox.height - 1);
+      expect(railBox.y).toBeGreaterThanOrEqual(region.y - 1);
       expect(railBox.x).toBeGreaterThanOrEqual(0);
       expect(railBox.x + railBox.width).toBeLessThanOrEqual(size.width + 1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth === window.innerWidth)).toBe(
         true
       );
-      await expectUncovered(
-        page.locator("[data-slot=legend] [data-region=key-toggle]"),
-        "What the map shows"
-      );
+      await rail.locator("[data-region=open-guides]").click();
+      await expect(rail.locator("button[data-guide]")).toHaveCount(5);
       // Hide and every guide can be read and pressed where they are, once scrolled to.
       const hide = rail.getByRole("button", { name: "Hide the guides" });
       await expectUncovered(hide, "Hide");
@@ -289,6 +287,12 @@ test.describe("help mode in the narrow layout", () => {
     await (await helpItem(page, "Explain this screen")).click();
     const bar = page.getByTestId("help-bar");
     await expect(bar).toBeVisible();
+    // The list alone: the bar keeps to the window's foot, over the list, and Done can be pressed.
+    await expect(bar).toBeInViewport({ ratio: 1 });
+    await expectUncovered(bar.getByRole("button", { name: /Done/ }), "Done");
+    // With the map band open, the bar sits above the key, clear of it.
+    await page.locator("[data-region=pane-switch]").getByRole("button", { name: "Map", exact: true }).click();
+    await expect(page.locator("[data-slot=legend]")).toBeVisible();
     await expectApart(page, { bar: "[data-testid=help-bar] > div", key: "[data-slot=legend]" }, [
       "bar",
       "key",

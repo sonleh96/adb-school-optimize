@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Link2, MousePointerClick } from "lucide-react";
+import { Link2, List as ListIcon, Map as MapIcon, MousePointerClick } from "lucide-react";
 import {
   Component,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -17,6 +17,7 @@ import {
 
 import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
+import { PENDING } from "@/lib/screening/pending-words";
 import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
@@ -538,6 +539,9 @@ function Workspace() {
       data-layout={layout.mode}
       data-has-insp={cardOpen || undefined}
       data-card-docked={layout.docked || undefined}
+      data-pane={state.pane}
+      // The guide rail holds the narrow layout's band: a step, or Start here while a card covers the list region.
+      data-rail-band={guidance.stepping || (guidance.railOpen && state.school !== null) || undefined}
       data-instant={keyboard || undefined}
       data-gloss={guidance.glossary || undefined}
       data-rail={(guidance.rail ?? 0) > 0 || undefined}
@@ -592,6 +596,31 @@ function Workspace() {
             </>
           }
         />
+        {/* The narrow layout's choice under the top bar: the list (first), or the map band over it. A school chosen
+            in one is still chosen in the other; a guide step takes the band whichever is chosen. */}
+        <div
+          className={styles.paneSwitch}
+          role="group"
+          aria-label={PENDING.paneAria}
+          data-region="pane-switch"
+        >
+          <button
+            type="button"
+            aria-pressed={state.pane === "list"}
+            onClick={() => store.setState({ pane: "list" })}
+          >
+            <ListIcon size={15} aria-hidden />
+            {PENDING.paneList}
+          </button>
+          <button
+            type="button"
+            aria-pressed={state.pane === "map"}
+            onClick={() => store.setState({ pane: "map" })}
+          >
+            <MapIcon size={15} aria-hidden />
+            {PENDING.paneMap}
+          </button>
+        </div>
         {/* Help first among the actions, at the top right of the map: always on screen, whatever the list does. The
             narrow layout keeps its own in the top bar. */}
         <div className={styles.actions} data-region="actions">
@@ -617,6 +646,14 @@ function Workspace() {
           data-aside={layout.docked || undefined}
         >
           <Masthead copy={copy} />
+          {/* The narrow layout's head of the list: what the tool is for, and the caveat, once, where the list shows it
+              whether or not the map band is open. Wide layouts keep both in the masthead and the map's foot. */}
+          <div className={styles.narrowHead} data-region="list-head">
+            <p className={styles.narrowHeadTitle}>{copy.LAYOUT.productSub}</p>
+            <p className={styles.narrowHeadCaveat} data-region="list-caveat">
+              {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
+            </p>
+          </div>
           {/* A phone's Start here, which scrolls with the list (GuidanceLayer). */}
           <div data-slot="start-slot" />
 

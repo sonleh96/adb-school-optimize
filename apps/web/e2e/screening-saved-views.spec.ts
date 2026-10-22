@@ -575,6 +575,8 @@ test.describe("in the narrow layout", () => {
     }) => {
       await page.setViewportSize(size);
       await openWorkspace(page, "?");
+      // Start here is a short card here; the guides and the saved views unfold under Open the guides.
+      await rail(page).locator("[data-region=open-guides]").click();
       await expect(viewButtons(page).first()).toBeEnabled();
       await viewButtons(page).nth(2).scrollIntoViewIfNeeded();
       await expect(section(page).getByRole("button", { name: "Presentation mode" })).toHaveCount(0);

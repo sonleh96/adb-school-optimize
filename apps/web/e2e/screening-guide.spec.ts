@@ -618,6 +618,7 @@ test.describe("in the narrow layout", () => {
     await expect(stepTitle(page)).toBeVisible();
     await expect(rail(page).getByText("Try it")).toHaveCount(0);
     await expect(rail(page).getByRole("button", { name: "Presentation mode" })).toHaveCount(0);
+    // Guide 2 left a card over the list region, so All guides brings Start here back in the band, in full.
     await rail(page).getByRole("button", { name: "All guides" }).click();
     await rail(page).locator("button[data-guide=q1]").click();
     await rail(page).getByRole("button", { name: "Next", exact: true }).click();

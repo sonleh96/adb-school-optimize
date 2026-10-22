@@ -225,20 +225,30 @@ function HelpBar({ data, root }: { data: GuideData; root: HTMLElement | null }) 
   const store = useLayerStore();
   const { HELP } = data.copy;
   const bar = useRef<HTMLDivElement>(null);
-  // The bar sits just above the key, wherever the key's height puts its top.
+  // The bar sits just above the key, wherever the key's height puts its top. With the key out of sight (the narrow
+  // layout showing its list alone) the stylesheet puts it at the window's foot.
   useLayoutEffect(() => {
     const element = bar.current;
     if (!element || !root) return;
     const place = () => {
-      const key = root.querySelector('[data-region="legend"]')?.getBoundingClientRect();
-      element.style.bottom = key && key.height ? `${Math.round(window.innerHeight - key.top + 10)}px` : "";
+      const legend = root.querySelector('[data-region="legend"]');
+      const key = legend?.getBoundingClientRect();
+      const seen = !!legend && getComputedStyle(legend).visibility !== "hidden";
+      element.style.bottom =
+        seen && key && key.height ? `${Math.round(window.innerHeight - key.top + 10)}px` : "";
     };
     place();
     const observer = new ResizeObserver(place);
     observer.observe(root);
     const legend = root.querySelector('[data-region="legend"]');
     if (legend) observer.observe(legend);
-    return () => observer.disconnect();
+    // Choosing List or Map, or a guide step taking the band, moves the key without resizing anything.
+    const shown = new MutationObserver(place);
+    shown.observe(root, { attributes: true, attributeFilter: ["data-pane", "data-rail-band"] });
+    return () => {
+      observer.disconnect();
+      shown.disconnect();
+    };
   }, [root]);
   return (
     <div ref={bar} className={styles.bar} data-guidance="" data-testid="help-bar">

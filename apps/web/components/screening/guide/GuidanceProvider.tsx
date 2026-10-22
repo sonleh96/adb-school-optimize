@@ -166,6 +166,8 @@ export interface GuidanceFrame {
   /** Null until the store has read the URL and the memory: the boot script's width stands until then. */
   readonly rail: number | null;
   readonly railOpen: boolean;
+  /** A guide step is showing: in the narrow layout it takes the map band, whichever of List and Map was chosen. */
+  readonly stepping: boolean;
   readonly page: boolean;
   readonly glossary: boolean;
 }
@@ -177,6 +179,7 @@ export function useGuidanceFrame(width: number): GuidanceFrame {
   return {
     rail: attached ? railWidth(width, railOpen, state.present && isStepping(state.rail)) : null,
     railOpen,
+    stepping: isStepping(state.rail),
     page: state.page !== null,
     glossary: state.gloss.open,
   };

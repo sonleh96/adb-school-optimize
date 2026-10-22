@@ -72,7 +72,8 @@ export interface GuideContext {
  * a key the workspace gains (the method details' `analyst`, `mode`, `panel` and the rest) fails the typecheck here
  * until it is given its starting value.
  */
-export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
+/** Every key but `pane`: the narrow layout shows a step's band whatever the reader chose, and keeps the choice. */
+export const BASE: { readonly [K in Exclude<StateKey, "pane">]: Patch[K] } = Object.freeze({
   rule: PRIMARY_RULE,
   compare: null,
   view: "ranked",
@@ -100,7 +101,7 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
 });
 
 /** The keys a step owns, in `BASE`'s order. */
-export const STEP_KEYS = Object.keys(BASE) as StateKey[];
+export const STEP_KEYS = Object.keys(BASE) as Exclude<StateKey, "pane">[];
 
 const text = (value: string): Segments => [value];
 const para = (value: string | Segments, lead?: string): Paragraph => ({

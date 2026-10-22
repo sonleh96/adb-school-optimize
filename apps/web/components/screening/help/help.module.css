@@ -495,7 +495,11 @@
   .bar {
     left: 8px;
     right: 8px;
-    bottom: calc(100% - 56px - var(--band) + 8px);
+    bottom: calc(100% - 56px - var(--switch-h, 0px) - var(--band) + 8px);
+  }
+  /* The list alone, with the map band closed: the bar keeps to the window's foot, over the list. */
+  :global([data-pane="list"]:not([data-rail-band])) .bar {
+    bottom: 8px;
   }
   :global([data-card-docked]) .bar {
     left: 8px;
