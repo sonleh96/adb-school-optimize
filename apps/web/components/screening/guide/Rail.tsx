@@ -140,7 +140,8 @@ function Start({
         {compact ? (
           <div className={styles.startRow}>
             <h2 ref={title} className={styles.startShort} tabIndex={-1}>
-              {GUIDE.startShort(GUIDE.tasks.length)}
+              {/* The guides this data can teach: the plan leaves out any it has no example for. */}
+              {GUIDE.startShort(plan ? guides.length : GUIDE.tasks.length)}
             </h2>
             <button
               type="button"
