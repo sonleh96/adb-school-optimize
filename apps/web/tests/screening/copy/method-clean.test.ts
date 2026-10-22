@@ -46,7 +46,7 @@ async function bind(rule: copy.CopyRuleId) {
     ...pairwiseFromCompare(fixtureCompare()),
   });
   const later = await P.later();
-  // A term's research name and its position in the design are for analysts and designers, not for a reader.
+  // A term's research name and its rank in the design are for analysts and designers, not for a reader.
   const readable = (terms: Record<string, { label: string; line: string; help: string }>) =>
     Object.values(terms).map((t) => [t.label, t.line, t.help]);
   const plain = strings([

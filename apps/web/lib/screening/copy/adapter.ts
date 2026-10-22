@@ -321,7 +321,7 @@ function buildSchool(
     district: identity.district,
     locality: identity.locality,
     cohort,
-    // The engine also nulls a reading that is recorded but out of range, so a missing reading is read off the
+    // The engine also nulls a reading that is recorded but out of range, so a missing figure is read off the
     // components, as the list route reads it, and not off the raw value.
     missing_env: { aqi: Q === null, emissions: E === null, land: L === null },
     condition,
@@ -458,7 +458,7 @@ export function placedFromResults(first: ResultsResponse, ...others: ResultsResp
  * The counts a list response can give. A count it cannot give is left out, and the sentence that would state it
  * is written without the number:
  *  - the group sizes come from the run's manifest, so a filtered list still counts every school;
- *  - how many schools have no air-quality reading, and how many have an urgency rating of 0, come from the rows and
+ *  - how many schools have no air-quality figure, and how many have an urgency rating of 0, come from the rows and
  *    only when the list is unfiltered and (for urgency) the rule gives the value;
  *  - how many have no nearby emissions, how many records give only a remoteness category, and how many carry the
  *    rule's own persistence flag need the whole records of every school (`schools`, from `schoolsFromLists`), and

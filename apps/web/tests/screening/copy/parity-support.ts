@@ -50,7 +50,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.positionOf": [[3, 20]],
   "LAYOUT.placeRange": [["3rd", "12th"]],
   "LAYOUT.valueRange": [["0.487", "0.537"]],
-  "LAYOUT.underRule": [["Position in the list", "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.underRule": [["Rank in the list", "the combined-factors rule with urgency (S)"]],
   "LAYOUT.topListFileName": [
     [20, "Combined factors, with urgency"],
     [10, 'Équipe / mix (S0): "a" b'],

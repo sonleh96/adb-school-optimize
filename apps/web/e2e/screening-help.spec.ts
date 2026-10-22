@@ -181,7 +181,7 @@ test("the glossary finds a term, opens it, shows where it is, and links to How t
   await drawer.getByRole("searchbox").fill("zzzz");
   await expect(drawer.getByText("No term matches.")).toBeVisible();
   await drawer.getByRole("searchbox").fill("");
-  await drawer.getByRole("button", { name: "Position in the list", exact: true }).click();
+  await drawer.getByRole("button", { name: "Rank in the list", exact: true }).click();
   await expect(page).toHaveURL(/gx=rank/);
   await drawer.getByRole("button", { name: "Show where" }).click();
   await expect(page.locator("body > div[aria-hidden=true]")).toHaveCount(1);

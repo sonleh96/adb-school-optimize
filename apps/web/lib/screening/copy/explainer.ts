@@ -122,18 +122,18 @@ export function buildHow(
           // With no school showing a range there is nothing to list by its range.
           noRange
             ? null
-            : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing readings added nothing to ${theirScore(c)} score, the research team's main order.`,
+            : `${rangeSubject(c)} listed where ${theyWould(c)} if ${theirScore(c)} missing figures added nothing to ${theirScore(c)} score, the research team's main order.`,
           noRange
             ? null
             : "Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
           noRange
             ? null
             : known(c, "complete") && known(c, "ranked")
-              ? `Under the paper's main rule, positions among the ${formatCount(c.complete)} and possible positions among all ${formatCount(c.ranked)} answer different questions.`
-              : "Positions among the schools with every input recorded and possible positions among all schools that can be put in order answer different questions.",
+              ? `Under the paper's main rule, ranks among the ${formatCount(c.complete)} and possible ranks among all ${formatCount(c.ranked)} answer different questions.`
+              : "Ranks among the schools with every input recorded and possible ranks among all schools that can be put in order answer different questions.",
           example ||
             "Agreement among the schools with every input recorded does not carry over to all schools that can be put in order, because the schools that show a range can still move.",
-          "Having no position in the list yet says nothing about a school's need.",
+          "Having no rank in the list yet says nothing about a school's need.",
           "The results come from checks the project ran on its own calculations; no one outside the project has reproduced them yet, and planners have not yet tested the screen.",
         ],
       },
@@ -144,7 +144,7 @@ export function buildHow(
 }
 export const HOW_IT_WORKS = buildHow();
 
-// The explainer's example: the range school whose possible positions move most between the main rule and the rule that
+// The explainer's example: the range school whose possible ranks move most between the main rule and the rule that
 // puts the urgency rating back.
 export function howExampleSegments(
   data: ComparisonData,
@@ -179,7 +179,7 @@ export function howExampleSegments(
   const among = sharedSize(cA, cB, "ranked", strict)
     ? amongAllOrdered(cA)
     : "all the schools that can be put in order under each rule";
-  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(distinctName(x, data.schools))}'s possible positions among ${among} are ${span(a)} without urgency and ${span(b)} with it.`;
+  return seg`For example, among ${pairPhrase(row)}, ${agree}, but ${nameSegment(distinctName(x, data.schools))}'s possible ranks among ${among} are ${span(a)} without urgency and ${span(b)} with it.`;
 }
 export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByRuleArg): string | null {
   const s = howExampleSegments(data, c, byRule);
@@ -201,7 +201,7 @@ export function buildQuestions(
         key: "purpose",
         question: "Which schools does the main method suggest looking at first?",
         answer:
-          "The list starts with them, in the order the main method suggests. A position in the list is a suggestion, not a verdict on a school's condition, safety or funding.",
+          "The list starts with them, in the order the main method suggests. A rank in the list is a suggestion, not a verdict on a school's condition, safety or funding.",
         live: "listStartsSentence",
       },
       {
@@ -213,7 +213,7 @@ export function buildQuestions(
       },
       {
         key: "ranges",
-        question: "Why do some schools show a range instead of one position?",
+        question: "Why do some schools show a range instead of one rank?",
         answer: ideas.ranges.short,
         live: "rankSentence",
       },

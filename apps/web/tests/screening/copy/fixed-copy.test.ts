@@ -125,7 +125,7 @@ describe("every fixed string follows the writing rules", () => {
       positionOf: [3, 20],
       placeRange: ["3rd", "12th"],
       valueRange: ["0.487", "0.537"],
-      underRule: ["Position in the list", "the combined-factors rule with urgency (S)"],
+      underRule: ["Rank in the list", "the combined-factors rule with urgency (S)"],
       groupMany: [3],
       tooltipMissing: ["classroom count blank, power source blank"],
       tipNotComputed: ["Need first"],
@@ -357,7 +357,7 @@ describe("the term map", () => {
 
   it("refuses a term it does not have", () => {
     expect(() => copy.term("nope" as never)).toThrow("Unknown term: nope");
-    expect(copy.term("rank").label).toBe("Position in the list");
+    expect(copy.term("rank").label).toBe("Rank in the list");
   });
 
   it("keeps the urgency definition in one position", () => {
@@ -387,17 +387,17 @@ describe("the three ideas", () => {
 
   it("never says 'Some schools' of a single school, and uses the plural for several", () => {
     const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
-    expect(one.ranges.title).toBe("One school shows a range because a reading is missing");
+    expect(one.ranges.title).toBe("One school shows a range because an air-quality figure is missing");
     expect(one.queue.title).toBe("One school is not in the list yet because information about it is missing");
     for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
       expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
     expect(one.queue.long).toMatch(/^One of the 12 schools has information missing/);
     const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
-    expect(several.ranges.title).toBe("Two schools show a range because a reading is missing");
+    expect(several.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(several.queue.short).toMatch(/^4 schools are not in the list yet/);
   });
 
-  it("says what an air-quality reading is wherever it names the range", () => {
+  it("says what an air-quality figure is wherever it names the range", () => {
     expect(copy.IDEAS.ranges.short).toContain("air-pollution");
     expect(copy.IDEAS.ranges.long).toContain("air-pollution");
   });
@@ -425,7 +425,7 @@ describe("the explainer and the questions", async () => {
       `Under the paper's main rule, ${P.groupsSentence("additive_no_u").replace(/^./, (c) => c.toLowerCase())}`
     );
     expect(P.scope("additive_u").groups).toBe(
-      "96 schools have every input recorded, and three more lack a reading such as air quality and show a range of positions, so 99 schools can be put in order."
+      "96 schools have every input recorded, and three more lack a figure such as air quality and show a range of ranks, so 99 schools can be put in order."
     );
   });
 
@@ -549,7 +549,7 @@ describe("the fixed strings that carry a rule of the project", () => {
     expect(METHOD.insp.largestRow(["School need"])).not.toBe(copy.TERMS.school_need.label);
   });
 
-  it("names a missing reading as listed where it would sit if air quality added nothing, never as 0", () => {
+  it("names a missing figure as listed where it would sit if air quality added nothing, never as 0", () => {
     expect(copy.buildScope({}).listOrder).toContain("added nothing");
     expect(copy.TERMS.list_order.line).toContain("added nothing");
   });
@@ -586,7 +586,7 @@ describe("the fixed strings that carry a rule of the project", () => {
       expect(t.startsWith(P.scope("additive_u").groups)).toBe(true);
     }
     expect(P.scope("additive_u").scopeDetail).toContain(
-      "99 schools can be put in order, 96 with every input recorded and 3 that show a range of positions."
+      "99 schools can be put in order, 96 with every input recorded and 3 that show a range of ranks."
     );
   });
 });
@@ -652,7 +652,7 @@ describe("counts belong to the data they came from", () => {
     expect(later.HOW_IT_WORKS).toEqual(later.buildHow({}));
     expect(later.FIRST_QUESTIONS).toEqual(later.buildQuestions());
     expect(copy.buildScope({}).groups).toBe(
-      "Schools with every input recorded have one position each, and schools that lack a reading such as air quality show a range of positions; together they can be put in order."
+      "Schools with every input recorded have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order."
     );
   });
 

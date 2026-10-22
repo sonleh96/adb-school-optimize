@@ -46,7 +46,7 @@ export const INPUT_NAMES: Record<UnreadableInput, string> = {
   ...(Object.fromEntries(STOCK_NAMES) as Record<keyof CopySchool["condition"], string>),
   power_source: "the power source",
   water_source: "the water source",
-  aqi: "the air-quality reading",
+  aqi: "the air-quality figure",
   emissions: "the nearby emissions figure",
   land: "the land-cover figure",
   urgency: "the urgency rating",

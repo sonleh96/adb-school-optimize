@@ -86,7 +86,7 @@ describe("the guide rail's status lines", () => {
     expect([v.top.name, v.urgency.name, v.range.name, v.queue.name]).toEqual([
       "Top of the list under the main method",
       "With and without the urgency rating",
-      "A school with a range of positions",
+      "A school with a range of ranks",
       "Schools with missing information",
     ]);
     expect(v.queue.onScreen(LAYOUT.incompleteTab)).toBe(
@@ -96,19 +96,19 @@ describe("the guide rail's status lines", () => {
     for (const n of Object.values(v).map((x) => x.name)) expect(n.length).toBeLessThanOrEqual(60);
   });
 
-  it("fills a step title's place slot with a range or a single position", () => {
+  it("fills a step title's place slot with a range or a single rank", () => {
     expect(GUIDE.rangeWords(5, 6)).toBe("anywhere from 5th to 6th");
     expect(GUIDE.rangeWords(5, 5)).toBe("5th");
   });
 });
 
 describe("the words that join values", () => {
-  it("say a place, a range of values, a position and a saved view in one way", () => {
+  it("say a place, a range of values, a rank and a saved view in one way", () => {
     expect(LAYOUT.placeRange("3rd", "12th")).toBe("3rd to 12th");
     expect(LAYOUT.valueRange("0.487", "0.537")).toBe("0.487 to 0.537");
     expect(LAYOUT.positionOf(3, 20)).toBe("3 of 20");
-    expect(LAYOUT.underRule("Position in the list", "the combined-factors rule with urgency (S)")).toBe(
-      "Position in the list under the combined-factors rule with urgency (S)"
+    expect(LAYOUT.underRule("Rank in the list", "the combined-factors rule with urgency (S)")).toBe(
+      "Rank in the list under the combined-factors rule with urgency (S)"
     );
     expect(LAYOUT.savedToast(3)).toBe("Saved as view 3");
     expect(LAYOUT.removeView("J")).toBe("Remove the saved view J");

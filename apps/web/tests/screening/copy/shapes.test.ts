@@ -191,10 +191,10 @@ describe("data of other sizes", () => {
       remotenessOnly: 1,
     });
     expect(P.scope("additive_u").groups).toBe(
-      "5 schools have every input recorded, and two more lack a reading such as air quality and show a range of positions, so 7 schools can be put in order."
+      "5 schools have every input recorded, and two more lack a figure such as air quality and show a range of ranks, so 7 schools can be put in order."
     );
     expect(P.scope("additive_u").scopeDetail).toContain(
-      "7 schools can be put in order, 5 with every input recorded and 2 that show a range of positions."
+      "7 schools can be put in order, 5 with every input recorded and 2 that show a range of ranks."
     );
     expect(P.termsFor("additive_u").queue.label).toBe("Schools with missing information (3)");
     expect(P.termsFor("additive_u").cohort_ranked.label).toBe("Can be put in order (7)");
@@ -203,13 +203,13 @@ describe("data of other sizes", () => {
     );
     expect(P.STRINGS.urgencyDefinition).toMatch(/, and no school has 0\.$/);
     expect(P.scope("additive_u").amongAll).toBe("All 7 schools that can be put in order");
-    expect(P.IDEAS.ranges.title).toBe("Two schools show a range because a reading is missing");
+    expect(P.IDEAS.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(P.IDEAS.queue.title).toBe(
       "Some schools are not in the list yet because information about them is missing"
     );
   });
 
-  it("counts a zero urgency, a zero emissions reading and a missing reading once each", () => {
+  it("counts a zero urgency, a zero emissions reading and a missing figure once each", () => {
     const base = tenSchools();
     const withU0 = base.map((s, i) => (i < 3 ? { ...s, components: { ...s.components, U: 0 } } : s));
     expect(countsFrom(withU0).urgencyZero).toBe(3);
@@ -263,7 +263,7 @@ describe("data of other sizes", () => {
     ];
     const P = copyFor({ schools });
     expect(P.scope("additive_u").groups).toBe(
-      "2 schools have every input recorded, and one more lacks a reading such as air quality and shows a range of positions, so 3 schools can be put in order."
+      "2 schools have every input recorded, and one more lacks a figure such as air quality and shows a range of ranks, so 3 schools can be put in order."
     );
     expect(
       P.scope("additive_u").listOrder.startsWith("The one school that shows a range is listed where ")
@@ -321,15 +321,15 @@ describe("a record with all three readings missing, or only its remoteness", () 
   const P = copyFor({ schools });
   const i2 = schools[6];
 
-  it("names each missing reading and counts none as 0", () => {
+  it("names each missing figure and counts none as 0", () => {
     expect(P.rankSentence(i2, "additive_u")).toBe(
-      "Anywhere from 6th to 9th of the 7 schools that can be put in order. Its air-quality reading, nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest positions in the list it could take."
+      "Anywhere from 6th to 9th of the 7 schools that can be put in order. Its air-quality figure, nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest ranks in the list it could take."
     );
     expect(P.inputSentence(i2, "emissions")).toBe(
       "Its nearby emissions figure is not recorded, so it is not counted as 0."
     );
     expect(P.missingValueNote(i2, "land")).toBe(
-      "No land-cover figure is recorded for this school, so it is not counted as 0. The school shows a range of positions instead of one position."
+      "No land-cover figure is recorded for this school, so it is not counted as 0. The school shows a range of ranks instead of one rank."
     );
   });
 

@@ -586,7 +586,7 @@ test("Page Down and Page Up stay with How this works and the glossary while eith
   await expect(main).toHaveCount(0);
   await (await helpItem(page, "Glossary of terms")).click();
   const drawer = page.getByRole("complementary", { name: "Glossary of terms" });
-  await drawer.getByRole("button", { name: "Position in the list", exact: true }).click();
+  await drawer.getByRole("button", { name: "Rank in the list", exact: true }).click();
   await page.keyboard.press("PageUp");
   await expect(drawer).toBeVisible();
   expect(await railState(page)).toEqual({ kind: "step", guide: "q1", step: 2 });

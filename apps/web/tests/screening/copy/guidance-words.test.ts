@@ -35,7 +35,7 @@ function says(value: unknown, path: string, out: string[] = []): string[] {
 const POSITION =
   /\bon the (?:right|left)\b|\bto the (?:right|left)\b|\btop (?:right|left)\b|\bbottom (?:right|left)\b|\bat the top of the map\b|\bnext to the (?:list|map)\b/i;
 
-describe("position words in the guidance layer", () => {
+describe("rank words in the guidance layer", () => {
   const surfaces: [string, string[]][] = [
     ["GUIDE", says(GUIDE, "GUIDE")],
     ["HELP", says(HELP, "HELP")],

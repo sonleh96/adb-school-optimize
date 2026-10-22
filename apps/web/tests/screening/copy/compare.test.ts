@@ -92,24 +92,24 @@ const sentenceFor = (c: CompareResponse, a = A as copy.CopyRuleId, b = B as copy
 };
 
 const HEAD =
-  "This compares the combined-factors rule with urgency (S) with the combined-factors rule without urgency (S0) among the 84 schools with one position under both methods.";
+  "This compares the combined-factors rule with urgency (S) with the combined-factors rule without urgency (S0) among the 84 schools with one rank under both methods.";
 
 describe("how two rules agree", () => {
   it("says the same top 20 and the largest shared top list when every overlap is full", () => {
     expect(sentenceFor(compare({ median: 1, maximum: 7 }))).toBe(
-      `${HEAD} The same 20 schools make the top 20 under both methods, and the same 40 make the top 40. Half of the schools move 1 position or fewer, and the largest move is 7 positions.`
+      `${HEAD} The same 20 schools make the top 20 under both methods, and the same 40 make the top 40. Half of the schools move 1 rank or fewer, and the largest move is 7 ranks.`
     );
   });
 
   it("stops at 20 when 30 is not shared in full", () => {
     expect(sentenceFor(compare({ overlaps: [10, 20, 28, 33], median: 0, maximum: 1 }))).toBe(
-      `${HEAD} The same 20 schools make the top 20 under both methods. At least half of the schools keep the same position in the list, and the largest move is 1 position.`
+      `${HEAD} The same 20 schools make the top 20 under both methods. At least half of the schools keep the same rank in the list, and the largest move is 1 rank.`
     );
   });
 
   it("counts the shared schools when the top 20 differs", () => {
     expect(sentenceFor(compare({ overlaps: [9, 17, 28, 36], median: 2, maximum: 13 }))).toBe(
-      `${HEAD} 17 of the top 20 schools are the same under both methods. Half of the schools move 2 positions or fewer, and the largest move is 13 positions.`
+      `${HEAD} 17 of the top 20 schools are the same under both methods. Half of the schools move 2 ranks or fewer, and the largest move is 13 ranks.`
     );
   });
 
@@ -136,7 +136,7 @@ describe("the schools that join or leave the top 20", () => {
 
   it("lists each move when there are four or fewer", () => {
     expect(sentenceFor(compare({ overlaps: [10, 19, 28, 36], entrants, exits }))).toBe(
-      `${HEAD} 19 of the top 20 schools are the same under both methods. When you switch to the combined-factors rule without urgency (S0), Newcomer moves from 24th to 18th and joins the top 20. Leaver moves from 17th to 22nd and drops out of the top 20. Half of the schools move 1 position or fewer, and the largest move is 7 positions.`
+      `${HEAD} 19 of the top 20 schools are the same under both methods. When you switch to the combined-factors rule without urgency (S0), Newcomer moves from 24th to 18th and joins the top 20. Leaver moves from 17th to 22nd and drops out of the top 20. Half of the schools move 1 rank or fewer, and the largest move is 7 ranks.`
     );
   });
 
@@ -163,7 +163,7 @@ describe("the schools that join or leave the top 20", () => {
       ],
     });
     expect(sentenceFor(many)).toBe(
-      `${HEAD} 17 of the top 20 schools are the same under both methods. When you switch to the combined-factors rule without urgency (S0), Yan, Xu and Zed join the top 20. Vee, Wim and Uli drop out. Half of the schools move 1 position or fewer, and the largest move is 7 positions.`
+      `${HEAD} 17 of the top 20 schools are the same under both methods. When you switch to the combined-factors rule without urgency (S0), Yan, Xu and Zed join the top 20. Vee, Wim and Uli drop out. Half of the schools move 1 rank or fewer, and the largest move is 7 ranks.`
     );
   });
 
@@ -279,16 +279,16 @@ describe("which list to use", () => {
       if (overlaps[1] === 20) {
         const tail = K && K > 20 ? ` and top ${K}` : "";
         expect(P.defaultListStatement()).toBe(
-          `${lead} Adding it back keeps the same top 20${tail} among the 84 schools with one position under both methods.`
+          `${lead} Adding it back keeps the same top 20${tail} among the 84 schools with one rank under both methods.`
         );
       } else {
         expect(P.defaultListStatement()).toBe(
-          `${lead} Adding it back keeps ${overlaps[1]} of the top 20 among the 84 schools with one position under both methods.`
+          `${lead} Adding it back keeps ${overlaps[1]} of the top 20 among the 84 schools with one rank under both methods.`
         );
       }
       expect(P.defaultListStatement().length).toBeLessThanOrEqual(300);
       expect(P.defaultListStatementLong()).toBe(
-        `This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check. Among the 84 schools with one position under both methods, ${
+        `This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check. Among the 84 schools with one rank under both methods, ${
           overlaps[1] === 20
             ? `the same 20 schools make the top 20 under both methods${K && K > 20 ? `, and the same ${K} make the top ${K}` : ""}.`
             : `${overlaps[1]} of the top 20 schools are the same under both methods.`
@@ -300,7 +300,7 @@ describe("which list to use", () => {
   it("keeps its scope when the two rules ordered 20 schools or fewer", () => {
     const P = copyFor({ counts: { complete: 16 }, pairwise: pairwiseFromCompare(fixtureCompare()).pairwise });
     expect(P.defaultListStatement()).toBe(
-      `${LEAD} Adding it back keeps the same schools at the top among the 16 schools with one position under both methods.`
+      `${LEAD} Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.`
     );
   });
 
@@ -314,7 +314,7 @@ describe("which list to use", () => {
     );
   });
 
-  it("reads a largest move of one position in the singular, in both sentences that state it", () => {
+  it("reads a largest move of one rank in the singular, in both sentences that state it", () => {
     const pairwise = pairwiseFromCompare(compare({ median: 1, maximum: 1 })).pairwise;
     const P = copyFor({
       schools: [school({ id: "c1", place: 1 })],
@@ -323,9 +323,9 @@ describe("which list to use", () => {
       pairwise,
     });
     expect(P.comparisonSentence("additive_u", "additive_no_u")).toContain(
-      "Half of the schools move 1 position or fewer, and the largest move is 1 position."
+      "Half of the schools move 1 rank or fewer, and the largest move is 1 rank."
     );
-    expect(P.urgencyReassurance()).toContain("the largest move for any school is 1 position.");
+    expect(P.urgencyReassurance()).toContain("the largest move for any school is 1 rank.");
     for (const text of [P.comparisonSentence("additive_u", "additive_no_u"), P.urgencyReassurance()])
       expect(text).not.toMatch(/\b1 places\b/);
   });
@@ -341,7 +341,7 @@ describe("which list to use", () => {
       pairwise,
     }).urgencyReassurance();
     expect(text).toBe(
-      "Among the 84 schools with one position under both methods, the same 20 schools make the top 20 with or without the urgency rating, and the same 40 make the top 40. Adding it back changes the order in the list, and the largest move for any school is 9 positions. For the three schools that show a range, adding it back can still move their possible positions."
+      "Among the 84 schools with one rank under both methods, the same 20 schools make the top 20 with or without the urgency rating, and the same 40 make the top 40. Adding it back changes the order in the list, and the largest move for any school is 9 ranks. For the three schools that show a range, adding it back can still move their possible ranks."
     );
     const P = copyFor({
       schools: full,
@@ -360,7 +360,7 @@ describe("which list to use", () => {
     ).toBe(false);
   });
 
-  it("builds the explainer's example from the range school whose possible positions move most", async () => {
+  it("builds the explainer's example from the range school whose possible ranks move most", async () => {
     const moves = (id: string, name: string, u: [number, number], nu: [number, number]) => ({
       ...school({ id, name, cohort: "interval" }),
       results: {
@@ -382,7 +382,7 @@ describe("which list to use", () => {
     });
     const limits = (await P.later()).HOW_IT_WORKS.find((s) => s.key === "limits")?.sentences ?? [];
     expect(limits).toContain(
-      "For example, among the 84 schools with one position under both methods, the same 20 schools make the top 20 with or without the urgency rating, and the same 40 make the top 40, but Larch High School's possible positions among all 87 schools that can be put in order are 18th to 30th without urgency and 12th to 18th with it."
+      "For example, among the 84 schools with one rank under both methods, the same 20 schools make the top 20 with or without the urgency rating, and the same 40 make the top 40, but Larch High School's possible ranks among all 87 schools that can be put in order are 18th to 30th without urgency and 12th to 18th with it."
     );
   });
 });
@@ -437,9 +437,9 @@ describe("the first schools of a list", () => {
     expect(copy.listStartsSentence(shuffled, A)).toContain("are First, Second and Third.");
   });
 
-  it("says no school has a single position when none does", () => {
+  it("says no school has a single rank when none does", () => {
     expect(copy.listStartsSentence([], A)).toBe(
-      "Under the combined-factors rule with urgency (S), no school has every input recorded, so the list has no single positions yet."
+      "Under the combined-factors rule with urgency (S), no school has every input recorded, so the list has no single ranks yet."
     );
     expect(copy.listStartsSentence([school({ id: "q", cohort: "queue" })], A)).toContain(
       "no school has every input recorded"
@@ -507,7 +507,7 @@ describe("read from the main rule's side", () => {
     const data = pairwiseFromCompare(fromMain);
     const P = copyFor({ counts: { complete: 84 }, ...data });
     expect(P.comparisonSentence(S0, S)).toContain(
-      "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 84 schools with one position under both methods."
+      "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 84 schools with one rank under both methods."
     );
     // Switching from the main rule to the rule with urgency: the joiner of one is the leaver of the other.
     expect(P.comparisonSentence(S0, S)).toContain(

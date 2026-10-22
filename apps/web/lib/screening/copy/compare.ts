@@ -28,7 +28,7 @@ const overlapAt = (row: PairwiseRow, k: TopSize): number | undefined =>
 export const pairSize = (row: PairwiseRow): number | null =>
   Number.isInteger(row.n) ? (row.n as number) : null;
 export const pairPhrase = (row: PairwiseRow): string =>
-  theSchools({ n: pairSize(row) ?? undefined }, "n", "with one position under both methods");
+  theSchools({ n: pairSize(row) ?? undefined }, "n", "with one rank under both methods");
 export function agreementSentence(row: PairwiseRow, base: 10 | 20, both: string): string {
   const n = pairSize(row);
   if (n != null && n <= base) {
@@ -157,8 +157,8 @@ export function comparisonSegments(
   const most = row.maximum_absolute_rank_shift;
   sentences.push(
     half === 0
-      ? seg`At least half of the schools keep the same position in the list, and the largest move is ${most} ${plural(most, "position", "positions")}.`
-      : seg`Half of the schools move ${half} ${plural(half, "position", "positions")} or fewer, and the largest move is ${most} ${plural(most, "position", "positions")}.`
+      ? seg`At least half of the schools keep the same rank in the list, and the largest move is ${most} ${plural(most, "rank", "ranks")}.`
+      : seg`Half of the schools move ${half} ${plural(half, "rank", "ranks")} or fewer, and the largest move is ${most} ${plural(most, "rank", "ranks")}.`
   );
   return joinSegments(sentences);
 }
@@ -179,8 +179,8 @@ export function urgencyReassurance(data: ComparisonData): string {
   const rc = data.schools ? countsFrom(data.schools) : null;
   return [
     `Among ${pairPhrase(row)}, ${lowerFirst(agreementSentence(row, 20, "with or without the urgency rating"))}`,
-    `Adding it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "position", "positions")}.`,
-    `For ${rangePhrase(rc)}, adding it back can still move ${theirScore(rc)} possible positions.`,
+    `Adding it back changes the order in the list, and the largest move for any school is ${most} ${plural(most, "rank", "ranks")}.`,
+    `For ${rangePhrase(rc)}, adding it back can still move ${theirScore(rc)} possible ranks.`,
   ].join(" ");
 }
 

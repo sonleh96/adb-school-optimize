@@ -93,7 +93,7 @@ test("the switch turns the method details on over the same screen, survives a re
   const first = methodRow(page, "Sample School 08");
   await expect(first).toContainText("1Sample School 08South One, South Province0.708");
   await expect(page.getByTestId("legend-rule")).toContainText(
-    "Position in the list under combined factors, without urgency"
+    "Rank in the list under combined factors, without urgency"
   );
   await page.getByRole("button", { name: "Formula" }).click();
   await expect(page.locator("#screening-formula")).toHaveText(FORMULA);
@@ -220,7 +220,7 @@ test("the map bar holds Map layers, and steps down or keeps its icons rather tha
 });
 
 const LEAD_20 =
-  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with one position under both methods.";
+  "This compares the combined-factors rule without urgency (S0) with the combined-factors rule with urgency (S) among the 16 schools with one rank under both methods.";
 
 test("compare mode reproduces a pasted pair, says the agreement in What changed's words, swaps and goes back", async ({
   page,
@@ -337,7 +337,7 @@ test("the card in compare mode shows the school under both rules and how far it 
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined");
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined, no urgency");
   await expect(c.locator("[data-region=inspector-breakdown]")).toHaveCount(2);
-  await expect(c).toContainText(/Same position in the list under|(Up|Down) \d+ places? under/);
+  await expect(c).toContainText(/Same rank in the list under|(Up|Down) \d+ places? under/);
 });
 
 test("no raw null, undefined or NaN renders in the method states on the worst-case data (R8)", async ({
@@ -405,7 +405,7 @@ test("the chart has a table a keyboard and a screen reader can use", async ({ pa
   await openWorkspace(page, "?analyst=1&mode=compare&rule=additive_u&compare=additive_no_u");
   const pair = json("compare/additive_u__additive_no_u.json");
   const table = page.getByRole("table", {
-    name: "Positions in the list under the two rules, joined by a line per school",
+    name: "Ranks in the list under the two rules, joined by a line per school",
   });
   await expect(table.getByRole("row")).toHaveCount(pair.ranks.length + 1);
   const first = pair.ranks[0];

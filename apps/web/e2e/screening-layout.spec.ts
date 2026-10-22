@@ -249,11 +249,11 @@ test.describe("the narrow layout", () => {
 
     // The key is compact, its marks named in a few words, until What the map shows opens it in full.
     const key = page.locator("[data-slot=legend]");
-    await expect(key.locator("[data-region=legend-point]")).toHaveText("One position");
+    await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
     await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(key.locator("[data-region=legend-point]")).toContainText("Filled dot");
     await key.getByRole("button", { name: "Hide the full key" }).click();
-    await expect(key.locator("[data-region=legend-point]")).toHaveText("One position");
+    await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
 
     await orderedRow(page, "Sample School 08").click();
     // Measured once the card has finished coming in.

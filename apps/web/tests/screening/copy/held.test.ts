@@ -77,7 +77,7 @@ describe("a school held back only because its urgency rating is unknown", () => 
     expect(copy.missingSentences(s, "additive_u")).toEqual([
       "Its urgency rating is not recorded, and the rules that use urgency need it.",
       "The rules that leave urgency out do not need it, so they can put this school in order.",
-      "Until the urgency rating is recorded, it has no position in the list under a rule that uses urgency.",
+      "Until the urgency rating is recorded, it has no rank in the list under a rule that uses urgency.",
       "Not being in the list yet does not mean its need is low.",
     ]);
     expect(copy.missingValueKind(s, "urgency")).toBe("blank");

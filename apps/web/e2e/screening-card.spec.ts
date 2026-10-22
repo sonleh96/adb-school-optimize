@@ -3,7 +3,7 @@
  * fixture datasets. Failure modes and the test for each:
  *  1. The card states a second place, or reasons out of order, or the need parts outside the need box
  *                                                                       -> "a complete school's card..."
- *  2. A range school reads as one position, or a missing reading reads as 0 or splits its label (R9, R10)
+ *  2. A range school reads as one rank, or a missing figure reads as 0 or splits its label (R9, R10)
  *                                                                       -> "a range school's card..."
  *  3. An incomplete record's card has no reasons, or prints "null"      -> "an incomplete record's card..."
  *  4. The paper's persistence flag shows under another rule, or for a school without it, or a flag only just over
@@ -52,7 +52,7 @@ const near = (points: string) =>
   `In that test it stayed in the top 20 only just often enough to be flagged, within ${points} percentage points of the line, so another round of random changes to the shares could take the flag away.`;
 const NEAR_LINE = near("0.6");
 
-test("a complete school's card states one position, its reasons with the school need parts first, and its numbers", async ({
+test("a complete school's card states one rank, its reasons with the school need parts first, and its numbers", async ({
   page,
 }) => {
   await openWorkspace(page);
@@ -60,7 +60,7 @@ test("a complete school's card states one position, its reasons with the school 
 
   await expect(place(page)).toHaveText("1st");
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Position in the list under the research paper's main method"
+    "Rank in the list under the research paper's main method"
   );
   await expect(page.getByTestId("card-context")).toHaveText(
     "Among the 17 schools with a record for every input the rule uses."
@@ -97,22 +97,22 @@ test("a complete school's card states one position, its reasons with the school 
   );
 });
 
-test("a range school's card shows its range, names the missing reading, and labels it on one line", async ({
+test("a range school's card shows its range, names the missing figure, and labels it on one line", async ({
   page,
 }) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 17").click();
   await expect(place(page)).toHaveText("10thto17th");
   await expect(page.getByTestId("card-context")).toContainText(
-    "Its air-quality reading, an air-pollution index for its location, is missing"
+    "Its air-quality figure, an air-pollution index for its location, is missing"
   );
   await expect(page.getByTestId("card-context")).toContainText("It is in the top 20 either way.");
 
   const air = card(page).locator("[data-missing]", { hasText: "Air quality" });
-  await expect(air).toContainText("No reading");
+  await expect(air).toContainText("No figure");
   await expect(air).toContainText("so it is not counted as 0");
   // The label is one line, under the hatched bar, never split in two.
-  const label = air.getByText("No reading", { exact: true });
+  const label = air.getByText("No figure", { exact: true });
   const box = (await label.boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(18);
   await expect(card(page).locator("[data-region=inspector-record]")).toHaveCount(0);
@@ -156,7 +156,7 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
   await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(card(page).locator("[data-region=inspector-place] b")).toHaveText(
-    "Position in the list under the earlier paper's method"
+    "Rank in the list under the earlier paper's method"
   );
   await orderedRow(page, "Sample School 02").click();
   await expect(card(page).locator("[data-region=inspector-why]")).toBeVisible();
@@ -211,7 +211,7 @@ test("Copy link copies the address of this screen and says so", async ({ page, c
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
 });
 
-test("the key starts as one line, opens to name the rule, cuts its position bands from the data and says what each mark means", async ({
+test("the key starts as one line, opens to name the rule, cuts its rank bands from the data and says what each mark means", async ({
   page,
   context,
 }) => {
@@ -219,12 +219,12 @@ test("the key starts as one line, opens to name the rule, cuts its position band
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
   const more = key.getByRole("button", { name: "What the map shows" });
-  // Compact: the colour strip from the first position to the last, read out as one sentence, and the three marks
+  // Compact: the colour strip from the first rank to the last, read out as one sentence, and the three marks
   // in a few words.
   await expect(key.locator("[class*=miniRamp]")).toHaveText("1st17th");
   await expect(key.getByRole("img", { name: "Darker is earlier in the list: 1st to 17th" })).toBeVisible();
-  await expect(key.locator("[data-region=legend-point]")).toHaveText("One position");
-  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of positions");
+  await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
+  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of ranks");
   await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in the list yet");
   await expect(bands).toHaveCount(0);
   await expect(page.getByTestId("legend-rule")).toHaveCount(0);
@@ -237,11 +237,11 @@ test("the key starts as one line, opens to name the rule, cuts its position band
     "true"
   );
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Position in the list under the research paper's main method"
+    "Rank in the list under the research paper's main method"
   );
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
-    "Ring with a centre dotA school with a range of possible positions in the list, because its air-quality reading is missing."
+    "Ring with a centre dotA school with a range of possible ranks in the list, because its air-quality figure is missing."
   );
   await key.getByRole("button", { name: "Hide the full key" }).click();
   await expect(bands).toHaveCount(0);

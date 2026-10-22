@@ -91,7 +91,7 @@ const leftOut = {
 const leftOutCounts = () => Object.fromEntries(Object.entries(leftOut).map(([k, v]) => [k, v.length]));
 
 /**
- * The page parser refuses a row whose places contradict its group (a complete school with no single position, say),
+ * The page parser refuses a row whose places contradict its group (a complete school with no single rank, say),
  * which the API cannot send. Where the design record holds one, the result under that rule is dropped from the
  * record itself, so both sides read the same school, and the drop is counted.
  */
@@ -606,7 +606,7 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
   it("leaves out only what the API cannot say, and each one is justified by the design record itself", () => {
     // Every case is re-derived from the design record that was left out, not from the code that left it out.
     // The API sends no entry for a rule that does not run on a school, and the design records that as a null result.
-    // Only a school with a range (it lacks a reading the rule reads) can be in that position.
+    // Only a school with a range (it lacks a reading the rule reads) can be in that rank.
     const dropped = new Set(leftOut.badRanks.map((x) => `${x.id}|${x.rule}`));
     for (const x of leftOut.noResult) {
       expect(x.school.cohort, x.id).not.toBe("queue");
@@ -624,7 +624,7 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       expect(x.blank.length).toBeLessThan(x.gate.length);
       expect(x.blank.every((f) => x.gate.includes(f))).toBe(true);
     }
-    // A school whose places contradict its group under a rule (a complete school with no single position, say) is a row
+    // A school whose places contradict its group under a rule (a complete school with no single rank, say) is a row
     // the API cannot send, and the page parser refuses.
     for (const x of leftOut.badRanks) {
       const res = x.school.results[x.rule];

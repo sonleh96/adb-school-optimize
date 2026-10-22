@@ -253,9 +253,9 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     case "air": {
       const q = school.raw.Q_raw;
       if (q != null && school.missing_env?.aqi)
-        return "Its air-quality reading is recorded, but the tool cannot use it, so it is not counted as 0.";
+        return "Its air-quality figure is recorded, but the tool cannot use it, so it is not counted as 0.";
       return q == null
-        ? "Its air-quality reading is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
+        ? "Its air-quality figure is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
         : `Its air-quality index, a measure of air pollution assigned to its location, reaches ${formatCount(q)} on its worst 1 day in 20.`;
     }
     case "emissions": {

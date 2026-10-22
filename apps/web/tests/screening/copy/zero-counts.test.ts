@@ -2,7 +2,7 @@
  * A count of zero is said as a zero, or left out, and never printed as a clause about nothing.
  *
  * Failure modes, each with the test that catches it:
- *  1. The scope line prints "and 0 that show a range of positions" on a list with no range schools, and the other
+ *  1. The scope line prints "and 0 that show a range of ranks" on a list with no range schools, and the other
  *     lines that state a group (the ranges, the list order, the filter note, the idea of a range) speak of schools
  *     that do not exist.
  *  2. The explainer says "the others have incomplete records" when none does.
@@ -76,7 +76,7 @@ describe("a list with range schools and incomplete records", () => {
   it("keeps every clause", async () => {
     const { P } = await bound("", "additive_u");
     expect(P.scope("additive_u").scopeDetail).toContain(
-      "21 schools can be put in order, 16 with every input recorded and 5 that show a range of positions."
+      "21 schools can be put in order, 16 with every input recorded and 5 that show a range of ranks."
     );
     expect(P.IDEAS.ranges.title).toMatch(/^Five schools show a range/);
   });
@@ -86,9 +86,9 @@ describe("a list with range schools and no school with every input", () => {
   it("states the group that is empty as none, not as 0", () => {
     const c = { all: 5, complete: 0, range: 5, ranked: 5, queue: 0 };
     const scope = copy.buildScope(c);
-    expect(scope.scopeDetail).toContain("5 schools can be put in order, all showing a range of positions.");
+    expect(scope.scopeDetail).toContain("5 schools can be put in order, all showing a range of ranks.");
     expect(scope.groups).toBe(
-      "No school has every input recorded, but five lack a reading such as air quality and show a range of positions, so 5 schools can be put in order."
+      "No school has every input recorded, but five lack a figure such as air quality and show a range of ranks, so 5 schools can be put in order."
     );
     expect(copy.buildScope({ all: 0, complete: 0, range: 0, ranked: 0, queue: 0 }).scopeShort).toBe(
       "No school can be put in order."
