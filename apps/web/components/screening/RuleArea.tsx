@@ -137,13 +137,14 @@ export function RuleArea(props: RuleAreaProps) {
             type="button"
             className={styles.ruleChange}
             data-region="rule-change"
-            // Its name says what pressing it does (open the choice, or Done), so it carries no expanded state too.
-            data-open={open || undefined}
+            // A disclosure: one name, its state in aria-expanded and in the chevron.
+            aria-expanded={open}
             aria-controls={open ? "screening-rule-choices" : undefined}
             disabled={disabled}
             onClick={onToggle}
           >
-            {open ? LAYOUT.changeDone : LAYOUT.orderControl}
+            {LAYOUT.orderControl}
+            <ChevronDown size={13} aria-hidden data-open={open || undefined} />
           </button>
           {open || comparing || !line ? null : line === PRIMARY_RULE ? seeWithUrgency : back}
         </div>
