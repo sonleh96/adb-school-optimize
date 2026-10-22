@@ -81,6 +81,8 @@ export const BASE: { readonly [K in StateKey]: Patch[K] } = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  // The rule area starts closed, as a first-time reader sees it; the steps that point at its switch open it.
+  rules: false,
   // The method details are off, so a step shows the plain screen with nothing open.
   analyst: false,
   mode: "screen",
@@ -395,7 +397,7 @@ export function stepView(
         ...base,
         title: staticTitle,
         body: [para(TERMS.urgency.help)],
-        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, rules: true },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };
@@ -419,7 +421,7 @@ export function stepView(
         title: staticTitle,
         body: [para(copy.ruleExplanation(PRIMARY_RULE))],
         tryIt: text(call<string>(sc.tryIt, copy.ruleLabel(SENSITIVITY_RULE))),
-        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE },
+        patch: { rule: PRIMARY_RULE, compare: SENSITIVITY_RULE, rules: true },
         targets: [[region("rule-switch")]],
         scroll: "top",
       };

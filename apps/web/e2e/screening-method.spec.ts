@@ -44,7 +44,17 @@ import path from "node:path";
 
 import type { Page } from "@playwright/test";
 
-import { RULE, expect, mainRule, openWorkspace, test, useMockDataset, waitForMap } from "./screening-helpers";
+import {
+  RULE,
+  expect,
+  helpItem,
+  mainRule,
+  openRules,
+  openWorkspace,
+  test,
+  useMockDataset,
+  waitForMap,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
@@ -96,6 +106,7 @@ test("the switch turns the method details on over the same screen, survives a re
   await methodSwitch(page).click();
   // The formula is method detail: it leaves the link with the method details.
   expect(search(page)).toBe("");
+  await openRules(page);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("ol[aria-label='The list'] button").first()).toContainText("1st");
   const text = await workspaceText(page);
@@ -261,6 +272,7 @@ test("turning the method details off while comparing returns to the plain list o
   await expect(page.locator("[data-region=compare-statement]")).toBeVisible();
   await methodSwitch(page).click();
   expect(search(page)).toBe("?rule=additive_u&compare=additive_no_u");
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-region=what-changed]")).toBeVisible();
   await expect(page.locator("[data-region=compare-statement]")).toHaveCount(0);
@@ -452,7 +464,7 @@ test("help mode explains the method details' rules, lines and controls, and a ma
   const school = ROWS.find((r) => r.cohort === "complete")!.school.school_key;
   await openWorkspace(page, `?analyst=1&school=${school}`);
   await expect(card(page).locator("[data-region=inspector-place]")).toBeVisible();
-  await page.getByRole("toolbar").getByRole("button", { name: "Explain this screen" }).click();
+  await (await helpItem(page, "Explain this screen")).click();
   const marked = page.locator("[data-testid=screening-workspace] [data-xp]");
   await expect.poll(() => marked.count()).toBeGreaterThanOrEqual(18);
   expect(await marked.count()).toBeLessThanOrEqual(40);

@@ -315,7 +315,10 @@ function HelpCard({
         (id.startsWith("place:")
           ? root.querySelector(`[data-school-key="${CSS.escape(id.slice(6))}"]`)
           : null) ??
-        root.querySelector('[data-region="explain-button"]');
+        // Help, the way into help mode: the one the layout shows.
+        [...root.querySelectorAll('[data-region="help-button"]')].find(
+          (button) => button.getClientRects().length
+        );
       if (!anchor) return;
       const host = anchor.closest(HOSTS);
       const a = anchor.getBoundingClientRect();

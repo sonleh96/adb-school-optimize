@@ -5,6 +5,7 @@ import { type MouseEvent, useEffect, useLayoutEffect, useRef, useState } from "r
 import { createPortal } from "react-dom";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
+import { PENDING } from "@/lib/screening/pending-words";
 import { PRIMARY_RULE } from "@/lib/screening/rule-pair";
 
 import type { RuleChoice } from "./useScreeningData";
@@ -22,16 +23,17 @@ export function RuleSymbol({ symbol, className }: { symbol: string; className?: 
 }
 
 /**
- * Focus the control that names the rule on screen: its button in the switch, or Other rules when it is another rule.
- * Hide, the ways back and a choice in Other rules each remove themselves on use, and See what changes removes the
- * statement it sits in, so they hand focus
- * here and a keyboard user is never dropped on the page. Runs after the change has rendered.
+ * Focus the control that names the rule on screen: its button in the switch, Other rules when it is another rule, or
+ * the rule area's Change when the area is closed. Hide, the ways back, a choice in Other rules and See what changes
+ * each remove themselves on use, so they hand focus here and a keyboard user is never dropped on the page. Runs after
+ * the change has rendered.
  */
 export function focusRuleControl(within: HTMLElement | null) {
   requestAnimationFrame(() => {
     const target =
       within?.querySelector<HTMLElement>("[data-region=rule-switch] [aria-pressed=true]") ??
-      within?.querySelector<HTMLElement>("[aria-controls=screening-other-rules]");
+      within?.querySelector<HTMLElement>("[aria-controls=screening-other-rules]") ??
+      within?.querySelector<HTMLElement>("[data-region=rule-change]");
     target?.focus({ preventScroll: true });
   });
 }
@@ -47,14 +49,22 @@ interface RuleAreaProps {
   statement: string | null;
   /** What changed is showing, and carries its own way back. */
   comparing: boolean;
+  /** The switch, Other rules and the statement show; closed, the area is one plain line and its two ways on. */
+  open: boolean;
   disabled: boolean;
   layer: HTMLElement | null;
   onRule: (rule: CopyRuleId) => void;
+  onToggle: () => void;
   /** Opens What changed on the main rule, compared with the rule that puts the urgency value back. */
   onSeeWithUrgency: () => void;
   onBack: () => void;
 }
 
+/**
+ * The rule area. A first-time reader sees one plain line saying how the list is ordered, Change, and the question most
+ * people ask of the rule, what the urgency value changes, as a link. Change opens the switch of the main rule and the
+ * urgency sensitivity, Other rules and the full statement. The analyst letters stay in the method details.
+ */
 export function RuleArea(props: RuleAreaProps) {
   const {
     copy,
@@ -63,9 +73,11 @@ export function RuleArea(props: RuleAreaProps) {
     shown,
     statement,
     comparing,
+    open,
     disabled,
     layer,
     onRule,
+    onToggle,
     onSeeWithUrgency,
     onBack,
   } = props;
@@ -75,85 +87,110 @@ export function RuleArea(props: RuleAreaProps) {
   // While the rule just pressed loads, the rows on screen are the previous rule's, and so would be the statement or
   // the rule line beside the new button. Neither shows until the rows are the pressed rule's.
   const line = shown === requested ? shown : null;
+  // The plain line describes the rows on screen.
+  const listed = shown ?? requested;
   const section = useRef<HTMLElement>(null);
-  const { LAYOUT, TERMS } = copy;
+  const { LAYOUT, TERMS, HELP } = copy;
+  const seeWithUrgency = (
+    <button
+      type="button"
+      className={styles.arrowLink}
+      data-region="see-with-urgency"
+      onClick={() => {
+        onSeeWithUrgency();
+        focusRuleControl(section.current);
+      }}
+    >
+      {LAYOUT.seeWithUrgency}
+      <ChevronRight size={11} aria-hidden />
+    </button>
+  );
+  const back = (
+    <button
+      type="button"
+      className={styles.arrowLink}
+      onClick={() => {
+        onBack();
+        focusRuleControl(section.current);
+      }}
+    >
+      {LAYOUT.backToMainRule}
+      <ChevronRight size={11} aria-hidden />
+    </button>
+  );
 
   return (
-    <section ref={section} className={styles.rule} data-region="rule-identity" aria-label={TERMS.rule.label}>
-      <div className={styles.ruleTop}>
-        <span className={styles.eyebrow}>{TERMS.rule.label}</span>
-        {other.length > 0 ? (
-          <OtherRules
-            copy={copy}
-            main={main}
-            other={other}
-            requested={requested}
-            active={otherActive}
-            disabled={disabled}
-            layer={layer}
-            onRule={onRule}
-          />
-        ) : null}
-      </div>
-      <div className={styles.ruleSeg} role="group" aria-label={LAYOUT.rulePair} data-region="rule-switch">
-        {main.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            className={styles.ruleButton}
-            aria-pressed={r.id === requested}
-            data-rule={r.id}
-            disabled={disabled}
-            onClick={() => onRule(r.id)}
-          >
-            <RuleSymbol symbol={copy.ruleSymbol(r.id)} />
-            <span className={styles.ruleButtonLabel}>{copy.ruleLabel(r.id)}</span>
-          </button>
-        ))}
-      </div>
-      {line === PRIMARY_RULE && statement ? (
-        <p className={styles.statement} data-region="list-statement">
-          {statement}{" "}
-          <button
-            type="button"
-            className={styles.arrowLink}
-            onClick={() => {
-              onSeeWithUrgency();
-              focusRuleControl(section.current);
-            }}
-          >
-            {LAYOUT.seeWithUrgency}
-            <ChevronRight size={11} aria-hidden />
-          </button>
+    <section
+      ref={section}
+      className={styles.rule}
+      data-region="rule-identity"
+      data-open={open || undefined}
+      aria-label={TERMS.rule.label}
+    >
+      <div className={styles.ruleNow}>
+        <p className={styles.ruleNowText} data-region="rule-now">
+          {PENDING.ruleNow(copy.ruleLabel(listed), listed === PRIMARY_RULE)}
         </p>
-      ) : null}
-      {line && line !== PRIMARY_RULE ? (
-        <p className={styles.ruleLine} data-region="rule-role">
-          {main.some((r) => r.id === line) ? null : (
-            <>
-              <RuleSymbol symbol={copy.ruleSymbol(line)} className={styles.symInline} />
-              <b>{copy.ruleLabel(line)}.</b>{" "}
-            </>
-          )}
-          {copy.ruleOneLine(line)} <span className={styles.ruleRole}>{copy.ruleRoleLine(line)}.</span>
-          {comparing ? null : (
-            <>
-              {" "}
+        <button
+          type="button"
+          className={styles.ruleChange}
+          data-region="rule-change"
+          aria-expanded={open}
+          aria-controls="screening-rule-choices"
+          disabled={disabled}
+          onClick={onToggle}
+        >
+          {open ? HELP.done : LAYOUT.change}
+        </button>
+      </div>
+      {open ? (
+        <div id="screening-rule-choices" className={styles.ruleChoices}>
+          <div className={styles.ruleTop}>
+            <span className={styles.eyebrow}>{TERMS.rule.label}</span>
+            {other.length > 0 ? (
+              <OtherRules
+                copy={copy}
+                main={main}
+                other={other}
+                requested={requested}
+                active={otherActive}
+                disabled={disabled}
+                layer={layer}
+                onRule={onRule}
+              />
+            ) : null}
+          </div>
+          <div className={styles.ruleSeg} role="group" aria-label={LAYOUT.rulePair} data-region="rule-switch">
+            {main.map((r) => (
               <button
+                key={r.id}
                 type="button"
-                className={styles.arrowLink}
-                onClick={() => {
-                  onBack();
-                  focusRuleControl(section.current);
-                }}
+                className={styles.ruleButton}
+                aria-pressed={r.id === requested}
+                data-rule={r.id}
+                disabled={disabled}
+                onClick={() => onRule(r.id)}
               >
-                {LAYOUT.backToMainRule}
-                <ChevronRight size={11} aria-hidden />
+                <span className={styles.ruleButtonLabel}>{copy.ruleLabel(r.id)}</span>
               </button>
-            </>
-          )}
-        </p>
-      ) : null}
+            ))}
+          </div>
+          {line === PRIMARY_RULE && statement ? (
+            <p className={styles.statement} data-region="list-statement">
+              {statement} {seeWithUrgency}
+            </p>
+          ) : null}
+          {line && line !== PRIMARY_RULE ? (
+            <p className={styles.ruleLine} data-region="rule-role">
+              {main.some((r) => r.id === line) ? null : <b>{copy.ruleLabel(line)}. </b>}
+              {copy.ruleOneLine(line)} <span className={styles.ruleRole}>{copy.ruleRoleLine(line)}.</span>
+              {comparing ? null : <> {back}</>}
+            </p>
+          ) : null}
+        </div>
+      ) : comparing || !line ? null : (
+        <p className={styles.ruleNowLink}>{line === PRIMARY_RULE ? seeWithUrgency : back}</p>
+      )}
     </section>
   );
 }
@@ -267,7 +304,6 @@ function OtherRules({ copy, main, other, requested, active, disabled, layer, onR
         aria-pressed={r.id === requested}
         onClick={() => choose(r.id)}
       >
-        <RuleSymbol symbol={copy.ruleSymbol(r.id)} />
         <span className={styles.popRuleText}>
           <span className={styles.popRuleLabel}>{copy.ruleLabel(r.id)}</span>
           <span className={styles.popRuleLine}>{copy.ruleOneLine(r.id)}</span>

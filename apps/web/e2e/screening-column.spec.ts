@@ -4,6 +4,9 @@
  *  1. A pasted link does not reproduce the screen, or the URL falls behind a change -> "a pasted link..."
  *  2. The statement and What changed show together, or What changed compares the wrong rules, or the way back does
  *     not return to the default screen                                               -> "the statement..."
+ * 10. The first view asks a reader to choose a rule: the switch, the statement or the analyst letters show before
+ *     Change, the urgency comparison is more than one click away, or the address keeps the open area
+ *                                                                                    -> "the rule area starts..."
  *  3. Other rules hides a rule, stays open after a choice, traps Escape, animates a keyboard open, or the rule line
  *     does not name the rule chosen                                                  -> "Other rules..."
  *  4. Counts in the tabs or the scope line are not the run's own                       -> "a pasted link...", "the scope line..."
@@ -22,6 +25,8 @@ import {
   RULE,
   expect,
   mainRule,
+  openRules,
+  ruleChange,
   openWorkspace,
   orderedRow,
   tab,
@@ -49,6 +54,9 @@ const SCOPE_DETAIL =
 const SCOPE_DETAIL_MAIN =
   "Being put in order is not a selection or an approval; it only means the record has enough detail to compare. Single places count among the 17 schools with a record for every input the rule uses, and ranges among all 22 schools that can be put in order.";
 
+/** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
+const QUIET_MAIN = "Schools are listed by the main rule, which leaves out the uncertain urgency rating.";
+
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
 const search = (page: import("@playwright/test").Page) => new URL(page.url()).search;
@@ -56,6 +64,7 @@ const search = (page: import("@playwright/test").Page) => new URL(page.url()).se
 test("a pasted link reproduces the screen, and the URL follows every change", async ({ page }) => {
   await openWorkspace(page, "?rule=additive_u&compare=additive_no_u&scope=1&guide=start");
 
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
   await expect(changed(page).locator("[data-region=changed-example]")).toHaveText(`Example${EXAMPLE_BACK}`);
@@ -72,10 +81,12 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
   expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
-  // The same link, opened again, is the same screen.
+  // The same link, opened again, is the same screen. The rule area is not part of the address: it opens closed.
   await page.reload();
   await waitForMap(page);
   await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(4);
 });
@@ -84,8 +95,9 @@ test("the statement shows under the main rule only, never beside What changed, a
   page,
 }) => {
   await openWorkspace(page);
-  // The main rule comes first in the switch, pressed.
-  await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(`S0${RULE.main}`);
+  await openRules(page);
+  // The main rule comes first in the switch, pressed, named in words: the letters stay in the method details.
+  await expect(page.locator("[data-region=rule-switch] button").first()).toHaveText(RULE.main);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
   await expect(changed(page)).toHaveCount(0);
@@ -127,10 +139,53 @@ test("the statement shows under the main rule only, never beside What changed, a
   await expect(statement(page)).toBeVisible();
 });
 
+test("the rule area starts as one plain line, keeps the urgency comparison one click away, and opens with Change", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  const area = page.locator("[data-region=rule-identity]");
+  // Closed: one plain line and Change; no switch, no statement, no analyst letters.
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+  await expect(ruleChange(page)).toHaveText("Change");
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
+  await expect(statement(page)).toHaveCount(0);
+  expect(await area.innerText()).not.toMatch(/\bS0?\b/);
+
+  // What the urgency value changes is one click away, and answers on the main rule's list.
+  await area.locator("[data-region=see-with-urgency]").click();
+  await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
+  expect(search(page)).toBe("?compare=additive_u");
+  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
+
+  // Change opens the switch, Other rules and the statement; Done closes them, and the address never keeps either.
+  await ruleChange(page).click();
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator("[data-region=rule-switch] button")).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Other rules (5)" })).toBeVisible();
+  await expect(statement(page)).toHaveText(`${STATEMENT} See what changes with the urgency value`);
+  expect(search(page)).toBe("");
+  await ruleChange(page).click();
+  await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
+
+  // On another rule the line names it, and the way back replaces the comparison.
+  await openRules(page);
+  await mainRule(page, RULE.urgency).click();
+  await expect(changed(page)).toBeVisible();
+  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
+  await ruleChange(page).click();
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(
+    `Schools are listed by another rule: ${RULE.urgency}.`
+  );
+  await area.getByRole("button", { name: "Back to the paper's main rule" }).click();
+  await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
+});
+
 test("Other rules lists all seven, closes on a choice or on Escape, and the rule line names the choice", async ({
   page,
 }) => {
   await openWorkspace(page);
+  await openRules(page);
   const button = page.getByRole("button", { name: "Other rules (5)" });
   const popover = page.locator("#screening-other-rules");
 
@@ -294,6 +349,7 @@ test("the controller ignores invalid values, clears with null, reports each chan
     view: "queue",
     end: "ranked",
   });
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
 });

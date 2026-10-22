@@ -1,15 +1,15 @@
 /**
  * Collisions the whole-stack acceptance run found at the sizes notes/final.md specifies ("Responsive layout"), each
  * checked at the size it occurs. Failure modes and the test for each:
- *  1. At 1024 with the rail open, the actions cover the column's masthead and "How this works", or the map bar
- *     covers the hint                                   -> "at 1024 by 768 with the rail open..."
+ *  1. At 1024 with the rail open, the actions cover the column's masthead and Help, or anything covers the hint                                   -> "at 1024 by 768 with the rail open..."
  *  2. At 1024 with the rail and a card open, the card covers the key, its Key button and the caveat
  *     -> "at 1024 by 768 with the rail and a card open..."
  *  3. In the narrow layout, Other rules opens past the window's right edge and cuts rules off
  *     -> "Other rules stays in the window..."
  *  4. At 200 percent zoom the rail's start pins its foot over the guides, so none can be started and the saved
- *     view's name is cut off; at 768 more guides sit below the fold with no sign of them
- *     -> "the rail's start lets every guide..." and "the rail's start shows that more..."
+ *     view's name is cut off; on a phone or at 768 the start list covers the list or is covered by it, clips a guide,
+ *     or Hide does not bring the list up
+ *     -> "the rail's start lets every guide..." and "the start list sits in the list region..."
  *  5. In the narrow layout, help mode's bar sits under the key -> "help mode's bar..."
  *  6. Compare mode's chart heading squeezes its middle caption to one word a line -> "compare mode's chart heading..."
  *  7. With the method details on, help mode widens the map bar into the actions (1440), or, with the rail open and
@@ -18,7 +18,16 @@
  */
 import type { Locator, Page } from "@playwright/test";
 
-import { expect, keyOf, openWorkspace, test, waitForMap } from "./screening-helpers";
+import {
+  ORDERED,
+  expect,
+  helpItem,
+  keyOf,
+  openRules,
+  openWorkspace,
+  test,
+  waitForMap,
+} from "./screening-helpers";
 
 test.describe.configure({ timeout: 60_000 });
 
@@ -91,7 +100,7 @@ test.describe("at 1024 by 768 with the rail open", () => {
     ["at its start", ""],
     ["while presenting", "?guide=q1&gstep=1&present=1"],
   ] as const) {
-    test(`at 1024 by 768 with the rail open ${state}, the actions, the map bar and the hint stay clear of the column and each other`, async ({
+    test(`at 1024 by 768 with the rail open ${state}, the actions and the hint stay clear of the column and each other`, async ({
       page,
     }) => {
       await openWorkspace(page, search || "?");
@@ -99,10 +108,10 @@ test.describe("at 1024 by 768 with the rail open", () => {
       await expect(page.locator(HINT)).toBeVisible();
       await expectApart(
         page,
+        // The plain screen has no map bar: every kind of help is under Help, at the top of the column.
         { column: COLUMN, actions: ACTIONS, mapbar: MAP_BAR, hint: HINT, zoom: ZOOM, rail: RAIL },
-        ["column", "actions", "mapbar", "hint", "zoom", "rail"]
+        ["column", "actions", "hint", "zoom", "rail"]
       );
-      await expectUncovered(page.locator(`${COLUMN} [data-region=how-link]`), "How this works");
       for (const action of await page.locator(`${ACTIONS} button`).all())
         await expectUncovered(action, (await action.textContent()) ?? "an action");
     });
@@ -129,7 +138,7 @@ test.describe("at 1024 by 768 with the rail and a card open", () => {
         mapbar: MAP_BAR,
         rail: RAIL,
       },
-      ["card", "key", "caveat", "actions", "mapbar", "rail"]
+      ["card", "key", "caveat", "actions", "rail"]
     );
     await expectUncovered(page.locator("[data-slot=legend] button"), "the Key button");
     await expectUncovered(page.locator("[data-region=caveat]"), "the caveat");
@@ -147,6 +156,7 @@ for (const size of [
       page,
     }) => {
       await openWorkspace(page);
+      await openRules(page);
       await page.locator("[aria-controls=screening-other-rules]").click();
       const pop = page.locator("#screening-other-rules");
       await expect(pop).toBeVisible();
@@ -187,58 +197,54 @@ test.describe("the rail's start at 200 percent zoom", () => {
   });
 });
 
-test.describe("the rail's start at 768 by 1024", () => {
-  test.use({ viewport: { width: 768, height: 1024 }, firstVisit: true });
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 768, height: 1024 },
+]) {
+  test.describe(`the start list on a first visit at ${size.width} by ${size.height}`, () => {
+    test.use({ viewport: size, firstVisit: true });
 
-  test("the rail's start shows that more lies below while it does, at 768 by 1024", async ({ page }) => {
-    await openWorkspace(page, "?");
-    const rail = page.locator(RAIL);
-    await expect(rail.locator("button[data-guide]")).toHaveCount(5);
-    // The part of the rail that scrolls, whichever element that is.
-    await rail.evaluate((el) => {
-      const scrolling = [el, ...el.querySelectorAll("*")].filter(
-        (node) =>
-          ["auto", "scroll"].includes(getComputedStyle(node).overflowY) &&
-          node.scrollHeight > node.clientHeight
+    test(`at ${size.width} by ${size.height} the start list sits in the list region: nothing covers it, it covers nothing, and Hide brings the list up`, async ({
+      page,
+    }) => {
+      await openWorkspace(page, "?");
+      const rail = page.locator(RAIL);
+      await expect(rail.locator("button[data-guide]")).toHaveCount(5);
+      // It sits under the map band, in the list region that scrolls as one; the map and its key keep the band.
+      const band = (await page.getByTestId("screening-map").boundingBox())!;
+      const railBox = (await rail.boundingBox())!;
+      expect(railBox.y).toBeGreaterThanOrEqual(band.y + band.height - 1);
+      expect(railBox.x).toBeGreaterThanOrEqual(0);
+      expect(railBox.x + railBox.width).toBeLessThanOrEqual(size.width + 1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth === window.innerWidth)).toBe(
+        true
       );
-      scrolling[0]?.setAttribute("data-test-scroller", "");
+      await expectUncovered(
+        page.locator("[data-slot=legend] [data-region=key-toggle]"),
+        "What the map shows"
+      );
+      // Hide and every guide can be read and pressed where they are, once scrolled to.
+      const hide = rail.getByRole("button", { name: "Hide the guides" });
+      await expectUncovered(hide, "Hide");
+      for (const guide of await rail.locator("button[data-guide]").all()) {
+        await guide.scrollIntoViewIfNeeded();
+        await expectUncovered(guide, (await guide.getAttribute("data-guide")) ?? "a guide");
+      }
+      // The list follows the start list in the same region, uncovered.
+      const first = page.locator(`${ORDERED} button`).first();
+      await first.scrollIntoViewIfNeeded();
+      await expectUncovered(first, "the first school");
+
+      // Hide takes the start list away; the list's first school comes up into the window.
+      await hide.scrollIntoViewIfNeeded();
+      await hide.click();
+      await expect(rail).toHaveCount(0);
+      await page.locator("[data-slot=column]").evaluate((column) => column.scrollTo({ top: 0 }));
+      await expect(first).toBeInViewport();
+      await expectUncovered(first, "the first school");
     });
-    const box = rail.locator("[data-test-scroller]");
-    await expect(box).toHaveCount(1);
-    const more = await box.evaluate((el) => el.scrollHeight > el.clientHeight + 40);
-    expect(more).toBe(true);
-    // The rail's own paper at the scroller's bottom edge, left of the content's padding: shaded while more lies below,
-    // plain at the end.
-    const edge = async () => {
-      const at = (await box.boundingBox())!;
-      const png = await page.screenshot({
-        clip: { x: at.x + 2, y: at.y + at.height - 6, width: 6, height: 4 },
-      });
-      return page.evaluate(async (data) => {
-        const image = new Image();
-        image.src = `data:image/png;base64,${data}`;
-        await image.decode();
-        const canvas = document.createElement("canvas");
-        canvas.width = image.width;
-        canvas.height = image.height;
-        const context = canvas.getContext("2d")!;
-        context.drawImage(image, 0, 0);
-        const { data: px } = context.getImageData(0, 0, image.width, image.height);
-        let sum = 0;
-        for (let i = 0; i < px.length; i += 4) sum += px[i] + px[i + 1] + px[i + 2];
-        return sum / (px.length / 4) / 3;
-      }, png.toString("base64"));
-    };
-    const shaded = await edge();
-    await box.evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
-    await page.waitForTimeout(100);
-    const plain = await edge();
-    expect(
-      plain - shaded,
-      `edge brightness: ${shaded.toFixed(1)} with more below, ${plain.toFixed(1)} at the end`
-    ).toBeGreaterThan(4);
   });
-});
+}
 
 for (const state of [
   {
@@ -256,10 +262,7 @@ for (const state of [
       page,
     }) => {
       await openWorkspace(page, state.search);
-      await page
-        .getByRole("toolbar")
-        .getByRole("button", { name: /Explain this screen/ })
-        .click();
+      await (await helpItem(page, "Explain this screen")).click();
       await expect(page.getByTestId("help-bar")).toBeVisible();
       const named: Record<string, string> = {
         column: COLUMN,
@@ -283,11 +286,7 @@ test.describe("help mode in the narrow layout", () => {
     page,
   }) => {
     await openWorkspace(page);
-    await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await page
-      .getByRole("group", { name: "Menu" })
-      .getByRole("button", { name: "Explain this screen" })
-      .click();
+    await (await helpItem(page, "Explain this screen")).click();
     const bar = page.getByTestId("help-bar");
     await expect(bar).toBeVisible();
     await expectApart(page, { bar: "[data-testid=help-bar] > div", key: "[data-slot=legend]" }, [

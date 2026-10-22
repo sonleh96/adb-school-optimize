@@ -27,6 +27,7 @@ import {
   expect,
   keyOf,
   mainRule,
+  openRules,
   openWorkspace,
   orderedRow,
   queuedRow,
@@ -152,6 +153,7 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
 
   // Under the rule with urgency the circulated experiment speaks, in its own words. A school flagged only just over
   // its one-standard-error band says that another run could take the flag away, and by how much.
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(card(page).locator("[data-region=inspector-place] b")).toContainText("with urgency (S)");
   await orderedRow(page, "Sample School 02").click();
@@ -207,22 +209,45 @@ test("Copy link copies the address of this screen and says so", async ({ page, c
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(page.url());
 });
 
-test("the key names the rule, cuts its place bands from the data and says what each mark means", async ({
+test("the key starts as one line, opens to name the rule, cuts its place bands from the data and says what each mark means", async ({
   page,
   context,
 }) => {
   await openWorkspace(page);
   const key = page.locator("[data-slot=legend]");
   const bands = key.locator("ol li span");
+  const more = key.getByRole("button", { name: "What the map shows" });
+  // Compact: the colour strip from the first place to the last, and the three marks in a few words.
+  await expect(key.locator("[class*=miniRamp]")).toHaveText("1st17th");
+  await expect(key.locator("[data-region=legend-point]")).toHaveText("One place");
+  await expect(key.locator("[data-region=legend-range]")).toHaveText("A range of places");
+  await expect(key.locator("[data-region=legend-queue]")).toHaveText("Not in order yet");
+  await expect(bands).toHaveCount(0);
+  await expect(page.getByTestId("legend-rule")).toHaveCount(0);
+  await expect(more).toHaveAttribute("aria-expanded", "false");
+
+  // What the map shows opens the full key, and closes it again.
+  await more.click();
+  await expect(key.getByRole("button", { name: "Hide the full key" })).toHaveAttribute(
+    "aria-expanded",
+    "true"
+  );
+  await expect(page.getByTestId("legend-rule")).toHaveText(
+    "Place in the list under the combined-factors rule without urgency (S0)"
+  );
   await expect(bands).toHaveText(["1st to 10th", "11th to 17th"]);
   await expect(key.locator("[data-region=legend-range]")).toHaveText(
     "Ring with a centre dotA school with a range of possible places in the list, because its air-quality reading is missing."
   );
+  await key.getByRole("button", { name: "Hide the full key" }).click();
+  await expect(bands).toHaveCount(0);
 
   // One school: one band, "1st", and one dot.
   await useMockDataset(context, "one");
   await page.goto("/screening");
   await waitForMap(page);
+  await expect(key.locator("[class*=miniRamp]")).toHaveText("1st1st");
+  await more.click();
   await expect(bands).toHaveText(["1st"]);
   await expect(page.locator("[data-rank-label]")).toHaveCount(1);
 });
@@ -300,7 +325,7 @@ test("no schools at all shows one sentence and Retry, with every action off", as
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Copy link" })).toBeDisabled();
   await expect(tab(page, /The list/)).toBeDisabled();
-  await expect(mainRule(page, RULE.main)).toBeDisabled();
+  await expect(page.locator("[data-region=rule-change]")).toBeDisabled();
   await expect(page.locator(INCOMPLETE)).toHaveCount(0);
   // The API's own 404s for an empty store are expected.
   expect(problems.every((p) => p.includes("404"))).toBe(true);

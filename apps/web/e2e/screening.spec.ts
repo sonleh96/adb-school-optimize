@@ -27,6 +27,7 @@ import {
   keyOf,
   listNames,
   mainRule,
+  openRules,
   tab,
   mapLocator,
   markAt,
@@ -134,6 +135,7 @@ test("keeps one map through rule switches and selections", async ({ page }) => {
   expect([await maps(), await canvases()]).toEqual([1, 1]);
 
   for (let round = 0; round < 3; round += 1) {
+    await openRules(page);
     await mainRule(page, RULE.urgency).click();
     await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
     await orderedRow(page, "Sample School 15").click();
@@ -191,6 +193,7 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(3)");
 
   // Urgency is included, so the selected school is held back and the list follows it to its tab.
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(tab(page, /Incomplete records/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
@@ -356,6 +359,7 @@ test("the first ten places carry their number on their dot, and the numbers foll
   };
   await expectEarlierPlacesOnTop(MAIN_RULE);
 
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(
     numberedPlaces(URGENCY_RULE).length

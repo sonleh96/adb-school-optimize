@@ -9,12 +9,14 @@
  * Which guides the data can teach is decided here, from the loaded data (R13), so the Guides button can say how
  * many a returning user has seen without loading the guides.
  */
-import { BookOpen, ListChecks, Menu as MenuIcon } from "lucide-react";
+import { BookOpen, BookText, CircleHelp, ListChecks, Menu as MenuIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { type BoundCopy, LAYOUT } from "@/lib/screening/copy";
 import { isStepping, seenCount } from "@/lib/screening/guide/machine";
 import { catalogOf, planOf, rolesOf } from "@/lib/screening/guide/roles";
+import { PENDING } from "@/lib/screening/pending-words";
 
 import { useWorkspaceState } from "../WorkspaceProvider";
 import { reducedMotion } from "./dom";
@@ -112,6 +114,16 @@ export function GuidanceLayer({
   }, [pageOpen]);
 
   const railOpen = state.rail.kind !== "off";
+  // On a phone the start list sits at the top of the list region and scrolls with it, so it covers nothing and
+  // nothing covers it. A guide's steps keep the map band, where they point at the map and the list below.
+  // A school's card takes the list region's place in the narrow layout, so with a card open the start list keeps the
+  // band, where it can still be reached.
+  const school = useWorkspaceState().school;
+  const inflow = data.mode === "narrow" && state.rail.kind === "start" && school === null;
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setSlot(inflow ? (root?.querySelector<HTMLElement>('[data-slot="start-slot"]') ?? null) : null);
+  }, [inflow, root]);
   // A rail a person closes hands focus to the Guides button that reopens it.
   const acted = useActed();
   const wasOpen = useRef(railOpen);
@@ -122,11 +134,8 @@ export function GuidanceLayer({
       acted() &&
       (!document.activeElement || document.activeElement === document.body)
     )
-      // The map bar's Guides button, or in the narrow layout the menu that holds it; only one of them shows.
-      [
-        ...(root?.querySelectorAll<HTMLElement>('[data-region="guides"], [aria-controls="screening-menu"]') ??
-          []),
-      ]
+      // Help, which holds Guides: the list panel's, or the top bar's in the narrow layout; only one of them shows.
+      [...(root?.querySelectorAll<HTMLElement>('[data-region="help-button"]') ?? [])]
         .find((button) => button.getClientRects().length > 0)
         ?.focus();
     wasOpen.current = railOpen;
@@ -134,23 +143,32 @@ export function GuidanceLayer({
   }, [railOpen, root]);
   return (
     <>
-      {data.mode !== "narrow" ? <MapBar root={root} data={data} items={mapBarItems} /> : null}
-      {railOpen ? (
-        <div
-          className={styles.rail}
-          data-testid="guide-rail"
-          data-guidance=""
-          data-present={(state.present && isStepping(state.rail) && data.mode !== "narrow") || undefined}
-          data-step={isStepping(state.rail) || undefined}
-        >
-          <LazyLayer
-            load={loadRail}
-            loading={<Busy text={LAYOUT.loadingGuide} />}
-            copy={data.copy}
-            props={{ root, data, roles, plan }}
-          />
-        </div>
-      ) : null}
+      {/* The map bar holds only the method details' Map layers: every kind of help is under Help. */}
+      {data.mode === "narrow" ? null : mapBarItems ? (
+        <MapBar root={root} data={data} items={mapBarItems} />
+      ) : (
+        <ClearOfActions root={root} rail={frame.rail ?? 0} />
+      )}
+      {railOpen && (!inflow || slot)
+        ? placed(
+            <div
+              className={styles.rail}
+              data-testid="guide-rail"
+              data-guidance=""
+              data-inflow={inflow || undefined}
+              data-present={(state.present && isStepping(state.rail) && data.mode !== "narrow") || undefined}
+              data-step={isStepping(state.rail) || undefined}
+            >
+              <LazyLayer
+                load={loadRail}
+                loading={<Busy text={LAYOUT.loadingGuide} />}
+                copy={data.copy}
+                props={{ root, data, roles, plan }}
+              />
+            </div>,
+            inflow ? slot : null
+          )
+        : null}
       {state.page ? (
         <LazyLayer
           load={loadHowPage}
@@ -174,6 +192,58 @@ export function GuidanceLayer({
   );
 }
 
+/**
+ * Without the map bar, the hint and the zoom buttons still keep clear of the actions: the hint sits under them, however
+ * many rows they take, and the zoom buttons stay at the map's top left unless the actions reach over them, as they do
+ * when the rail leaves the map narrow. Where both go is set on the root (`--hint-top`, `--zoom-top`).
+ */
+function ClearOfActions({ root, rail }: { root: HTMLElement | null; rail: number }) {
+  useLayoutEffect(() => {
+    if (!root) return;
+    let wait = 0;
+    let gone = false;
+    const check = () => {
+      if (gone) return;
+      const box = root.getBoundingClientRect();
+      const actions = root.querySelector('[data-region="actions"]')?.getBoundingClientRect();
+      const zoom = root.querySelector(".maplibregl-ctrl-top-left")?.getBoundingClientRect();
+      const shown = !!actions && actions.width > 0;
+      const under = shown ? Math.round(actions.bottom - box.top) + BELOW_ACTIONS : HINT_TOP;
+      root.style.setProperty("--hint-top", `${Math.max(HINT_TOP, under)}px`);
+      const over = shown && !!zoom && zoom.width > 0 && actions.left < zoom.right + AFTER_BAR;
+      if (over) root.style.setProperty("--zoom-top", `${under}px`);
+      else root.style.removeProperty("--zoom-top");
+      // The zoom buttons come with the map, which loads after the list: look again until they are there. One wait at a
+      // time, and none after cleanup: a wait left running would keep the old root, and with it the old map's WebGL
+      // context, alive after the workspace is left.
+      window.clearTimeout(wait);
+      if (!zoom || zoom.width === 0) wait = window.setTimeout(check, 250);
+    };
+    check();
+    let frame = requestAnimationFrame(check);
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(check);
+    });
+    observer.observe(root);
+    const actions = root.querySelector('[data-region="actions"]');
+    if (actions) observer.observe(actions);
+    return () => {
+      gone = true;
+      cancelAnimationFrame(frame);
+      window.clearTimeout(wait);
+      observer.disconnect();
+      root.style.removeProperty("--hint-top");
+      root.style.removeProperty("--zoom-top");
+    };
+    // The rail opening or widening narrows the map under the same actions.
+  }, [root, rail]);
+  return null;
+}
+
+/** `node` where it belongs: in `slot` when one is given, else where the layer renders it. */
+const placed = (node: ReactNode, slot: HTMLElement | null) => (slot ? createPortal(node, slot) : node);
+
 /* ------------------------------------------------------------------ the map bar */
 
 /** The map bar's spacing, in px: the window edge, below the actions, and below the bar (where the zoom buttons go). */
@@ -192,15 +262,12 @@ function MapBar({
   data: GuideData;
   items: ((classes: MapBarClasses) => ReactNode) | null;
 }) {
-  const store = useLayerStore();
-  const { state, memory, catalog } = useLayers();
-  const { copy } = data;
-  const { LAYOUT, HELP } = copy;
+  const { state } = useLayers();
+  const { LAYOUT } = data.copy;
   const bar = useRef<HTMLDivElement>(null);
-  const seen = catalog ? seenCount(memory, catalog) : 0;
 
   // When the bar would touch the actions it steps down below them (two rows of them when the rail leaves the map
-  // narrow); when it would then touch the card, the glossary button keeps only its icon. Its name stays in aria-label
+  // narrow); when it would then touch the card, its buttons keep only their icons. Their names stay in aria-label
   // and title. The hint under the actions steps below the bar when the bar would touch it. Where the bar and the hint
   // sit goes on the root (`--bar-top`, `--hint-top`), so the zoom buttons follow the bar.
   const full = useRef(0);
@@ -270,18 +337,18 @@ function MapBar({
       observer.disconnect();
     };
   }, [root, data.mode, data.ready, state.rail.kind, state.gloss.open, school, more]);
-  // The narrow layout has no map bar: its marks on the root go with it.
-  useEffect(
-    () => () => {
+  // The bar marks the root while it shows; without it (no method details, or the narrow layout) its marks go.
+  useEffect(() => {
+    root?.setAttribute("data-mapbar", "");
+    return () => {
+      root?.removeAttribute("data-mapbar");
       root?.removeAttribute("data-bar-stack");
       root?.removeAttribute("data-bar-tight");
       root?.style.removeProperty("--bar-top");
       root?.style.removeProperty("--hint-top");
-    },
-    [root]
-  );
+    };
+  }, [root]);
 
-  const railOpen = state.rail.kind !== "off";
   return (
     <div
       ref={bar}
@@ -290,48 +357,6 @@ function MapBar({
       aria-label={LAYOUT.mapbarAria}
       data-region="mapbar"
     >
-      {railOpen ? null : (
-        <button
-          type="button"
-          className={styles.barButton}
-          data-region="guides"
-          aria-label={LAYOUT.guides}
-          title={LAYOUT.guides}
-          disabled={!data.ready}
-          onClick={() => store.dispatch({ type: "toggleGuides" })}
-        >
-          <ListChecks size={14} aria-hidden />
-          <span className={styles.barLabel}>{LAYOUT.guides}</span>
-          {seen > 0 && catalog ? <SeenBadge copy={copy} n={seen} of={catalog.length} /> : null}
-        </button>
-      )}
-      <button
-        type="button"
-        className={styles.barButton}
-        data-region="explain-button"
-        aria-pressed={state.help}
-        aria-keyshortcuts="Shift+?"
-        disabled={!data.ready}
-        onClick={() => store.dispatch({ type: "help", on: !state.help })}
-      >
-        <span className={styles.keyCap} aria-hidden="true">
-          ?
-        </span>
-        <span className={styles.barLabel}>{state.help ? HELP.explaining : HELP.explain}</span>
-      </button>
-      <button
-        type="button"
-        className={`${styles.barButton} ${styles.squeezable}`}
-        data-region="glossary-button"
-        aria-expanded={state.gloss.open}
-        aria-keyshortcuts="G"
-        aria-label={HELP.glossary}
-        title={HELP.glossary}
-        onClick={() => store.dispatch({ type: "gloss", open: !state.gloss.open })}
-      >
-        <BookOpen size={14} aria-hidden />
-        <span className={styles.barLabel}>{HELP.glossary}</span>
-      </button>
       {items?.({ button: `${styles.barButton} ${styles.squeezable}`, label: styles.barLabel })}
     </div>
   );
@@ -344,44 +369,28 @@ function SeenBadge({ copy, n, of }: { copy: BoundCopy; n: number; of: number }) 
   return <span className={styles.badge}>{later.copy.GUIDE.seenCount(n, of)}</span>;
 }
 
-/* ------------------------------------------------------------------ the masthead link and the narrow menu */
-
-export function HowLink({ copy }: { copy: BoundCopy }) {
-  const store = useLayerStore();
-  const { state } = useLayers();
-  return (
-    <span className={styles.howWrap}>
-      <button
-        type="button"
-        className={styles.mastHow}
-        data-region="how-link"
-        aria-pressed={state.page === "how"}
-        onClick={() => store.dispatch({ type: "page", page: state.page ? null : "how" })}
-      >
-        {copy.LAYOUT.howTitle}
-      </button>
-    </span>
-  );
-}
+/* ------------------------------------------------------------------ Help, and the narrow layout's menu */
 
 /** Wraps a menu choice so it closes the menu and hands focus back to the menu button if nothing else takes it. */
 export type MenuAct = (fn: () => void) => () => void;
 
 /**
- * The narrow layout's menu: Guides, Explain this screen and Glossary of terms, then the workspace's own actions.
- * Escape closes it and hands focus back to its button. Actions given as a function get the menu's own way to act.
+ * A button that opens a short menu under it. A choice closes it; Escape closes it and hands focus back to its button,
+ * as does a choice that leaves focus nowhere. Choices given as a function get the menu's own way to act.
  */
-export function GuideMenu({
-  copy,
-  ready,
+function PopMenu({
+  id,
+  label,
+  icon,
+  region,
   children,
 }: {
-  copy: BoundCopy;
-  ready: boolean;
-  children?: ReactNode | ((act: MenuAct) => ReactNode);
+  id: string;
+  label: string;
+  icon: ReactNode;
+  region: string;
+  children: (act: MenuAct) => ReactNode;
 }) {
-  const store = useLayerStore();
-  const { state } = useLayers();
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -404,57 +413,117 @@ export function GuideMenu({
       window.removeEventListener("keydown", key, true);
     };
   }, [open]);
-  // A choice closes the menu; focus goes to what it opened, or back to the menu button.
+  // A choice acts from the menu's button: the layer it opens takes the button as its opener and hands focus back to
+  // it on closing, since the choice itself goes with the menu.
   const act: MenuAct = (fn) => () => {
     setOpen(false);
+    button.current?.focus({ preventScroll: true });
     fn();
     requestAnimationFrame(() => {
       if (!document.activeElement || document.activeElement === document.body) button.current?.focus();
     });
   };
-  const { LAYOUT, HELP } = copy;
   return (
     <span className={styles.menuWrap} data-menu-open={open || undefined}>
-      <HowLink copy={copy} />
       <button
         ref={button}
         type="button"
         className={styles.menuButton}
+        data-region={region}
         aria-expanded={open}
-        aria-controls="screening-menu"
+        aria-controls={id}
         onClick={() => setOpen((v) => !v)}
       >
-        <MenuIcon size={16} aria-hidden />
-        {LAYOUT.menu}
+        {icon}
+        {label}
       </button>
       {open ? (
-        <div ref={menu} id="screening-menu" className={styles.menu} role="group" aria-label={LAYOUT.menu}>
+        <div ref={menu} id={id} className={styles.menu} role="group" aria-label={label}>
+          {children(act)}
+        </div>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * Help: the one way to every kind of help, in a fixed place, the top right of the list panel (the top bar in the
+ * narrow layout). Guides opens or hides Start here, which a first visit opens on its own; Explain this screen, the
+ * glossary and How this works follow. "?" and "g" still open help mode and the glossary from the keyboard.
+ */
+export function HelpMenu({ copy, ready }: { copy: BoundCopy; ready: boolean }) {
+  const store = useLayerStore();
+  const { state, memory, catalog } = useLayers();
+  const { LAYOUT, HELP } = copy;
+  const seen = catalog ? seenCount(memory, catalog) : 0;
+  return (
+    <PopMenu
+      id="screening-help-menu"
+      label={PENDING.help}
+      region="help-button"
+      icon={<CircleHelp size={15} aria-hidden />}
+    >
+      {(act) => (
+        <>
           <button
             type="button"
+            data-region="guides"
             disabled={!ready}
             aria-pressed={state.rail.kind !== "off"}
             onClick={act(() => store.dispatch({ type: "toggleGuides" }))}
           >
+            <ListChecks size={14} aria-hidden />
             {LAYOUT.guides}
+            {seen > 0 && catalog ? <SeenBadge copy={copy} n={seen} of={catalog.length} /> : null}
           </button>
           <button
             type="button"
+            data-region="explain-button"
             disabled={!ready}
             aria-pressed={state.help}
+            aria-keyshortcuts="Shift+?"
             onClick={act(() => store.dispatch({ type: "help", on: !state.help }))}
           >
+            <span className={styles.keyCap} aria-hidden="true">
+              ?
+            </span>
             {state.help ? HELP.explaining : HELP.explain}
           </button>
           <button
             type="button"
+            data-region="glossary-button"
             aria-expanded={state.gloss.open}
+            aria-keyshortcuts="G"
             onClick={act(() => store.dispatch({ type: "gloss", open: !state.gloss.open }))}
           >
+            <BookOpen size={14} aria-hidden />
             {HELP.glossary}
           </button>
-          {typeof children === "function" ? children(act) : children}
-        </div>
-      ) : null}
-    </span>
+          <button
+            type="button"
+            data-region="how-link"
+            aria-pressed={state.page === "how"}
+            onClick={act(() => store.dispatch({ type: "page", page: state.page ? null : "how" }))}
+          >
+            <BookText size={14} aria-hidden />
+            {LAYOUT.howTitle}
+          </button>
+        </>
+      )}
+    </PopMenu>
+  );
+}
+
+/** The narrow layout's Menu: the workspace's own actions, which the wider layouts show over the map. */
+export function ActionsMenu({ copy, children }: { copy: BoundCopy; children: (act: MenuAct) => ReactNode }) {
+  return (
+    <PopMenu
+      id="screening-menu"
+      label={copy.LAYOUT.menu}
+      region="actions-menu"
+      icon={<MenuIcon size={16} aria-hidden />}
+    >
+      {children}
+    </PopMenu>
   );
 }

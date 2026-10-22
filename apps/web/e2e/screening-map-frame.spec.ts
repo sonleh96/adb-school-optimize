@@ -19,6 +19,7 @@ import type { Page, Route } from "@playwright/test";
 import {
   ORDERED,
   expect,
+  helpItem,
   keyOf,
   markAt,
   numberedPlaces,
@@ -221,7 +222,7 @@ async function rightmost(page: Page) {
   return best!;
 }
 
-const openRail = (page: Page) => page.getByRole("toolbar").getByRole("button", { name: "Guides" }).click();
+const openRail = async (page: Page) => (await helpItem(page, "Guides")).click();
 
 for (const size of [
   { width: 1280, height: 800 },
@@ -485,6 +486,7 @@ test.describe("a list of over 700 schools", () => {
     await expect(page.getByRole("tab", { name: /The list/ })).toHaveText(`The list(${ordered})`);
 
     // Bands from the data: 10, 20, then about a third and two thirds of the schools with one place, then the last.
+    await page.locator("[data-slot=legend]").getByRole("button", { name: "What the map shows" }).click();
     const ramp = page.locator("[data-slot=legend] ol li span");
     await expect(ramp).toHaveCount(5);
     const labels = await ramp.allTextContents();

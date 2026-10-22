@@ -24,7 +24,7 @@ import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
-import { GuidanceLayer, GuideMenu, HowLink } from "./guide/GuidanceLayer";
+import { ActionsMenu, GuidanceLayer, HelpMenu } from "./guide/GuidanceLayer";
 import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
 import type { GuideData } from "./guide/types";
 import { Legend } from "./Legend";
@@ -577,19 +577,25 @@ function Workspace() {
           copy={copy}
           className={styles.topBar}
           actions={
-            <GuideMenu copy={copy} ready={ready}>
-              {(act) => (
-                <>
-                  {method.methodMenuItem(act)}
-                  {copyLink(true)}
-                  {method.exportMenuItem(act)}
-                  {signOut(true)}
-                </>
-              )}
-            </GuideMenu>
+            <>
+              <HelpMenu copy={copy} ready={ready} />
+              <ActionsMenu copy={copy}>
+                {(act) => (
+                  <>
+                    {method.methodMenuItem(act)}
+                    {copyLink(true)}
+                    {method.exportMenuItem(act)}
+                    {signOut(true)}
+                  </>
+                )}
+              </ActionsMenu>
+            </>
           }
         />
+        {/* Help first among the actions, at the top right of the map: always on screen, whatever the list does. The
+            narrow layout keeps its own in the top bar. */}
         <div className={styles.actions} data-region="actions">
+          <HelpMenu copy={copy} ready={ready} />
           {method.methodSwitch}
           {copyLink(false)}
           {method.exportButton}
@@ -610,7 +616,9 @@ function Workspace() {
           inert={layout.docked}
           data-aside={layout.docked || undefined}
         >
-          <Masthead copy={copy} actions={<HowLink copy={copy} />} />
+          <Masthead copy={copy} />
+          {/* A phone's Start here, which scrolls with the list (GuidanceLayer). */}
+          <div data-slot="start-slot" />
 
           {firstLoad ? (
             <p className={styles.state} role="status">
@@ -630,9 +638,11 @@ function Workspace() {
                   shown={shown?.rule ?? null}
                   statement={comparing ? null : data.statement}
                   comparing={comparing}
+                  open={state.rules}
                   disabled={!ready}
                   layer={layer}
                   onRule={changeRule}
+                  onToggle={() => store.setState({ rules: !state.rules })}
                   onSeeWithUrgency={seeWithUrgency}
                   onBack={backToMain}
                 />
@@ -794,7 +804,6 @@ function Workspace() {
                         />
                       </>
                     )}
-                    <p className={styles.listCaveat}>{copy.STRINGS.caveatPlain}</p>
                   </>
                 )}
               </div>
@@ -810,7 +819,6 @@ function Workspace() {
               copy={copy}
               rule={shown?.rule ?? null}
               bands={bands}
-              collapsed={layout.keyCollapsed}
               stacked={layout.keyStacked}
               stale={stale}
             />

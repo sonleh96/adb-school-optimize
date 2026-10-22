@@ -144,6 +144,32 @@
   align-items: baseline;
   gap: 12px;
 }
+/* Start here's Hide: small and plain, top right, where a reader looks to put a panel away. */
+.rail .hide {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px -6px -4px 0;
+  padding: 3px 6px 4px 8px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font: 500 12.5px/17px var(--sans);
+  color: var(--ink-2);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.rail .hide:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .rail .hide:hover {
+    background: rgba(21, 24, 29, 0.05);
+    color: var(--ink);
+  }
+}
 .rail .headSkip {
   display: none;
 }
@@ -720,6 +746,23 @@
         36px no-repeat local,
       linear-gradient(rgba(21, 24, 29, 0.12), rgba(21, 24, 29, 0)) top / 100% 10px no-repeat scroll,
       linear-gradient(rgba(21, 24, 29, 0), rgba(21, 24, 29, 0.12)) bottom / 100% 10px no-repeat scroll;
+  }
+  /* The start list, on a phone, is part of the list region: it takes the height it needs, scrolls with the list and
+     leaves the map band to the map. */
+  .rail[data-inflow] {
+    position: static;
+    width: auto;
+    height: auto;
+    border-bottom: 1px solid var(--hair);
+  }
+  @starting-style {
+    .rail[data-inflow] {
+      transform: none;
+    }
+  }
+  .rail[data-inflow] .railInner {
+    overflow: visible;
+    background: none;
   }
   /* The start has no Back and Next to keep in reach, so its foot scrolls with the guides instead of covering them. */
   .rail:not([data-step]) .railFoot {
