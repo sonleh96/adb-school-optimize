@@ -329,7 +329,16 @@ function Workspace() {
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
-  const footHeight = useFootHeight(foot, [ready, layout.keyCollapsed, layout.keyStacked, mode, cardOpen]);
+  // The narrow Map view puts the map's foot before the list in the page, so the keyboard meets the key first.
+  const footFirst = layout.mode === "narrow" && state.pane === "map";
+  const footHeight = useFootHeight(foot, [
+    ready,
+    layout.keyCollapsed,
+    layout.keyStacked,
+    mode,
+    cardOpen,
+    footFirst,
+  ]);
   const padding = useMemo(
     () => mapPadding(layout, cardOpen, footHeight),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `layout` is rebuilt each render; its fields are the key.
@@ -530,6 +539,26 @@ function Workspace() {
     [copy, shown, ordered, ready, data.rules, layout.mode, viewport.width]
   );
 
+  const mapFoot = (
+    <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
+      {ready && method.legend ? (
+        method.legend
+      ) : ready ? (
+        <Legend
+          copy={copy}
+          rule={shown?.rule ?? null}
+          bands={bands}
+          ranged={ordered.length - (bands.length ? bands[bands.length - 1].hi : 0)}
+          stacked={layout.keyStacked}
+          stale={stale}
+        />
+      ) : null}
+      <p className={styles.caveat} data-region="caveat">
+        {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
+      </p>
+    </div>
+  );
+
   return (
     <div
       ref={rootRef}
@@ -639,6 +668,8 @@ function Workspace() {
           </p>
         ) : null}
 
+        {/* The narrow Map view shows the band over the list, so its key comes before the list for the keyboard too. */}
+        {footFirst ? mapFoot : null}
         <section
           data-slot="column"
           className={`${styles.panel} ${styles.column}`}
@@ -849,23 +880,7 @@ function Workspace() {
           )}
         </section>
 
-        <div ref={foot} className={styles.foot} data-stale={stale || undefined}>
-          {ready && method.legend ? (
-            method.legend
-          ) : ready ? (
-            <Legend
-              copy={copy}
-              rule={shown?.rule ?? null}
-              bands={bands}
-              ranged={ordered.length - (bands.length ? bands[bands.length - 1].hi : 0)}
-              stacked={layout.keyStacked}
-              stale={stale}
-            />
-          ) : null}
-          <p className={styles.caveat} data-region="caveat">
-            {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
-          </p>
-        </div>
+        {footFirst ? null : mapFoot}
 
         {selectedSchool && shown ? (
           <SchoolCard
