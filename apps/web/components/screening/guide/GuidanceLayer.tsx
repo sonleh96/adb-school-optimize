@@ -443,7 +443,16 @@ function PopMenu({
     });
   };
   return (
-    <span className={styles.menuWrap} data-menu-open={open || undefined}>
+    <span
+      className={styles.menuWrap}
+      data-menu-open={open || undefined}
+      // Tab out of the list, or focus moved anywhere outside it, closes it, so it never stays open over the map. A
+      // blur with nowhere to go (a press Safari does not focus) is left to the pointer handler above.
+      onBlur={(event) => {
+        const next = event.relatedTarget as Node | null;
+        if (open && next && !event.currentTarget.contains(next)) setOpen(false);
+      }}
+    >
       <button
         ref={button}
         type="button"
