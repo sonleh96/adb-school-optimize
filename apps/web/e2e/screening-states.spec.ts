@@ -91,10 +91,10 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   // Then the new rule's rows arrive and everything is relabelled together.
   release();
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Rank in the list under the main method with the urgency rating added back"
+    "Rank in the list under the earlier method with its urgency rating"
   );
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Rank in the list under the main method with the urgency rating added back"
+    "Rank in the list under the earlier method with its urgency rating"
   );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
   await expect(legend).toHaveAttribute("aria-busy", "false");

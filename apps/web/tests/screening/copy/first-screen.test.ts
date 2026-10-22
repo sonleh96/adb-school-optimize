@@ -128,6 +128,14 @@ describe("the short line for each rule on the first screen", () => {
     expect(copy.LAYOUT.ruleNow("benchmark")).toContain("55% of the score");
   });
 
+  it("does not put school need first under a rule whose extra weight can go to the district", () => {
+    // The largest-factor rules give 40% to whichever of school need and the district is higher, so either can lead.
+    for (const id of ["bottleneck_u", "bottleneck_no_u"] as const)
+      expect(copy.LAYOUT.ruleNowShort(id), id).toMatch(
+        /^School need and conditions in the district come first/
+      );
+  });
+
   it("tells the seven apart", () => {
     expect(new Set(copy.RULE_IDS.map((id) => copy.LAYOUT.ruleNowShort(id))).size).toBe(7);
   });
@@ -183,7 +191,7 @@ describe("the compact key beside the map", () => {
 
   it("names the numbered circles", () => {
     expect(textProblems(copy.LAYOUT.keyNumbers, { sentence: false })).toEqual([]);
-    expect(copy.LAYOUT.keyNumbers).toMatch(/first ten in the list/);
+    expect(copy.LAYOUT.keyNumbers).toMatch(/ranks 1 to 10/);
   });
 });
 
@@ -240,10 +248,7 @@ describe("a rule named in plain words", () => {
     expect(c.comparisonSentence("additive_u", "additive_no_u")).toBe(
       lettered.copy
         .comparisonSentence("additive_u", "additive_no_u")
-        .replace(
-          "the combined-factors rule with urgency (S)",
-          "the main method with the urgency rating added back"
-        )
+        .replace("the combined-factors rule with urgency (S)", "the earlier method with its urgency rating")
         .replace("the combined-factors rule without urgency (S0)", "the main method")
     );
     // Behind Change, where saying where the method comes from helps trust, the statement keeps the paper's name.
@@ -286,5 +291,52 @@ describe("the narrow layout's words", () => {
   it("drops the keys nothing reads", () => {
     expect(copy.LAYOUT).not.toHaveProperty("change");
     expect(GUIDE).not.toHaveProperty("hideAria");
+  });
+});
+
+describe("the link to the earlier method, and the guide that says the same", () => {
+  const q5 = GUIDE.tasks.find((t) => t.id === "q5") as (typeof GUIDE.tasks)[number];
+  const words = (): string[] => [
+    copy.LAYOUT.seeWithUrgency,
+    q5.title,
+    q5.sub,
+    ...q5.steps.flatMap((st) =>
+      ["body", "tryIt"].flatMap((k) => {
+        const v = (st as Record<string, unknown>)[k];
+        return typeof v === "string"
+          ? [v]
+          : typeof v === "function"
+            ? [(v as (a: string) => string)("Combined factors, with urgency")]
+            : [];
+      })
+    ),
+  ];
+
+  it("says what the other method is and what it adds, in one short line", () => {
+    expect(copy.LAYOUT.seeWithUrgency).toBe(
+      "Compare with the earlier method, which also counts an urgency rating"
+    );
+    expect(copy.LAYOUT.seeWithUrgency.length).toBeLessThanOrEqual(75);
+    expect(textProblems(copy.LAYOUT.seeWithUrgency, { sentence: false })).toEqual([]);
+  });
+
+  it("never says an urgency rating is added back, which implies something was taken away", () => {
+    for (const text of words())
+      expect(text).not.toMatch(/added back|put (the urgency rating )?back|puts? the urgency rating back/i);
+  });
+
+  it("calls the other method the earlier method in the guide's title, line and steps", () => {
+    expect(q5.title).toMatch(/earlier method/);
+    expect(q5.sub).toMatch(/urgency rating whose source could not be traced/);
+    expect(words().join(" ")).not.toMatch(/earlier paper/);
+  });
+});
+
+describe("the short caveat for a narrow card's foot", () => {
+  it("keeps what the full words say: no condition, safety, repairs or funding", () => {
+    const short = copy.STRINGS.caveatShort;
+    expect(textProblems(short)).toEqual([]);
+    for (const word of ["condition", "safety", "repairs", "funding"]) expect(short).toContain(word);
+    expect(short.split(/\s+/).length).toBeLessThan(copy.STRINGS.caveatPlain.split(/\s+/).length);
   });
 });

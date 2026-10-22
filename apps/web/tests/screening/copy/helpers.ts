@@ -45,6 +45,9 @@ const TEXT_RULES: [RegExp, string][] = [
   [/\d\.\d{4,}/, "unrounded number"],
   [/[\u2013\u2014]/, "en or em dash"],
   [/[\u2018\u2019\u201C\u201D]/, "curly quote"],
+  // A school's place in the list is its rank: position and place read as a spot on the map. The saved views' map
+  // position is the one place that word means.
+  [/(?<!map )\bpositions?\b|\bplaces?\b/i, "position or place for a rank"],
 ];
 
 /** Independent of the copy, so a broken ordinal cannot vouch for itself. */

@@ -45,7 +45,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     relation: "The main rule of the circulated paper, kept to show what the urgency rating changes.",
     plain:
       "Ordered mainly by school need (60% of the score), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each).",
-    plainName: "the main method with the urgency rating added back",
+    plainName: "the earlier method with its urgency rating",
     plainShort:
       "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and smaller things, the urgency rating among them, also count.",
     name: "the combined-factors rule with urgency (S)",
@@ -134,7 +134,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
       "Ordered 60% by a combined score of school need, district conditions, the urgency rating and four smaller factors, and 40% by whichever of school need, district conditions or the urgency rating is highest for that school.",
     plainName: "a combined score with extra weight on a school's largest factor, urgency rating included",
     plainShort:
-      "School need comes first, then conditions in the district, with the urgency rating and a few smaller things. Whichever of need, district or urgency rating is highest for a school gets extra weight.",
+      "School need and conditions in the district come first, with the urgency rating and a few smaller things. Whichever of need, district or urgency rating is highest for a school gets extra weight.",
     name: "the largest-factor rule with urgency (T)",
     usesUrgency: true,
     readsReadings: true,
@@ -157,7 +157,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
       "Ordered 60% by a combined score of school need, district conditions and four smaller factors, and 40% by whichever of school need or district conditions is higher for that school.",
     plainName: "a combined score with extra weight on a school's larger factor",
     plainShort:
-      "School need comes first, then conditions in the district, with a few smaller things. Whichever of need or district is higher for a school gets extra weight.",
+      "School need and conditions in the district come first, with a few smaller things. Whichever of need or district is higher for a school gets extra weight.",
     name: "the largest-factor rule without urgency (T0)",
     usesUrgency: false,
     readsReadings: true,

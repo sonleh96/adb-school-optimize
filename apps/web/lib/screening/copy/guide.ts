@@ -231,8 +231,8 @@ export const GUIDE = Object.freeze({
       },
       {
         id: "q5",
-        title: "What changes without the urgency rating",
-        sub: "What changes if the urgency rating is added back?",
+        title: "What changes with the earlier method",
+        sub: "The earlier method also counted an urgency rating whose source could not be traced.",
         steps: [
           {
             key: "agree",
@@ -241,7 +241,7 @@ export const GUIDE = Object.freeze({
                 ? `The same ${k} schools make the top ${k} with or without the urgency rating`
                 : "With or without the urgency rating",
             onScreen: '"What changed", at the top of the list',
-            body: "\"What changed\", at the top of the list, compares the earlier paper's method, which includes the urgency rating, with the main method, which leaves it out, using the research team's recorded comparison.",
+            body: '"What changed", at the top of the list, compares the earlier method, which also counts the urgency rating, with the main method, which leaves it out, using the research team\'s recorded comparison.',
           },
           {
             key: "why",
@@ -259,7 +259,7 @@ export const GUIDE = Object.freeze({
             title: "Switch between the two methods yourself",
             onScreen: "The line above the list that says how it is ordered",
             tryIt: (label: string) =>
-              `Choose "${label}" to put the urgency rating back and see the earlier paper's method. "See the full comparison" opens the method details.`,
+              `Choose "${label}" to see the earlier method, which also counts the urgency rating. "See the full comparison" opens the method details.`,
           },
         ],
       },

@@ -239,9 +239,9 @@ test("compare mode reproduces a pasted pair, says the agreement in What changed'
   // The chart's accessible table is headed in the copy's words.
   await expect(page.locator("table[aria-label]").first().locator("thead th")).toHaveText([
     "School",
-    /^Place under /,
-    /^Place under /,
-    "Places moved",
+    /^Rank under /,
+    /^Rank under /,
+    "Ranks moved",
   ]);
 
   await page.getByRole("button", { name: "Top 10" }).click();
