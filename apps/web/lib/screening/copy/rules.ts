@@ -219,7 +219,16 @@ export const rulePlainName = (id: CopyRuleId) => rule(id).plainName;
 export const ruleRelation = (id: CopyRuleId) => rule(id).relation;
 // The letter is analyst shorthand. Plain copy always pairs it with words, as ruleName does.
 export const ruleSymbol = (id: CopyRuleId) => rule(id).symbol;
-export const ruleName = (id: CopyRuleId) => rule(id).name;
+// How a sentence names a rule: with the analyst's letter ("... (S0)"), which method details keep, or in plain words,
+// which a first visit reads. Sentences take the way as an option and default to the letter, as before.
+export type RuleNames = "plain" | "lettered";
+export const ruleName = (id: CopyRuleId, names: RuleNames = "lettered") =>
+  names === "plain" ? rule(id).plainName : rule(id).name;
+// The rule's record with `name` set the way a sentence asked for, so the sentence reads `r.name` either way.
+export const ruleFor = (id: CopyRuleId, names: RuleNames = "lettered"): RuleInfo => {
+  const r = rule(id);
+  return names === "plain" ? { ...r, name: r.plainName } : r;
+};
 // Words, for tight spaces such as tabs and chips.
 export const ruleShortName = (id: CopyRuleId) => rule(id).short;
 export const ruleUsesUrgency = (id: CopyRuleId) => rule(id).usesUrgency;

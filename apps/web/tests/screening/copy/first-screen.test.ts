@@ -13,8 +13,12 @@
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
+import { bindCopy } from "@/lib/screening/copy";
+import { parseWith } from "@/lib/screening/schema";
+import { inputsResponse } from "@/lib/screening/types";
 
-import { textProblems } from "./helpers";
+import { readFixture } from "../fixtures";
+import { RULES, fixtureCompare, fixtureResults, textProblems } from "./helpers";
 
 const COUNTS = { all: 131, complete: 105, range: 6, ranked: 111, queue: 70 };
 // Counts picked so no group number equals the number of schools in the list.
@@ -133,5 +137,68 @@ describe("the compact key beside the map", () => {
   it("names the numbered circles", () => {
     expect(textProblems(copy.LAYOUT.keyNumbers, { sentence: false })).toEqual([]);
     expect(copy.LAYOUT.keyNumbers).toMatch(/first ten in the list/);
+  });
+});
+
+describe("a rule named in plain words", () => {
+  const inputs = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+  const lists = RULES.map((r) => fixtureResults(r));
+  const bind = (ruleNames?: "plain" | "lettered") =>
+    bindCopy({ view: "additive_u", inputs, lists, compare: fixtureCompare(), ruleNames });
+  const LETTER = /\((S0?|NF0?|T0?|B)\)/;
+  const plain = bind("plain");
+  const lettered = bind("lettered");
+  const school = (b: ReturnType<typeof bind>) =>
+    b.schools.find((s) => s.name === "Sample School 08") as never;
+
+  // The sentences a first visit reaches: the guide's first step, the card's reasons, the rank under two rules, the
+  // compare column and the statement behind Change. Each named a rule with its letter whatever the view.
+  const sayings = (b: ReturnType<typeof bind>) => {
+    const c = b.copy;
+    const s = school(b);
+    return [
+      ["listStartsSentence", c.listStartsSentence(b.schools, "additive_no_u")],
+      ["reasonSentence", c.reasonSentence(s, "additive_no_u")],
+      ["reasonSentence need-first", c.reasonSentence(s, "need_first_no_u")],
+      ["rangeComparisonSentence", c.rangeComparisonSentence(s, "additive_u", "benchmark")],
+      ["comparisonSentence", c.comparisonSentence("additive_u", "additive_no_u")],
+      ["defaultListStatement", c.defaultListStatement()],
+      ["defaultListStatementLong", c.defaultListStatementLong()],
+      ["ruleName", c.ruleName("additive_no_u")],
+    ] as const;
+  };
+
+  it("leaves no letter in any sentence a first visit reaches", () => {
+    for (const [what, text] of sayings(plain)) {
+      expect(text, what).not.toMatch(LETTER);
+      expect(text, what).not.toMatch(/combined-factors rule|need-first rule|largest-factor rule/);
+      if (what !== "ruleName") expect(textProblems(text), what).toEqual([]);
+    }
+  });
+
+  it("keeps the letters for method details, which is the default", () => {
+    for (const [what, text] of sayings(lettered).filter(([w]) => w !== "defaultListStatement"))
+      expect(text, what).toMatch(LETTER);
+    expect(sayings(bind())).toEqual(sayings(lettered));
+  });
+
+  it("names the rule the way the plain method is named, and keeps what else the sentence says", () => {
+    const c = plain.copy;
+    expect(c.ruleName("additive_no_u")).toBe("the main method");
+    expect(c.listStartsSentence(plain.schools, "additive_no_u")).toBe(
+      lettered.copy
+        .listStartsSentence(lettered.schools, "additive_no_u")
+        .replace("the combined-factors rule without urgency (S0)", "the main method")
+    );
+    expect(c.comparisonSentence("additive_u", "additive_no_u")).toBe(
+      lettered.copy
+        .comparisonSentence("additive_u", "additive_no_u")
+        .replace(
+          "the combined-factors rule with urgency (S)",
+          "the main method with the urgency rating added back"
+        )
+        .replace("the combined-factors rule without urgency (S0)", "the main method")
+    );
+    expect(c.defaultListStatement()).toMatch(/^Which list should I use\? This one, the main method\./);
   });
 });

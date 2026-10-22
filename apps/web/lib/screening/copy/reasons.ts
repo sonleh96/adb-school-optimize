@@ -29,7 +29,7 @@ import type {
 import { gateSentence, otherCause } from "./causes";
 import { AREA_PARTS, FACILITIES } from "./inputs";
 import { isNeedFirst, resultFor } from "./rank";
-import { rule } from "./rules";
+import { type RuleNames, rule, ruleFor } from "./rules";
 
 export const NEED_FIELDS: Readonly<Record<NeedKey, NeedField>> = {
   classrooms: "permanent_classroom_deficit",
@@ -355,8 +355,8 @@ export function topDrivers(school: CopySchool, ruleId: CopyRuleId): Driver[] {
   return picked.map((x) => ({ ...x, sentence: inputSentence(school, x.key) }));
 }
 
-export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
-  const r = rule(ruleId);
+export function reasonSentence(school: CopySchool, ruleId: CopyRuleId, ruleNames?: RuleNames): string {
+  const r = ruleFor(ruleId, ruleNames);
   if (school.cohort === "queue") {
     return "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing.";
   }

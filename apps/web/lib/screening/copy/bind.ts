@@ -24,7 +24,7 @@ import {
 } from "./adapter";
 import { type BoundCopy, copyFor } from "./bound";
 import type { CopyRuleId, CopySchool } from "./model";
-import { isCopyRuleId } from "./rules";
+import { type RuleNames, isCopyRuleId } from "./rules";
 
 export interface CopyResponses {
   /** The rule the screen shows. */
@@ -39,6 +39,8 @@ export interface CopyResponses {
   readonly lists: readonly ResultsResponse[];
   /** The recorded comparison of the two rules the screen compares, if it shows one. */
   readonly compare?: CompareResponse;
+  /** How the sentences name a rule: with its letter (the default) or in plain words. See `CopyData`. */
+  readonly ruleNames?: RuleNames;
 }
 
 export interface BoundRecords {
@@ -48,7 +50,7 @@ export interface BoundRecords {
 }
 
 export function bindCopy(responses: CopyResponses): BoundRecords {
-  const { view, inputs, lists, compare } = responses;
+  const { view, inputs, lists, compare, ruleNames } = responses;
   const shown = lists.find((l) => l.run.rule_id === view);
   if (!shown) throw new ParseError(`lists: there is no list for ${view}`);
   for (const l of lists)
@@ -84,6 +86,7 @@ export function bindCopy(responses: CopyResponses): BoundRecords {
       countsByRule,
       margins,
       tests,
+      ruleNames,
       ...(compare ? pairwiseFromCompare(compare) : {}),
     }),
   };
