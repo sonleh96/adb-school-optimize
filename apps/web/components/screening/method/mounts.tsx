@@ -85,6 +85,9 @@ export interface MountInput {
   layer: HTMLElement | null;
   layout: Layout;
   bands: readonly Band[];
+  /** The key's open state, the workspace's, shared with the plain key so the method key keeps it as it moves. */
+  keyOpen: boolean;
+  onKeyToggle: () => void;
   /** The last action came from the keyboard: popovers appear at once. */
   keyboard: boolean;
   onSelect: (key: SchoolKey) => void;

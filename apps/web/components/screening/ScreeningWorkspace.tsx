@@ -450,6 +450,8 @@ function Workspace() {
     layer,
     layout,
     bands,
+    keyOpen,
+    onKeyToggle: () => setKeyOpen((value) => !value),
     keyboard,
     onSelect: select,
     onPointerHover: setPointerHover,
