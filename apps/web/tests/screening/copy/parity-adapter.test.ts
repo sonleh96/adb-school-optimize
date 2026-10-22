@@ -430,7 +430,8 @@ suite("the adapter loses nothing the sentences read [needs RISE_PNG_DESIGN_ROOT]
       for (const [k, v] of Object.entries(got)) expect(v, k).toBe(truth[k]);
     });
 
-    it("says the same from the list rows as the prototype says from the records", () => {
+    // About half a second alone; the longer limit is for a machine busy with a build or other test files.
+    it("says the same from the list rows as the prototype says from the records", { timeout: 30_000 }, () => {
       const { data } = dataset();
       const schools = withoutFlag(data.schools);
       const counts = proto.countsFrom(schools);
