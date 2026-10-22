@@ -37,6 +37,15 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     ["bottleneck_no_u"],
     ["benchmark"],
   ],
+  "LAYOUT.ruleNowShort": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
   "LAYOUT.keyRamp": [
     ["1st", "20th"],
     ["1st", "1st"],
@@ -184,6 +193,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [{}],
   ],
   "GUIDE.stepCount": [[1], [4]],
+  "GUIDE.startShort": [[5], [1]],
   "GUIDE.howCount": [[1], [6]],
   "GUIDE.seenCount": [[2, 5]],
   "GUIDE.rangeWords": [

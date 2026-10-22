@@ -364,9 +364,11 @@ test("an API that names another default still opens the main rule, so the screen
   expect(await listNames(page)).toEqual(orderedNames(MAIN_RULE));
   await openRules(page);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator("[data-region=list-statement]")).toContainText("This one, the main method.");
+  await expect(page.locator("[data-region=list-statement]")).toContainText(
+    "This one, the research paper's main method."
+  );
   await expect(page.locator("[data-region=rule-now]")).toHaveText(
-    "Ordered mainly by school need (about 63%), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each)."
+    "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each)."
   );
   expect(new URL(page.url()).search).toBe("");
   await waitForMap(page);

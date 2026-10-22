@@ -28,7 +28,6 @@ import { canPresent } from "@/lib/screening/guide/layout";
 import { type GuideId, statusOf } from "@/lib/screening/guide/machine";
 import type { Plan, Roles } from "@/lib/screening/guide/roles";
 import { useScreeningCompare } from "@/lib/screening/hooks";
-import { PENDING } from "@/lib/screening/pending-words";
 import { PRIMARY_RULE, SENSITIVITY_RULE, isRulePair } from "@/lib/screening/rule-pair";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
@@ -131,7 +130,7 @@ function Start({
         {compact ? (
           <div className={styles.startRow}>
             <h2 ref={title} className={styles.startShort} tabIndex={-1}>
-              {PENDING.startShort}
+              {GUIDE.startShort(GUIDE.tasks.length)}
             </h2>
             <button
               type="button"
@@ -141,7 +140,7 @@ function Start({
               aria-controls="screening-start-guides"
               onClick={() => setUnfolded((value) => !value)}
             >
-              {unfolded ? PENDING.foldGuides : PENDING.openGuides}
+              {unfolded ? GUIDE.foldGuides : GUIDE.openGuides}
               <ChevronDown size={14} aria-hidden data-open={unfolded || undefined} />
             </button>
           </div>

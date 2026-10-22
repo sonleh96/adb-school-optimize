@@ -22,6 +22,8 @@ interface RuleInfo {
   readonly relation: string;
   /** One plain line for a first-time reader on how the list is ordered under this rule, with no symbol or term of art. */
   readonly plain: string;
+  /** One or two short lines for the first screen: what comes first, with no percentages. */
+  readonly plainShort: string;
   /** The method in a few words, to finish "Rank in the list under ...". */
   readonly plainName: string;
   readonly name: string;
@@ -42,8 +44,10 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     roleLine: "A sensitivity check that puts the urgency rating back, from the circulated paper",
     relation: "The main rule of the circulated paper, kept to show what the urgency rating changes.",
     plain:
-      "Ordered mainly by school need (60%), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each).",
+      "Ordered mainly by school need (60% of the score), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each).",
     plainName: "the main method with the urgency rating added back",
+    plainShort:
+      "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and smaller things, the urgency rating among them, also count.",
     name: "the combined-factors rule with urgency (S)",
     usesUrgency: true,
     readsReadings: true,
@@ -63,8 +67,10 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     roleLine: "The main rule of the revised paper, which leaves urgency out",
     relation: "The main rule of the revised paper, which leaves urgency out.",
     plain:
-      "Ordered mainly by school need (about 63%), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).",
+      "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).",
     plainName: "the main method",
+    plainShort:
+      "School need comes first: classrooms, teacher housing, facilities, power, water and remoteness. Conditions in the district and a few smaller things also count.",
     name: "the combined-factors rule without urgency (S0)",
     usesUrgency: false,
     readsReadings: true,
@@ -84,6 +90,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     plain:
       "Ordered by school need alone. Everything else, the urgency rating included, only separates schools whose school need is exactly equal.",
     plainName: "school need alone, with the urgency rating settling ties",
+    plainShort:
+      "Schools are ordered by school need alone: classrooms, teacher housing, facilities, power, water and remoteness. The urgency rating and everything else only separate schools that are exactly equal.",
     name: "the need-first rule with urgency (NF)",
     usesUrgency: true,
     readsReadings: true,
@@ -103,6 +111,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     plain:
       "Ordered by school need alone. Everything else only separates schools whose school need is exactly equal.",
     plainName: "school need alone",
+    plainShort:
+      "Schools are ordered by school need alone: classrooms, teacher housing, facilities, power, water and remoteness. Everything else only separates schools that are exactly equal.",
     name: "the need-first rule without urgency (NF0)",
     usesUrgency: false,
     readsReadings: true,
@@ -123,6 +133,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     plain:
       "Ordered 60% by a combined score of school need, district conditions, the urgency rating and four smaller factors, and 40% by whichever of school need, district conditions or the urgency rating is highest for that school.",
     plainName: "a combined score with extra weight on a school's largest factor, urgency rating included",
+    plainShort:
+      "School need comes first, then conditions in the district, with the urgency rating and a few smaller things. Whichever of need, district or urgency rating is highest for a school gets extra weight.",
     name: "the largest-factor rule with urgency (T)",
     usesUrgency: true,
     readsReadings: true,
@@ -144,6 +156,8 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     plain:
       "Ordered 60% by a combined score of school need, district conditions and four smaller factors, and 40% by whichever of school need or district conditions is higher for that school.",
     plainName: "a combined score with extra weight on a school's larger factor",
+    plainShort:
+      "School need comes first, then conditions in the district, with a few smaller things. Whichever of need or district is higher for a school gets extra weight.",
     name: "the largest-factor rule without urgency (T0)",
     usesUrgency: false,
     readsReadings: true,
@@ -162,8 +176,10 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     source: CIRCULATED,
     relation: "A conventional mix of factors, with urgency, from the circulated paper, kept for comparison.",
     plain:
-      "Ordered by a conventional mix: school need 55%, district conditions 20%, the urgency rating 15% and how many people live within walking distance 10%. Kept for comparison.",
+      "Ordered by a conventional mix, where school need makes up 55% of the score, district conditions 20%, the urgency rating 15% and how many people live within walking distance 10%. Kept for comparison.",
     plainName: "the conventional mix, kept for comparison",
+    plainShort:
+      "A conventional mix, kept for comparison: school need counts most, then conditions in the district, the urgency rating and how many people live nearby.",
     name: "the conventional benchmark (B)",
     usesUrgency: true,
     readsReadings: false,

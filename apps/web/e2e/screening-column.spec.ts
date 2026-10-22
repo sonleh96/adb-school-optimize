@@ -39,7 +39,7 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.";
 const REASSURANCE =
   "Among the 16 schools with one rank under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 ranks. For the five schools that show a range, adding it back can still move their possible ranks.";
 // What changed from the rule with urgency to the main rule, as the statement's link and guide 5 show it.
@@ -56,7 +56,7 @@ const SCOPE_DETAIL_MAIN =
 
 /** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
 const QUIET_MAIN =
-  "Ordered mainly by school need (about 63%), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).";
+  "Ordered mainly by school need (about 63% of the score), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
@@ -186,7 +186,7 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await ruleChange(page).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(
-    "Ordered mainly by school need (60%), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each)."
+    "Ordered mainly by school need (60% of the score), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each)."
   );
   await area.getByRole("button", { name: "Back to the paper's main rule" }).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);

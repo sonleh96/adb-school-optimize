@@ -17,7 +17,6 @@ import {
 
 import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
-import { PENDING } from "@/lib/screening/pending-words";
 import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
@@ -601,7 +600,7 @@ function Workspace() {
         <div
           className={styles.paneSwitch}
           role="group"
-          aria-label={PENDING.paneAria}
+          aria-label={copy.LAYOUT.paneAria}
           data-region="pane-switch"
         >
           <button
@@ -610,7 +609,7 @@ function Workspace() {
             onClick={() => store.setState({ pane: "list" })}
           >
             <ListIcon size={15} aria-hidden />
-            {PENDING.paneList}
+            {copy.LAYOUT.paneList}
           </button>
           <button
             type="button"
@@ -618,7 +617,7 @@ function Workspace() {
             onClick={() => store.setState({ pane: "map" })}
           >
             <MapIcon size={15} aria-hidden />
-            {PENDING.paneMap}
+            {copy.LAYOUT.paneMap}
           </button>
         </div>
         {/* Help first among the actions, at the top right of the map: always on screen, whatever the list does. The

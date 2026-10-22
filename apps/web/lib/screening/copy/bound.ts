@@ -232,7 +232,7 @@ export function copyFor(data: CopyData = {}) {
       opts?: { top?: number }
     ) => comparisonSentence(a, b, { schools, ...d }, { ruleNames: names, ...opts }),
     urgencyReassurance: (d: ComparisonData = bound) => urgencyReassurance({ schools, ...d }),
-    defaultListStatement: (d: Pick<ComparisonData, "pairwise"> = bound) => defaultListStatement(d, names),
+    defaultListStatement: (d: Pick<ComparisonData, "pairwise"> = bound) => defaultListStatement(d),
     defaultListStatementLong: (d: Pick<ComparisonData, "pairwise"> = bound) =>
       defaultListStatementLong(d, names),
     tieNote: (

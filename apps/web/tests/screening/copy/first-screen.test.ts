@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
 import { bindCopy } from "@/lib/screening/copy";
+import { GUIDE } from "@/lib/screening/copy/guide";
 import { parseWith } from "@/lib/screening/schema";
 import { inputsResponse } from "@/lib/screening/types";
 
@@ -75,7 +76,9 @@ describe("the one-line description of each rule", () => {
       if (copy.ruleUsesUrgency(id)) expect(line, id).toMatch(/urgency rating/);
       else expect(line, id).not.toMatch(/urgency/i);
     }
-    expect(copy.LAYOUT.ruleNow("additive_no_u")).toMatch(/^Ordered mainly by school need \(about 63%\)/);
+    expect(copy.LAYOUT.ruleNow("additive_no_u")).toMatch(
+      /^Ordered mainly by school need \(about 63% of the score\)/
+    );
   });
 
   it("states only shares that the rule's own explanation states", () => {
@@ -88,6 +91,45 @@ describe("the one-line description of each rule", () => {
   it("tells the seven apart", () => {
     const lines = copy.RULE_IDS.map((id) => copy.LAYOUT.ruleNow(id));
     expect(new Set(lines).size).toBe(7);
+  });
+});
+
+describe("the short line for each rule on the first screen", () => {
+  it("says what comes first in plain words, with no percentages, for all seven rules", () => {
+    for (const id of copy.RULE_IDS) {
+      const line = copy.LAYOUT.ruleNowShort(id);
+      expect(textProblems(line), id).toEqual([]);
+      expect(line.split(/\s+/).length, id).toBeLessThanOrEqual(36);
+      expect(line, id).toMatch(/school need/i);
+      expect(line, id).not.toMatch(
+        /%|\brules?\b|\(S0?\)|\(B\)|combined[- ]factors|research paper|\bscore\b/i
+      );
+    }
+  });
+
+  it("ties school need to the parts the Why lines show", () => {
+    for (const id of ["additive_no_u", "additive_u", "need_first_no_u", "need_first_u"] as const)
+      expect(copy.LAYOUT.ruleNowShort(id), id).toMatch(
+        /classrooms, teacher housing, facilities, power, water and remoteness/
+      );
+  });
+
+  it("names the urgency rating only under a rule that uses it", () => {
+    for (const id of copy.RULE_IDS) {
+      const line = copy.LAYOUT.ruleNowShort(id);
+      if (copy.ruleUsesUrgency(id)) expect(line, id).toMatch(/urgency rating/);
+      else expect(line, id).not.toMatch(/urgency/i);
+    }
+  });
+
+  it("keeps the shares for one level down, and says of what they are shares", () => {
+    expect(copy.LAYOUT.ruleNow("additive_no_u")).toContain("about 63% of the score");
+    expect(copy.LAYOUT.ruleNow("additive_u")).toContain("60% of the score");
+    expect(copy.LAYOUT.ruleNow("benchmark")).toContain("55% of the score");
+  });
+
+  it("tells the seven apart", () => {
+    expect(new Set(copy.RULE_IDS.map((id) => copy.LAYOUT.ruleNowShort(id))).size).toBe(7);
   });
 });
 
@@ -132,6 +174,12 @@ describe("the compact key beside the map", () => {
     expect(copy.LAYOUT.keyRampNote(20, 0)).toBe("The colours show all 20 schools in the list.");
     for (const text of [copy.LAYOUT.keyRampNote(131, 7), copy.LAYOUT.keyRampNote(20, 0)])
       expect(textProblems(text)).toEqual([]);
+  });
+
+  it("words the compact strip so it cannot contradict the number of schools in the list", () => {
+    expect(copy.LAYOUT.keyStrip).toBe("Darker: earlier in the list");
+    expect(copy.LAYOUT.keyStrip).not.toMatch(/\d/);
+    expect(textProblems(copy.LAYOUT.keyStrip, { sentence: false })).toEqual([]);
   });
 
   it("names the numbered circles", () => {
@@ -199,6 +247,44 @@ describe("a rule named in plain words", () => {
         )
         .replace("the combined-factors rule without urgency (S0)", "the main method")
     );
-    expect(c.defaultListStatement()).toMatch(/^Which list should I use\? This one, the main method\./);
+    // Behind Change, where saying where the method comes from helps trust, the statement keeps the paper's name.
+    expect(c.defaultListStatement()).toBe(lettered.copy.defaultListStatement());
+    expect(c.defaultListStatement()).toMatch(
+      /^Which list should I use\? This one, the research paper's main method\./
+    );
+    expect(c.defaultListStatementLong()).toMatch(
+      /^This list uses the research paper's main method\. It leaves out/
+    );
+  });
+});
+
+describe("the narrow layout's words", () => {
+  it("name the list and map switch and the compact Start here card", () => {
+    const { paneAria, paneList, paneMap } = copy.LAYOUT;
+    expect([paneAria, paneList, paneMap]).toEqual(["Show the list or the map", "List", "Map"]);
+    expect(textProblems(paneAria, { sentence: false })).toEqual([]);
+    expect(GUIDE.openGuides).not.toBe(GUIDE.foldGuides);
+    expect(GUIDE.hide).toBe("Hide the guides");
+    for (const text of [GUIDE.openGuides, GUIDE.foldGuides])
+      expect(textProblems(text, { sentence: false })).toEqual([]);
+  });
+
+  it("counts the guides in the card's line, in the singular too", () => {
+    expect(GUIDE.startShort(5)).toBe("Five short guides show how to read this screen.");
+    expect(GUIDE.startShort(1)).toBe("One short guide shows how to read this screen.");
+    expect(GUIDE.startShort(GUIDE.tasks.length)).toMatch(/^Five short guides/);
+    expect(textProblems(GUIDE.startShort(12))).toEqual([]);
+  });
+
+  it("words the compact card's dismiss as a final choice, with a name that says what it hides", () => {
+    expect(GUIDE.dismissCompact).toBe("No thanks");
+    expect(GUIDE.dismissCompactAria).toContain(GUIDE.dismissCompact);
+    expect(GUIDE.dismissCompactAria).toMatch(/hide the guides$/);
+    expect(GUIDE.dismissCompact).not.toBe(GUIDE.hide);
+  });
+
+  it("drops the keys nothing reads", () => {
+    expect(copy.LAYOUT).not.toHaveProperty("change");
+    expect(GUIDE).not.toHaveProperty("hideAria");
   });
 });
