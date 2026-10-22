@@ -59,7 +59,7 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await page.locator("[data-slot=legend]").getByRole("button", { name: "What the map shows" }).click();
   await orderedRow(page, "Sample School 15").click();
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule without urgency (S0)"
+    "Position in the list under the combined-factors rule without urgency (S0)"
   );
 
   await openRules(page);
@@ -78,10 +78,10 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   await expect(page.locator("[data-rank-label][data-stale=true]").first()).toBeVisible();
   await expect(page.locator("[data-rank-label][data-stale=false]")).toHaveCount(0);
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Place in the list under the combined-factors rule without urgency (S0)"
+    "Position in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule without urgency (S0)"
+    "Position in the list under the combined-factors rule without urgency (S0)"
   );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(1);
 
@@ -93,10 +93,10 @@ test("while the next rule loads, everything on screen is labelled by the rows it
   // Then the new rule's rows arrive and everything is relabelled together.
   release();
   await expect(page.getByTestId("legend-rule")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
+    "Position in the list under the combined-factors rule with urgency (S)"
   );
   await expect(page.locator("[data-region=inspector-place] b")).toHaveText(
-    "Place in the list under the combined-factors rule with urgency (S)"
+    "Position in the list under the combined-factors rule with urgency (S)"
   );
   await expect(orderedRow(page, "Sample School 23")).toHaveCount(0);
   await expect(legend).toHaveAttribute("aria-busy", "false");
@@ -367,7 +367,7 @@ test("an API that names another default still opens the main rule, so the screen
   await openRules(page);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator("[data-region=list-statement]")).toContainText(
-    "This one, the paper's main rule."
+    "This one, the research paper's main method."
   );
   await expect(page.locator("[data-region=rule-now]")).toHaveText(
     "Schools are listed by the main rule, which leaves out the uncertain urgency rating."

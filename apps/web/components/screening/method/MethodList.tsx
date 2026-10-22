@@ -16,8 +16,8 @@ const f3 = (value: number) => value.toFixed(3);
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
 
 /**
- * Where the school's possible places sit among all the schools that can be put in order: a bar for a range, a tick
- * for one place, with quarter marks. It carries no words; the row's place says the same in words.
+ * Where the school's possible positions sit among all the schools that can be put in order: a bar for a range, a tick
+ * for one position, with quarter marks. It carries no words; the row's place says the same in words.
  */
 function Strip({
   best,
@@ -65,7 +65,7 @@ export interface MethodListProps {
 
 /**
  * The list as the method details show it: each place as a bare number (a range in words), the school's district and
- * province, its screening score (school need under the need-first rules) and where it sits among every school that
+ * province, its score (school need under the need-first rules) and where it sits among every school that
  * can be put in order. The arrow keys move through the rows on screen, as in the plain list.
  */
 export function MethodList({

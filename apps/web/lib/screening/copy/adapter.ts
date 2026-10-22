@@ -552,7 +552,7 @@ export function marginFromResults(response: ResultsResponse): number | undefined
 const TOP_SIZES = [10, 20, 30, 40] as const;
 
 /**
- * The study's recorded comparison of two rules, from `/compare`, in the rows `comparisonSentence` reads.
+ * The research team's recorded comparison of two rules, from `/compare`, in the rows `comparisonSentence` reads.
  * Both arrays are empty when the response holds no usable comparison (no common school, a rule the copy has
  * no words for, or ranks that do not count the common cohort of complete schools), so the sentences say none is
  * recorded. A response without one of the four top-list sizes is broken.

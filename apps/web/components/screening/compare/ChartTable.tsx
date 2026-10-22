@@ -11,7 +11,7 @@ import styles from "./compare.module.css";
 
 /**
  * What the compare chart shows, as a table a screen reader reads and a keyboard moves through: every school both
- * rules put in order, its place under each rule and how far it moved. The chart is hidden from assistive technology;
+ * rules put in order, its position under each rule and how far it moved. The chart is hidden from assistive technology;
  * this is its text. One school's button is in the tab order at a time, the arrow keys move between them, and choosing
  * one opens its card, as a click on the chart does. Out of sight until focus enters it, then shown under the chart.
  */

@@ -94,7 +94,7 @@ interface CardProps {
 }
 
 /**
- * The school card: who the school is, its one place, why it sits there, and its numbers. It opens at once with what
+ * The school card: who the school is, its one position, why it sits there, and its numbers. It opens at once with what
  * the list knows (name, place) and fills in from the school's full record. Under the paper's main rule it carries
  * the paper's persistence flag when the school has it.
  */
@@ -132,7 +132,7 @@ export function SchoolCard(props: CardProps) {
   const name = copy.distinctName(listed, schools);
   const headline = copy.placeHeadline(school, rule);
   const tie = copy.segments.tieNote(school, rule, schools, "card");
-  // The figure's setting: a status in words, a range of places, or one place (a range whose ends meet included).
+  // The figure's setting: a status in words, a range of positions, or one position (a range whose ends meet included).
   const result = listed.results?.[rule] ?? null;
   const heroForm =
     queued || !/\d/.test(headline)

@@ -315,13 +315,13 @@ describe("two tabs on the same storage", () => {
     expect(names).toEqual(["seed", "seed", "seed", "seed", "From A", "From B"]);
   });
 
-  it("removes the view chosen, not the one the other tab moved to its place (13)", () => {
+  it("removes the view chosen, not the one the other tab moved to its position (13)", () => {
     const { tab, data } = browser();
     const a = tab();
     const b = tab();
     a.write(() => a.store.save("Board", "view=queue"));
     const board = a.store.entries()!.find((e) => "name" in e)!;
-    // The other tab removes the first starting view, so every view moves up one place.
+    // The other tab removes the first starting view, so every view moves up one position.
     b.write(() => b.store.remove(b.store.entries()![0]));
     a.write(() => a.store.remove(board));
     const left = JSON.parse(data.get(VIEWS_KEY)!).views;

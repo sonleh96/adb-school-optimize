@@ -28,6 +28,15 @@ export const run = (fn: () => unknown): Outcome => {
 /** Sample arguments for every function a static object holds, so a new function cannot go unchecked. */
 export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.otherRulesCount": [[5], [0]],
+  "LAYOUT.ruleNow": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
   "LAYOUT.backToCirculated": [["Combined factors, with urgency"], ["x"]],
   "LAYOUT.notComputedGroup": [["Need first, no urgency", 4]],
   "LAYOUT.listTitle": [[20, "the combined-factors rule with urgency (S)"]],
@@ -37,7 +46,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.positionOf": [[3, 20]],
   "LAYOUT.placeRange": [["3rd", "12th"]],
   "LAYOUT.valueRange": [["0.487", "0.537"]],
-  "LAYOUT.underRule": [["Place in the list", "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.underRule": [["Position in the list", "the combined-factors rule with urgency (S)"]],
   "LAYOUT.topListFileName": [
     [20, "Combined factors, with urgency"],
     [10, 'Équipe / mix (S0): "a" b'],

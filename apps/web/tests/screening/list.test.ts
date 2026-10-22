@@ -2,7 +2,7 @@
  * Failure modes of the list helpers, run on the rows the API really sent:
  *  1. The wrong order for range or queue schools: a range school must stay where the API put it, between
  *     the complete schools, and the incomplete records must keep their order, whatever the cohort mix.
- *  2. An interval school shown with a single place, or a place number shown where there is none.
+ *  2. An interval school shown with a single position, or a place number shown where there is none.
  *     A range whose ends are equal is still a range: it must not read as a plain place.
  *  3. A place without the scope it was counted in.
  *  4. Ordinals wrong in the teens (11th, 12th, 13th) or after a hundred.
@@ -98,7 +98,7 @@ describe("placeOf and placeLabel", () => {
     expect(placeLabel(place)).toBe("1st");
   });
 
-  it("gives an interval school a range, never a single place", () => {
+  it("gives an interval school a range, never a single position", () => {
     const place = placeOf(byName("Sample School 17"));
     expect(place).toEqual({
       kind: "range",
@@ -111,7 +111,7 @@ describe("placeOf and placeLabel", () => {
     expect(placeLabel(place)).toBe("11th to 18th");
   });
 
-  it("keeps the range treatment when both ends are the same place, and says it is exact", () => {
+  it("keeps the range treatment when both ends are the same position, and says it is exact", () => {
     const place = placeOf(byName("Sample School 25"));
     expect(place).toEqual({
       kind: "range",
@@ -121,7 +121,7 @@ describe("placeOf and placeLabel", () => {
       scope: "eligible (21)",
       exact: true,
     });
-    // The text is the one place; a caller shows it as a range, with the exact note, because kind stays "range".
+    // The text is the one position; a caller shows it as a range, with the exact note, because kind stays "range".
     expect(placeLabel(place)).toBe("21st");
     expect(place.kind).not.toBe("point");
   });

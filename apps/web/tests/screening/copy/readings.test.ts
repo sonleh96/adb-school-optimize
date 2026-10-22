@@ -52,7 +52,7 @@ describe.each([
   it("is not read as recorded", () => {
     expect(copy.missingValueKind(s, key)).toBe("unresolved");
     expect(copy.missingValueNote(s, key)).toBe(
-      `The ${noun} recorded for this school cannot be used, so it is not counted as 0. The school shows a range of places instead of one place.`
+      `The ${noun} recorded for this school cannot be used, so it is not counted as 0. The school shows a range of positions instead of one position.`
     );
     expect(copy.inputSentence(s, key)).toMatch(/cannot use it, so it is not counted as 0\.$/);
     expect(copy.inputSentence(s, key)).not.toContain(String(value));

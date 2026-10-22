@@ -99,7 +99,7 @@ export async function waitForWorkspaceHook(page: Page) {
 
 /** The lists' accessible names, as the copy system words the tabs. */
 export const ORDERED = "ol[aria-label='The list']";
-export const INCOMPLETE = "ol[aria-label='Incomplete records']";
+export const INCOMPLETE = "ol[aria-label='Missing information']";
 /** The two rules of the switch by their labels: the main rule, which the screen opens on, then the urgency sensitivity. */
 export const RULE = {
   main: "Combined factors, without urgency",
@@ -125,9 +125,7 @@ export const listNames = (page: Page) =>
   page.locator(`${ORDERED} button span[class*=name]`).allTextContents();
 /** One of the two main rules in the switch. The switch shows once the rule area is open (`openRules`). */
 export const mainRule = (page: Page, label: string) =>
-  page
-    .getByRole("group", { name: "The main rule and the urgency sensitivity" })
-    .getByRole("button", { name: label });
+  page.getByRole("group", { name: "How the list is ordered" }).getByRole("button", { name: label });
 /** The rule area's Change, which opens the switch, Other rules and the statement. */
 export const ruleChange = (page: Page) => page.locator("[data-region=rule-change]");
 /** Opens the rule area if it is closed, as a reader does with Change. */

@@ -91,8 +91,8 @@ test("help mode marks the key concepts, a mark explains instead of acting, and l
   expect(await marks(page).count()).toBeLessThanOrEqual(40);
   await expect(page.getByTestId("help-bar")).toBeVisible();
 
-  // The Incomplete records tab explains itself instead of switching the list.
-  await page.getByRole("tab", { name: /Incomplete records/ }).click();
+  // The Missing information tab explains itself instead of switching the list.
+  await page.getByRole("tab", { name: /Missing information/ }).click();
   await expect(card(page)).toBeVisible();
   await expect(card(page).getByRole("heading")).toBeFocused();
   await expect(page.getByRole("tab", { name: /The list/ })).toHaveAttribute("aria-selected", "true");
@@ -181,7 +181,7 @@ test("the glossary finds a term, opens it, shows where it is, and links to How t
   await drawer.getByRole("searchbox").fill("zzzz");
   await expect(drawer.getByText("No term matches.")).toBeVisible();
   await drawer.getByRole("searchbox").fill("");
-  await drawer.getByRole("button", { name: "Place in the list", exact: true }).click();
+  await drawer.getByRole("button", { name: "Position in the list", exact: true }).click();
   await expect(page).toHaveURL(/gx=rank/);
   await drawer.getByRole("button", { name: "Show where" }).click();
   await expect(page.locator("body > div[aria-hidden=true]")).toHaveCount(1);

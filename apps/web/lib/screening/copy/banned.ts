@@ -53,7 +53,7 @@ export const BANNED = Object.freeze([
     pattern: /\bplaced\b/i,
     why: "Retired in round 3: testers read it as chosen or approved; say can be put in order.",
   },
-  { pattern: /(?<!screening )\bscore\b/i, why: "One name for the number a rule gives: screening score." },
+  { pattern: /\bscreening scores?\b/i, why: "Say score: screening reads as a check on people." },
   {
     pattern: /\breading counts as\b|\bcounts? as 0\b(?! or)/i,
     why: "Reads as scoring zero; say where they would sit if air quality added nothing.",

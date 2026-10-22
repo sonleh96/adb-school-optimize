@@ -20,7 +20,7 @@ interface Common {
   method: Method;
   collapsed: boolean;
   stale: boolean;
-  /** How many schools show a range of places, and how many have incomplete records. */
+  /** How many schools show a range of positions, and how many have incomplete records. */
   ranges: number;
   incomplete: number;
 }

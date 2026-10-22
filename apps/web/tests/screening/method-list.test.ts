@@ -1,7 +1,7 @@
 /**
  * Failure modes of the method details' list logic:
  *  1. A filter hides a school it should keep, or keeps one it should hide; a blank province becomes an option.
- *  2. The export preview shows a range school among the single places, drops a row, or reads an empty score as 0.
+ *  2. The export preview shows a range school among the single positions, drops a row, or reads an empty score as 0.
  *  3. A preview of a file with a cell that is not a number shows NaN instead of refusing the file.
  *  4. A share is shown rounded: 12/19 as 0.63.
  *  5. The filter by what is missing shows an incomplete record under a part of school need its record has, or
@@ -83,7 +83,7 @@ describe("filters (1)", () => {
 describe("the top list preview (2, 3)", () => {
   const read = (file: string) => parseTopCsv(readFileSync(path.join(ROOT, file), "utf8"));
 
-  it("splits the file's rows into single places and ranges, in the file's order", () => {
+  it("splits the file's rows into single positions and ranges, in the file's order", () => {
     const list = topListOf(read("exports/top_additive_u_30.csv"));
     expect(list.rule).toBe("additive_u");
     expect(list.k).toBe(30);
