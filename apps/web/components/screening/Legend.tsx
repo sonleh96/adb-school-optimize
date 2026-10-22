@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
+import { PENDING } from "@/lib/screening/pending-words";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import styles from "./screening.module.css";
@@ -110,6 +111,13 @@ export function Legend({
         ) : null}
         {open ? null : (
           <ul className={styles.keysShort}>
+            {/* The numbers on the map's first ten dots, drawn as the map draws them: a "1" on the darkest blue. */}
+            <li data-region="legend-number">
+              <span className={styles.keyNumber} style={{ background: RAMP_HEX[0] }} aria-hidden>
+                1
+              </span>
+              <span>{PENDING.keyNumbers}</span>
+            </li>
             <li data-region="legend-point">
               <Mark kind="dot" />
               <span data-term="mark_dot">{LAYOUT.keyDot}</span>

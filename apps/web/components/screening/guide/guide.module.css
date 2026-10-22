@@ -228,6 +228,50 @@
   letter-spacing: -0.016em;
   text-wrap: balance;
 }
+/* The compact Start here: one line, and the control that unfolds the guides under it. */
+.startShort {
+  margin: 0;
+  font: 500 14px/20px var(--sans);
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.startShort:focus {
+  outline: none;
+}
+.unfold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 4px 10px 5px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 13px/17px var(--sans);
+  color: var(--navy);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.unfold:active {
+  transform: scale(0.97);
+}
+.unfold[aria-expanded="true"] {
+  margin-bottom: 12px;
+  background: var(--navy-wash);
+}
+.unfold svg {
+  transition: transform 200ms var(--ease-out);
+}
+.unfold svg[data-open] {
+  transform: rotate(180deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .unfold:hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
 .lede {
   margin: 0 0 14px;
   font-size: 13px;

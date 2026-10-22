@@ -115,8 +115,9 @@ export function GuidanceLayer({
   const railOpen = state.rail.kind !== "off";
   // On a phone the start list sits at the top of the list region and scrolls with it, so it covers nothing and
   // nothing covers it. A guide's steps keep the map band, where they point at the map and the list below.
-  // A school's card takes the list region's place in the narrow layout, so with a card open the start list keeps the
-  // band, where it can still be reached.
+  // On a narrow screen Start here is a short card at the head of the list region, whichever of List and Map shows. A
+  // school's card takes the list region's place, so with a card open Start here takes the band, where it can still be
+  // reached (as All guides does from a guide that opened a card).
   const school = useWorkspaceState().school;
   const inflow = data.mode === "narrow" && state.rail.kind === "start" && school === null;
   const [slot, setSlot] = useState<HTMLElement | null>(null);
@@ -162,7 +163,7 @@ export function GuidanceLayer({
                 load={loadRail}
                 loading={<Busy text={LAYOUT.loadingGuide} />}
                 copy={data.copy}
-                props={{ root, data, roles, plan }}
+                props={{ root, data, roles, plan, compact: inflow }}
               />
             </div>,
             inflow ? slot : null

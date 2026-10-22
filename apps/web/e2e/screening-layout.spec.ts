@@ -15,7 +15,8 @@
  *     to spare for another platform's wider text, or spills out of its button or the switch
  *                                                                -> "on a phone each label in the rule switch..."
  *  9. The caveat (what the tool does not show or decide) shows twice, or only after opening or scrolling to something,
- *     or sits off-screen or under a panel at some size                -> "the caveat shows once..."
+ *     or sits off-screen or under a panel at some size, or in either of the narrow layout's List and Map
+ *                                                                     -> "the caveat shows once..."
  */
 import type { Page } from "@playwright/test";
 
@@ -227,15 +228,24 @@ test.describe("at 1600 the card opens beside the list", () => {
 test.describe("the narrow layout", () => {
   test.use({ viewport: { width: 768, height: 1024 } });
 
-  test("the narrow layout keeps the map band, puts the card in the list's place, and opens the key on demand", async ({
+  test("the narrow layout shows the list, opens the map band from Map, puts the card in the list's place, and opens the key on demand", async ({
     page,
   }) => {
     await page.goto("/screening");
     await waitForMap(page);
-    const map = (await page.getByTestId("screening-map").boundingBox())!;
-    expect(map.y).toBe(56);
-    expect(map.height).toBe(410);
     await expect(page.getByRole("heading", { level: 1, name: "RISE-PNG" })).toBeVisible();
+    // The list first, under the top bar and the switch; a card takes its place there.
+    await expect(page.getByTestId("screening-map")).toBeHidden();
+    await orderedRow(page, "Sample School 08").click();
+    await expect
+      .poll(async () => await page.locator("[data-slot=school-card]").boundingBox())
+      .toMatchObject({ y: 56 + 44, width: 768 });
+    await page.locator("[data-slot=school-card]").getByRole("button", { name: "The list" }).click();
+
+    await page.locator("[data-region=pane-switch]").getByRole("button", { name: "Map", exact: true }).click();
+    const map = (await page.getByTestId("screening-map").boundingBox())!;
+    expect(map.y).toBe(56 + 44);
+    expect(map.height).toBe(410);
 
     // The key is compact, its marks named in a few words, until What the map shows opens it in full.
     const key = page.locator("[data-slot=legend]");
@@ -249,7 +259,7 @@ test.describe("the narrow layout", () => {
     // Measured once the card has finished coming in.
     await expect
       .poll(async () => await page.locator("[data-slot=school-card]").boundingBox())
-      .toMatchObject({ y: 56 + 410, width: 768 });
+      .toMatchObject({ y: 56 + 44 + 410, width: 768 });
     await expect(page.locator("section[class*=column]")).toBeHidden();
     await page.locator("[data-slot=school-card]").getByRole("button", { name: "The list" }).click();
     await expect(page.locator("section[class*=column]")).toBeVisible();
@@ -290,13 +300,15 @@ test.describe("the key at 200 percent zoom", () => {
   test("the open key stays inside the map band, under the top bar, and closes again", async ({ page }) => {
     await page.goto("/screening");
     await waitForMap(page);
+    await page.locator("[data-region=pane-switch]").getByRole("button", { name: "Map", exact: true }).click();
     const key = page.locator("[data-slot=legend]");
     await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(page.getByTestId("legend-rule")).toBeAttached();
 
     const fits = await page.evaluate(() => {
       const box = document.querySelector("[data-slot=legend]")!.getBoundingClientRect();
-      const bar = document.querySelector("header[class*=topBar]")!.getBoundingClientRect();
+      // The top bar and, under it, the List / Map switch.
+      const bar = document.querySelector("[data-region=pane-switch]")!.getBoundingClientRect();
       const band = document.querySelector("[data-testid=screening-map]")!.getBoundingClientRect();
       // What is drawn at the toggle's centre and at the title's is the toggle and the title, not the top bar.
       const atCentre = (selector: string) => {
@@ -332,26 +344,39 @@ for (const size of [
   { width: 768, height: 1024, scale: 1 },
   { width: 800, height: 500, scale: 2 },
   { width: 390, height: 844, scale: 1 },
+  { width: 360, height: 740, scale: 2 },
 ]) {
-  for (const visit of ["a first visit", "a returning visit"] as const) {
-    test.describe(`the caveat at ${size.width} by ${size.height} on ${visit}`, () => {
+  // The narrow layout shows the list or, from Map, the map band over it: the caveat holds in both.
+  const panes = size.width <= 1023 ? (["List", "Map"] as const) : ([null] as const);
+  for (const [visit, pane] of (["a first visit", "a returning visit"] as const).flatMap((v) =>
+    panes.map((p) => [v, p] as const)
+  )) {
+    const on = pane ? `${visit}, showing ${pane}` : visit;
+    test.describe(`the caveat at ${size.width} by ${size.height} on ${on}`, () => {
       test.use({
         viewport: { width: size.width, height: size.height },
         deviceScaleFactor: size.scale,
         firstVisit: visit === "a first visit",
       });
 
-      test(`the caveat shows once, in the window and clear of every panel, at ${size.width} by ${size.height} on ${visit}`, async ({
+      test(`the caveat shows once, in the window and clear of every panel, at ${size.width} by ${size.height} on ${on}`, async ({
         page,
       }) => {
         await page.goto("/screening");
         await waitForMap(page);
         await expect(page.locator(`${ORDERED} button`).first()).toBeAttached();
         if (visit === "a first visit") await expect(page.getByTestId("guide-rail")).toBeVisible();
+        if (pane) {
+          const choice = page
+            .locator("[data-region=pane-switch]")
+            .getByRole("button", { name: pane, exact: true });
+          await choice.click();
+          await expect(choice).toHaveAttribute("aria-pressed", "true");
+        }
         const caveat = page.getByText(CAVEAT).filter({ visible: true });
         await expect(caveat).toHaveCount(1);
         await expect(caveat).toBeInViewport({ ratio: 1 });
-        // Nothing covers it: no panel's box meets the caveat's.
+        // Nothing covers it: no panel's box meets the caveat's, except the one that holds it.
         const met = await caveat.evaluate((element) => {
           const own = element.getBoundingClientRect();
           const panels = [
@@ -362,11 +387,13 @@ for (const size of [
             "header[class*=topBar]",
             "#slot-hint",
             "[data-slot=school-card]",
+            "[data-region=pane-switch]",
           ];
           return panels.flatMap((selector) =>
             [...document.querySelectorAll(selector)].flatMap((panel) => {
               const style = getComputedStyle(panel);
-              if (style.display === "none" || style.visibility === "hidden") return [];
+              if (panel.contains(element) || style.display === "none" || style.visibility === "hidden")
+                return [];
               const r = panel.getBoundingClientRect();
               const meets =
                 r.width > 0 &&
