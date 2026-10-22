@@ -267,7 +267,7 @@
 .unfold:active {
   transform: scale(0.97);
 }
-.unfold[aria-expanded="true"] {
+.unfold[data-open] {
   background: var(--navy-wash);
 }
 .unfold svg {

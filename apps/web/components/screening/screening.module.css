@@ -295,7 +295,7 @@
   color: var(--ink-3);
   cursor: default;
 }
-.ruleChange[aria-expanded="true"] {
+.ruleChange[data-open] {
   background: var(--navy-wash);
 }
 @media (hover: hover) and (pointer: fine) {
