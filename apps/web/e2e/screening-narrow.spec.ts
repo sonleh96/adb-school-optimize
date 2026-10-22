@@ -192,6 +192,6 @@ test.describe("Start here on a phone", () => {
     await pane(page, "Map").click();
     const numbers = page.locator("[data-slot=legend] [data-region=legend-number]");
     await expect(numbers).toBeVisible();
-    await expect(numbers).toHaveText(/^1\s*The first ten in the list$/);
+    await expect(numbers).toHaveText(/^1\s*Numbered: the first ten in the list$/);
   });
 });

@@ -228,7 +228,17 @@
   letter-spacing: -0.016em;
   text-wrap: balance;
 }
-/* The compact Start here: one line, and the control that unfolds the guides under it. */
+/* The compact Start here: one line, and the control that unfolds the guides under it, beside the line where the
+   width allows. */
+.startRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.startRow + * {
+  margin-top: 12px;
+}
 .startShort {
   margin: 0;
   font: 500 14px/20px var(--sans);
@@ -242,7 +252,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 4px 10px 5px;
   border: 1px solid var(--hair);
   border-radius: 6px;
@@ -258,7 +268,6 @@
   transform: scale(0.97);
 }
 .unfold[aria-expanded="true"] {
-  margin-bottom: 12px;
   background: var(--navy-wash);
 }
 .unfold svg {

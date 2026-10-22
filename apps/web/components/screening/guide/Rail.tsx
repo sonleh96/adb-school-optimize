@@ -121,7 +121,6 @@ function Start({
           type="button"
           className={styles.hide}
           data-region="hide-guides"
-          aria-label={GUIDE.hideAria}
           onClick={() => store.dispatch({ type: "close" })}
         >
           {GUIDE.hide}
@@ -130,7 +129,7 @@ function Start({
       </div>
       <div className={styles.railBody}>
         {compact ? (
-          <>
+          <div className={styles.startRow}>
             <h2 ref={title} className={styles.startShort} tabIndex={-1}>
               {PENDING.startShort}
             </h2>
@@ -145,7 +144,7 @@ function Start({
               {unfolded ? PENDING.foldGuides : PENDING.openGuides}
               <ChevronDown size={14} aria-hidden data-open={unfolded || undefined} />
             </button>
-          </>
+          </div>
         ) : (
           <>
             <h2 ref={title} className={styles.startTitle} tabIndex={-1}>
