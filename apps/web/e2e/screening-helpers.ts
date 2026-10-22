@@ -131,7 +131,8 @@ export const ruleChange = (page: Page) => page.locator("[data-region=rule-change
 /** Opens the rule area if it is closed, as a reader does with Change. */
 export async function openRules(page: Page) {
   const change = ruleChange(page);
-  if ((await change.getAttribute("aria-expanded")) !== "true") await change.click();
+  // Closed, it is named for opening the choice; open, it reads Done.
+  if ((await change.textContent())?.trim() !== "Done") await change.click();
   await expect(page.locator("[data-region=rule-switch]")).toBeVisible();
 }
 /** Help, wherever the layout puts it: the list panel's top, or the top bar in the narrow layout. */

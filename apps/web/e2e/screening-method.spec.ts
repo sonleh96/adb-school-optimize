@@ -339,7 +339,7 @@ test("the card in compare mode shows the school under both rules and how far it 
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined");
   await expect(c.locator("[data-region=inspector-place]")).toContainText("Combined, no urgency");
   await expect(c.locator("[data-region=inspector-breakdown]")).toHaveCount(2);
-  await expect(c).toContainText(/Same rank in the list under|(Up|Down) \d+ places? under/);
+  await expect(c).toContainText(/Same rank in the list under|(Up|Down) \d+ ranks? under/);
 });
 
 test("no raw null, undefined or NaN renders in the method states on the worst-case data (R8)", async ({

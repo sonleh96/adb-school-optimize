@@ -11,6 +11,9 @@
  *  9. Worst-case names leave a card or the page (R7)                                   -> "worst-case names ..."
  * 10. A kind of help is missing from Help, help hides in more than one place, or Help goes when the list steps aside
  *                                                                                     -> "Help holds every kind ..."
+ * 11. Help mode leaves the rule line and its control unmarked, or a mark there opens the choice instead of explaining
+ *                                                                                     -> "help mode marks the rule line ..."
+ * 12. Help's list stays open over the map once focus has left it                      -> "Help's list closes ..."
  */
 import type { Page } from "@playwright/test";
 
@@ -276,4 +279,41 @@ test("worst-case names stay inside the help cards, the glossary and the page", a
       [...root.querySelectorAll("p, h1, h2")].filter((el) => el.scrollWidth > el.clientWidth + 1).length
   );
   expect(pageSpills).toBe(0);
+});
+
+test("help mode marks the rule line and its control, and each explains the rule instead of opening the choice", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await (await helpItem(page, "Explain this screen")).click();
+  await expect.poll(async () => (await layers(page)).help).toBe(true);
+  const line = page.locator("[data-region=rule-now][data-xp]");
+  const control = page.locator("[data-region=rule-change][data-xp]");
+  await expect(line).toHaveCount(1);
+  await expect(control).toHaveCount(1);
+  await control.click();
+  await expect(card(page)).toBeVisible();
+  await expect(card(page).getByRole("heading")).toBeFocused();
+  // It explained: the choice stayed closed.
+  await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await line.click();
+  await expect(card(page)).toBeVisible();
+});
+
+test("Help's list closes when focus leaves it, and on Escape gives focus back to Help", async ({ page }) => {
+  await openWorkspace(page);
+  await helpButton(page).click();
+  const menu = page.locator("#screening-help-menu");
+  await expect(menu).toBeVisible();
+  // Tab moves into the list, through its four choices and out the other side; the list then closes.
+  for (let step = 0; step < 6 && (await menu.count()) > 0; step += 1) await page.keyboard.press("Tab");
+  await expect(menu).toHaveCount(0);
+
+  await helpButton(page).click();
+  await page.keyboard.press("Tab");
+  await expect(menu.getByRole("button").first()).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(helpButton(page)).toBeFocused();
 });

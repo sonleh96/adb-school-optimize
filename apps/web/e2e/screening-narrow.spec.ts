@@ -12,6 +12,12 @@
  *                                                                      -> "Start here is a short card..."
  *  6. The numbered circles have no entry in the key, or the phone shows no line saying what the tool is for
  *                                                                      -> "the key names the numbered circles..."
+ *  7. Help, then Guides opens Start here off screen when the list has been scrolled  -> "Help, then Guides brings..."
+ *  8. The card counts five guides where the data can teach fewer      -> "the card counts the guides it unfolds"
+ *  9. Map, key and zoom controls hidden under Start here in the band can still take focus
+ *                                                                      -> "with a school open, Start here in the band..."
+ * 10. In the Map view the keyboard crosses the whole list before it reaches the key
+ *                                                                      -> "in the Map view the key comes before..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -25,6 +31,7 @@ import {
   orderedRow,
   settledMark,
   test,
+  useMockDataset,
   waitForMap,
 } from "./screening-helpers";
 
@@ -164,7 +171,9 @@ test.describe("Start here on a phone", () => {
     const start = rail(page);
     await expect(start).toBeVisible();
     const open = start.locator("[data-region=open-guides]");
-    await expect(open).toHaveAttribute("aria-expanded", "false");
+    // Its name says what it will do; it is not also a disclosure with a state.
+    await expect(open).toHaveText("Open the guides");
+    await expect(open).not.toHaveAttribute("aria-expanded", /./);
     // Its dismiss reads as a choice of its own beside Open the guides, and says in full what it does.
     const dismiss = start.locator("[data-region=hide-guides]");
     await expect(dismiss).toHaveText("No thanks");
@@ -175,7 +184,7 @@ test.describe("Start here on a phone", () => {
     expect(box.height).toBeLessThan(844 / 4);
 
     await open.click();
-    await expect(open).toHaveAttribute("aria-expanded", "true");
+    await expect(open).toHaveText("Fold the guides away");
     await expect(start.locator("[data-guide]")).toHaveCount(5);
 
     await dismiss.click();
@@ -187,7 +196,7 @@ test.describe("Start here on a phone", () => {
 
     await (await helpItem(page, "Guides")).click();
     await expect(rail(page)).toBeVisible();
-    await expect(rail(page).locator("[data-region=open-guides]")).toHaveAttribute("aria-expanded", "false");
+    await expect(rail(page).locator("[data-region=open-guides]")).toHaveText("Open the guides");
   });
 
   test("the key names the numbered circles, and the list says what the tool is for", async ({ page }) => {
@@ -200,5 +209,77 @@ test.describe("Start here on a phone", () => {
     const numbers = page.locator("[data-slot=legend] [data-region=legend-number]");
     await expect(numbers).toBeVisible();
     await expect(numbers).toHaveText(/^1\s*Numbered: the first ten in the list$/);
+  });
+});
+
+test.describe("Start here on a phone, after the list has moved", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+
+  test("Help, then Guides brings Start here into the window after the list has been scrolled", async ({
+    page,
+  }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await expect(rail(page)).toHaveCount(0);
+    await page.locator("[data-slot=column]").evaluate((column) => column.scrollBy(0, 900));
+    await (await helpItem(page, "Guides")).click();
+    await expect(rail(page)).toBeVisible();
+    await expect(rail(page).locator("[data-region=open-guides]")).toBeInViewport({ ratio: 1 });
+  });
+
+  test("with a school open, Start here in the band leaves nothing under it to tab to", async ({ page }) => {
+    await page.goto(`/screening?school=${KEY}&guide=start`);
+    await waitForMap(page);
+    await expect(rail(page)).toBeVisible();
+    await expect(card(page)).toBeVisible();
+    for (const hidden of [
+      page.locator("[data-slot=legend] [data-region=key-toggle]"),
+      page.locator(".maplibregl-ctrl-zoom-in"),
+      page.locator(".maplibregl-canvas"),
+    ])
+      await expect(hidden).toBeHidden();
+  });
+
+  test("in the Map view the key comes before the list in the keyboard's order", async ({ page }) => {
+    await page.goto("/screening");
+    await waitForMap(page);
+    await pane(page, "Map").click();
+    await expect(page.locator("[data-slot=legend]")).toBeVisible();
+    const reached: string[] = [];
+    for (let step = 0; step < 30; step += 1) {
+      await page.keyboard.press("Tab");
+      const where = await page.evaluate(() => {
+        const el = document.activeElement;
+        if (el?.closest("[data-slot=legend]")) return "key";
+        if (el?.closest("ol[aria-label='The list']")) return "list";
+        return "";
+      });
+      if (where) reached.push(where);
+      if (reached.includes("key") && reached.includes("list")) break;
+    }
+    expect(reached[0]).toBe("key");
+  });
+});
+
+test.describe("the card's count on a dataset that teaches fewer guides", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, firstVisit: true });
+
+  test("the card counts the guides it unfolds", async ({ page, context }) => {
+    await useMockDataset(context, "one");
+    await page.goto("/screening");
+    await waitForMap(page);
+    const start = rail(page);
+    await expect(start).toBeVisible();
+    await start.locator("[data-region=open-guides]").click();
+    const count = await start.locator("[data-guide]").count();
+    expect(count).toBeLessThan(5);
+    const words = [
+      "",
+      "One short guide shows",
+      "Two short guides show",
+      "Three short guides show",
+      "Four short guides show",
+    ];
+    await expect(start.locator("h2")).toHaveText(`${words[count]} how to read this screen.`);
   });
 });

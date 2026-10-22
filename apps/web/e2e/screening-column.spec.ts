@@ -18,6 +18,8 @@
  *     missing is lost from the URL, or the arrow keys leave the order on screen       -> "the incomplete records..."
  *  9. The controller accepts an invalid value, cannot clear a key, does not report a change, or says ready before the
  *     map has drawn                                                                    -> "the controller..."
+ * 10. The note on ranges draws a sign of its own for a range, where the map's key uses the ring with a centre dot
+ *                                                                                      -> "the note on ranges..."
  */
 import {
   INCOMPLETE,
@@ -89,7 +91,7 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
   await page.reload();
   await waitForMap(page);
   await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
-  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(4);
@@ -157,7 +159,8 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
-  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
+  // Its name says what pressing it does; it carries no expanded state as well.
+  await expect(ruleChange(page)).not.toHaveAttribute("aria-expanded", /./);
   await expect(page.locator("[data-region=rule-switch]")).toHaveCount(0);
   await expect(statement(page)).toHaveCount(0);
   await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);
@@ -173,7 +176,6 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   // The control opens the switch, the other ways and the statement; Done closes them, and the address never keeps
   // either.
   await ruleChange(page).click();
-  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
   await expect(ruleChange(page)).toHaveText("Done");
   // The shares wait behind the control: open, they come first, above the switch; the line above keeps its words.
   await expect(area.locator("[data-region=rule-shares]")).toHaveText(SHARES_MAIN);
@@ -378,4 +380,22 @@ test("the controller ignores invalid values, clears with null, reports each chan
   await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(tab(page, /The list/)).toHaveAttribute("aria-selected", "true");
+});
+
+test("the note on ranges shows the map key's mark for a range, and no sign of its own", async ({ page }) => {
+  await openWorkspace(page);
+  const note = page.locator("[data-region=list-order]");
+  await expect(note).toBeVisible();
+  await expect(note.locator("[data-mark=range]")).toHaveCount(1);
+  expect(await note.evaluate((el) => getComputedStyle(el, "::before").content)).toBe("none");
+  // The same drawing as the key's: the same size and ring.
+  const look = (el: Element) => {
+    const style = getComputedStyle(el);
+    return [style.width, style.height, style.borderTopWidth, style.borderTopColor, style.borderRadius].join(
+      " "
+    );
+  };
+  await page.locator("[data-slot=legend] [data-region=key-toggle]").click();
+  const keyMark = page.locator("[data-slot=legend] [data-region=legend-range] [data-mark=range]");
+  expect(await note.locator("[data-mark=range]").evaluate(look)).toBe(await keyMark.evaluate(look));
 });
