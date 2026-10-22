@@ -178,8 +178,6 @@ export const LAYOUT = Object.freeze({
   // The narrow layout.
   menu: "Menu",
   keyLabel: "Key",
-  keyShow: "Show the map key",
-  keyHide: "Hide the map key",
   // The compact key over the map: the control that opens the full key, and the words beside each mark.
   keyMore: "What the map shows",
   keyDot: "One rank",
