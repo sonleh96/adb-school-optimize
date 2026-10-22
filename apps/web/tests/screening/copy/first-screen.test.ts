@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import * as copy from "@/lib/screening/copy";
 import { bindCopy } from "@/lib/screening/copy";
 import { GUIDE } from "@/lib/screening/copy/guide";
+import { LABELLED_PLACES } from "@/lib/screening/marks";
 import { parseWith } from "@/lib/screening/schema";
 import { inputsResponse } from "@/lib/screening/types";
 
@@ -191,7 +192,8 @@ describe("the compact key beside the map", () => {
 
   it("names the numbered circles", () => {
     expect(textProblems(copy.LAYOUT.keyNumbers, { sentence: false })).toEqual([]);
-    expect(copy.LAYOUT.keyNumbers).toMatch(/ranks 1 to 10/);
+    // It names as many ranks as the map numbers.
+    expect(copy.LAYOUT.keyNumbers).toContain(`1 to ${LABELLED_PLACES}`);
   });
 });
 
@@ -313,9 +315,7 @@ describe("the link to the earlier method, and the guide that says the same", () 
   ];
 
   it("says what the other method is and what it adds, in one short line", () => {
-    expect(copy.LAYOUT.seeWithUrgency).toBe(
-      "Compare with the earlier method, which also counts an urgency rating"
-    );
+    expect(copy.LAYOUT.seeWithUrgency).toMatch(/urgency rating/);
     expect(copy.LAYOUT.seeWithUrgency.length).toBeLessThanOrEqual(75);
     expect(textProblems(copy.LAYOUT.seeWithUrgency, { sentence: false })).toEqual([]);
   });

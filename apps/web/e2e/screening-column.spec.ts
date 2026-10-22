@@ -159,8 +159,8 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
-  // Its name says what pressing it does; it carries no expanded state as well.
-  await expect(ruleChange(page)).not.toHaveAttribute("aria-expanded", /./);
+  // A disclosure: one name, its state in aria-expanded.
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "false");
   // A control names what it controls only while that is in the page, unless it says it is closed.
   for (const control of await page.locator("[aria-controls]:not([aria-expanded=false])").all()) {
     const id = await control.getAttribute("aria-controls");
@@ -178,10 +178,11 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   expect(search(page)).toBe("?compare=additive_u");
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
 
-  // The control opens the switch, the other ways and the statement; Done closes them, and the address never keeps
+  // The control opens the switch, the other ways and the statement, and closes them again; the address never keeps
   // either.
   await ruleChange(page).click();
-  await expect(ruleChange(page)).toHaveText("Done");
+  await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
+  await expect(ruleChange(page)).toHaveAttribute("aria-expanded", "true");
   // The shares wait behind the control: open, they come first, above the switch; the line above keeps its words.
   await expect(area.locator("[data-region=rule-shares]")).toHaveText(SHARES_MAIN);
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);

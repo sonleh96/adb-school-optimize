@@ -252,7 +252,7 @@ test.describe("the narrow layout", () => {
     await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
     await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(key.locator("[data-region=legend-point]")).toContainText("Filled dot");
-    await key.getByRole("button", { name: "Hide the full key" }).click();
+    await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(key.locator("[data-region=legend-point]")).toHaveText("One rank");
 
     await orderedRow(page, "Sample School 08").click();
@@ -328,7 +328,7 @@ test.describe("the key at 200 percent zoom", () => {
     // The ramp and the marks can be read by scrolling inside the key.
     await key.locator("ol li").first().scrollIntoViewIfNeeded();
     await expect(key.locator("ol li").first()).toBeInViewport();
-    await key.getByRole("button", { name: "Hide the full key" }).click();
+    await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(page.getByTestId("legend-rule")).toHaveCount(0);
   });
 });
