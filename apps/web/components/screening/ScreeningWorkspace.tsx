@@ -540,7 +540,9 @@ function Workspace() {
       data-card-docked={layout.docked || undefined}
       data-pane={state.pane}
       // The guide rail holds the narrow layout's band: a step, or Start here while a card covers the list region.
-      data-rail-band={guidance.stepping || (guidance.railOpen && state.school !== null) || undefined}
+      data-rail-band={
+        guidance.stepping ? "step" : guidance.railOpen && state.school !== null ? "start" : undefined
+      }
       data-instant={keyboard || undefined}
       data-gloss={guidance.glossary || undefined}
       data-rail={(guidance.rail ?? 0) > 0 || undefined}

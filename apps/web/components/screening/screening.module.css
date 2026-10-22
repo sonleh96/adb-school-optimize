@@ -2063,6 +2063,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .root:not([data-pane="map"]):not([data-rail-band]) .foot {
     visibility: hidden;
   }
+  /* Start here fills the band it holds, so the map and its key under it are hidden too, out of the keyboard's way. A
+     step that points at the map shows it under a one-line bar instead. */
+  .root[data-rail-band="start"] .map,
+  .root[data-rail-band="start"] .foot {
+    visibility: hidden;
+  }
   /* The list's head: what the tool is for, and the caveat. */
   .narrowHead {
     display: block;
