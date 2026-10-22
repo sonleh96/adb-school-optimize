@@ -53,7 +53,7 @@ export function SavedViewsSection({ data, later }: { data: GuideData; later: Lat
     setName("");
     setStatus(LAYOUT.savedToast(views.length + 1));
   };
-  // Removing a view hands focus to the row that takes its place, or the name field when none is left.
+  // Removing a view hands focus to the row that takes its position, or the name field when none is left.
   const remove = (index: number) => {
     if (!views) return;
     store.remove(views[index].entry);

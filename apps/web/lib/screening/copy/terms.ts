@@ -49,7 +49,7 @@ const flaggedLine = (c: CountBag): string => {
  */
 function persistentHelp(c: CountBag, ruleId?: CopyRuleId): string {
   if (ruleId === "additive_no_u")
-    return `That test was run for the paper's main rule: new shares were drawn for the six factors it uses, so it is a fresh run for this rule and not a measure of what the urgency value changes. The flag shows only under the combined-factors rule without urgency (S0); the rule with urgency has its own.${flaggedLine(c)}`;
+    return `That test was run for the paper's main rule: new shares were drawn for the six factors it uses, so it is a fresh run for this rule and not a measure of what the urgency rating changes. The flag shows only under the combined-factors rule without urgency (S0); the rule with urgency has its own.${flaggedLine(c)}`;
   if (ruleId === "additive_u")
     return `That test is the circulated paper's experiment, which included urgency. It is not a result for the rule without urgency, which has its own, so the flag shows only under the combined-factors rule with urgency (S).${flaggedLine(c)}`;
   return "The paper ran the test for two rules, the combined-factors rule without urgency (S0) and the combined-factors rule with urgency (S), each as its own experiment. A flag shows only under the rule whose test found it, and is never read as the other rule's result.";
@@ -65,8 +65,8 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     screening: {
       technical: "Inspection screening",
       label: "Screening",
-      line: "Putting existing schools in a suggested order for a closer look, using the records we have.",
-      help: "This tool screens the schools in the data. It suggests which ones to inspect first under a chosen rule. It does not visit schools or check their records, and it does not decide funding.",
+      line: "Putting existing schools in a suggested order for a closer look, using the information already collected.",
+      help: "This tool suggests which schools to visit and check first, using information that has already been collected. It does not do the visit, check that information or decide funding.",
       where: "Product name line, How this works, export title",
     },
     inspection: {
@@ -85,23 +85,23 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     rule: {
       technical: "Decision rule",
-      label: "Rule",
-      line: "A fixed recipe that turns each school's inputs into a place in the list.",
-      help: "Each rule combines the same inputs differently, so each gives a different order. The study set each rule's shares before looking at which schools came out on top. No rule has been shown to find true need more accurately than another.",
+      label: "Method",
+      line: "A fixed recipe that turns what is known about each school into a rank in the list.",
+      help: "Each method combines the same information differently, so each gives a different order. The research team set each method's shares before looking at which schools came out on top. No method has been shown to find true need more accurately than another.",
       where: "Rule headline, rule switch, export header",
     },
     rule_roles: {
       technical: "Rule role and provenance",
       label: "Role",
       line: "The job a rule does on the screen, shown with where the rule comes from.",
-      help: "The role is main rule for the combined-factors rule without urgency, strict alternative for the need-first rule without urgency, and sensitivity check for the largest-factor rule without urgency. The three rules from the circulated paper that use urgency, the combined-factors, need-first and largest-factor rules, are urgency sensitivities: they show what the urgency value changes. The conventional benchmark is the reference. The source is the revised paper, for the three rules that leave urgency out, or the circulated paper, for the four that use it. The screen opens on the combined-factors rule without urgency (S0).",
+      help: "The role is main rule for the combined-factors rule without urgency, strict alternative for the need-first rule without urgency, and sensitivity check for the largest-factor rule without urgency. The three rules from the circulated paper that use urgency, the combined-factors, need-first and largest-factor rules, are urgency sensitivities: they show what the urgency rating changes. The conventional benchmark is the reference. The source is the revised paper, for the three rules that leave urgency out, or the circulated paper, for the four that use it. The screen opens on the combined-factors rule without urgency (S0).",
       where: "Under the rule name in the headline, rule switch tooltips",
     },
     school_need: {
       technical: "School need, N",
       label: "School need",
       line: SCHOOL_NEED_DEFINITION,
-      help: "Each part runs from 0 to 1 and counts equally. Because remoteness is one of the five parts, school need is not only about buildings. The way power types, water types and remoteness categories are scored is a choice the study made, so treat it as a guide from the records rather than a measurement.",
+      help: "Each part runs from 0 to 1 and counts equally. Because remoteness is one of the five parts, school need is not only about buildings. The way power types, water types and remoteness categories are scored is a choice the research team made, so treat it as a guide from the records rather than a measurement.",
       where: "Breakdown first row, need-first rule explanations, reason sentences",
     },
     need_classrooms: {
@@ -121,7 +121,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     need_facilities: {
       technical: "Facility-presence deficit",
       label: "Missing facility types",
-      line: `The share of the six facility types the study counts that the school does not have: ${SIX_FACILITIES}.`,
+      line: `The share of the six facility types the list looks at that the school does not have: ${SIX_FACILITIES}.`,
       help: "Having one or more of a type counts as having it.",
       where: "School need breakdown, reason sentences, missing-evidence chips",
     },
@@ -129,7 +129,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Service deficit",
       label: "Power and water",
       line: "A value for the school's recorded power and water sources.",
-      help: "The average of a power value and a water value, on a scale the study set, where a higher value means a larger shortfall. Power from a generator counts 0.7, solar 0.4, hydro 0.3 and the grid 0.2. Water from a river, stream, creek or lake, or brought from home, counts 1.0. A tank, well or bore counts 0.5, and piped or town supply counts 0.2.",
+      help: "The average of a power value and a water value, on a scale the research team set, where a higher value means a larger shortfall. Power from a generator counts 0.7, solar 0.4, hydro 0.3 and the grid 0.2. Water from a river, stream, creek or lake, or brought from home, counts 1.0. A tank, well or bore counts 0.5, and piped or town supply counts 0.2.",
       where: "School need breakdown, reason sentences, missing-evidence chips",
     },
     need_locality: {
@@ -170,7 +170,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     area_activity: {
       technical: "Activity-scale deficit",
       label: "Night-time light",
-      line: "How little night-time light the district shows, which the study uses as a sign of economic activity.",
+      line: "How little night-time light the district shows, which the research team uses as a sign of economic activity.",
       help: `Based on satellite night-time light summed over the district, log-scaled and rescaled against the range across ${allRecords(c)}. Higher means less light. It is a district figure and a stand-in, not a direct count of activity.`,
       where: "District context breakdown, reason sentences",
     },
@@ -190,7 +190,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     urgency: {
       technical: "Urgency, U",
-      label: "Urgency value (source not traced)",
+      label: "Urgency rating (source unknown)",
       line: urgencyDefinition(c),
       help: "A value of 0 does not mean nothing was found. The paper's main rule, the combined-factors rule without urgency (S0), leaves it out because its source is not documented; that says nothing about whether schools face real hazards. The combined-factors rule with urgency (S) gives it a 5% share and the conventional benchmark (B) 15%, as sensitivity checks. The largest-factor rule with urgency (T) can let it outweigh everything else for a school, because it boosts whichever input is largest.",
       where: "Breakdown row under rules that use it, rule explanations, urgency note",
@@ -209,7 +209,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       help: [
         `It is the 95th percentile of daily air-quality index values assigned to the school, rescaled against the values near the low and high ends of ${allRecords(c)}.`,
         known(c, "airMissing")
-          ? `${capitalise(countWord(c.airMissing))} ${plural(c.airMissing, "school that can be put in order has", "schools that can be put in order have")} no reading.`
+          ? `${capitalise(countWord(c.airMissing))} ${plural(c.airMissing, "school that can be put in order has", "schools that can be put in order have")} no air-quality figure.`
           : "",
         "It is a separate measure from emissions and land cover and is never added to them.",
       ]
@@ -241,50 +241,50 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     score: {
       technical: "Score (S, S0, T, T0, B)",
-      label: "Screening score",
-      line: "A number from 0 to 1 that a rule builds from a school's inputs; a higher screening score puts the school earlier in the list.",
-      help: "It is not a measure of building condition and not a grade. Two schools with close screening scores can sit several places apart. The need-first rules have no screening score; they order schools by school need.",
+      label: "Score",
+      line: "A number from 0 to 1 that a rule builds from a school's inputs; a higher score puts the school earlier in the list.",
+      help: "It is not a measure of building condition and not a grade. Two schools with close scores can sit several ranks apart. The need-first rules have no score; they order schools by school need.",
       where: "List score column, breakdown total, export",
     },
     rank: {
       technical: "Point rank",
-      label: "Place in the list",
-      line: "Where the school falls in the suggested order under the chosen rule; 1st comes first.",
-      help: `Places in the list count among ${completePhrase(c, reads)}. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
+      label: "Rank in the list",
+      line: "Where the school falls in the suggested order under the chosen method; 1st comes first.",
+      help: `Ranks in the list count among ${completePhrase(c, reads)}. Filtering the list does not change them. When two schools tie, the school name decides, in alphabetical order.`,
       where: "List rank column, school panel, map numerals, export",
     },
     rank_range: {
       technical: "Rank bounds (best and worst rank)",
-      label: "Possible places in the list",
-      line: "The highest and lowest places in the list a school could take when its air-quality reading is missing.",
-      help: `${groupsSentence(c, reads)} Rather than guess a missing reading, the tool works out the highest and lowest places in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing readings added nothing to their screening score.`,
+      label: "Possible ranks in the list",
+      line: "The highest and lowest ranks in the list a school could take when its air-quality figure is missing.",
+      help: `${groupsSentence(c, reads)} Rather than guess a missing figure, the tool works out the highest and lowest ranks in the list each school that shows a range could take among ${orderedPhrase(c)}. The list shows them where they would sit if their missing figures added nothing to their score.`,
       where: "List rank column for range schools, school panel, map range mark",
     },
     cohort_complete: {
       technical: `Complete-primary cohort${schoolsSuffix(c, "complete")}`,
       label: `${capitalise(everyInput(reads))}${countSuffix(c, "complete")}`,
       line: groupsSentence(c, reads),
-      help: "These schools have a single place in the list under this rule. To compare two rules, use the schools both put in order.",
+      help: "These schools have a single rank in the list under this rule. To compare two rules, use the schools both put in order.",
       where: "Scope line above the list, rank sentences, comparison sentences",
     },
     cohort_ranked: {
       technical: `Condition-eligible cohort${schoolsSuffix(c, "ranked")}`,
       label: `Can be put in order${countSuffix(c, "ranked")}`,
       line: groupsSentence(c, reads),
-      help: `${GROUPS_MEANING} Schools that show a range have possible places among ${orderedPhrase(c)} instead of a single place.`,
+      help: `${GROUPS_MEANING} Schools that show a range have possible ranks among ${orderedPhrase(c)} instead of a single rank.`,
       where: "Ranked tab count, range sentences, export scope",
     },
     queue: {
       technical: `Verification queue${schoolsSuffix(c, "queue")}`,
-      label: `Schools with incomplete records${countSuffix(c, "queue")}`,
-      line: "Schools whose records lack details that school need uses, so they cannot be put in order yet.",
-      help: "Each one shows what is missing, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. Having no place in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
+      label: `Schools with missing information${countSuffix(c, "queue")}`,
+      line: "Schools with details missing that school need uses, so they cannot be put in order yet.",
+      help: "Each one shows what is missing, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
       where: "Queue tab, queue map marks, school panel for these schools",
     },
     not_placed: {
       technical: "Queue status",
       label: "Cannot be put in order yet",
-      line: "The status of a school whose record is incomplete, so it has no place in the list yet.",
+      line: "The status of a school with information missing, so it is not in the list yet.",
       help: "It changes once the missing details are checked and completed. It says nothing about the school's need.",
       where: "List rows, map tooltips and school panel for schools with incomplete records",
     },
@@ -334,7 +334,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Missing value (null)",
       label: "Not recorded",
       line: "The source left this blank; the tool does not fill it in or count it as 0.",
-      help: "Use it only when the source cell is blank. A blank stays blank everywhere: on screen, in the screening score and in the export.",
+      help: "Use it only when the source cell is blank. A blank stays blank everywhere: on screen, in the score and in the export.",
       where: 'Breakdown rows and condition table, only for blank source cells (missingValueKind "blank")',
     },
     unusable_value: {
@@ -354,29 +354,29 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     list_order: {
       technical: "Lower-score placement",
       label: "Where range schools sit",
-      line: `In the list, ${rangePhrase(c)} ${oneRange(c) ? "sits where it would if its" : "sit where they would if their"} missing readings added nothing to ${theirScore(c)} screening score.`,
-      help: "The study uses this as its main order. Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
+      line: `In the list, ${rangePhrase(c)} ${oneRange(c) ? "sits where it would if its" : "sit where they would if their"} missing figures added nothing to ${theirScore(c)} score.`,
+      help: "The research team uses this as its main order. Listing them where air quality adds as much as it can is available as a labelled sensitivity check.",
       where: "Note under the scope line, sensitivity toggle",
     },
     shortlist_size: {
       technical: "Top K",
       label: "Length of the top list",
       line: "How many schools from the top of the list go into the top list you download.",
-      help: "Choose 10, 20 or 30. Range schools are added after the top list when their highest possible place falls inside it, and they are marked as ranges.",
+      help: "Choose 10, 20 or 30. Range schools are added after the top list when their highest possible rank falls inside it, and they are marked as ranges.",
       where: "Export sheet, top-of-list markers",
     },
     filters: {
       technical: "Display filter",
       label: "Show only",
-      line: "Narrows what the list and map show; places in the list stay as they are.",
-      help: "Filtering by province or remoteness hides other schools but never recomputes the scale or the places.",
+      line: "Narrows what the list and map show; ranks in the list stay as they are.",
+      help: "Filtering by province or remoteness hides other schools but never recomputes the scale or the ranks.",
       where: "Filter control and chips, filter note",
     },
     layers: {
       technical: "Map layers",
       label: "Map layers",
       line: "Choose what the map draws: schools, boundaries and context layers.",
-      help: "Layers change the picture only. They do not change any screening score or place in the list.",
+      help: "Layers change the picture only. They do not change any score or rank in the list.",
       where: "Layers button on the map bar",
     },
     briefing_stops: {
@@ -389,14 +389,14 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     compare: {
       technical: "Rule comparison",
       label: "Compare rules",
-      line: "Shows which schools join or leave the top of the list when you switch rules, and how far places move.",
-      help: "Comparisons come from the study's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next.",
+      line: "Shows which schools join or leave the top of the list when you switch rules, and how far ranks move.",
+      help: "Comparisons come from the research team's recorded comparison. Each one ranks the schools that both rules put in order, so the group can differ from one pair of rules to the next.",
       where: "What changed block, compare mode",
     },
     export: {
       technical: "Shortlist export",
-      label: "Download the top list",
-      line: "A spreadsheet of the top list with every input and how it was made.",
+      label: "Download the top list as a spreadsheet",
+      line: "A spreadsheet of the top list with the information behind it and how it was made.",
       help: "The file keeps exact school names, full-precision values, blanks as blanks, and the method record at the top, so someone else can rebuild the same list.",
       where: "Export button, export sheet",
     },
@@ -404,7 +404,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Manifest",
       label: "Method record",
       line: "The lines at the top of the download that say exactly how the list was made.",
-      help: "It names the rule and its shares, which schools the places count among, how ties are broken, the scaling used and the fingerprints of the source files.",
+      help: "It names the rule and its shares, which schools the ranks count among, how ties are broken, the scaling used and the fingerprints of the source files.",
       where: "Export sheet, top of the downloaded file",
     },
     tie_rule: {
@@ -431,21 +431,21 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     mark_dot: {
       technical: "Point-rank mark",
       label: "Filled dot",
-      line: "A school with one place in the list; the darker the blue, the earlier it comes.",
+      line: "A school with one rank in the list; the darker the blue, the earlier it comes.",
       help: numbersHelp(c, reads),
       where: "Map and key",
     },
     mark_range: {
       technical: "Interval mark",
       label: "Ring with a centre dot",
-      line: "A school with a range of possible places in the list, because its air-quality reading is missing.",
-      help: "It has none of the blue used for places in the list, so it never looks like it has one place.",
+      line: "A school with a range of possible ranks in the list, because its air-quality figure is missing.",
+      help: "It has none of the blue used for ranks in the list, so it never looks like it has one rank.",
       where: "Map and key",
     },
     mark_ring: {
       technical: "Queue mark",
       label: "Empty ring",
-      line: "A school whose record is incomplete, so it has no place in the list yet.",
+      line: "A school with information missing, so it is not in the list yet.",
       help: "It is drawn smaller than every other mark, so it never looks like a school low in the list.",
       where: "Map and key",
     },

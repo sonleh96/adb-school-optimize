@@ -153,9 +153,18 @@
   outline: 2px solid var(--navy) !important;
   outline-offset: -3px;
 }
-/* Zoom buttons sit under the map bar, 16 px right of the column, and follow it when it steps down a row. */
+/* Zoom buttons sit at the map's top left, 16 px right of the column; under the map bar while the method details show
+   it, following it when it steps down a row. */
 .map :global(.maplibregl-ctrl-top-left) {
   left: calc(var(--col-w) + var(--gap) * 2);
+  top: var(--zoom-top, var(--gap));
+}
+/* Help in the actions: as tall as its neighbours, and lifted off the map as they are. */
+.actions [data-region="help-button"] {
+  height: 34px;
+  box-shadow: var(--shadow);
+}
+.root[data-mapbar] .map :global(.maplibregl-ctrl-top-left) {
   top: calc(var(--bar-top, var(--gap)) + 52px);
 }
 /* A panel showing the previous rule's rows: its content fades, its paper stays solid so the map does not show through. */
@@ -248,8 +257,86 @@
   border-bottom: 1px solid var(--hair-2);
 }
 .ruleSkeleton {
-  height: 92px;
+  height: 66px;
   border-bottom: 1px solid var(--hair-2);
+}
+/* Closed, the rule area is one plain line, Change beside it, and one link under it. */
+/* The rule line's link wraps when the window is narrower than its words, its arrow after the last word. */
+.ruleNowRow .arrowLink {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+}
+.ruleNowRow .arrowLink svg {
+  display: inline;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+.ruleNowRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+.ruleNowText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.ruleChange {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 8px 3px 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 12.5px/17px var(--sans);
+  color: var(--navy);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.ruleChange:not(:disabled):active {
+  transform: scale(0.97);
+}
+.ruleChange:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+.ruleChange svg {
+  transition: transform 200ms var(--ease-out);
+}
+.ruleChange svg[data-open] {
+  transform: rotate(180deg);
+}
+.ruleChange[aria-expanded="true"] {
+  background: var(--navy-wash);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ruleChange:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
+/* What the rule on screen weighs, with its shares: the first thing the open choice says. */
+.ruleShares {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* Open: the choices under the plain line, set off by a hairline. */
+.ruleChoices {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
 }
 .ruleTop {
   display: flex;
@@ -267,7 +354,7 @@
 }
 .ruleButton {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   column-gap: 8px;
   align-items: center;
   padding: 6px 10px 7px;
@@ -297,9 +384,6 @@
   background: var(--navy);
   color: #fff;
   cursor: default;
-}
-.ruleButton[aria-pressed="true"] .sym {
-  color: #fff;
 }
 .ruleButton:disabled:not([aria-pressed="true"]) {
   opacity: 0.55;
@@ -803,17 +887,11 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .listNote + li {
   border-top: 1px solid var(--hair-2);
 }
-/* The range note's glyph: a hatched bar, the range schools' sign in the list. */
-.rangeNote::before {
-  content: "";
+/* The range note's sign: the map key's ring with a centre dot, in the rank column's place. */
+.rangeNote > .keyMark {
   position: absolute;
-  left: 58px;
+  left: 55px;
   top: 12px;
-  width: 6px;
-  height: 12px;
-  border: 1px solid var(--ink-2);
-  border-radius: 1px;
-  background: repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(74, 79, 87, 0.55) 1.5px 2.5px);
 }
 
 .groupHead {
@@ -867,6 +945,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 
 /* ---------- top right: the actions ---------- */
 /* Right of the column, and on a second row when the guide rail leaves too little room for one (1024 with the rail). */
+/* While Help's menu is open it lies over whatever sits under the actions: the map bar, the hint, the card. */
+.actions:has([data-menu-open]) {
+  z-index: 13;
+}
 .actions {
   position: absolute;
   top: var(--gap);
@@ -1013,9 +1095,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
-.listCaveat {
-  display: none;
-}
 
 /* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
 .legend {
@@ -1032,11 +1111,63 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .legend[data-stale] > * {
   opacity: 0.5;
 }
+/* The method details' key: its title and Key on one row. */
 .legendTop {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
+}
+/* The key's one line: the colour strip, the three marks in a few words, and the way to the full key. */
+.keyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.miniRamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.miniSwatches {
+  display: inline-flex;
+  gap: 1px;
+}
+.miniSwatches i {
+  width: 12px;
+  height: 6px;
+}
+.miniSwatches i:first-child {
+  border-radius: 2px 0 0 2px;
+}
+.miniSwatches i:last-child {
+  border-radius: 0 2px 2px 0;
+}
+.keysShort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.keysShort li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.legend[data-open] .keyLine {
+  justify-content: flex-end;
 }
 .legendTitle {
   margin: 0;
@@ -1122,6 +1253,18 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   line-height: 18px;
   color: var(--ink-2);
 }
+/* The numbers' words are a label alone, with no line after them: they take the line's width. */
+.keys li[data-region="legend-number"] b {
+  grid-column: 2 / -1;
+}
+/* Why the strip can end before the list does. */
+.rampNote {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
 .keys b {
   font-weight: 500;
   color: var(--ink);
@@ -1163,6 +1306,21 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   border-radius: 50%;
   background: #4a4f57;
 }
+.keyNumber {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+  color: #fbfaf7;
+  font:
+    600 10px/1 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
 .keyMark[data-mark="ring"] {
   width: 9px;
   height: 9px;
@@ -1170,10 +1328,18 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   background: #fbfaf7;
 }
 
+/* The narrow layout's List / Map switch, the list's head and the card's caveat show only there. */
+.paneSwitch,
+.narrowHead,
+.cardCaveat {
+  display: none;
+}
+
 /* ---------- the school card ---------- */
+/* Under the actions: 64 px for one row, lower when they wrap to a second (the layer sets --actions-under). */
 .card {
   position: absolute;
-  top: 64px;
+  top: var(--actions-under, 64px);
   right: var(--gap);
   bottom: 40px;
   z-index: 3;
@@ -1827,9 +1993,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     column-gap: 6px;
     padding: 6px 8px 7px;
   }
-  .ruleButton .sym {
-    font-size: 19px;
-  }
   .foot {
     right: 220px;
   }
@@ -1845,9 +2008,116 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .root {
     /* The same band as layout.ts, so the first paint, before any script, already has it right. */
     --band: max(200px, 40vh);
-    --region-top: calc(56px + var(--band));
+    /* Under the top bar, the List / Map switch; under that, the map band when it is open; then the list region. The
+       list comes first: the band opens from Map, or for a guide step, which takes the band and hides the switch. */
+    --switch-h: 0px;
+    --band-shown: 0px;
+    --region-top: calc(56px + var(--switch-h) + var(--band-shown));
     background: var(--panel);
   }
+  .root[data-pane] {
+    --switch-h: 44px;
+  }
+  .root[data-pane="map"],
+  .root[data-rail-band] {
+    --band-shown: var(--band);
+  }
+  .root[data-rail-band] {
+    --switch-h: 0px;
+  }
+  /* Under the top bar's layer, so the Help and Menu lists open over it. */
+  .root[data-pane] .paneSwitch {
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: var(--switch-h);
+    padding: 6px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--hair);
+  }
+  .root[data-rail-band] .paneSwitch {
+    display: none;
+  }
+  .paneSwitch button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    border: 1px solid var(--hair);
+    background: var(--panel);
+    cursor: pointer;
+    font: 500 13.5px/18px var(--sans);
+    color: var(--ink-2);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  .paneSwitch button:first-child {
+    border-radius: 8px 0 0 8px;
+  }
+  .paneSwitch button:last-child {
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+  }
+  .paneSwitch button[aria-pressed="true"] {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: #fff;
+  }
+  /* The list alone sits right under the switch, whose own line is the edge between them. */
+  .root[data-pane="list"]:not([data-rail-band]) .column,
+  .root[data-pane="list"]:not([data-rail-band]) .card {
+    border-top-width: 0;
+  }
+  /* The map keeps its size while the list alone shows, so nothing is drawn again when Map opens it. */
+  .root:not([data-pane="map"]):not([data-rail-band]) .map,
+  .root:not([data-pane="map"]):not([data-rail-band]) .foot {
+    visibility: hidden;
+  }
+  /* Start here fills the band it holds, so the map and its key under it are hidden too, out of the keyboard's way. A
+     step that points at the map shows it under a one-line bar instead. */
+  .root[data-rail-band="start"] .map,
+  .root[data-rail-band="start"] .foot {
+    visibility: hidden;
+  }
+  /* The list's head: what the tool is for, and the caveat. */
+  .narrowHead {
+    display: block;
+    padding: 12px 16px 12px;
+    border-bottom: 1px solid var(--hair-2);
+  }
+  .narrowHeadTitle {
+    margin: 0;
+    font: 600 15px/20px var(--sans);
+    color: var(--ink);
+  }
+  .cardCaveat {
+    display: block;
+    flex: none;
+    margin: 0;
+    padding: 8px 16px 10px;
+    border-top: 1px solid var(--hair-2);
+    background: var(--panel);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .narrowHeadCaveat {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 17px;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  /* The guide rail's layer (5), so a step's rings, which live inside the rail, still draw over the Menu button they
+     point at. While Help's or the Menu's list is open the bar rises over the rail (below), so the list opens over
+     Start here or a step in the band. */
   .topBar {
     position: absolute;
     top: 0;
@@ -1862,6 +2132,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     padding: 0 12px 0 16px;
     background: var(--panel);
     border-bottom: 1px solid var(--hair);
+  }
+  .topBar:has([data-menu-open]) {
+    z-index: 6;
   }
   .topBar .mastSub {
     display: none;
@@ -1880,11 +2153,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     column-gap: 8px;
     padding: 6px 10px 7px;
   }
-  .ruleButton .sym {
-    font-size: 22px;
-  }
   .map {
-    top: 56px;
+    top: calc(56px + var(--switch-h));
     bottom: auto;
     height: var(--band);
   }
@@ -1929,22 +2199,30 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .slotHint {
     display: none;
   }
-  /* The key sits over the band's foot, one line until Key opens it; the caveat moves to the end of the list. */
-  /* The caveat leaves the foot here, so the foot is a line at the band's foot and the key sits on it. */
+  /* The key sits at the band's foot; the caveat is the list's, in its head. The open key never grows past the band:
+     its title and toggle stay in view under the switch, and what does not fit scrolls inside the key. */
   .foot {
     left: 8px;
     right: 8px;
-    top: calc(56px + var(--band) - 8px);
-    bottom: auto;
+    top: auto;
+    bottom: calc(100% - 56px - var(--switch-h) - var(--band) + 8px);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    max-height: calc(var(--band) - 16px);
   }
-  /* Open, the key never grows past the band: its title and toggle stay in view under the top bar, and what does not
-     fit scrolls inside it. */
   .foot .legend {
+    position: static;
     margin-bottom: 0;
-    right: 0;
     width: max-content;
     max-width: 100%;
-    max-height: calc(var(--band) - 16px);
+    min-height: 0;
+  }
+  /* Where the line cannot hold it all, the three marks take the first row and the colour strip and the way to the full
+     key share the second, so the key stays two short rows over the map. */
+  .foot .keysShort {
+    order: -1;
   }
   .foot .legendBody {
     min-height: 0;
@@ -1967,15 +2245,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     font-size: 12.5px;
     line-height: 17px;
   }
-  .listCaveat {
-    display: block;
-    margin: 0;
-    padding: 14px 20px 20px;
-    border-top: 1px solid var(--hair-2);
-    font-size: 12.5px;
-    line-height: 17px;
-    color: var(--ink-2);
-  }
   /* The key spans the band's foot, so the basemap's credit sits at its top right instead. */
   .attribution {
     top: 6px;
@@ -1997,10 +2266,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .ruleButton {
     padding-top: 3px;
     padding-bottom: 4px;
-  }
-  .ruleButton .sym {
-    font-size: 19px;
-    line-height: 20px;
   }
   .statement {
     margin-top: 6px;
@@ -2039,10 +2304,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     padding-top: 3px;
     padding-bottom: 4px;
   }
-  .ruleButton .sym {
-    font-size: 19px;
-    line-height: 20px;
-  }
 }
 
 .barButton {
@@ -2074,6 +2335,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .card,
   .toast,
   .keyToggle svg,
+  .ruleChange svg,
   .actionButton,
   .iconButton {
     transition-property: opacity;

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import { useId, useState } from "react";
+import { useId } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
@@ -20,19 +20,26 @@ interface Common {
   method: Method;
   collapsed: boolean;
   stale: boolean;
-  /** How many schools show a range of places, and how many have incomplete records. */
+  /** How many schools show a range of positions, and how many have incomplete records. */
   ranges: number;
   incomplete: number;
+  /** The folded key is open. The workspace holds it, so the key keeps it when the narrow Map view moves it. */
+  open: boolean;
+  onToggle: () => void;
 }
 
 function Frame({
   copy,
   collapsed,
   stale,
+  open,
+  onToggle,
   title,
   children,
-}: Pick<Common, "copy" | "collapsed" | "stale"> & { title: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+}: Pick<Common, "copy" | "collapsed" | "stale" | "open" | "onToggle"> & {
+  title: React.ReactNode;
+  children: React.ReactNode;
+}) {
   const body = useId();
   const { LAYOUT } = copy;
   return (
@@ -53,10 +60,10 @@ function Frame({
           <button
             type="button"
             className={base.keyToggle}
+            // A disclosure, as the plain key's toggle is: one name, its state in aria-expanded and in the chevron.
             aria-expanded={open}
-            aria-controls={body}
-            aria-label={open ? LAYOUT.keyHide : LAYOUT.keyShow}
-            onClick={() => setOpen((value) => !value)}
+            aria-controls={open ? body : undefined}
+            onClick={onToggle}
           >
             {LAYOUT.keyLabel}
             <ChevronUp size={12} aria-hidden data-open={open || undefined} />

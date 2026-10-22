@@ -13,7 +13,7 @@
  * Saved views for meetings step through the rail exactly like a guide's steps (`view`), with one sequence of their
  * own: Next, Back, Page Down, Page Up and Presentation mode apply to them, and they never run into the guides. The
  * views themselves live in their own store (lib/screening/views); the reducer only needs each view's id, in order.
- * A view is named by its id, a short hash of what it is, never by its place: a link to a saved view then names the
+ * A view is named by its id, a short hash of what it is, never by its position: a link to a saved view then names the
  * same view in any list, and a reader who does not have it gets the link's screen and the start list.
  */
 

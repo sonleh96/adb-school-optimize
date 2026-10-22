@@ -285,7 +285,7 @@ function Breakdown({
   );
 }
 
-/** One rule's place, as the method details word it: a bare number, possible places, or no result. */
+/** One rule's place, as the method details word it: a bare number, possible positions, or no result. */
 function placeOf(copy: BoundCopy, result: DetailResult | null) {
   if (!result || result.cohort === "verification_queue") return null;
   const bounds = result.rank_bounds;
@@ -411,13 +411,13 @@ export interface CompareCard {
   edges: MoveEdges;
   /** How many schools both rules put in order. */
   n: number;
-  /** The school's places among the schools both rules put in order; null when it is not among them. */
+  /** The school's positions among the schools both rules put in order; null when it is not among them. */
   row: ComparedSchool | null;
 }
 
 /**
- * The card's method layer, below the school's name: the place as a number with its group, the screening score and
- * the possible places among all, the reason, what each input adds with its share, every rule's place, the record.
+ * The card's method layer, below the school's name: the place as a number with its group, the score and
+ * the possible positions among all, the reason, what each input adds with its share, every rule's place, the record.
  * In compare mode, the two places side by side, how far the school moved, and what each input adds under both.
  */
 export function MethodCard({
@@ -468,7 +468,7 @@ export function MethodCard({
 
   if (compare) {
     // Among the schools both rules put in order, the places are the comparison's, as the chart draws them. A school
-    // outside that group shows its place in each rule's own list, under a label that says so.
+    // outside that group shows its position in each rule's own list, under a label that says so.
     const block = (id: CopyRuleId, common: number | null) => {
       const own = placeOf(copy, resultOf(id));
       const place = common !== null ? { kind: "common" as const, text: String(common) } : own;
@@ -487,7 +487,7 @@ export function MethodCard({
               : place.kind === "common"
                 ? method.compare.slopeMid(compare.n)
                 : place.kind === "point"
-                  ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(id))
+                  ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(id))
                   : method.compare.rangesSub()}
           </p>
         </div>

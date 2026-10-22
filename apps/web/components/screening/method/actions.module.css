@@ -1,4 +1,5 @@
-/* The two buttons always in the actions: the method switch and Download the top list. */
+/* The two buttons always in the actions: the method switch and Download the top list. Neither outweighs the list: the
+   download is a secondary button, and the switch, a researcher's option, the quietest of the actions. */
 
 /* ---------- the switch, in the actions ---------- */
 .switch {
@@ -14,7 +15,7 @@
   cursor: pointer;
   white-space: nowrap;
   font: 500 13px/1 var(--sans);
-  color: var(--ink);
+  color: var(--ink-2);
   transition:
     border-color 150ms ease,
     transform 160ms var(--ease-out);
@@ -72,18 +73,25 @@
 .open {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid var(--navy);
+  border: 1px solid rgba(10, 46, 115, 0.45);
   border-radius: 6px;
-  background: var(--navy);
+  background: var(--panel);
   box-shadow: var(--shadow);
   cursor: pointer;
   white-space: nowrap;
   font: 500 13px/1 var(--sans);
-  color: #fff;
-  transition: transform 160ms var(--ease-out);
+  color: var(--navy);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
 }
 .open:not(:disabled):active {
   transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .open:not(:disabled):hover {
+    background: var(--navy-wash);
+  }
 }
 .open:disabled {
   background: var(--panel);
@@ -112,7 +120,7 @@
 
 /* The workspace sets every button's colour to inherit; this one keeps its own. */
 .open.open:not(:disabled) {
-  color: #fff;
+  color: var(--navy);
 }
 
 @media (prefers-reduced-motion: reduce) {

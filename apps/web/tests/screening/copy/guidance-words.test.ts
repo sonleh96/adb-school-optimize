@@ -35,7 +35,7 @@ function says(value: unknown, path: string, out: string[] = []): string[] {
 const POSITION =
   /\bon the (?:right|left)\b|\bto the (?:right|left)\b|\btop (?:right|left)\b|\bbottom (?:right|left)\b|\bat the top of the map\b|\bnext to the (?:list|map)\b/i;
 
-describe("position words in the guidance layer", () => {
+describe("rank words in the guidance layer", () => {
   const surfaces: [string, string[]][] = [
     ["GUIDE", says(GUIDE, "GUIDE")],
     ["HELP", says(HELP, "HELP")],
@@ -65,14 +65,14 @@ describe("counts in the guidance layer have a singular", () => {
   const q4 = GUIDE.tasks[3].steps[0].title as (n: number) => string;
 
   it("reads one incomplete record as one school", () => {
-    expect(q4(1)).toBe("One school cannot be put in order yet");
-    expect(q4(2)).toBe("2 schools cannot be put in order yet");
-    expect(q4(31)).toBe("31 schools cannot be put in order yet");
+    expect(q4(1)).toBe("One school is not in the list yet");
+    expect(q4(2)).toBe("2 schools are not in the list yet");
+    expect(q4(31)).toBe("31 schools are not in the list yet");
   });
 
   it("reads one reason, one range school, one source file and one explainable item in the singular", () => {
     expect(GUIDE.pointToCard(1)).toBe(
-      "The school card lists the one thing that adds most to its screening score, in the school's own record."
+      "The school card lists the one thing that adds most to its score, in the school's own record."
     );
     expect(GUIDE.needNumbered(1, 1)).toBe(
       "The one reason is a part of school need, so the card numbers it inside school need, above the parts that add less."

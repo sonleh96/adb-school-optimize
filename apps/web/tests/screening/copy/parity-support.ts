@@ -28,6 +28,36 @@ export const run = (fn: () => unknown): Outcome => {
 /** Sample arguments for every function a static object holds, so a new function cannot go unchecked. */
 export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.otherRulesCount": [[5], [0]],
+  "LAYOUT.ruleNow": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
+  "LAYOUT.ruleNowShort": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
+  "LAYOUT.keyRamp": [
+    ["1st", "20th"],
+    ["1st", "1st"],
+    ["1st", "131st", 131],
+    ["1st", "1st", 1],
+  ],
+  "LAYOUT.keyRampNote": [
+    [131, 7],
+    [20, 0],
+    [1, 1],
+    [2, 2],
+  ],
   "LAYOUT.backToCirculated": [["Combined factors, with urgency"], ["x"]],
   "LAYOUT.notComputedGroup": [["Need first, no urgency", 4]],
   "LAYOUT.listTitle": [[20, "the combined-factors rule with urgency (S)"]],
@@ -37,7 +67,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.positionOf": [[3, 20]],
   "LAYOUT.placeRange": [["3rd", "12th"]],
   "LAYOUT.valueRange": [["0.487", "0.537"]],
-  "LAYOUT.underRule": [["Place in the list", "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.underRule": [["Rank in the list", "the combined-factors rule with urgency (S)"]],
   "LAYOUT.topListFileName": [
     [20, "Combined factors, with urgency"],
     [10, 'Équipe / mix (S0): "a" b'],
@@ -163,6 +193,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [{}],
   ],
   "GUIDE.stepCount": [[1], [4]],
+  "GUIDE.startShort": [[5], [1]],
   "GUIDE.howCount": [[1], [6]],
   "GUIDE.seenCount": [[2, 5]],
   "GUIDE.rangeWords": [
@@ -354,7 +385,7 @@ const LARGEST_RULES = ["bottleneck_u", "bottleneck_no_u"] as const;
 /**
  * The record the API sends for a largest-factor rule, built from the design's combined-factors record and
  * components: 60% of each figure, and the 40% share of the largest of school need, district context and (with
- * urgency) the urgency value, naming every factor that ties for it. Undefined where the school lacks a part.
+ * urgency) the urgency rating, naming every factor that ties for it. Undefined where the school lacks a part.
  */
 export function largestRecord(s: any, id: (typeof LARGEST_RULES)[number]): any {
   const base = s.contributions?.[id === "bottleneck_u" ? "additive_u" : "additive_no_u"];

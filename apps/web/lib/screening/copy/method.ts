@@ -114,12 +114,12 @@ export function buildMethod(ctx: MethodContext = {}) {
       wasUnder: (b: string, s: string) => `was ${b} under ${s}`,
       noResultRow: "No result for this school under this rule",
       rankUnder: (s: string, r: number) => `${ordinal(r)} under ${s}`,
-      noComparable: "No place to compare",
-      exactTitle: "Same place in the list whatever the missing reading",
+      noComparable: "No rank to compare",
+      exactTitle: "Same rank in the list whatever the missing figure",
     }),
-    // One phrase for the places that say a range school has one place either way.
+    // One phrase for the places that say a range school has one rank either way.
     sameEitherWay: "same either way",
-    samePlaceUnder: (s: string) => `Same place in the list under ${s}`,
+    samePlaceUnder: (s: string) => `Same rank in the list under ${s}`,
     // A school with no result under a rule: the data given holds none, whatever the reason.
     noResultForSchool: "no result for this school",
     moved: Object.freeze({
@@ -157,21 +157,21 @@ export function buildMethod(ctx: MethodContext = {}) {
       leavingK: (k: number) => `Leaves the top ${k}`,
       topK: "Top",
       kAria: "Rows shown in full",
-      // The places in a comparison are the places among the schools both rules put in order, n of them.
+      // The places in a comparison are the ranks among the schools both rules put in order, n of them.
       slopeMid: (n?: number) => `${T.rank.label}, among ${commonPhrase(n)}`,
       slopeBreak: (k: number, n?: number) =>
         n !== undefined && Number.isInteger(n) && n > k
           ? `Top ${k} above · ${k + 1} to ${n} compressed below`
           : `Top ${k} above · the rest compressed below`,
-      slopeAria: "Places in the list under the two rules, joined by a line per school",
+      slopeAria: "Ranks in the list under the two rules, joined by a line per school",
       rangesSub: (cA: CountBag | undefined = c, cB: CountBag | undefined = cA) => among(cA, cB),
       rangesNote: (k: number) => `${IDEAS.ranges.short} Shaded: the top ${k}.`,
       moveWords: (d: number, b: string) =>
-        `${d < 0 ? "Up" : "Down"} ${Math.abs(d)} ${Math.abs(d) === 1 ? "place" : "places"} under ${b}`,
-      topBoth: (k: number) => `in the top ${k} under both`,
+        `${d < 0 ? "Up" : "Down"} ${Math.abs(d)} ${Math.abs(d) === 1 ? "rank" : "ranks"} under ${b}`,
+      topBoth: (k: number) => `in the top ${k} under both methods`,
       topEnters: (k: number) => `joins the top ${k}`,
       topLeaves: (k: number) => `leaves the top ${k}`,
-      legendTitle: (a: string, b: string) => `Places moved from ${a} to ${b}`,
+      legendTitle: (a: string, b: string) => `Ranks moved from ${a} to ${b}`,
       legendSub: (n: number | undefined, numerals?: number) =>
         `among ${commonPhrase(n)}${numerals === undefined ? "" : ` · numbers mark the first ${numerals}`}`,
       legendUp: "up",
@@ -182,8 +182,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       // The headings of the chart's accessible table.
       table: Object.freeze({
         school: "School",
-        place: (rule: string) => `Place under ${rule}`,
-        move: "Places moved",
+        place: (rule: string) => `Rank under ${rule}`,
+        move: "Ranks moved",
       }),
       tipMove: (a: string, ra: string, b: string, rb: string, words: string) =>
         `${a}: <b>${ra}</b> → ${b}: <b>${rb}</b><br><span class="tip-x">${words}</span>`,
@@ -195,7 +195,7 @@ export function buildMethod(ctx: MethodContext = {}) {
         cA: CountBag | undefined = c,
         cB: CountBag | undefined = cA
       ) =>
-        `${a}: ${ra} → ${b}: ${rb}<br><span class="tip-x">${T.rank_range.label} ${among(cA, cB)}; no air-quality reading</span>`,
+        `${a}: ${ra} → ${b}: ${rb}<br><span class="tip-x">${T.rank_range.label} ${among(cA, cB)}; no air-quality figure</span>`,
       sameTop: (a: string, b: string, k: number, n?: number) =>
         `Among ${commonPhrase(n)}, ${a} and ${b} put the same ${k} schools in their top ${k}.`,
       shareTop: (a: string, b: string, overlap: number, k: number, n?: number) =>
@@ -213,7 +213,7 @@ export function buildMethod(ctx: MethodContext = {}) {
     insp: Object.freeze({
       amongComplete: (s: string) => `under ${s}, among ${completePhrase(c, reads)}`,
       bestToWorst: (s: string) => `under ${s}, among ${orderedPhrase(c)}`,
-      coincide: (s: string) => `under ${s}, among ${orderedPhrase(c)}, whatever the missing reading`,
+      coincide: (s: string) => `under ${s}, among ${orderedPhrase(c)}, whatever the missing figure`,
       noResult: "no result",
       whyRange: "Why a range",
       noResultHero: "No result",
@@ -232,7 +232,7 @@ export function buildMethod(ctx: MethodContext = {}) {
           ? `Extra share for the largest factor: ${joinList(factors.map(lcFirst))}`
           : "Extra share for the largest factor",
       noSplit:
-        "The study records what each input adds for the two combined-factors rules only, so this rule shows input values.",
+        "The research team records what each input adds for the two combined-factors rules only, so this rule shows input values.",
       produces: `What adds to the ${lcFirst(T.score.label)}`,
       recordedSplit: "as recorded",
       inputAndWeight: "Input and its share",
@@ -244,8 +244,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       addsBetween: (lo: string, hi: string) => `Adds between ${lo} and ${hi}`,
       across: (ruleCount: number = RULE_IDS.length) => `Across the ${countWord(ruleCount)} rules`,
       // Each rule counts its own group, so the headings name no group size.
-      rankOf: "place in the list",
-      rangeOf: "possible places",
+      rankOf: "rank in the list",
+      rangeOf: "possible ranks",
       evidence: "Record",
       schoolId: "School id",
       cond: Object.freeze({
@@ -271,14 +271,14 @@ export function buildMethod(ctx: MethodContext = {}) {
     legend: Object.freeze({
       title: (label: string) => `${T.rank.label} under ${label}`,
       sub: (numerals: number) => `among ${completePhrase(c, reads)} · numbers mark the first ${numerals}`,
-      rangeNone: "Possible places not computed",
+      rangeNone: "Possible ranks not computed",
     }),
     layers: Object.freeze({
       find: "Find a layer",
       none: "No layer matches.",
       groups: Object.freeze({ Schools: "Schools", Boundaries: "Boundaries" }),
       items: Object.freeze({
-        ranked: "Schools that can be put in order, by place in the list or move",
+        ranked: "Schools that can be put in order, by rank in the list or move",
         numerals: (n: number) => `Numbers on the first ${n}`,
         range: `Schools with ${lcFirst(bareLabel(T.rank_range.label))}`,
         provinces: "Provinces",
@@ -296,7 +296,7 @@ export function buildMethod(ctx: MethodContext = {}) {
     sheet: Object.freeze({
       title: (n: number, name: string) => textOf(sheetTitle(n, name)),
       lede: (n: number, name: string, has124: boolean) =>
-        `The first ${n} places in the list among ${completePhrase(c, reads)} under ${name}${has124 ? `, then the schools whose possible places reach the top ${n}` : ""}. ${T.export.line}`,
+        `The first ${n} ranks in the list among ${completePhrase(c, reads)} under ${name}${has124 ? `, then the schools whose possible ranks reach the top ${n}` : ""}. ${T.export.line}`,
       ledeCompare: (name: string) => ` The workspace is comparing it with ${name}.`,
       formula: "Formula",
       weights: "Shares",
@@ -304,13 +304,13 @@ export function buildMethod(ctx: MethodContext = {}) {
       noWeights: "Not declared for this rule",
       filtersOff: "None. Every school that can be put in order is listed.",
       school: "School",
-      rangeH: "Possible places",
+      rangeH: "Possible ranks",
       missingH: "Missing",
       noneTop: (n: number) => `No school in the first ${n} matches the filters.`,
-      possible: (n: number) => `Possible places that reach the top ${n}`,
-      possibleNone: (n: number) => `No school with possible places can reach the top ${n} under this rule.`,
+      possible: (n: number) => `Possible ranks that reach the top ${n}`,
+      possibleNone: (n: number) => `No school with possible ranks can reach the top ${n} under this rule.`,
       possibleNoResult: "This rule has no result for the schools that show a range.",
-      pointRanks: "Places in the list",
+      pointRanks: "Ranks in the list",
       normalization: "Scaling",
       normalizationV: (all?: number) =>
         `Rescaled against ${allRecords(all === undefined ? undefined : { all })}, fixed. Worked out by the engine at download.`,
@@ -325,7 +325,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       // What a saved view opens on: the list in order, or the incomplete records and how they are grouped.
       showsRanked: "Schools in order",
       showsQueue: (grouping: "province" | "evidence") =>
-        `Incomplete records, grouped by ${grouping === "evidence" ? "what is missing" : "province"}`,
+        `Missing information, grouped by ${grouping === "evidence" ? "what is missing" : "province"}`,
       showsMethod: "method details on",
       showsCompare: (a: string, b: string) => `Comparing ${a} with ${b}`,
       comparedWith: (s: string) => `compared with ${s}`,
@@ -344,13 +344,13 @@ export function buildMethod(ctx: MethodContext = {}) {
       noWeights: "not declared for this rule",
       urgency: (id: CopyRuleId) => `Urgency: ${urgencyNote(id)}`,
       shortlist: (n: number) =>
-        `${T.shortlist.label}: first ${n} places in the list among ${completePhrase(c, reads)}`,
+        `${T.shortlist.label}: first ${n} ranks in the list among ${completePhrase(c, reads)}`,
       ranges: (has124: boolean) =>
-        `Possible places: ${among(c, c)}, ${has124 ? "listed separately" : "no result for this rule"}`,
+        `Possible ranks: ${among(c, c)}, ${has124 ? "listed separately" : "no result for this rule"}`,
       filters: (v: string) => `Display filters: ${v || "none"}`,
       filterProvince: (v: string) => `province ${v}`,
       filterLocality: (v: string) => `remoteness ${v}`,
-      unchanged: " (places unchanged)",
+      unchanged: " (ranks unchanged)",
       compared: (short: string, id: string) => `Compared in the workspace with: ${short} (${id})`,
       normalization: (all?: number) =>
         `Scaling: rescaled against ${allRecords(all === undefined ? undefined : { all })}, fixed; worked out by the engine at download`,

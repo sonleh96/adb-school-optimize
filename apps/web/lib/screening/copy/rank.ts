@@ -1,5 +1,5 @@
 /**
- * Where a school sits: its place or range of places, the large figure on its card, ties, and how a school's name
+ * Where a school sits: its rank or range of ranks, the large figure on its card, ties, and how a school's name
  * and location read when the record leaves them blank.
  */
 import {
@@ -26,7 +26,7 @@ import type {
   PlacedSchool,
 } from "./model";
 import { nameList, nameSegment, seg, joinSegments, textOf, type Segments } from "./segments";
-import { rule, ruleReads } from "./rules";
+import { type RuleNames, rule, ruleFor, ruleReads } from "./rules";
 import { STRINGS, persistentNearLine } from "./strings";
 import { LAYOUT } from "./words";
 
@@ -44,7 +44,7 @@ export const hasBounds = (r: CopyResult | null | undefined): r is WithBounds =>
 export const hasPlace = (r: CopyResult | null | undefined): r is WithPlace =>
   !!r && Number.isInteger(r.rank_complete120);
 
-/** The group sizes of the run that gave `ruleId` its places: that rule's own when known, otherwise `opts.counts`. */
+/** The group sizes of the run that gave `ruleId` its positions: that rule's own when known, otherwise `opts.counts`. */
 export const perRule = (opts: { countsByRule?: CountsByRuleArg }): opts is { countsByRule: CountsByRule } =>
   !!opts.countsByRule && opts.countsByRule !== "shared";
 export const countsOf = (
@@ -75,6 +75,8 @@ export interface PlaceOpts {
   countsByRule?: CountsByRuleArg;
   /** The schools of the list, so a name is told apart from a twin's. */
   schools?: readonly NamedSchool[];
+  /** How a rule is named: with its letter (the default) or in plain words. */
+  ruleNames?: RuleNames;
 }
 
 /* ------------------------------------------------------- rank sentences */
@@ -82,7 +84,7 @@ export interface PlaceOpts {
 // Which environment readings a school lacks, in reading order.
 export type Reading = "aqi" | "emissions" | "land";
 const READING_NAMES: Record<Reading, string> = {
-  aqi: "air-quality reading",
+  aqi: "air-quality figure",
   emissions: "nearby emissions figure",
   land: "land-cover figure",
 };
@@ -95,23 +97,23 @@ export function missingReadings(school: Pick<PlacedSchool, "missing_env" | "raw"
   if (m.land || raw.L_raw === null) out.push("land");
   return out;
 }
-// "Its air-quality reading, an air-pollution index for its location, is missing" or
-// "Its air-quality reading, nearby emissions figure and land-cover figure are not recorded".
+// "Its air-quality figure, an air-pollution index for its location, is missing" or
+// "Its air-quality figure, nearby emissions figure and land-cover figure are not recorded".
 export function missingReadingsClause(school: Pick<PlacedSchool, "missing_env" | "raw">): string {
   const keys = missingReadings(school);
-  if (keys.length === 0) return "One of its readings is missing";
+  if (keys.length === 0) return "One of its figures is missing";
   if (keys.length === 1 && keys[0] === "aqi")
-    return "Its air-quality reading, an air-pollution index for its location, is missing";
+    return "Its air-quality figure, an air-pollution index for its location, is missing";
   if (keys.length === 1) return `Its ${READING_NAMES[keys[0]]} is not recorded`;
   return `Its ${joinList(keys.map((k) => READING_NAMES[k]))} are not recorded`;
 }
 const shortMissing = (school: Pick<PlacedSchool, "missing_env" | "raw">): string => {
   const keys = missingReadings(school);
-  if (keys.length === 1 && keys[0] === "aqi") return "Its air-quality reading is missing";
+  if (keys.length === 1 && keys[0] === "aqi") return "Its air-quality figure is missing";
   return missingReadingsClause(school);
 };
 
-// The clause for a school with every input recorded, when counting the range schools changes its place.
+// The clause for a school with every input recorded, when counting the range schools changes its rank.
 function rangeCountClause(res: CopyResult | null, c: CountBag | undefined): string {
   if (!hasBounds(res) || res.rank_bounds_scope !== "eligible124") return "";
   const r = res.rank_complete120;
@@ -129,18 +131,18 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
   if (!Number.isInteger(k)) return "";
   if (res.rank_worst <= (k as number)) return ` It is in the top ${k} either way.`;
   if (res.rank_best > (k as number)) return ` It is outside the top ${k} either way.`;
-  return ` It may or may not be in the top ${k}, depending on the missing reading.`;
+  return ` It may or may not be in the top ${k}, depending on the missing figure.`;
 }
 
 // opts.name: start with the school's name. opts.shortlist: a top-list length such as 20,
 // which adds whether a range school is inside it either way. opts.counts: from countsFrom.
 export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): Segments {
-  const r = rule(ruleId);
+  const r = ruleFor(ruleId, opts.ruleNames);
   const c = countsOf(opts, ruleId);
   const nm = opts.name ? nameSegment(distinctName(school, opts.schools)) : null;
   if (school.cohort === "queue") {
     const rest =
-      "be put in order yet. Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
+      "be put in order yet. Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
     return nm ? seg`${nm} cannot ${rest}` : seg`Cannot ${rest}`;
   }
   const res = resultFor(school, ruleId);
@@ -148,10 +150,10 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
     if (!res || !hasBounds(res)) return noResult(nm, r.name);
     if (res.rank_best === res.rank_worst) {
       const first = nm ? seg`${nm} is ${ordinal(res.rank_best)}` : seg`${capitalise(ordinal(res.rank_best))}`;
-      return seg`${first} of ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
+      return seg`${first} of ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its rank in the list.${shortlistClause(res, opts.shortlist)}`;
     }
     const first = nm ? seg`${nm} could be anywhere` : seg`Anywhere`;
-    return seg`${first} from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} of ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
+    return seg`${first} from ${ordinal(res.rank_best)} to ${ordinal(res.rank_worst)} of ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest ranks in the list it could take.${shortlistClause(res, opts.shortlist)}`;
   }
   if (!hasPlace(res)) {
     return noResult(nm, r.name);
@@ -170,7 +172,7 @@ const noResult = (nm: Segments[number] | null, ruleName: string): Segments =>
   nm ? seg`${nm} has no result under ${ruleName}.` : seg`No result under ${ruleName}.`;
 
 // The card's large figure: "3rd", "12th to 18th", "5th of 40", or a status. placeContext never restates it.
-// A range school's figure always carries its range or its scope, so it never reads like a single place among the others.
+// A range school's figure always carries its range or its scope, so it never reads like a single rank among the others.
 export function placeHeadline(
   school: PlacedSchool,
   ruleId: CopyRuleId,
@@ -190,7 +192,7 @@ export function placeHeadline(
   return hasPlace(res) ? ordinal(res.rank_complete120) : STRINGS.noResult;
 }
 
-// True when a list shows single places and ranges together. A bare place counts the schools with every input
+// True when a list shows single ranks and ranges together. A bare place counts the schools with every input
 // recorded and a range counts all the schools that can be put in order, so the two numbers mean different things.
 export function scopesMix(list: readonly PlacedSchool[], ruleId: CopyRuleId): boolean {
   rule(ruleId);
@@ -216,19 +218,19 @@ export function rowPlace(
   return `${head} of ${known(c, "ranked") && c.ranked > 0 ? formatCount(c.ranked) : "all in order"}`;
 }
 
-// What the large figure counts among. Plain views give one place only; opts.method adds
+// What the large figure counts among. Plain views give one rank only; opts.method adds
 // what counting the range schools could do. opts.shortlist as in rankSentence. opts.counts: from countsFrom.
 export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
-  const r = rule(ruleId);
+  const r = ruleFor(ruleId, opts.ruleNames);
   const c = countsOf(opts, ruleId);
   if (school.cohort === "queue")
-    return "Its record is incomplete, so it has no place in the list until the missing details are checked. That says nothing about its need.";
+    return "Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
     if (!hasBounds(res)) return `${capitalise(r.name)} has no result for this school.`;
     if (res.rank_best === res.rank_worst)
-      return `Among ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its place in the list.${shortlistClause(res, opts.shortlist)}`;
-    return `Possible places among ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest places in the list it could take.${shortlistClause(res, opts.shortlist)}`;
+      return `Among ${orderedPhrase(c)}. ${shortMissing(school)}, but under this rule that cannot change its rank in the list.${shortlistClause(res, opts.shortlist)}`;
+    return `Possible ranks among ${orderedPhrase(c)}. ${missingReadingsClause(school)}, so the screen shows the highest and lowest ranks in the list it could take.${shortlistClause(res, opts.shortlist)}`;
   }
   if (!hasPlace(res)) return `${capitalise(r.name)} has no result for this school.`;
   const head = `Among ${completePhrase(c, ruleReads(ruleId))}.`;
@@ -251,9 +253,9 @@ export function fullRankingSentence(school: PlacedSchool, ruleId: CopyRuleId, op
   if (school.cohort !== "complete") return rankSentence(school, ruleId, opts);
   const res = resultFor(school, ruleId);
   if (!hasBounds(res) || res.rank_bounds_scope !== "eligible124") {
-    return `This rule was not run on ${amongAllOrdered(c)}, so only its place in the list among ${completePhrase(c, ruleReads(ruleId))} is available.`;
+    return `This rule was not run on ${amongAllOrdered(c)}, so only its rank in the list among ${completePhrase(c, ruleReads(ruleId))} is available.`;
   }
-  if (!rangeCountClause(res, c)) return `Counting ${rangePhrase(c)} does not change its place in the list.`;
+  if (!rangeCountClause(res, c)) return `Counting ${rangePhrase(c)} does not change its rank in the list.`;
   const where =
     res.rank_best === res.rank_worst
       ? ordinal(res.rank_best)
@@ -266,8 +268,8 @@ type Standing =
   | { readonly kind: "range"; readonly best: number; readonly worst: number }
   | { readonly kind: "none" };
 
-// How a school stands under one rule: one place, a range of places (or a range whose ends meet), or none.
-// A school with a range under the rule shown reads its range first; any other school reads its place first.
+// How a school stands under one rule: one rank, a range of ranks (or a range whose ends meet), or none.
+// A school with a range under the rule shown reads its range first; any other school reads its rank first.
 function standing(school: PlacedSchool, res: CopyResult | null): Standing {
   const point: Standing | null = hasPlace(res) ? { kind: "point", place: res.rank_complete120 } : null;
   const range: Standing | null = hasBounds(res)
@@ -276,16 +278,16 @@ function standing(school: PlacedSchool, res: CopyResult | null): Standing {
   return (school.cohort === "interval" ? (range ?? point) : (point ?? range)) ?? { kind: "none" };
 }
 
-// One school under two rules: a range school's possible places, or a single place for the others.
+// One school under two rules: a range school's possible ranks, or a single rank for the others.
 // Each place is said against the group of the rule that gave it, because the groups differ between rules.
 export function rangeComparisonSegments(
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "schools"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "schools" | "ruleNames"> = {}
 ): Segments {
-  const a = rule(ruleA),
-    b = rule(ruleB);
+  const a = ruleFor(ruleA, opts.ruleNames),
+    b = ruleFor(ruleB, opts.ruleNames);
   const cA = countsOf(opts, ruleA),
     cB = countsOf(opts, ruleB);
   const nm = nameSegment(distinctName(school, opts.schools));
@@ -294,7 +296,7 @@ export function rangeComparisonSegments(
   const held = school.cohort === "queue";
   if (sa.kind === "none" && sb.kind === "none") {
     return held
-      ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because its record is incomplete.`
+      ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because information about it is missing.`
       : seg`${nm} has no result under ${a.name} or ${b.name}.`;
   }
   if (sa.kind === "point" && sb.kind === "point") {
@@ -336,7 +338,7 @@ export function rangeComparisonSegments(
         ? seg`Under ${rr.name}, ${subject} is ${ordinal(st.best)} among ${orderedPhrase(c)}.`
         : seg`Under ${rr.name}, ${subject} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
     return held
-      ? seg`It cannot be put in order under ${rr.name} yet, because its record is incomplete.`
+      ? seg`It cannot be put in order under ${rr.name} yet, because information about it is missing.`
       : seg`It has no result under ${rr.name}.`;
   };
   const sides: [Standing, { name: string }, CountBag | undefined, Reads][] = [
@@ -350,12 +352,17 @@ export const rangeComparisonSentence = (
   school: PlacedSchool,
   ruleA: CopyRuleId,
   ruleB: CopyRuleId,
-  opts: Pick<PlaceOpts, "counts" | "countsByRule"> = {}
+  opts: Pick<PlaceOpts, "counts" | "countsByRule" | "ruleNames"> = {}
 ): string => textOf(rangeComparisonSegments(school, ruleA, ruleB, opts));
 
 // Question 1: which schools a rule puts first. schools: the full schools array; counts come from it.
-export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): Segments {
-  const r = rule(ruleId);
+export function listStartsSegments(
+  schools: readonly PlacedSchool[],
+  ruleId: CopyRuleId,
+  n = 3,
+  ruleNames?: RuleNames
+): Segments {
+  const r = ruleFor(ruleId, ruleNames);
   const c = countsFrom(schools);
   const firsts = schools
     .flatMap((s) => {
@@ -366,7 +373,7 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
     .slice(0, n)
     .map((x) => x.s);
   if (firsts.length === 0)
-    return seg`Under ${r.name}, no school has ${everyInput(ruleReads(ruleId))}, so the list has no single places yet.`;
+    return seg`Under ${r.name}, no school has ${everyInput(ruleReads(ruleId))}, so the list has no single ranks yet.`;
   const k = firsts.length;
   const ranges = schools.filter((s) => {
     const res = resultFor(s, ruleId);
@@ -380,8 +387,12 @@ export function listStartsSegments(schools: readonly PlacedSchool[], ruleId: Cop
   if (!ranges.length) return sentence;
   return seg`${sentence} ${nameList(ranges.map((s) => distinctName(s, schools)))} could also be among the first ${countWord(k)}, because ${plural(ranges.length, "it shows", "they show")} a range.`;
 }
-export const listStartsSentence = (schools: readonly PlacedSchool[], ruleId: CopyRuleId, n = 3): string =>
-  textOf(listStartsSegments(schools, ruleId, n));
+export const listStartsSentence = (
+  schools: readonly PlacedSchool[],
+  ruleId: CopyRuleId,
+  n = 3,
+  ruleNames?: RuleNames
+): string => textOf(listStartsSegments(schools, ruleId, n, ruleNames));
 
 /* ------------------------------------------------- names, places and ties */
 
@@ -395,28 +406,56 @@ export function locationLine(school: NamedSchool): string {
   return "Location not recorded";
 }
 
+// A province as the list shows it after a school's name, so a reader knows what kind of place it is: the word
+// province is added unless the name already says what it is. Null when the record leaves it blank.
+export function provinceLabel(province: string | null | undefined): string | null {
+  const p = cleanedOrNull(province ?? null);
+  if (!p) return null;
+  return /\b(province|district|region)\b/i.test(p) ? p : `${p} province`;
+}
+
 // The heading of a province group in the list of incomplete records. A blank province is its own group.
 export const provinceHeading = (province: string | null | undefined): string =>
   cleanedOrNull(province ?? null) ?? LAYOUT.provinceNotRecorded;
 
-// The schools of a list by the name they display, built once per list so naming each school stays cheap. Only a
-// frozen list is kept, because a list that can change in place would leave the index out of date; the bound copy
-// binds a frozen snapshot of its schools. Any other list is indexed afresh on each call.
-const NAME_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
-function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
-  const kept = Object.isFrozen(schools);
-  let index = kept ? NAME_INDEX.get(schools) : undefined;
-  if (!index) {
-    index = new Map();
-    for (const x of schools) {
-      const name = displayName(x);
-      const same = index.get(name);
-      if (same) same.push(x);
-      else index.set(name, [x]);
-    }
-    if (kept) NAME_INDEX.set(schools, index);
+// The schools of a list by the name they display, built once per list so naming each school stays cheap. A frozen list
+// is kept as it is, because the bound copy binds a frozen snapshot of its schools. Any other list could change in
+// place, so what is kept for it is checked against the list on each call: the same schools in the same order with the
+// same names, one cheap comparison each. Only a list that no longer matches is indexed afresh, so asking for each
+// school in a long list never rebuilds the index each time.
+interface NameIndex {
+  readonly refs: readonly NamedSchool[];
+  readonly names: readonly unknown[];
+  readonly byName: Map<string, NamedSchool[]>;
+}
+const FROZEN_INDEX = new WeakMap<readonly NamedSchool[], Map<string, NamedSchool[]>>();
+const LOOSE_INDEX = new WeakMap<readonly NamedSchool[], NameIndex>();
+function indexByName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
+  const byName = new Map<string, NamedSchool[]>();
+  for (const x of schools) {
+    const name = displayName(x);
+    const same = byName.get(name);
+    if (same) same.push(x);
+    else byName.set(name, [x]);
   }
-  return index;
+  return byName;
+}
+function byDisplayName(schools: readonly NamedSchool[]): Map<string, NamedSchool[]> {
+  if (Object.isFrozen(schools)) {
+    let index = FROZEN_INDEX.get(schools);
+    if (!index) FROZEN_INDEX.set(schools, (index = indexByName(schools)));
+    return index;
+  }
+  const kept = LOOSE_INDEX.get(schools);
+  if (kept && kept.refs.length === schools.length) {
+    let same = true;
+    for (let i = 0; same && i < schools.length; i += 1)
+      same = schools[i] === kept.refs[i] && schools[i].name === kept.names[i];
+    if (same) return kept.byName;
+  }
+  const byName = indexByName(schools);
+  LOOSE_INDEX.set(schools, { refs: [...schools], names: schools.map((x) => x.name), byName });
+  return byName;
 }
 
 // A display name that tells apart two schools whose names differ only in spacing.
@@ -431,7 +470,7 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
 }
 
 // A tie note for the card or the row, or null when the school is level with no other.
-// Ties are exact, as the engine compares them: the same screening score, or under need-first the same school need.
+// Ties are exact, as the engine compares them: the same score, or under need-first the same school need.
 export function tieNoteSegments(
   school: PlacedSchool,
   ruleId: CopyRuleId,
@@ -471,7 +510,7 @@ export function tieNoteSegments(
       : seg`It has exactly the same school need as ${names}, so the other inputs decide which comes first.`;
   }
   if (form === "row") return seg`Level with ${names}`;
-  return seg`It has exactly the same screening score as ${names}, so the order goes ${nameRule}.`;
+  return seg`It has exactly the same score as ${names}, so the order goes ${nameRule}.`;
 }
 export function tieNote(
   school: PlacedSchool,

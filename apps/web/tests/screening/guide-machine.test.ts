@@ -17,7 +17,7 @@
  * 13. Saved views do not step like a guide's steps: Next, Back, Page Down and Page Up do not move one view, they run
  *     into the guides, or the last view does not close the rail as the last guide does.
  * 14. Presentation mode beside the saved views does not start at view 1 presenting, or a saved view cannot present.
- * 15. A link to a saved view names its place in the sender's list, so a colleague's list opens another screen; a link
+ * 15. A link to a saved view names its position in the sender's list, so a colleague's list opens another screen; a link
  *     to a view the reader does not have shows someone else's view instead of the start.
  * 16. Opening a saved view forgets where an unfinished guide was left.
  */
@@ -227,7 +227,7 @@ describe("help mode and the glossary", () => {
 });
 
 describe("saved views for meetings", () => {
-  // Each view is named by what it is, not by its place, so a link names the same view in any list.
+  // Each view is named by what it is, not by its position, so a link names the same view in any list.
   const IDS = ["top1", "urg2", "rng3", "que4"];
   const runViews = (model: Model, ...events: LayerEvent[]) =>
     events.reduce((m, e) => reduce(m, e, CATALOG, IDS), model);

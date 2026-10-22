@@ -79,7 +79,7 @@ describe("placeBands", () => {
 describe("whyBlocks", () => {
   const NEED = ["classrooms", "housing", "facilities", "services", "locality"];
   const text =
-    "Three things add most to its screening score under the rule. Two are parts of its school need, the measure built from five parts of its own record. None of its classrooms is permanent. It has no facilities. The other is not part of its school need. Its district is remote.";
+    "Three things add most to its score under the rule. Two are parts of its school need, the measure built from five parts of its own record. None of its classrooms is permanent. It has no facilities. The other is not part of its school need. Its district is remote.";
   const drivers = [
     { key: "area", sentence: "Its district is remote." },
     { key: "classrooms", sentence: "None of its classrooms is permanent." },
@@ -89,7 +89,7 @@ describe("whyBlocks", () => {
   it("numbers the reasons in reading order and puts the need parts in one box, numbered parts first", () => {
     expect(whyBlocks(text, drivers, NEED)).toEqual({
       // Everything before the first reason is the lead, as the design sets it.
-      lead: "Three things add most to its screening score under the rule. Two are parts of its school need, the measure built from five parts of its own record.",
+      lead: "Three things add most to its score under the rule. Two are parts of its school need, the measure built from five parts of its own record.",
       blocks: [
         {
           kind: "need",

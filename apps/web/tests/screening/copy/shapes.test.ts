@@ -1,5 +1,5 @@
 /**
- * Whole data sets of a shape the study's data does not have: other sizes, blanks, ties, twins, nothing at all.
+ * Whole data sets of a shape the research team's data does not have: other sizes, blanks, ties, twins, nothing at all.
  *
  * Failure modes, each with the test that catches it:
  *  1. A sentence states the count of another data set. Two invented sets with no number in common are each run
@@ -191,25 +191,25 @@ describe("data of other sizes", () => {
       remotenessOnly: 1,
     });
     expect(P.scope("additive_u").groups).toBe(
-      "5 schools have every input recorded, and two more lack a reading such as air quality and show a range of places, so 7 schools can be put in order."
+      "5 schools have every input recorded, and two more lack a figure such as air quality and show a range of ranks, so 7 schools can be put in order."
     );
-    expect(P.scope("additive_u").scopeShort).toBe(
-      "7 schools can be put in order, 5 with every input recorded and 2 that show a range of places."
+    expect(P.scope("additive_u").scopeDetail).toContain(
+      "7 schools can be put in order, 5 with every input recorded and 2 that show a range of ranks."
     );
-    expect(P.termsFor("additive_u").queue.label).toBe("Schools with incomplete records (3)");
+    expect(P.termsFor("additive_u").queue.label).toBe("Schools with missing information (3)");
     expect(P.termsFor("additive_u").cohort_ranked.label).toBe("Can be put in order (7)");
     expect(P.termsFor("additive_u").missing_all_but_remoteness.help).toBe(
       "1 of the 3 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );
     expect(P.STRINGS.urgencyDefinition).toMatch(/, and no school has 0\.$/);
     expect(P.scope("additive_u").amongAll).toBe("All 7 schools that can be put in order");
-    expect(P.IDEAS.ranges.title).toBe("Two schools show a range because a reading is missing");
+    expect(P.IDEAS.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(P.IDEAS.queue.title).toBe(
-      "Some schools have no place in the list yet because their records are incomplete"
+      "Some schools are not in the list yet because information about them is missing"
     );
   });
 
-  it("counts a zero urgency, a zero emissions reading and a missing reading once each", () => {
+  it("counts a zero urgency, a zero emissions reading and a missing figure once each", () => {
     const base = tenSchools();
     const withU0 = base.map((s, i) => (i < 3 ? { ...s, components: { ...s.components, U: 0 } } : s));
     expect(countsFrom(withU0).urgencyZero).toBe(3);
@@ -263,13 +263,13 @@ describe("data of other sizes", () => {
     ];
     const P = copyFor({ schools });
     expect(P.scope("additive_u").groups).toBe(
-      "2 schools have every input recorded, and one more lacks a reading such as air quality and shows a range of places, so 3 schools can be put in order."
+      "2 schools have every input recorded, and one more lacks a figure such as air quality and shows a range of ranks, so 3 schools can be put in order."
     );
     expect(
       P.scope("additive_u").listOrder.startsWith("The one school that shows a range is listed where ")
     ).toBe(true);
     expect((await P.later()).HOW_IT_WORKS.find((s) => s.key === "placed")?.sentences).toContain(
-      "The other one has an incomplete record and no place in the list yet, and it shows what is missing."
+      "The other one has information missing and is not in the list yet, and it shows what is missing."
     );
   });
 });
@@ -298,7 +298,7 @@ describe("a school that is level with another, or cannot be told from it", () =>
     const [, beta, gamma] = schools;
     expect(P.tieNote(beta, "additive_u", undefined, "row")).toBe("Level with Gamma");
     expect(P.tieNote(gamma, "additive_u")).toBe(
-      "It has exactly the same screening score as Beta, so the order goes by school name."
+      "It has exactly the same score as Beta, so the order goes by school name."
     );
     expect(P.tieNote(beta, "need_first_u")).toBe(
       "It has exactly the same school need as Gamma, so the other inputs decide which comes first."
@@ -321,15 +321,15 @@ describe("a record with all three readings missing, or only its remoteness", () 
   const P = copyFor({ schools });
   const i2 = schools[6];
 
-  it("names each missing reading and counts none as 0", () => {
+  it("names each missing figure and counts none as 0", () => {
     expect(P.rankSentence(i2, "additive_u")).toBe(
-      "Anywhere from 6th to 9th of the 7 schools that can be put in order. Its air-quality reading, nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest places in the list it could take."
+      "Anywhere from 6th to 9th of the 7 schools that can be put in order. Its air-quality figure, nearby emissions figure and land-cover figure are not recorded, so the screen shows the highest and lowest ranks in the list it could take."
     );
     expect(P.inputSentence(i2, "emissions")).toBe(
       "Its nearby emissions figure is not recorded, so it is not counted as 0."
     );
     expect(P.missingValueNote(i2, "land")).toBe(
-      "No land-cover figure is recorded for this school, so it is not counted as 0. The school shows a range of places instead of one place."
+      "No land-cover figure is recorded for this school, so it is not counted as 0. The school shows a range of ranks instead of one rank."
     );
   });
 

@@ -88,8 +88,8 @@ describe("the words the export sheet, the compare map and chart, and the missing
     const m = await copyFor({}).methodFor("additive_u");
     expect(m.compare.legendOutside).toBe("Not in the comparison");
     expect(m.compare.table.school).toBe("School");
-    expect(m.compare.table.place("Combined")).toBe("Place under Combined");
-    expect(m.compare.table.move).toBe("Places moved");
+    expect(m.compare.table.place("Combined")).toBe("Rank under Combined");
+    expect(m.compare.table.move).toBe("Ranks moved");
     for (const t of [
       m.compare.legendOutside,
       m.compare.table.school,

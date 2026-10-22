@@ -30,7 +30,7 @@ export const GLOSSARY_GROUPS = Object.freeze(
         ],
       },
       { heading: "Other inputs", keys: ["urgency", "reach", "air_quality", "emissions", "land_cover"] },
-      { heading: "Scores and places", keys: ["score", "rank", "rank_range", "tie_rule", "list_order"] },
+      { heading: "Scores and ranks", keys: ["score", "rank", "rank_range", "tie_rule", "list_order"] },
       { heading: "Groups of schools", keys: ["cohort_complete", "cohort_ranked", "queue", "not_placed"] },
       { heading: "Map marks", keys: ["mark_dot", "mark_range", "mark_ring"] },
       {

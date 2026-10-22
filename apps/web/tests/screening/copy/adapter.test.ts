@@ -200,7 +200,7 @@ describe("one school from /schools/by-key", () => {
     expect(s.contributions?.additive_no_u?.components).not.toHaveProperty("urgency");
   });
 
-  it("reads a range school's missing air quality as a missing reading with a wide contribution", () => {
+  it("reads a range school's missing air quality as a missing figure with a wide contribution", () => {
     const r = schoolFromDetail(fixtureDetail(KEYS.interval), "additive_u");
     expect(r.cohort).toBe("interval");
     expect(r.raw.Q_raw).toBeNull();
@@ -248,14 +248,14 @@ describe("one school from /schools/by-key", () => {
   });
 
   it("reads the group under the rule shown and keeps the result under each other rule as the API gave it", () => {
-    // The saved Sample School 17 lacks an air-quality reading: a range under six rules, but one place under the
+    // The saved Sample School 17 lacks an air-quality figure: a range under six rules, but one rank under the
     // benchmark, which does not read air quality.
     const detail = fixtureDetail(KEYS.interval);
     const shown = schoolFromDetail(detail, "additive_u");
     expect(shown.cohort).toBe("interval");
     expect(shown.results?.benchmark).toMatchObject({ rank_best: 12, rank_worst: 12 });
     expect(copy.rankSentence(shown, "benchmark", { shortlist: 20 })).toBe(
-      "12th of the schools that can be put in order. Its air-quality reading is missing, but under this rule that cannot change its place in the list. It is in the top 20 either way."
+      "12th of the schools that can be put in order. Its air-quality figure is missing, but under this rule that cannot change its rank in the list. It is in the top 20 either way."
     );
     const asBenchmark = schoolFromDetail(detail, "benchmark");
     expect(asBenchmark.cohort).toBe("complete");
@@ -371,7 +371,7 @@ describe("a list from /results", () => {
   const response = fixtureResults("additive_u");
   const raw = readFixture("results/additive_u.json") as { rows: RawRow[] };
 
-  it("gives each school its group, its place under the rule shown and which readings are blank", () => {
+  it("gives each school its group, its rank under the rule shown and which readings are blank", () => {
     const list = placedFromResults(response);
     expect(list).toHaveLength(25);
     expect(list.map((s) => s.name).slice(0, 3)).toEqual([
@@ -398,14 +398,14 @@ describe("a list from /results", () => {
     ).toBe(true);
   });
 
-  it("reads a range school whose ends are equal as one place", () => {
+  it("reads a range school whose ends are equal as one rank", () => {
     const list = placedFromResults(response);
     const equal = list.find((s) => s.name === "Sample School 25");
     expect(equal?.results?.additive_u).toMatchObject({ rank_best: 21, rank_worst: 21 });
     const P = copyFor({ schools: list, counts: countsFromResults(response) });
     expect(P.placeHeadline(equal as never, "additive_u")).toBe("21st of 21");
     expect(P.rankSentence(equal as never, "additive_u", { shortlist: 20 })).toBe(
-      "21st of the 21 schools that can be put in order. Its air-quality reading is missing, but under this rule that cannot change its place in the list. It is outside the top 20 either way."
+      "21st of the 21 schools that can be put in order. Its air-quality figure is missing, but under this rule that cannot change its rank in the list. It is outside the top 20 either way."
     );
   });
 
@@ -588,7 +588,7 @@ describe("the scope codes of a comparison", () => {
 });
 
 describe("a comparison from /compare", () => {
-  it("maps the saved response to the study's recorded comparison row", () => {
+  it("maps the saved response to the research team's recorded comparison row", () => {
     const raw = readFixture("compare/additive_u__additive_no_u.json") as {
       metrics: {
         n: number;

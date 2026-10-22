@@ -27,6 +27,8 @@ import {
   RULE,
   expect,
   mainRule,
+  openRules,
+  ruleChange,
   openWorkspace,
   queuedNames,
   tab,
@@ -40,9 +42,9 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
 
 const STATEMENT =
-  "Which list should I use? This one, the paper's main rule. Urgency is left out because its source could not be traced, which says nothing about real hazards. Putting it back keeps the same schools at the top among the 16 with every input recorded.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards. Adding it back keeps the same schools at the top among the 16 schools with one rank under both methods.";
 const REASSURANCE =
-  "Among the 16 schools with every input recorded, all 16 schools with every input recorded are in the top 20 with or without the urgency value. Putting it back changes the order in the list, and the largest move for any school is 2 places. For the five schools that show a range, putting it back can still move their possible places.";
+  "Among the 16 schools with one rank under both methods, all 16 schools being compared are in the top 20 with or without the urgency rating. Adding it back changes the order in the list, and the largest move for any school is 2 ranks. For the five schools that show a range, adding it back can still move their possible ranks.";
 
 const statement = (page: Page) => page.locator("[data-region=list-statement]");
 const changed = (page: Page) => page.locator("[data-region=what-changed]");
@@ -72,23 +74,28 @@ test("a URL that says nothing but defaults and junk is tidied, keeping the keys 
 
 test("Back and Forward bring back the screen each URL describes", async ({ page }) => {
   await openWorkspace(page);
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await expect(lead(page)).toHaveText(REASSURANCE);
   expect(search(page)).toBe("?rule=additive_u&compare=additive_no_u");
 
-  // A jump within the page makes a new history entry; the switch then changes that entry's URL.
+  // A jump within the page makes a new history entry; the switch then changes that entry's URL. Moving through the
+  // history reads each address afresh, so the rule area, which no address keeps, is opened again each time.
   await page.evaluate(() => (window.location.hash = "list"));
+  await openRules(page);
   await mainRule(page, RULE.main).click();
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
   expect(search(page)).toBe("?compare=additive_u");
 
   await page.goBack();
   expect(search(page)).toBe("?rule=additive_u&compare=additive_no_u");
+  await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
   await expect(lead(page)).toHaveText(REASSURANCE);
 
   await page.goForward();
   expect(search(page)).toBe("?compare=additive_u");
+  await openRules(page);
   await expect(mainRule(page, RULE.main)).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -99,6 +106,7 @@ test("a comparison that fails to load says so and offers Retry, never that the s
 }) => {
   await useMockDataset(context, "default", { compare: 503 });
   await openWorkspace(page);
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
 
   const failed = changed(page).locator("[data-region=changed-failed]");
@@ -120,6 +128,7 @@ test("the statement keeps the main rules' figures while What changed reads anoth
   page,
 }) => {
   await openWorkspace(page, "?compare=need_first_u&view=queue");
+  await openRules(page);
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithUrgency}`);
 });
 
@@ -128,6 +137,7 @@ test("while the rule just pressed loads, neither the statement nor a rule line s
 }) => {
   const release = await holdList(page, "additive_u");
   await openWorkspace(page);
+  await openRules(page);
   await expect(statement(page)).toBeVisible();
 
   await mainRule(page, RULE.urgency).click();
@@ -149,6 +159,7 @@ test("a rule left before its list loaded is not the one What changed compares wi
   const release = await holdList(page, "additive_u");
   await openWorkspace(page);
 
+  await openRules(page);
   await mainRule(page, RULE.urgency).click();
   await mainRule(page, RULE.main).click();
   // The list on screen never changed, so there is nothing to compare.
@@ -169,9 +180,17 @@ test("each column control that removes itself on use hands focus to the rule's o
   page,
 }) => {
   await openWorkspace(page);
-  const other = page.getByRole("button", { name: "Other rules (5)" });
+  const other = page.getByRole("button", { name: "Other ways to order the list (5)" });
 
-  // The statement's link keeps the main rule on screen, so focus goes to its button.
+  // Closed, the rule area's own link opens What changed and hands focus to Change, as Hide then does.
+  await page.locator("[data-region=rule-identity] [data-region=see-with-urgency]").press("Enter");
+  await expect(ruleChange(page)).toBeFocused();
+  await changed(page).getByRole("button", { name: LAYOUT.hideComparison }).press("Enter");
+  await expect(changed(page)).toHaveCount(0);
+  await expect(ruleChange(page)).toBeFocused();
+
+  // Open, the statement's link keeps the main rule on screen, so focus goes to its button.
+  await openRules(page);
   await statement(page).getByRole("button", { name: LAYOUT.seeWithUrgency }).press("Enter");
   await expect(mainRule(page, RULE.main)).toBeFocused();
 
@@ -207,7 +226,7 @@ test("the arrow keys move between the tabs and show the one they reach, with one
 }) => {
   await openWorkspace(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Incomplete records/);
+  const queue = tab(page, /Missing information/);
   await expect(list).toHaveAttribute("tabindex", "0");
   await expect(queue).toHaveAttribute("tabindex", "-1");
 
@@ -260,5 +279,6 @@ test("data the copy cannot word shows the failed state with Retry, not a blank p
   broken = false;
   await alert.getByRole("button", { name: LAYOUT.retry }).click();
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
+  await openRules(page);
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithUrgency}`);
 });

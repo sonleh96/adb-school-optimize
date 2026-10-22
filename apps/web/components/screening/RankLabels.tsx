@@ -11,7 +11,7 @@ import styles from "./screening.module.css";
  * program plus a font atlas, compiled before the map's first frame; on a computer without a real graphics card
  * that stalls the page for a third of a second or more. Ten labels cost the browser next to nothing.
  * They ignore the pointer, so picking and hovering still reach the dots underneath, and assistive technology,
- * since the list states every place in order. Each label's stacking comes from its place, not from where it sits
+ * since the list states every place in order. Each label's stacking comes from its position, not from where it sits
  * in the page, so where two dots overlap the earlier place's number stays on top, over its own dot, even after the
  * rule changes and the map redraws the labels.
  */

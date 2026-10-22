@@ -4,7 +4,7 @@
  * Failure modes, each with the test that catches it:
  *  1. A rule whose reasons are built from another rule's list throws when that list is not loaded. The page binds the
  *     shown list first and the combined-factors lists after it, so a bottleneck rule met the gap on first paint.
- *  2. The inputs a school is said to owe its place to do not add up to the score the API gave it, so a reason names
+ *  2. The inputs a school is said to owe its rank to do not add up to the score the API gave it, so a reason names
  *     the wrong input or leaves one out.
  *  3. The extra share a bottleneck rule gives to its largest factor is credited to a factor the API did not name,
  *     or to none, or is mentioned under a rule that has no such share.
@@ -43,7 +43,7 @@ const problemsIn = (text: string, name: string | null, sentence = true) =>
 const FACTOR_NAME: Record<string, string> = {
   N: "school need",
   A: "district context",
-  U: "the urgency value",
+  U: "the urgency rating",
 };
 
 /** What the page binds: the shown list alone at first, then with the two combined-factors lists, then every list. */

@@ -54,6 +54,7 @@ import {
   placeContext,
   placeHeadline,
   provinceHeading,
+  provinceLabel,
   rowPlace,
   scopesMix,
   rangeComparisonSegments,
@@ -67,10 +68,12 @@ import { contributions, inputSentence, reasonSentence, topDrivers } from "./reas
 import {
   PRIMARY_RULE,
   RULE_IDS,
+  type RuleNames,
   ruleExplanation,
   ruleLabel,
   ruleName,
   ruleOneLine,
+  rulePlainName,
   ruleReads,
   ruleRelation,
   ruleRole,
@@ -96,6 +99,12 @@ export type CopyData = {
   readonly top20Changes?: readonly Top20Change[];
   /** The group sizes of each rule's own run. Without them every rule is taken to count the groups in `counts`. */
   readonly countsByRule?: CountsByRuleArg;
+  /**
+   * How the sentences name a rule: "lettered" (the default) adds the analyst's letter, as in "the combined-factors rule
+   * without urgency (S0)", which method details keep; "plain" names the method in words, which a first visit reads.
+   * `ruleName` follows it, so a caller that puts the name into a sentence of its own follows too.
+   */
+  readonly ruleNames?: RuleNames;
   /** Each persistence test's margin as a fraction (its own list's provenance block), by rule. */
   readonly margins?: Partial<Record<PersistenceRule, number>>;
   /** How each persistence test was drawn (its own list's provenance block), by rule, for the method details. */
@@ -131,7 +140,9 @@ export function copyFor(data: CopyData = {}) {
     top20Changes: data.top20Changes || [],
     schools,
   };
+  const names = data.ruleNames;
   const withCounts = (opts?: WithoutCounts): PlaceOpts => ({
+    ruleNames: names,
     ...(opts || {}),
     counts: c,
     countsByRule: data.countsByRule,
@@ -213,16 +224,17 @@ export function copyFor(data: CopyData = {}) {
     rangeComparisonSentence: (school: PlacedSchool, a: CopyRuleId, b: CopyRuleId, opts?: WithoutCounts) =>
       rangeComparisonSentence(school, a, b, withCounts(opts)),
     listStartsSentence: (list: readonly PlacedSchool[] = schools, ruleId: CopyRuleId = PRIMARY_RULE, n = 3) =>
-      listStartsSentence(list, ruleId, n),
+      listStartsSentence(list, ruleId, n, names),
     comparisonSentence: (
       a: CopyRuleId,
       b: CopyRuleId,
       d: ComparisonData & { top20Changes: readonly Top20Change[] } = bound,
       opts?: { top?: number }
-    ) => comparisonSentence(a, b, { schools, ...d }, opts),
+    ) => comparisonSentence(a, b, { schools, ...d }, { ruleNames: names, ...opts }),
     urgencyReassurance: (d: ComparisonData = bound) => urgencyReassurance({ schools, ...d }),
     defaultListStatement: (d: Pick<ComparisonData, "pairwise"> = bound) => defaultListStatement(d),
-    defaultListStatementLong: (d: Pick<ComparisonData, "pairwise"> = bound) => defaultListStatementLong(d),
+    defaultListStatementLong: (d: Pick<ComparisonData, "pairwise"> = bound) =>
+      defaultListStatementLong(d, names),
     tieNote: (
       school: PlacedSchool,
       ruleId: CopyRuleId,
@@ -249,13 +261,13 @@ export function copyFor(data: CopyData = {}) {
         list: readonly PlacedSchool[] = schools,
         ruleId: CopyRuleId = PRIMARY_RULE,
         n = 3
-      ) => listStartsSegments(list, ruleId, n),
+      ) => listStartsSegments(list, ruleId, n, names),
       comparisonSentence: (
         a: CopyRuleId,
         b: CopyRuleId,
         d: ComparisonData & { top20Changes: readonly Top20Change[] } = bound,
         opts?: { top?: number }
-      ) => comparisonSegments(a, b, { schools, ...d }, opts),
+      ) => comparisonSegments(a, b, { schools, ...d }, { ruleNames: names, ...opts }),
       tieNote: (
         school: PlacedSchool,
         ruleId: CopyRuleId,
@@ -264,7 +276,7 @@ export function copyFor(data: CopyData = {}) {
       ) => tieNoteSegments(school, ruleId, list, form),
     }),
     // Functions with no counts, passed through unchanged.
-    reasonSentence,
+    reasonSentence: (school: CopySchool, ruleId: CopyRuleId) => reasonSentence(school, ruleId, names),
     inputSentence,
     topDrivers,
     contributions,
@@ -274,6 +286,7 @@ export function copyFor(data: CopyData = {}) {
     missingGroupLabel,
     rangeRowWhy,
     provinceHeading,
+    provinceLabel,
     missingValueKind,
     missingValueNote,
     displayName,
@@ -283,12 +296,13 @@ export function copyFor(data: CopyData = {}) {
     ruleLabel,
     ruleShortName,
     ruleOneLine,
+    rulePlainName,
     ruleExplanation,
     ruleRole,
     ruleSource,
     ruleRoleLine,
     ruleRelation,
-    ruleName,
+    ruleName: (id: CopyRuleId) => ruleName(id, names),
     ruleSymbol,
     ruleUsesUrgency,
     ordinal,

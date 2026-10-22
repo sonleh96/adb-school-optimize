@@ -2,8 +2,8 @@
  * The column on the mock API's worst-case datasets (see scripts/mock-api.mjs). Failure modes and the test for each:
  *  1. An empty or failed list never tells the guide layer the map is ready, or shows counts beside its failure
  *     -> "an empty store and a failed list..."
- *  2. An empty Incomplete records tab says schools are in it, offers a grouping, or can be chosen
- *     -> "an empty Incomplete records tab..."
+ *  2. An empty Missing information tab says schools are in it, offers a grouping, or can be chosen
+ *     -> "an empty Missing information tab..."
  *  3. Exact ties go unmarked, or the tie sentence is missing or repeated (R15)     -> "exact ties..."
  *  4. A blank name shows a raw value, a long unbroken name overflows its row, or "·" ends a line apart from its
  *     province (R6, R8)                                                             -> "blank and unbroken names..."
@@ -76,15 +76,15 @@ test.describe("an empty store and a failed list", () => {
   }
 });
 
-test("an empty Incomplete records tab says no school is in it and cannot be chosen", async ({
+test("an empty Missing information tab says no school is in it and cannot be chosen", async ({
   page,
   context,
 }) => {
   await useMockDataset(context, "worst-names");
   await open(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Incomplete records/);
-  await expect(queue).toHaveText("Incomplete records(0)");
+  const queue = tab(page, /Missing information/);
+  await expect(queue).toHaveText("Missing information(0)");
   await expect(queue).toBeDisabled();
   // The arrow keys pass over it.
   await list.focus();
@@ -98,7 +98,7 @@ test("an empty Incomplete records tab says no school is in it and cannot be chos
   await expect(queue).toBeEnabled();
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(0);
   await expect(page.locator("#screening-list header p").first()).toHaveText(
-    "No school lacks a place in the list yet through an incomplete record. One would show what is missing. That says nothing about its need."
+    "No school is left out of the list yet for any missing information. One would show what is missing. That says nothing about its need."
   );
   await expect(page.locator("#screening-list")).not.toContainText("Some schools");
   await expect(page.locator("[data-region=queue-missing], [data-region=queue-order]")).toHaveCount(0);
@@ -167,9 +167,9 @@ test("a list of one school states only its own counts", async ({ page, context }
   await useMockDataset(context, "one");
   await open(page);
   await expect(tab(page, /The list/)).toHaveText("The list(1)");
-  await expect(tab(page, /Incomplete records/)).toHaveText("Incomplete records(0)");
-  // Every count the column states is the one school's: its place, its count, and no school in the other groups.
-  // The rule area's "Other rules (5)" counts rules, not schools, and each row's Why line states the school's own
+  await expect(tab(page, /Missing information/)).toHaveText("Missing information(0)");
+  // Every count the column states is the one school's: its rank, its count, and no school in the other groups.
+  // The rule area's "Other ways to order the list (5)" counts rules, not schools, and each row's Why line states the school's own
   // readings, so only the text that states counts is read: the statement, the tabs, the scope line and the list notes.
   const said = await page
     .locator(

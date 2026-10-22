@@ -123,3 +123,29 @@ describe("a list that changes after a name was asked for", () => {
     expect(bound.tieNote(list[0] ?? twin("a", "Twin School", "North"), "additive_u")).toBe(before);
   });
 });
+
+describe("naming every school of a long list that is not frozen", () => {
+  const long = Array.from({ length: 6000 }, (_, i) =>
+    school({ id: `s${i}`, name: `School ${i}`, district: "North", province: "Highlands" })
+  );
+
+  // Rebuilding the index on every call costs one name clean per school per call: 36 million for this list, which
+  // takes several seconds. Keeping it between calls takes well under one.
+  it("keeps the index between calls instead of rebuilding it for each school", () => {
+    const started = performance.now();
+    for (const s of long) distinctName(s, long);
+    expect(performance.now() - started).toBeLessThan(1500);
+  });
+
+  it("still sees a school renamed or added after the index was kept", () => {
+    const list = long.slice(0, 50);
+    expect(distinctName(list[0], list)).toBe("School 0");
+    list[1] = { ...list[1], name: "School 0" };
+    expect(distinctName(list[0], list)).toBe("School 0 (record s0)");
+    list.push({ ...list[2], id: "extra", name: "School 0" });
+    expect(distinctName(list[0], list)).toBe("School 0 (record s0)");
+    list.pop();
+    list[1] = long[1];
+    expect(distinctName(list[0], list)).toBe("School 0");
+  });
+});

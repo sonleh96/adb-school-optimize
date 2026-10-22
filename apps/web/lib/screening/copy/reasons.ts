@@ -29,7 +29,7 @@ import type {
 import { gateSentence, otherCause } from "./causes";
 import { AREA_PARTS, FACILITIES } from "./inputs";
 import { isNeedFirst, resultFor } from "./rank";
-import { rule } from "./rules";
+import { type RuleNames, rule, ruleFor } from "./rules";
 
 export const NEED_FIELDS: Readonly<Record<NeedKey, NeedField>> = {
   classrooms: "permanent_classroom_deficit",
@@ -76,10 +76,10 @@ function required(value: number | null | undefined, what: string): number {
   return value;
 }
 
-/** How much each input adds to the rule's screening score. A key is absent when the rule does not use it. */
+/** How much each input adds to the rule's score. A key is absent when the rule does not use it. */
 export type Contribution = Partial<Record<InputKey, number | null>>;
 
-// Contribution of each input to the rule's screening score, keyed by ORDER. Null when not computed.
+// Contribution of each input to the rule's score, keyed by ORDER. Null when not computed.
 export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribution | null {
   rule(ruleId);
   const res = resultFor(school, ruleId);
@@ -123,12 +123,12 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
     const out: Contribution = {};
     for (const k of NEED_KEYS) out[k] = (0.55 / 5) * required(parts[NEED_FIELDS[k]], NEED_FIELDS[k]);
     out.area = 0.2 * required(c.A, "district-context value");
-    out.urgency = 0.15 * required(c.U, "urgency value");
+    out.urgency = 0.15 * required(c.U, "urgency rating");
     out.reach = 0.1 * required(c.R, "reach value");
     return out;
   }
 
-  // Largest factor: 0.60 x weighted screening score + 0.40 x the largest of N, A (and U). The weighted part is as
+  // Largest factor: 0.60 x weighted score + 0.40 x the largest of N, A (and U). The weighted part is as
   // recorded for this rule; the 0.40 term goes to the factor or factors the API says attain the largest value, a
   // tie sharing it. School need passes it on to its five parts in proportion to their size.
   if (ruleId !== "bottleneck_u" && ruleId !== "bottleneck_no_u")
@@ -156,7 +156,7 @@ export function contributions(school: CopySchool, ruleId: CopyRuleId): Contribut
 const LARGEST_NAME: Record<Largest, string> = {
   N: "school need",
   A: "district context",
-  U: "the urgency value",
+  U: "the urgency rating",
 };
 
 export const INPUT_KEYS: readonly InputKey[] = Object.freeze([...ORDER]);
@@ -200,9 +200,9 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
       const have = FACILITIES.filter(([f]) => (k[f] ?? 0) > 0).map(([, n]) => n);
       const lack = FACILITIES.filter(([f]) => !((k[f] ?? 0) > 0)).map(([, n]) => n);
       if (have.length === 0)
-        return "It has none of the six facility types the study counts, such as a library or a workshop.";
-      if (lack.length === 0) return "It has all six facility types the study counts.";
-      if (have.length === 1) return `Of the six facility types the study counts, it has only a ${have[0]}.`;
+        return "It has none of the six facility types the list looks at, such as a library or a workshop.";
+      if (lack.length === 0) return "It has all six facility types the list looks at.";
+      if (have.length === 1) return `Of the six facility types the list looks at, it has only a ${have[0]}.`;
       return `It has no ${joinList(lack, "or")}.`;
     }
     case "services": {
@@ -211,9 +211,9 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
       const p = pRaw == null ? null : POWER[norm(pRaw)];
       const w = wRaw == null ? null : WATER[norm(wRaw)];
       if (pRaw != null && !p)
-        return `Its power source is recorded as ${String(pRaw).trim()}, a type that is not on the study's scale.`;
+        return `Its power source is recorded as ${String(pRaw).trim()}, a type that is not on the research team's scale.`;
       if (wRaw != null && !w)
-        return `Its water source is recorded as ${String(wRaw).trim()}, a type that is not on the study's scale.`;
+        return `Its water source is recorded as ${String(wRaw).trim()}, a type that is not on the research team's scale.`;
       if (!p && !w) return "Its power and water sources are not recorded.";
       if (!p) return `Its power source is not recorded. Its water ${w}.`;
       if (!w) return `Its power comes from ${p}. Its water source is not recorded.`;
@@ -223,8 +223,8 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     case "locality":
       if (isBlank(school.locality)) return "Its remoteness category is not recorded.";
       if (!REMOTENESS_CATEGORIES.includes(norm(school.locality)))
-        return `Its remoteness category is recorded as ${String(school.locality).trim()}, which is not on the study's scale.`;
-      return `Its record classes it as ${norm(school.locality)}, on ${REMOTENESS_SCALE}.`;
+        return `Its remoteness category is recorded as ${String(school.locality).trim()}, which is not on the research team's scale.`;
+      return `It is listed as ${norm(school.locality)}, on ${REMOTENESS_SCALE}.`;
     case "area":
       if (school.cohort === "queue" && school.components.A === null)
         return gateSentence(otherCause(school, "unresolved_area_context"));
@@ -234,8 +234,8 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
         return gateSentence(otherCause(school, "urgency_unknown"));
       // A school whose urgency is known but whose figure is not loaded says only that it is recorded.
       if (school.components.U === undefined)
-        return "Its urgency value is recorded. No one could trace where that value comes from.";
-      return `Its urgency value is ${required(school.components.U, "urgency value").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
+        return "Its urgency rating is recorded. No one could trace where that value comes from.";
+      return `Its urgency rating is ${required(school.components.U, "urgency rating").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
     case "reach": {
       if (school.cohort === "queue" && school.components.R === null)
         return gateSentence(otherCause(school, "unresolved_reach"));
@@ -253,15 +253,15 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     case "air": {
       const q = school.raw.Q_raw;
       if (q != null && school.missing_env?.aqi)
-        return "Its air-quality reading is recorded, but the study cannot use it, so it is not counted as 0.";
+        return "Its air-quality figure is recorded, but the tool cannot use it, so it is not counted as 0.";
       return q == null
-        ? "Its air-quality reading is not recorded. The study assigns an air-pollution index to each school's location, and none was assigned to this one."
+        ? "Its air-quality figure is not recorded. An air-pollution index was assigned to each school's location, and none was assigned to this one."
         : `Its air-quality index, a measure of air pollution assigned to its location, reaches ${formatCount(q)} on its worst 1 day in 20.`;
     }
     case "emissions": {
       const e = school.raw.E_raw;
       if (e != null && school.missing_env?.emissions)
-        return "Its nearby emissions figure is recorded, but the study cannot use it, so it is not counted as 0.";
+        return "Its nearby emissions figure is recorded, but the tool cannot use it, so it is not counted as 0.";
       if (e == null) return "Its nearby emissions figure is not recorded, so it is not counted as 0.";
       return e > 0
         ? `Fixed emission sources within 10 km account for about ${formatApprox(e)} tonnes of CO2-equivalent a year in the Climate TRACE inventory.`
@@ -270,7 +270,7 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
     case "land": {
       const l = school.raw.L_raw;
       if (l != null && school.missing_env?.land)
-        return "Its land-cover figure is recorded, but the study cannot use it, so it is not counted as 0.";
+        return "Its land-cover figure is recorded, but the tool cannot use it, so it is not counted as 0.";
       if (l == null) return "Its land-cover figure is not recorded, so it is not counted as 0.";
       return l > 0
         ? `Satellite maps class ${l < 0.0005 ? "less than 0.1%" : formatPercent(l)} of the area within 500 m as water or flooded vegetation.`
@@ -293,7 +293,7 @@ function describeDistrict(school: CopySchool): string {
         return v >= 0.5 ? "there are relatively few secondary students for the population" : null;
       case "activity_deficit":
         return v >= 0.5
-          ? "there is little night-time light, which the study uses as a sign of economic activity"
+          ? "there is little night-time light, which the research team uses as a sign of economic activity"
           : null;
       case "conflict_exposure":
         return v >= 0.5 ? "a relatively large population is exposed to recorded conflict" : null;
@@ -355,16 +355,16 @@ export function topDrivers(school: CopySchool, ruleId: CopyRuleId): Driver[] {
   return picked.map((x) => ({ ...x, sentence: inputSentence(school, x.key) }));
 }
 
-export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
-  const r = rule(ruleId);
+export function reasonSentence(school: CopySchool, ruleId: CopyRuleId, ruleNames?: RuleNames): string {
+  const r = ruleFor(ruleId, ruleNames);
   if (school.cohort === "queue") {
-    return "This school has no place in the list yet, so there is no screening score to explain. Its entry shows what is missing.";
+    return "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing.";
   }
   if (!resultFor(school, ruleId)) return `No result for this school under ${r.name}.`;
   if (!contributions(school, ruleId))
-    return `What adds to the screening score under ${r.name} is not available for this school.`;
+    return `What adds to the score under ${r.name} is not available for this school.`;
   const drivers = topDrivers(school, ruleId);
-  if (drivers.length === 0) return `Under ${r.name}, none of its inputs adds to its screening score.`;
+  if (drivers.length === 0) return `Under ${r.name}, none of its inputs adds to its score.`;
   const n = drivers.length;
   if (isNeedFirst(ruleId)) {
     return [
@@ -377,7 +377,7 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
   const need = drivers.filter((d) => isNeedKey(d.key));
   const other = drivers.filter((d) => !isNeedKey(d.key));
   const parts = [
-    `${capitalise(SMALL[n])} ${plural(n, "thing adds", "things add")} most to its screening score under ${r.name}.`,
+    `${capitalise(SMALL[n])} ${plural(n, "thing adds", "things add")} most to its score under ${r.name}.`,
   ];
   if (need.length) {
     let intro: string;
@@ -402,7 +402,7 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId): string {
   if (ruleId === "bottleneck_u" || ruleId === "bottleneck_no_u") {
     const which =
       ruleId === "bottleneck_u"
-        ? "the largest of school need, district context and the urgency value"
+        ? "the largest of school need, district context and the urgency rating"
         : "the larger of school need and district context";
     const named = (school.contributions?.[ruleId]?.largest?.factors ?? []).map((f) => LARGEST_NAME[f]);
     parts.push(

@@ -225,7 +225,7 @@ describe("a school of the revised rule's list", () => {
 
 describe("each rule's flag shows under its own rule only", () => {
   it("says nothing under the other rule, and nothing under a rule that had no test", () => {
-    // 03 is flagged under the revised test only; 01 under both.
+    // 03 is flagged under the revised test only; 01 under both methods.
     const three = byName("Sample School 03")!;
     const one = byName("Sample School 01")!;
     expect(bound.persistenceNote(three, S)).toEqual([]);
@@ -238,7 +238,7 @@ describe("each rule's flag shows under its own rule only", () => {
   });
 
   it("words the fresh run and the circulated experiment differently, and relabels neither", () => {
-    expect(FLAG[S0]).toMatch(/fresh run for this rule, not a measure of what the urgency value changes/);
+    expect(FLAG[S0]).toMatch(/fresh run for this rule, not a measure of what the urgency rating changes/);
     expect(FLAG[S]).toMatch(/circulated/);
     expect(FLAG[S]).toMatch(/not a result for the rule without urgency/);
     expect(FLAG[S0]).not.toMatch(/circulated|proposed|redone/);
