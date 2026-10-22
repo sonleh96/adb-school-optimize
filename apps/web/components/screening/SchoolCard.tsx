@@ -255,6 +255,11 @@ export function SchoolCard(props: CardProps) {
           </>
         )}
       </div>
+      {/* On a narrow screen the card takes the list region, and with it the list's caveat: the card keeps it at its
+          foot, outside the part that scrolls. Wider layouts show the caveat at the map's foot instead. */}
+      <p className={styles.cardCaveat} data-region="card-caveat">
+        {methodLayer ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
+      </p>
     </aside>
   );
 }

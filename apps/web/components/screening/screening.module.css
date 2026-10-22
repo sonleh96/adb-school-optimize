@@ -1313,9 +1313,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   background: #fbfaf7;
 }
 
-/* The narrow layout's List / Map switch and the list's head show only there. */
+/* The narrow layout's List / Map switch, the list's head and the card's caveat show only there. */
 .paneSwitch,
-.narrowHead {
+.narrowHead,
+.cardCaveat {
   display: none;
 }
 
@@ -2079,6 +2080,18 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     margin: 0;
     font: 600 15px/20px var(--sans);
     color: var(--ink);
+  }
+  .cardCaveat {
+    display: block;
+    flex: none;
+    margin: 0;
+    padding: 8px 16px 10px;
+    border-top: 1px solid var(--hair-2);
+    background: var(--panel);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink-2);
+    text-wrap: pretty;
   }
   .narrowHeadCaveat {
     margin: 4px 0 0;
