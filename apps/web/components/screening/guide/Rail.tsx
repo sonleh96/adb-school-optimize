@@ -8,7 +8,7 @@
  * watches the screen: a step that follows the person's selection retitles for the school they chose, and a step
  * whose screen has moved on says so and offers to show it again.
  */
-import { ArrowRight, Check, SquareDashed } from "lucide-react";
+import { ArrowRight, Check, SquareDashed, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { type CopySchool, pairwiseFromCompare } from "@/lib/screening/copy";
@@ -28,6 +28,7 @@ import { canPresent } from "@/lib/screening/guide/layout";
 import { type GuideId, statusOf } from "@/lib/screening/guide/machine";
 import type { Plan, Roles } from "@/lib/screening/guide/roles";
 import { useScreeningCompare } from "@/lib/screening/hooks";
+import { PENDING } from "@/lib/screening/pending-words";
 import { PRIMARY_RULE, SENSITIVITY_RULE, isRulePair } from "@/lib/screening/rule-pair";
 import { exampleSchool } from "@/lib/screening/workspace/teaching";
 
@@ -87,7 +88,6 @@ export default function Rail({ root, data, roles, plan }: RailProps) {
 function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; later: LaterCopy }) {
   const store = useLayerStore();
   const { memory } = useLayers();
-  const { copy } = data;
   const { GUIDE } = later;
   const returning = memory.seen;
   const title = useRef<HTMLHeadingElement>(null);
@@ -99,14 +99,26 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
   const guides = plan ? guidesOf({ later, plan }) : [];
   return (
     <>
-      <div className={styles.railHead}>
+      <div className={`${styles.railHead} ${styles.headRow}`}>
         <span className={styles.eyebrow}>{returning ? GUIDE.returningEyebrow : GUIDE.startEyebrow}</span>
+        {/* Hidden, it stays hidden in this browser until Help, then Guides, brings it back. */}
+        <button
+          type="button"
+          className={styles.hide}
+          data-region="hide-guides"
+          aria-label={PENDING.hideAria}
+          onClick={() => store.dispatch({ type: "close" })}
+        >
+          {PENDING.hide}
+          <X size={13} aria-hidden />
+        </button>
       </div>
       <div className={styles.railBody}>
         <h2 ref={title} className={styles.startTitle} tabIndex={-1}>
           {GUIDE.startTitle}
         </h2>
-        <p className={styles.lede}>{copy.TERMS.screening.help}</p>
+        {/* What the tool is for; its caveat shows once, at the foot of the map (at the end of the list on a phone). */}
+        <p className={styles.lede}>{PENDING.startLede}</p>
         <ol className={styles.tasks} aria-busy={!plan}>
           {guides.map((guide, index) => {
             const status = statusOf(memory, guide.id, guide.steps.length);
@@ -163,7 +175,7 @@ function Start({ data, plan, later }: { data: GuideData; plan: Plan | null; late
         >
           {returning ? GUIDE.close : GUIDE.explore}
         </button>
-        <p className={styles.note}>{returning ? GUIDE.returningNote : GUIDE.firstNote}</p>
+        <p className={styles.note}>{PENDING.guidesBack}</p>
       </div>
     </>
   );

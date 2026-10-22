@@ -153,9 +153,18 @@
   outline: 2px solid var(--navy) !important;
   outline-offset: -3px;
 }
-/* Zoom buttons sit under the map bar, 16 px right of the column, and follow it when it steps down a row. */
+/* Zoom buttons sit at the map's top left, 16 px right of the column; under the map bar while the method details show
+   it, following it when it steps down a row. */
 .map :global(.maplibregl-ctrl-top-left) {
   left: calc(var(--col-w) + var(--gap) * 2);
+  top: var(--zoom-top, var(--gap));
+}
+/* Help in the actions: as tall as its neighbours, and lifted off the map as they are. */
+.actions [data-region="help-button"] {
+  height: 34px;
+  box-shadow: var(--shadow);
+}
+.root[data-mapbar] .map :global(.maplibregl-ctrl-top-left) {
   top: calc(var(--bar-top, var(--gap)) + 52px);
 }
 /* A panel showing the previous rule's rows: its content fades, its paper stays solid so the map does not show through. */
@@ -248,8 +257,61 @@
   border-bottom: 1px solid var(--hair-2);
 }
 .ruleSkeleton {
-  height: 92px;
+  height: 66px;
   border-bottom: 1px solid var(--hair-2);
+}
+/* Closed, the rule area is one plain line, Change beside it, and one link under it. */
+.ruleNow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ruleNowText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.ruleChange {
+  flex: none;
+  margin-top: -2px;
+  padding: 2px 10px 3px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 12.5px/17px var(--sans);
+  color: var(--navy);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.ruleChange:not(:disabled):active {
+  transform: scale(0.97);
+}
+.ruleChange:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+.ruleChange[aria-expanded="true"] {
+  background: var(--navy-wash);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ruleChange:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.05);
+  }
+}
+.ruleNowLink {
+  margin: 6px 0 0;
+  line-height: 18px;
+}
+/* Open: the choices under the plain line, set off by a hairline. */
+.ruleChoices {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
 }
 .ruleTop {
   display: flex;
@@ -267,7 +329,7 @@
 }
 .ruleButton {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   column-gap: 8px;
   align-items: center;
   padding: 6px 10px 7px;
@@ -297,9 +359,6 @@
   background: var(--navy);
   color: #fff;
   cursor: default;
-}
-.ruleButton[aria-pressed="true"] .sym {
-  color: #fff;
 }
 .ruleButton:disabled:not([aria-pressed="true"]) {
   opacity: 0.55;
@@ -867,6 +926,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 
 /* ---------- top right: the actions ---------- */
 /* Right of the column, and on a second row when the guide rail leaves too little room for one (1024 with the rail). */
+/* While Help's menu is open it lies over whatever sits under the actions: the map bar, the hint, the card. */
+.actions:has([data-menu-open]) {
+  z-index: 13;
+}
 .actions {
   position: absolute;
   top: var(--gap);
@@ -1013,9 +1076,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
-.listCaveat {
-  display: none;
-}
 
 /* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
 .legend {
@@ -1032,11 +1092,63 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .legend[data-stale] > * {
   opacity: 0.5;
 }
+/* The method details' key: its title and Key on one row. */
 .legendTop {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
+}
+/* The key's one line: the colour strip, the three marks in a few words, and the way to the full key. */
+.keyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.miniRamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.miniSwatches {
+  display: inline-flex;
+  gap: 1px;
+}
+.miniSwatches i {
+  width: 12px;
+  height: 6px;
+}
+.miniSwatches i:first-child {
+  border-radius: 2px 0 0 2px;
+}
+.miniSwatches i:last-child {
+  border-radius: 0 2px 2px 0;
+}
+.keysShort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.keysShort li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.legend[data-open] .keyLine {
+  justify-content: flex-end;
 }
 .legendTitle {
   margin: 0;
@@ -1827,9 +1939,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     column-gap: 6px;
     padding: 6px 8px 7px;
   }
-  .ruleButton .sym {
-    font-size: 19px;
-  }
   .foot {
     right: 220px;
   }
@@ -1880,9 +1989,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     column-gap: 8px;
     padding: 6px 10px 7px;
   }
-  .ruleButton .sym {
-    font-size: 22px;
-  }
   .map {
     top: 56px;
     bottom: auto;
@@ -1929,22 +2035,31 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .slotHint {
     display: none;
   }
-  /* The key sits over the band's foot, one line until Key opens it; the caveat moves to the end of the list. */
-  /* The caveat leaves the foot here, so the foot is a line at the band's foot and the key sits on it. */
+  /* The key and, under it, the caveat sit at the band's foot: the caveat is in the first view at every size, once,
+     and nothing has to be opened or scrolled to read it. Together they never grow past the band: the open key's title
+     and toggle stay in view under the top bar, and what does not fit scrolls inside the key. */
   .foot {
     left: 8px;
     right: 8px;
-    top: calc(56px + var(--band) - 8px);
-    bottom: auto;
+    top: auto;
+    bottom: calc(100% - 56px - var(--band) + 8px);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    max-height: calc(var(--band) - 16px);
   }
-  /* Open, the key never grows past the band: its title and toggle stay in view under the top bar, and what does not
-     fit scrolls inside it. */
   .foot .legend {
+    position: static;
     margin-bottom: 0;
-    right: 0;
     width: max-content;
     max-width: 100%;
-    max-height: calc(var(--band) - 16px);
+    min-height: 0;
+  }
+  /* Where the line cannot hold it all, the three marks take the first row and the colour strip and the way to the full
+     key share the second, so the key stays two short rows over the map. */
+  .foot .keysShort {
+    order: -1;
   }
   .foot .legendBody {
     min-height: 0;
@@ -1957,7 +2072,14 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     right: 8px;
   }
   .foot .caveat {
-    display: none;
+    flex: none;
+    max-width: 100%;
+    padding: 5px 10px 6px;
+    border-radius: 6px;
+    background: var(--panel);
+    box-shadow: 0 1px 2px rgba(21, 24, 29, 0.08);
+    font-size: 12px;
+    line-height: 16px;
   }
   .legend {
     padding: 7px 10px 8px;
@@ -1966,15 +2088,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .legendTitle {
     font-size: 12.5px;
     line-height: 17px;
-  }
-  .listCaveat {
-    display: block;
-    margin: 0;
-    padding: 14px 20px 20px;
-    border-top: 1px solid var(--hair-2);
-    font-size: 12.5px;
-    line-height: 17px;
-    color: var(--ink-2);
   }
   /* The key spans the band's foot, so the basemap's credit sits at its top right instead. */
   .attribution {
@@ -1997,10 +2110,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .ruleButton {
     padding-top: 3px;
     padding-bottom: 4px;
-  }
-  .ruleButton .sym {
-    font-size: 19px;
-    line-height: 20px;
   }
   .statement {
     margin-top: 6px;
@@ -2038,10 +2147,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .ruleButton {
     padding-top: 3px;
     padding-bottom: 4px;
-  }
-  .ruleButton .sym {
-    font-size: 19px;
-    line-height: 20px;
   }
 }
 

@@ -14,10 +14,12 @@
  *  8. On a phone a rule's label in the switch wraps to a third line, pushing the list down, fits with too little room
  *     to spare for another platform's wider text, or spills out of its button or the switch
  *                                                                -> "on a phone each label in the rule switch..."
+ *  9. The caveat (what the tool does not show or decide) shows twice, or only after opening or scrolling to something,
+ *     or sits off-screen or under a panel at some size                -> "the caveat shows once..."
  */
 import type { Page } from "@playwright/test";
 
-import { ORDERED, expect, keyOf, orderedRow, test, waitForMap } from "./screening-helpers";
+import { ORDERED, expect, keyOf, openRules, orderedRow, test, waitForMap } from "./screening-helpers";
 
 test.describe.configure({ timeout: 60_000 });
 
@@ -132,6 +134,7 @@ for (const size of [
     }) => {
       await page.goto("/screening");
       await waitForMap(page);
+      await openRules(page);
       const buttons = page.locator("[data-region=rule-switch] button");
       await expect(buttons).toHaveCount(2);
       await page.evaluate(() => document.fonts.ready);
@@ -210,6 +213,7 @@ test.describe("at 1600 the card opens beside the list", () => {
     await expect(root).toHaveAttribute("data-instant", "true");
 
     // The popover over the column closes first; the card stays.
+    await openRules(page);
     await page.getByRole("button", { name: "Other rules (5)" }).click();
     await expect(page.locator("#screening-other-rules")).toBeVisible();
     await page.keyboard.press("Escape");
@@ -233,11 +237,13 @@ test.describe("the narrow layout", () => {
     expect(map.height).toBe(410);
     await expect(page.getByRole("heading", { level: 1, name: "RISE-PNG" })).toBeVisible();
 
+    // The key is compact, its marks named in a few words, until What the map shows opens it in full.
     const key = page.locator("[data-slot=legend]");
-    await expect(key.locator("[data-region=legend-point]")).toHaveCount(0);
-    await key.getByRole("button", { name: "Show the map key" }).click();
-    await expect(key.locator("[data-region=legend-point]")).toBeVisible();
-    await key.getByRole("button", { name: "Hide the map key" }).click();
+    await expect(key.locator("[data-region=legend-point]")).toHaveText("One place");
+    await key.getByRole("button", { name: "What the map shows" }).click();
+    await expect(key.locator("[data-region=legend-point]")).toContainText("Filled dot");
+    await key.getByRole("button", { name: "Hide the full key" }).click();
+    await expect(key.locator("[data-region=legend-point]")).toHaveText("One place");
 
     await orderedRow(page, "Sample School 08").click();
     // Measured once the card has finished coming in.
@@ -285,8 +291,8 @@ test.describe("the key at 200 percent zoom", () => {
     await page.goto("/screening");
     await waitForMap(page);
     const key = page.locator("[data-slot=legend]");
-    await key.getByRole("button", { name: "Show the map key" }).click();
-    await expect(key.locator("[data-region=legend-point]")).toBeAttached();
+    await key.getByRole("button", { name: "What the map shows" }).click();
+    await expect(page.getByTestId("legend-rule")).toBeAttached();
 
     const fits = await page.evaluate(() => {
       const box = document.querySelector("[data-slot=legend]")!.getBoundingClientRect();
@@ -310,7 +316,71 @@ test.describe("the key at 200 percent zoom", () => {
     // The ramp and the marks can be read by scrolling inside the key.
     await key.locator("ol li").first().scrollIntoViewIfNeeded();
     await expect(key.locator("ol li").first()).toBeInViewport();
-    await key.getByRole("button", { name: "Hide the map key" }).click();
-    await expect(key.locator("[data-region=legend-point]")).toHaveCount(0);
+    await key.getByRole("button", { name: "Hide the full key" }).click();
+    await expect(page.getByTestId("legend-rule")).toHaveCount(0);
   });
 });
+
+/** The caveat in the copy's words: what the tool does not show or decide. */
+const CAVEAT = /It does not show a school's real condition or safety/;
+
+for (const size of [
+  { width: 1600, height: 1000, scale: 1 },
+  { width: 1440, height: 900, scale: 1 },
+  { width: 1280, height: 800, scale: 1 },
+  { width: 1024, height: 768, scale: 1 },
+  { width: 768, height: 1024, scale: 1 },
+  { width: 800, height: 500, scale: 2 },
+  { width: 390, height: 844, scale: 1 },
+]) {
+  for (const visit of ["a first visit", "a returning visit"] as const) {
+    test.describe(`the caveat at ${size.width} by ${size.height} on ${visit}`, () => {
+      test.use({
+        viewport: { width: size.width, height: size.height },
+        deviceScaleFactor: size.scale,
+        firstVisit: visit === "a first visit",
+      });
+
+      test(`the caveat shows once, in the window and clear of every panel, at ${size.width} by ${size.height} on ${visit}`, async ({
+        page,
+      }) => {
+        await page.goto("/screening");
+        await waitForMap(page);
+        await expect(page.locator(`${ORDERED} button`).first()).toBeAttached();
+        if (visit === "a first visit") await expect(page.getByTestId("guide-rail")).toBeVisible();
+        const caveat = page.getByText(CAVEAT).filter({ visible: true });
+        await expect(caveat).toHaveCount(1);
+        await expect(caveat).toBeInViewport({ ratio: 1 });
+        // Nothing covers it: no panel's box meets the caveat's.
+        const met = await caveat.evaluate((element) => {
+          const own = element.getBoundingClientRect();
+          const panels = [
+            "section[data-slot=column]:not([data-aside])",
+            "[data-testid=guide-rail]",
+            "[data-slot=legend]",
+            "[data-region=actions]",
+            "header[class*=topBar]",
+            "#slot-hint",
+            "[data-slot=school-card]",
+          ];
+          return panels.flatMap((selector) =>
+            [...document.querySelectorAll(selector)].flatMap((panel) => {
+              const style = getComputedStyle(panel);
+              if (style.display === "none" || style.visibility === "hidden") return [];
+              const r = panel.getBoundingClientRect();
+              const meets =
+                r.width > 0 &&
+                r.height > 0 &&
+                r.left < own.right - 1 &&
+                own.left < r.right - 1 &&
+                r.top < own.bottom - 1 &&
+                own.top < r.bottom - 1;
+              return meets ? [selector] : [];
+            })
+          );
+        });
+        expect(met).toEqual([]);
+      });
+    });
+  }
+}

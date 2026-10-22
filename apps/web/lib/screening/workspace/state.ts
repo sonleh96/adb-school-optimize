@@ -56,6 +56,12 @@ export interface WorkspaceState {
   readonly place: Placement;
   /** The scope detail under the scope line is open. */
   readonly scope: boolean;
+  /**
+   * The rule area is open: the switch, Other rules and the full statement. Closed, it shows one plain line, the way
+   * to open it and the urgency comparison; a first-time reader is not asked to choose a rule before seeing the list.
+   * Not written to the address: a saved view or a copied link opens it closed.
+   */
+  readonly rules: boolean;
 
   // The method details ("Show method details") and what only they show.
   readonly analyst: boolean;
@@ -94,6 +100,7 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   qgroup: "province",
   place: "lower",
   scope: false,
+  rules: false,
   analyst: false,
   mode: "screen",
   k: 20,
@@ -211,6 +218,8 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
   mode: enumKey<Mode>("screen", "screen", "compare"),
   rule: ruleKey,
   compare: ruleKey,
+  // Opening the rule area is a passing choice, like a popover: a link may open it, and the address never keeps it.
+  rules: { ...flag, write: () => null },
   k: lengthKey<FullRows>(20, 10, 20),
   view: enumKey<ListView>("ranked", "ranked", "queue"),
   qgroup: enumKey<QueueGrouping>("province", "province", "evidence"),

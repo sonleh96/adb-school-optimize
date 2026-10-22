@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
+import { PENDING } from "@/lib/screening/pending-words";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import styles from "./screening.module.css";
@@ -15,21 +16,20 @@ function Mark({ kind }: { kind: "dot" | "range" | "ring" }) {
 }
 
 /**
- * The map's key in words: which rule the places belong to, the place bands from the data, and what each mark means.
- * Narrow windows show its title and a Key disclosure; it opens over the map. The words are the copy's.
+ * The map's key. It starts as one line: the colour strip from the first place to the last, and the three marks with a
+ * few words each. "What the map shows" opens the full key above it: which rule the places belong to, the place bands
+ * from the data, and what each mark means. The words are the copy's.
  */
 export function Legend({
   copy,
   rule,
   bands,
-  collapsed,
   stacked,
   stale,
 }: {
   copy: BoundCopy;
   rule: CopyRuleId | null;
   bands: readonly Band[];
-  collapsed: boolean;
   stacked: boolean;
   stale: boolean;
 }) {
@@ -37,43 +37,29 @@ export function Legend({
   const body = useId();
   const { LAYOUT, TERMS } = copy;
   const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.ruleName(rule)) : TERMS.rank.label;
-  const showBody = !collapsed || open;
   const label = (band: Band) =>
     band.lo === band.hi
       ? copy.ordinal(band.lo)
       : LAYOUT.placeRange(copy.ordinal(band.lo), copy.ordinal(band.hi));
+  const first = bands[0];
+  const last = bands[bands.length - 1];
 
   return (
     <section
       className={`${styles.panel} ${styles.legend}`}
       data-slot="legend"
       data-region="legend"
-      data-collapsed={collapsed || undefined}
+      data-open={open || undefined}
       data-stacked={stacked || undefined}
       aria-label={LAYOUT.legendAria}
       aria-busy={stale}
       data-stale={stale || undefined}
     >
-      <div className={styles.legendTop}>
-        <p className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
-          {title}
-        </p>
-        {collapsed ? (
-          <button
-            type="button"
-            className={styles.keyToggle}
-            aria-expanded={open}
-            aria-controls={body}
-            aria-label={open ? LAYOUT.keyHide : LAYOUT.keyShow}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {LAYOUT.keyLabel}
-            <ChevronUp size={12} aria-hidden data-open={open || undefined} />
-          </button>
-        ) : null}
-      </div>
-      {showBody ? (
+      {open ? (
         <div id={body} className={styles.legendBody}>
+          <p className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
+            {title}
+          </p>
           {bands.length > 0 ? (
             <ol
               className={styles.ramp}
@@ -106,6 +92,46 @@ export function Legend({
           </ul>
         </div>
       ) : null}
+      <div className={styles.keyLine}>
+        {first && last && !open ? (
+          <span className={styles.miniRamp} data-term="rank">
+            <span>{copy.ordinal(first.lo)}</span>
+            <span className={styles.miniSwatches} aria-hidden>
+              {bands.map((band, index) => (
+                <i key={band.lo} style={{ background: RAMP_HEX[index] }} />
+              ))}
+            </span>
+            <span>{copy.ordinal(last.hi)}</span>
+          </span>
+        ) : null}
+        {open ? null : (
+          <ul className={styles.keysShort}>
+            <li data-region="legend-point">
+              <Mark kind="dot" />
+              <span data-term="mark_dot">{PENDING.keyDot}</span>
+            </li>
+            <li data-region="legend-range">
+              <Mark kind="range" />
+              <span data-term="mark_range">{PENDING.keyRange}</span>
+            </li>
+            <li data-region="legend-queue">
+              <Mark kind="ring" />
+              <span data-term="mark_ring">{PENDING.keyRing}</span>
+            </li>
+          </ul>
+        )}
+        <button
+          type="button"
+          className={styles.keyToggle}
+          data-region="key-toggle"
+          aria-expanded={open}
+          aria-controls={body}
+          onClick={() => setOpen((value) => !value)}
+        >
+          {open ? PENDING.keyLess : PENDING.keyMore}
+          <ChevronUp size={12} aria-hidden data-open={open || undefined} />
+        </button>
+      </div>
     </section>
   );
 }
