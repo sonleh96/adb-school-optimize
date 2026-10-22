@@ -866,17 +866,11 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .listNote + li {
   border-top: 1px solid var(--hair-2);
 }
-/* The range note's glyph: a hatched bar, the range schools' sign in the list. */
-.rangeNote::before {
-  content: "";
+/* The range note's sign: the map key's ring with a centre dot, in the rank column's place. */
+.rangeNote > .keyMark {
   position: absolute;
-  left: 58px;
+  left: 55px;
   top: 12px;
-  width: 6px;
-  height: 12px;
-  border: 1px solid var(--ink-2);
-  border-radius: 1px;
-  background: repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(74, 79, 87, 0.55) 1.5px 2.5px);
 }
 
 .groupHead {
