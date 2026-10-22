@@ -348,8 +348,8 @@ for (const size of [
 ]) {
   // The narrow layout shows the list or, from Map, the map band over it: the caveat holds in both.
   const panes = size.width <= 1023 ? (["List", "Map"] as const) : ([null] as const);
-  for (const [visit, pane] of (["a first visit", "a returning visit"] as const).flatMap((v) =>
-    panes.map((p) => [v, p] as const)
+  for (const [visit, pane] of (["a first visit", "a returning visit", "a school open"] as const).flatMap(
+    (v) => panes.map((p) => [v, p] as const)
   )) {
     const on = pane ? `${visit}, showing ${pane}` : visit;
     test.describe(`the caveat at ${size.width} by ${size.height} on ${on}`, () => {
@@ -362,10 +362,11 @@ for (const size of [
       test(`the caveat shows once, in the window and clear of every panel, at ${size.width} by ${size.height} on ${on}`, async ({
         page,
       }) => {
-        await page.goto("/screening");
+        await page.goto(visit === "a school open" ? `/screening?school=${SCHOOL}` : "/screening");
         await waitForMap(page);
         await expect(page.locator(`${ORDERED} button`).first()).toBeAttached();
         if (visit === "a first visit") await expect(page.getByTestId("guide-rail")).toBeVisible();
+        if (visit === "a school open") await expect(page.locator("[data-slot=school-card]")).toBeVisible();
         if (pane) {
           const choice = page
             .locator("[data-region=pane-switch]")
