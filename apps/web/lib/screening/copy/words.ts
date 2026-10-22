@@ -28,7 +28,6 @@ export const LAYOUT = Object.freeze({
   withUrgency: "With urgency",
   withoutUrgency: "Without urgency",
   guides: "Guides",
-  changeDone: "Done",
   // The one plain line of the quiet rule area: how the list is ordered under a rule, with no symbol or term of art.
   ruleNow: (id: CopyRuleId) => rule(id).plain,
   // The same for the first screen: what comes first, in a line or two with no percentages. `ruleNow` has the shares.
@@ -183,7 +182,6 @@ export const LAYOUT = Object.freeze({
   keyHide: "Hide the map key",
   // The compact key over the map: the control that opens the full key, and the words beside each mark.
   keyMore: "What the map shows",
-  keyLess: "Hide the full key",
   keyDot: "One rank",
   keyRange: "A range of ranks",
   keyRing: "Not in the list yet",
