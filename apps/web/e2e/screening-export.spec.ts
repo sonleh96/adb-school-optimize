@@ -55,9 +55,7 @@ const SOURCE_LINE = `Source: ${SOURCE_VALUE}`;
 test("the sheet previews the API's file and downloads that file byte for byte", async ({ page }) => {
   await openWorkspace(page);
   await openSheet(page);
-  await expect(sheet(page).getByRole("heading")).toHaveText(
-    "Top list: the first 20 under the research paper's main method"
-  );
+  await expect(sheet(page).getByRole("heading")).toHaveText("Top list: the first 20 under the main method");
   const counts = listed("exports/top_additive_no_u_20.csv");
   const table = sheet(page).locator("[data-region=export-table] tbody tr");
   await expect(table).toHaveCount(counts.point);
@@ -86,9 +84,7 @@ test("the length changes the list, the file and the link", async ({ page }) => {
   );
   await sheet(page).getByRole("button", { name: "10", exact: true }).click();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(10);
-  await expect(sheet(page).getByRole("heading")).toHaveText(
-    "Top list: the first 10 under the research paper's main method"
-  );
+  await expect(sheet(page).getByRole("heading")).toHaveText("Top list: the first 10 under the main method");
   expect(search(page)).toBe("?panel=export&n=10");
 });
 

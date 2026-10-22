@@ -114,6 +114,7 @@ describe("every fixed string follows the writing rules", () => {
     const LAYOUT_ARGS: Record<string, unknown[]> = {
       otherRulesCount: [5],
       keyRamp: ["1st", "20th"],
+      keyRampNote: [20, 4],
       ruleNow: ["additive_no_u"],
       addedBy: ["School need"],
       backToCirculated: ["Combined factors, with urgency"],

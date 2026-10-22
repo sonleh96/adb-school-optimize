@@ -54,7 +54,7 @@ export const GUIDE = Object.freeze({
   returningNote: "To see the guides again, choose Help, then Guides.",
   // Under "What do you want to find out?": what the tool is for, without the caveat the screen shows once at the map's foot.
   startLede: "This tool suggests which schools to look at first, with the main reason for each.",
-  hide: "Hide",
+  hide: "Hide the guides",
   hideAria: "Hide the guides",
   onScreen: "On screen",
   tryIt: "Try it",

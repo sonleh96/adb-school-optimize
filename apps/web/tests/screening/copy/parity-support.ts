@@ -40,6 +40,14 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.keyRamp": [
     ["1st", "20th"],
     ["1st", "1st"],
+    ["1st", "131st", 131],
+    ["1st", "1st", 1],
+  ],
+  "LAYOUT.keyRampNote": [
+    [131, 7],
+    [20, 0],
+    [1, 1],
+    [2, 2],
   ],
   "LAYOUT.backToCirculated": [["Combined factors, with urgency"], ["x"]],
   "LAYOUT.notComputedGroup": [["Need first, no urgency", 4]],

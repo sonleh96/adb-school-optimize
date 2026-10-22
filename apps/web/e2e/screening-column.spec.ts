@@ -56,7 +56,7 @@ const SCOPE_DETAIL_MAIN =
 
 /** The rule area's one plain line on the main rule (TODO(w7-copy): the copy owner's words replace the draft). */
 const QUIET_MAIN =
-  "Ordered by the research paper's main method, which leaves out the uncertain urgency rating.";
+  "Ordered mainly by school need (about 63%), then by conditions in the school's district (about 16%), with smaller parts for how many people live within walking distance, air quality, emissions and land cover (about 5% each).";
 
 const statement = (page: import("@playwright/test").Page) => page.locator("[data-region=list-statement]");
 const changed = (page: import("@playwright/test").Page) => page.locator("[data-region=what-changed]");
@@ -186,7 +186,7 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await ruleChange(page).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(
-    "Ordered by the earlier paper's method, which adds back the uncertain urgency rating."
+    "Ordered mainly by school need (60%), then by conditions in the school's district (15%), with smaller parts for the urgency rating, how many people live within walking distance, air quality, emissions and land cover (5% each)."
   );
   await area.getByRole("button", { name: "Back to the paper's main rule" }).click();
   await expect(area.locator("[data-region=rule-now]")).toHaveText(QUIET_MAIN);
