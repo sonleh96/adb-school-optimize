@@ -83,7 +83,9 @@ test("a link with a rule the tool does not know opens the main method's list and
   release();
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
   await expect.poll(() => search(page)).toBe("");
-  expect(asked.every((query) => query === `?rule=${MAIN_RULE}`)).toBe(true);
+  // The cut-short rule is never asked for: the main method's list is, and whatever the screen compares it with.
+  expect(asked).toContain(`?rule=${MAIN_RULE}`);
+  expect(asked.filter((query) => new URLSearchParams(query).get("rule") === "additive_")).toEqual([]);
 });
 
 test("a URL that says nothing but defaults and junk is tidied, keeping the keys other layers own", async ({
