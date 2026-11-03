@@ -2,6 +2,8 @@
  * Shared pieces of the copy tests: the text guards, an ordinal written independently of the copy, fixtures that
  * come from the API's own saved responses, and a builder for the school shapes the fixtures do not hold.
  */
+import ts from "typescript";
+
 import { RULE_IDS, ruleName } from "@/lib/screening/copy";
 import type { copyFor } from "@/lib/screening/copy";
 import { BANNED, type LaterCopy } from "@/lib/screening/copy/later";
@@ -95,6 +97,38 @@ export function textProblems(text: unknown, options: TextOptions = {}): string[]
   if (!keys && /PgDn|Page Down|press Enter|Tab to\b|\bEsc\b/.test(text))
     problems.push("keyboard hint in plain copy");
   return problems;
+}
+
+/**
+ * Visible text a page's source writes itself: JSX text, sentence-like strings, and the attributes a person reads. A
+ * page whose words all come from the copy system gives none.
+ */
+export function literalsIn(text: string): string[] {
+  const source = ts.createSourceFile("source.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const found: string[] = [];
+  const READ = new Set(["aria-label", "title", "placeholder", "alt", "aria-description", "label"]);
+  const visit = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
+    if (ts.isJsxText(node) && /\p{L}/u.test(node.text)) found.push(node.text.trim());
+    if (
+      ts.isJsxAttribute(node) &&
+      READ.has(node.name.getText()) &&
+      node.initializer &&
+      ts.isStringLiteral(node.initializer)
+    )
+      found.push(node.initializer.text);
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      !ts.isJsxAttribute(node.parent) &&
+      /\p{L}+\s+\p{L}+/u.test(node.text) &&
+      !node.text.startsWith("/") &&
+      !node.text.startsWith("use ")
+    )
+      found.push(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return found;
 }
 
 /** Collects `label: problem` lines over many strings so a failure names every offender at once. */

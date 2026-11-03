@@ -10,12 +10,11 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 import { SIGN_IN } from "@/lib/screening/copy";
 
-import { textProblems } from "./helpers";
+import { literalsIn, textProblems } from "./helpers";
 
 const APP = path.resolve(__dirname, "../../../app/sign-in");
 
@@ -56,34 +55,6 @@ describe("the sign-in words", () => {
   });
 });
 
-/** Visible text a source file writes itself: JSX text, sentence-like strings, and the attributes a person reads. */
-function literalsIn(text: string): string[] {
-  const source = ts.createSourceFile("source.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-  const found: string[] = [];
-  const READ = new Set(["aria-label", "title", "placeholder", "alt", "aria-description", "label"]);
-  const visit = (node: ts.Node) => {
-    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return;
-    if (ts.isJsxText(node) && /\p{L}/u.test(node.text)) found.push(node.text.trim());
-    if (
-      ts.isJsxAttribute(node) &&
-      READ.has(node.name.getText()) &&
-      node.initializer &&
-      ts.isStringLiteral(node.initializer)
-    )
-      found.push(node.initializer.text);
-    if (
-      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
-      !ts.isJsxAttribute(node.parent) &&
-      /\p{L}+\s+\p{L}+/u.test(node.text) &&
-      !node.text.startsWith("/") &&
-      !node.text.startsWith("use ")
-    )
-      found.push(node.text);
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
 const visibleLiterals = (file: string) => literalsIn(readFileSync(file, "utf8"));
 
 describe("the sign-in page", () => {
