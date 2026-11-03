@@ -124,6 +124,26 @@
   position: absolute;
   inset: 0 0 0 var(--rail-w);
 }
+/* Skip to the list: out of sight until the keyboard reaches it, then over everything at the top left. It appears at
+   once, as a keyboard action should. */
+.skipLink {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 60;
+  padding: 9px 14px;
+  border-radius: 6px;
+  background: var(--navy);
+  color: #fff;
+  font: 500 13px/1 var(--sans);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 16px));
+}
+.skipLink:focus {
+  transform: none;
+  outline: 2px solid var(--navy-2);
+  outline-offset: 2px;
+}
 /* Popovers render here, above the panels, so a panel's clipping never cuts them. */
 .layer {
   position: absolute;
@@ -2505,6 +2525,23 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     margin-top: 6px;
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+}
+
+/* A short window (a phone on its side, or a page zoomed to 400 percent): the top bar and the List / Map switch would
+   take 100 of 256 px, so they scroll away with the list instead of staying. A card or a guide step in the band covers
+   the list region under them, so while one is open they stay, and the card keeps its own scroll. */
+@media (max-width: 1023px) and (max-height: 440px) {
+  .root:not([data-has-insp]):not([data-rail-band]) .stage {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The column grows to its rows and scrolls with the stage, so a wheel or a swipe over it moves the whole page. */
+  .root:not([data-has-insp]):not([data-rail-band]) .column {
+    bottom: auto;
+    overflow: visible;
+    overscroll-behavior: auto;
   }
 }
 

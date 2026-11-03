@@ -58,6 +58,8 @@ export const LAYOUT = Object.freeze({
   orderControl: "Change how the list is ordered",
   // The narrow layout's choice between the list and the map band.
   paneAria: "Show the list or the map",
+  // The first stop for the keyboard: past the map, its buttons and the guides, straight to the first school.
+  skipToList: "Skip to the list",
   paneList: "List",
   paneMap: "Map",
   rulePair: "How the list is ordered",

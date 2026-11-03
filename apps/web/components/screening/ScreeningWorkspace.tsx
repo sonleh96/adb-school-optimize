@@ -784,6 +784,21 @@ function Workspace() {
         if (event.key === "Escape" && state.school !== null) clearSelection();
       }}
     >
+      {/* The keyboard's first stop: past the map, its zoom buttons, its credits and the guides, to the first school. */}
+      {ready && !layout.docked && !guidance.page ? (
+        <a
+          href="#screening-list"
+          className={styles.skipLink}
+          data-region="skip"
+          onClick={(event) => {
+            event.preventDefault();
+            const panel = root.current?.querySelector<HTMLElement>("#screening-list");
+            (panel?.querySelector<HTMLElement>("[data-school-key]") ?? panel)?.focus();
+          }}
+        >
+          {copy.LAYOUT.skipToList}
+        </a>
+      ) : null}
       <div className={styles.stage} data-slot="stage" inert={guidance.page}>
         <ScreeningMap
           load={loadMap}
@@ -931,6 +946,8 @@ function Workspace() {
                 className={`${styles.listScroll} ${stale ? styles.stale : ""}`}
                 role="tabpanel"
                 aria-labelledby={`screening-tab-${state.view}`}
+                // Skip to the list lands here when no school is on screen to land on.
+                tabIndex={-1}
               >
                 {data.empty || view.kind === "failed" ? (
                   <FullPanelState
