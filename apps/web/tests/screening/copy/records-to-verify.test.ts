@@ -5,6 +5,7 @@
  *  1. The tab or its sentences call every record missing information, though some give 0 classrooms and miss nothing.
  *  2. The groups are counted from a constant, from another rule's list, or do not add up to the records on the tab.
  *  3. A school that gives 0 classrooms is told, on its own, that information about it is missing.
+ *  4. A term's words call the records to verify incomplete records, though some are complete and give 0 classrooms.
  * The datasets are the API's own saved responses: the default one, and the one with a record for each reason the
  * engine can hold a school for.
  */
@@ -70,5 +71,21 @@ describe("the records to verify", () => {
       "Its record gives 0 classrooms in total, which needs checking, so it is not in the list until someone verifies it. That says nothing about its need."
     );
     expect(P.placeContext(missing, "additive_no_u")).toMatch(/^Information about it is missing/);
+  });
+
+  it("are never called incomplete records in any term, with or without counts (4)", () => {
+    // Every count a term's words can name, so each sentence that only shows with a count is read too.
+    const counted = copy.buildTerms({
+      all: 9,
+      complete: 4,
+      range: 1,
+      ranked: 5,
+      queue: 4,
+      remotenessOnly: 1,
+    });
+    for (const terms of [copy.TERMS, counted])
+      for (const [key, term] of Object.entries(terms))
+        for (const text of [term.label, term.line, term.help])
+          expect(text, `${key}: ${text}`).not.toMatch(/\bincomplete records?\b/i);
   });
 });

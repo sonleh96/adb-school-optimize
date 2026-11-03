@@ -225,7 +225,7 @@ describe("every fixed string follows the writing rules", () => {
       if (on)
         corpus.add(
           `GUIDE.seedViews.${k}.onScreen`,
-          typeof on === "function" ? on("Incomplete records") : on,
+          typeof on === "function" ? on(copy.LAYOUT.incompleteTab) : on,
           { sentence: false }
         );
     }

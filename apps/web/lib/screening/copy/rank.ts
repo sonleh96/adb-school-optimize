@@ -137,8 +137,8 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
 
 /**
  * Why a school's record waits to be verified, as the clause a sentence says it in. A record that gives 0 classrooms
- * has every detail school need is built from, so it is never said to have information missing (the paper's 36); the
- * school's own entry names any other reason.
+ * has every detail school need is built from, so it is never said to have information missing (the paper's second
+ * group); the school's own entry names any other reason.
  */
 const heldBecause = (school: PlacedSchool): string =>
   verifyGroup(school) === "zero"

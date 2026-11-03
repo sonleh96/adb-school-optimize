@@ -23,7 +23,7 @@ export const BANNED = Object.freeze([
   { pattern: /\beligib/i, why: "Reads as eligible for funding; say can be put in order." },
   {
     pattern: /(?<!not an order of )\bpriorit/i,
-    why: "Implies a decision; the order of schools with incomplete records is not a priority order.",
+    why: "Implies a decision; the order of the records to verify is not a priority order.",
   },
   {
     pattern: /\bgood condition|\bpoor condition|\bin need of repair/i,
@@ -47,7 +47,11 @@ export const BANNED = Object.freeze([
   {
     pattern:
       /\bnot ranked\b|\brecords to check\b|\bcondition records?\b|\bin the ranking\b|\bverification queue\b/i,
-    why: "Retired: these are schools with incomplete records.",
+    why: "Retired: these are records to verify.",
+  },
+  {
+    pattern: /\bincomplete records?\b/i,
+    why: "Some records to verify are complete and give 0 classrooms, so the paper never calls them all incomplete.",
   },
   {
     pattern: /\bplaced\b/i,

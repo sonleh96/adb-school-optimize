@@ -322,7 +322,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       line: "The record gives the remoteness category and nothing else about the school's classrooms, teachers, facilities, power or water.",
       help: [
         known(c, "remotenessOnly") && known(c, "queue")
-          ? `${formatCount(c.remotenessOnly)} of the ${formatCount(c.queue)} incomplete records are like this.`
+          ? `${formatCount(c.remotenessOnly)} of the ${formatCount(c.queue)} records to verify ${plural(c.remotenessOnly, "is", "are")} like this.`
           : "",
         "Classroom, teacher, housing, facility, power and water details are all blank.",
       ]
@@ -348,7 +348,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Not calculable from incomplete parts",
       label: "Cannot be worked out",
       line: "A figure built from other parts cannot be calculated because one of those parts is blank or unusable.",
-      help: "School need for every school with an incomplete record reads this way, with the specific reason. It is never shown as not recorded or as 0.",
+      help: "School need reads this way for every school whose record needs verifying, with the specific reason. It is never shown as not recorded or as 0.",
       where: 'School need row for schools with incomplete records (missingValueKind "not_calculable")',
     },
     list_order: {

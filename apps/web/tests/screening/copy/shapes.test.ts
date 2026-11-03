@@ -201,7 +201,7 @@ describe("data of other sizes", () => {
     expect(P.termsFor("additive_u").queue.label).toBe("Records to verify (3)");
     expect(P.termsFor("additive_u").cohort_ranked.label).toBe("Can be put in order (7)");
     expect(P.termsFor("additive_u").missing_all_but_remoteness.help).toBe(
-      "1 of the 3 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
+      "1 of the 3 records to verify is like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );
     expect(P.STRINGS.urgencyDefinition).toMatch(/, and no school has 0\.$/);
     expect(P.scope("additive_u").amongAll).toBe("All 7 schools that can be put in order");

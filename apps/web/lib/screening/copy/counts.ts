@@ -145,7 +145,7 @@ export const theyWould = (c: CountBag | undefined): string =>
   oneRange(c) ? "it would sit" : "they would sit";
 export const theirScore = (c: CountBag | null | undefined): string => (oneRange(c) ? "its" : "their");
 /**
- * The records to verify in the paper's two groups, with the data's counts: "52 have a detail missing. 36 record 0
+ * The records to verify in the paper's two groups, with the data's counts: "13 have a detail missing. 8 record 0
  * classrooms in total, which needs checking." A group of none is left out, and records held for anything else are
  * said apart, so the counts always add up to the tab's.
  */

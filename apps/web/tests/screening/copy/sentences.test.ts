@@ -1034,7 +1034,7 @@ describe("what is missing from a record", () => {
       copyFor({ counts: { ...COUNTS, remotenessOnly: 1 } }).termsFor("additive_u").missing_all_but_remoteness
         .help
     ).toBe(
-      "1 of the 4 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
+      "1 of the 4 records to verify is like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );
   });
 
