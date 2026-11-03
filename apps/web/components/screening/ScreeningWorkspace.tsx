@@ -15,6 +15,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { AdbLogo } from "@/components/AdbLogo";
 import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
 import { type Filters, NO_FILTERS, admits, filterOptions, filtering, finding } from "@/lib/screening/filters";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
@@ -241,12 +242,7 @@ function Masthead({
   const { LAYOUT } = copy;
   return (
     <header className={className}>
-      <svg className={styles.logo} viewBox="0 0 108 108" role="img" aria-label={LAYOUT.logoAria}>
-        <rect width="108" height="108" fill="#0a2e73" />
-        <text x="54" y="68" fill="#fff" fontSize="48" textAnchor="middle">
-          {LAYOUT.logoMark}
-        </text>
-      </svg>
+      <AdbLogo className={styles.logo} label={LAYOUT.logoAria} />
       <h1 className={styles.mastName}>{LAYOUT.productName}</h1>
       <p className={styles.mastSub}>{LAYOUT.productSub}</p>
       {actions ? <div className={styles.mastActions}>{actions}</div> : null}

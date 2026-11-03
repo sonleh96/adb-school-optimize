@@ -1,3 +1,4 @@
+import { AdbLogo } from "@/components/AdbLogo";
 import { getAuthConfig, isAuthRequired, safeNextPath } from "@/lib/auth";
 import { SIGN_IN } from "@/lib/screening/copy/sign-in";
 import { LAYOUT } from "@/lib/screening/copy/words";
@@ -25,12 +26,7 @@ export default async function SignInPage({
     <main className={styles.page}>
       <section className={styles.card} aria-labelledby="sign-in-title">
         <div className={styles.brand}>
-          <svg className={styles.logo} viewBox="0 0 108 108" role="img" aria-label={LAYOUT.logoAria}>
-            <rect width="108" height="108" fill="#0a2e73" />
-            <text x="54" y="68" fill="#fff" fontSize="48" textAnchor="middle">
-              {LAYOUT.logoMark}
-            </text>
-          </svg>
+          <AdbLogo className={styles.logo} label={LAYOUT.logoAria} />
           <p className={styles.name}>{LAYOUT.productName}</p>
           <p className={styles.sub}>{LAYOUT.productSub}</p>
         </div>
