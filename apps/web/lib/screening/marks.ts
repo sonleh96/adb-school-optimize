@@ -10,9 +10,9 @@ export const LAND_COLOUR = "#ece9e2";
 export const WATER_COLOUR = "#dde3e8";
 /**
  * Dark to light, one colour and one dot radius (in pixels) per place band (see workspace/bands.ts: at most five).
- * The lightest step is still 3:1 on land.
+ * The darkest step, which the first ten places always take, is the ADB logo's navy. The lightest is still 3:1 on land.
  */
-export const RAMP_HEX = ["#0a2e73", "#24519f", "#3063b4", "#3d74ca", "#447dd5"] as const;
+export const RAMP_HEX = ["#002569", "#24519f", "#3063b4", "#3d74ca", "#447dd5"] as const;
 /** The rings of the range mark and of the incomplete record, and the fill inside them. */
 export const RANGE_RING_HEX = "#4a4f57";
 export const INCOMPLETE_RING_HEX = "#6e6b63";
