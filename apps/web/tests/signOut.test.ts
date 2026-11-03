@@ -75,7 +75,8 @@ describe("POST /auth/sign-out", () => {
     const response = await post({ Origin: APP, "Sec-Fetch-Site": "same-origin" });
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe(`${APP}/sign-in`);
+    // Relative, so the browser stays on the origin it posted from whatever host the server is named by.
+    expect(response.headers.get("location")).toBe("/sign-in");
     expect(logouts()).toHaveLength(1);
     expect(jar.has(SESSION_COOKIE)).toBe(false);
   });
