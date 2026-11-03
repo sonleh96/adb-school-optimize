@@ -82,8 +82,14 @@ export interface WorkspaceState {
   /** The export sheet shows its Saved views for meetings tab. Only while the sheet is open. */
   readonly pack: boolean;
   readonly n: TopLength;
-  /** The method details' filters: they hide rows and dim marks, and never renumber a place. */
+  /**
+   * The find control's filter, which the plain screen shows: a province, a district of it, and part of a school's name.
+   * Like the method details' filters, they hide rows and fade marks, and never renumber a rank.
+   */
   readonly prov: string | null;
+  readonly dist: string | null;
+  readonly q: string | null;
+  /** The method details' filters. */
   readonly loc: string | null;
   /** Only the incomplete records that lack this part of school need. */
   readonly miss: MissingDetail | null;
@@ -118,6 +124,8 @@ export const DEFAULT_STATE: WorkspaceState = Object.freeze({
   pack: false,
   n: 20,
   prov: null,
+  dist: null,
+  q: null,
   loc: null,
   miss: null,
   formula: false,
@@ -131,8 +139,8 @@ export interface Known {
   readonly ruleIds: ReadonlySet<string> | null;
   readonly defaultRule: RuleId;
   readonly schoolKeys: ReadonlySet<string> | null;
-  /** The provinces and remoteness classes the list holds, for the filters. */
-  readonly provinces?: ReadonlySet<string> | null;
+  /** The provinces the list holds, each with its districts, and the remoteness classes, for the filters. */
+  readonly places?: ReadonlyMap<string, readonly string[]> | null;
   readonly localities?: ReadonlySet<string> | null;
 }
 
@@ -212,6 +220,28 @@ const placeKey = (of: (known: Known) => ReadonlySet<string> | null | undefined):
   write: (value) => value,
 });
 
+/** A province the loaded list holds, or any while it is not known. */
+const provinceKey = placeKey((known) => (known.places ? new Set(known.places.keys()) : null));
+
+/** A district some province of the loaded list holds. That it is the chosen province's is checked in `normalise`. */
+const districtKey: KeyDef<string | null> = {
+  parse: (value, known) => {
+    if (typeof value !== "string" || value === "") return INVALID;
+    const places = known.places;
+    return places && ![...places.values()].some((districts) => districts.includes(value)) ? INVALID : value;
+  },
+  write: (value) => value,
+};
+
+/** The longest name search kept: longer than any school's name. */
+export const SEARCH_MAX = 80;
+/** Text as typed, spaces kept, so a name of two words can be typed; text with nothing in it clears the key. */
+const searchKey: KeyDef<string | null> = {
+  parse: (value) =>
+    typeof value !== "string" ? INVALID : value.trim() === "" ? null : value.slice(0, SEARCH_MAX),
+  write: (value) => value,
+};
+
 /** Layers by name, as a list or as comma-separated URL text; unknown names are dropped, the order is fixed. */
 const hideKey: KeyDef<readonly MapLayer[]> = {
   parse: (value) => {
@@ -238,7 +268,9 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
   qgroup: enumKey<QueueGrouping>("province", "province", "evidence"),
   place: enumKey<Placement>("lower", "lower", "upper"),
   scope: flag,
-  prov: placeKey((known) => known.provinces),
+  prov: provinceKey,
+  dist: districtKey,
+  q: searchKey,
   loc: placeKey((known) => known.localities),
   miss: { parse: oneOf(...MISSING_DETAILS), write: (value) => value },
   formula: flag,
@@ -256,15 +288,7 @@ export const KEYS: { readonly [K in StateKey]: KeyDef<WorkspaceState[K]> } = {
 const STATE_KEYS = Object.keys(KEYS) as StateKey[];
 
 /** The keys only the method details show or act on. */
-const METHOD_ONLY = [
-  "prov",
-  "loc",
-  "miss",
-  "hide",
-  "formula",
-  "parts",
-  "k",
-] as const satisfies readonly StateKey[];
+const METHOD_ONLY = ["loc", "miss", "hide", "formula", "parts", "k"] as const satisfies readonly StateKey[];
 
 const same = <K extends StateKey>(key: K, a: WorkspaceState[K], b: WorkspaceState[K]): boolean =>
   (KEYS[key] as KeyDef<WorkspaceState[K]>).same?.(a, b) ?? a === b;
@@ -276,6 +300,12 @@ function normalise(state: WorkspaceState, known: Known): WorkspaceState {
   if (next.rule === known.defaultRule) next = { ...next, rule: null };
   const shown = next.rule ?? known.defaultRule;
   if (next.compare === shown) next = { ...next, compare: null };
+  // A district belongs to its province: without one, or under another, it is dropped.
+  if (
+    next.dist !== null &&
+    (next.prov === null || (known.places && !known.places.get(next.prov)?.includes(next.dist)))
+  )
+    next = { ...next, dist: null };
   if (next.mode === "compare") {
     // Compare mode is method detail, and always has two rules: the reference defaults to the paper's main rule, and
     // the main rule's comparison to the next rule the API lists.

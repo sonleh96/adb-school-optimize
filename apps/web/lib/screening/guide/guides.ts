@@ -92,6 +92,8 @@ export const BASE: { readonly [K in Exclude<StateKey, "pane">]: Patch[K] } = Obj
   pack: false,
   n: 20,
   prov: null,
+  dist: null,
+  q: null,
   loc: null,
   miss: null,
   formula: false,

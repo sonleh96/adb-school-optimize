@@ -5,49 +5,38 @@ import { useId, useState } from "react";
 
 import type { BoundCopy } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
+import type { FilterOptions, Filters } from "@/lib/screening/filters";
 import type { MapLayer } from "@/lib/screening/workspace/state";
 
+import { FindFields, type FindPatch } from "../Find";
 import base from "../screening.module.css";
 import styles from "./method.module.css";
 
-/** Province and remoteness. Each change applies at once; the list and the map keep every place as it was. */
+/**
+ * The plain screen's province, district and name, then remoteness. Each change applies at once; the list and the map
+ * keep every rank as it was.
+ */
 export function FilterPanel({
   copy,
   method,
-  provinces,
-  localities,
-  prov,
-  loc,
+  options,
+  filters,
   onChange,
 }: {
   copy: BoundCopy;
   method: Method;
-  provinces: readonly string[];
-  localities: readonly string[];
-  prov: string | null;
-  loc: string | null;
-  onChange: (patch: { prov?: string | null; loc?: string | null }) => void;
+  options: FilterOptions;
+  filters: Pick<Filters, "prov" | "dist" | "q" | "loc">;
+  onChange: (patch: FindPatch & { loc?: string | null }) => void;
 }) {
-  const { TERMS, LAYOUT } = copy;
+  const { TERMS } = copy;
+  const { loc } = filters;
+  const { localities } = options;
   const ids = useId();
   return (
     <>
       <p className={base.eyebrow}>{TERMS.filters.label}</p>
-      <label className={styles.field} htmlFor={`${ids}-prov`}>
-        <span>{LAYOUT.byProvince}</span>
-        <select
-          id={`${ids}-prov`}
-          value={prov ?? ""}
-          onChange={(event) => onChange({ prov: event.target.value || null })}
-        >
-          <option value="">{method.filter.allProvinces}</option>
-          {provinces.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FindFields copy={copy} options={options} value={filters} onChange={onChange} />
       <label className={styles.field} htmlFor={`${ids}-loc`}>
         <span>{TERMS.need_locality.label}</span>
         <select

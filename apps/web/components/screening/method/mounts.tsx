@@ -142,12 +142,11 @@ export function useMethodMounts(input: MountInput): Mounts {
   const [layersButton] = useState(() => createRef<HTMLButtonElement>());
   const exportOpener = useRef<HTMLButtonElement>(null);
 
-  // The filters can only hold a province or remoteness class the list has.
+  // The remoteness filter can only hold a class the list has. The workspace tells the store the provinces and districts.
   const { rows } = input;
   useEffect(() => {
     if (!mod || rows.length === 0) return;
-    const options = mod.filterOptions(rows);
-    store.setKnown({ provinces: new Set(options.provinces), localities: new Set(options.localities) });
+    store.setKnown({ localities: new Set(mod.filterOptions(rows).localities) });
   }, [store, mod, rows]);
 
   // Compare mode: the rule compared with (`compare`) and the rule on screen, from the API's comparison of the two.
@@ -164,12 +163,25 @@ export function useMethodMounts(input: MountInput): Mounts {
         ? mod.paintFor({
             hide: state.hide,
             rows,
-            filters: { prov: state.prov, loc: state.loc, miss: state.miss },
+            filters: { prov: state.prov, dist: state.dist, q: state.q, loc: state.loc, miss: state.miss },
             compared: comparing ? compared : null,
             edges: method.compare.moveEdges,
           })
         : NO_PAINT,
-    [on, mod, method, state.hide, state.prov, state.loc, state.miss, rows, comparing, compared]
+    [
+      on,
+      mod,
+      method,
+      state.hide,
+      state.prov,
+      state.dist,
+      state.q,
+      state.loc,
+      state.miss,
+      rows,
+      comparing,
+      compared,
+    ]
   );
 
   const methodSwitch = (

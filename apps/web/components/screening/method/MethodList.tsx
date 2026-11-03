@@ -5,6 +5,7 @@ import { type KeyboardEvent, useEffect, useRef } from "react";
 
 import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
+import { type Filters, nameQuery } from "@/lib/screening/filters";
 import { type OrderedRow, neighbour } from "@/lib/screening/list";
 import type { SchoolKey } from "@/lib/screening/types";
 
@@ -224,17 +225,21 @@ export function MethodListHead({
   total: number;
   hasRanges: boolean;
   upper: boolean;
-  filters: { prov: string | null; loc: string | null };
+  filters: Pick<Filters, "prov" | "dist" | "q" | "loc">;
   filterOpen: boolean;
   filterButton: React.RefObject<HTMLButtonElement | null>;
   onFilter: () => void;
-  onClear: (key: "prov" | "loc") => void;
+  onClear: (key: "prov" | "dist" | "q" | "loc") => void;
   onPlace: () => void;
 }) {
   const scope = copy.scope(rule);
   const { TERMS } = copy;
+  const name = nameQuery(filters.q) === null ? null : filters.q!.trim().replace(/\s+/g, " ");
+  // Removing the province removes its district with it.
   const chips = [
     filters.prov !== null ? (["prov", method.filter.chipProvince(filters.prov)] as const) : null,
+    filters.dist !== null ? (["dist", method.filter.chipDistrict(filters.dist)] as const) : null,
+    name !== null ? (["q", method.filter.chipName(name)] as const) : null,
     filters.loc !== null ? (["loc", method.filter.chipLocality(filters.loc)] as const) : null,
   ].filter((chip) => chip !== null);
   const active = chips.length;

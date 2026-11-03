@@ -370,12 +370,12 @@ test("a plain screen ignores and drops the method details' filters and layers, f
   page,
 }) => {
   const all = ROWS.filter((r) => r.cohort !== "verification_queue").length;
-  await openWorkspace(page, "?prov=South+Province&hide=numerals");
+  await openWorkspace(page, "?loc=Remote&hide=numerals");
   await expect(page.locator("ol[aria-label='The list'] button")).toHaveCount(all);
   await expect(page.locator("[data-rank-label]")).toHaveCount(10);
   expect(search(page)).toBe("");
 
-  await page.goto("/screening?analyst=1&prov=South+Province&hide=numerals");
+  await page.goto("/screening?analyst=1&loc=Remote&hide=numerals");
   await waitForMap(page);
   await expect(page.locator("[data-rank-label]")).toHaveCount(0);
   await methodSwitch(page).click();

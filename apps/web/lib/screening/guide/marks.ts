@@ -40,7 +40,7 @@ export const MARKS: readonly MarkRule[] = [
   { selector: '[data-region="rule-role"]', card: (_, __, ctx) => `rule:${ctx.rule}`, block: true },
   { selector: "#screening-tab-ranked", card: term("cohort_ranked") },
   { selector: '[data-region="queue-tab"]', card: term("queue") },
-  { selector: '[data-region="scope"] > p:first-child', card: firstOnly("cohort_complete"), block: true },
+  { selector: '[data-region="scope-line"]', card: firstOnly("cohort_complete"), block: true },
   { selector: '[data-region="list-order"]', card: term("list_order"), block: true },
   { selector: '[data-region="ranked-list"] [data-place="point"]', card: firstOnly("rank") },
   {

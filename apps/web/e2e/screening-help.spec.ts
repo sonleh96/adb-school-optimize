@@ -157,7 +157,7 @@ test("a card's example never says what the open school card already says", async
 test("a card opens beside the panel that holds its subject, inside the window", async ({ page }) => {
   await openWorkspace(page);
   await page.keyboard.press("?");
-  await page.locator("[data-region=scope] > p[data-xp]").click();
+  await page.locator("[data-region=scope-line][data-xp]").click();
   await expect(card(page)).toBeVisible();
   const box = (await card(page).boundingBox())!;
   const column = (await page.locator("[data-slot=column]").boundingBox())!;

@@ -135,6 +135,7 @@ describe("every fixed string follows the writing rules", () => {
       viewsFull: [50],
       viewPartMissing: [["rule", "school", "hover"], "upper"],
       partAdds: ["Remoteness"],
+      findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "pori" }],
     };
     const LAYOUT_SENTENCES = new Set([
       "workspaceHint",
@@ -158,6 +159,8 @@ describe("every fixed string follows the writing rules", () => {
       "basemapUnavailable",
       "refreshFailed",
       "sessionEnded",
+      "findShowing",
+      "findNoneHint",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       // A file name is a name, not a sentence; its own test checks it.

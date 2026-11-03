@@ -1,5 +1,5 @@
 /**
- * Failure modes of the method details' state keys (analyst, mode, k, panel, n, prov, loc, formula, parts, hide, pop):
+ * Failure modes of the method details' state keys (analyst, mode, k, panel, n, loc, miss, formula, parts, hide, pop):
  *  1. Compare mode shows without the method details, from a link or a guide's setState.
  *  2. Turning the method details off while comparing loses the two rules, or leaves compare mode half on.
  *  3. Compare mode is entered with one rule, so it compares nothing.
@@ -36,7 +36,10 @@ const loaded: Known = {
   ruleIds: RULES,
   defaultRule: S,
   schoolKeys: new Set(["k1"]),
-  provinces: new Set(["North Province", "South Province"]),
+  places: new Map([
+    ["North Province", ["North One"]],
+    ["South Province", ["South One"]],
+  ]),
   localities: new Set(["Remote"]),
 };
 
@@ -134,13 +137,12 @@ describe("the other method keys", () => {
 });
 
 describe("method-only keys on a plain screen (9)", () => {
-  const METHOD_ONLY =
-    "prov=South%20Province&loc=Remote&miss=service_deficit&hide=numerals&formula=1&parts=1&k=10";
+  const METHOD_ONLY = "loc=Remote&miss=service_deficit&hide=numerals&formula=1&parts=1&k=10";
 
   it("are read as their defaults from a plain link, and leave it", () => {
     const plain = stateFromSearch(`?${METHOD_ONLY}&n=30&view=queue`, {
       ...loaded,
-      provinces: new Set(["South Province"]),
+      places: new Map([["South Province", ["South One"]]]),
     });
     expect(plain).toEqual({ ...DEFAULT_STATE, n: 30, view: "queue" });
     expect(searchWithState(`?${METHOD_ONLY}&n=30&view=queue`, plain)).toBe("?view=queue&n=30");
@@ -149,10 +151,9 @@ describe("method-only keys on a plain screen (9)", () => {
   it("are cleared when the method details are turned off, and the plain keys stay", () => {
     const on = stateFromSearch(`?analyst=1&${METHOD_ONLY}&n=30&place=upper`, {
       ...loaded,
-      provinces: new Set(["South Province"]),
+      places: new Map([["South Province", ["South One"]]]),
     });
     expect(on).toMatchObject({
-      prov: "South Province",
       loc: "Remote",
       miss: "service_deficit",
       formula: true,

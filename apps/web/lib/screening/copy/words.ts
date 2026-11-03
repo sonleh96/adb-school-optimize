@@ -17,8 +17,16 @@ const LOST: Readonly<Record<string, { readonly missing: string; readonly instead
   compare: { missing: "the other rule in the comparison", instead: "no comparison" },
   school: { missing: "the school", instead: "no school selected" },
   prov: { missing: "the province", instead: "no province filter" },
+  dist: { missing: "the district", instead: "no district filter" },
   loc: { missing: "the remoteness class", instead: "no remoteness filter" },
 };
+
+/** What the find control holds, in the words its sentence uses: a province, a district of it, part of a name. */
+export interface FindWords {
+  readonly province: string | null;
+  readonly district: string | null;
+  readonly name: string | null;
+}
 
 // Short interface words, so every variant names the same controls the same way.
 export const LAYOUT = Object.freeze({
@@ -78,6 +86,41 @@ export const LAYOUT = Object.freeze({
   partAdds: (label: string) => `Of that, ${lowerFirst(label)}`,
   needParts: "Parts of school need",
   byProvince: "Province",
+  // The find control on the plain screen: a province, a district of it, and part of a school's name. The button's own
+  // word is short; its full name, the panel's title, says what it finds by.
+  find: "Find",
+  findAria: "Find schools by province, district or name",
+  district: "District",
+  schoolName: "School name",
+  allProvinces: "All provinces",
+  allDistricts: "All districts",
+  clearFind: "Clear",
+  // How many schools the find control leaves, of how many, and what it holds. `of` is the tab: the list, or the
+  // schools with missing information. "3 of the 31 schools in the list are in Highlands."
+  findShowing: (shown: number, total: number, of: "list" | "queue", find: FindWords) => {
+    const one = shown <= 1;
+    const group = (n: number) =>
+      of === "queue"
+        ? plural(n, "school with missing information", "schools with missing information")
+        : plural(n, "school in the list", "schools in the list");
+    const where = find.province
+      ? `${one ? "is" : "are"} in ${find.district ? `${find.district}, ${find.province}` : find.province}`
+      : null;
+    const named = find.name
+      ? `${one ? "has" : "have"} "${find.name}" in ${one ? "its" : "their"} name`
+      : null;
+    const parts = [where, named].filter((part): part is string => part !== null);
+    // Nothing to find by: the whole group, as the tab counts it.
+    if (parts.length === 0) return `${formatCount(total)} ${group(total)}.`;
+    const holds = joinList(parts);
+    if (shown === 0) return `No ${group(1)} ${holds}.`;
+    if (shown === total)
+      return total === 1
+        ? `The one ${group(1)} ${holds}.`
+        : `All ${formatCount(total)} ${group(total)} ${holds}.`;
+    return `${formatCount(shown)} of the ${formatCount(total)} ${group(total)} ${holds}.`;
+  },
+  findNoneHint: "Check the spelling, or choose another province or district.",
   /** The heading of the group of incomplete records whose province is blank. */
   provinceNotRecorded: "Province not recorded",
   savedViews: "Saved views for meetings",

@@ -27,8 +27,11 @@ export interface PackItem {
 export const stateOf = (view: Pick<SavedView, "q">, known: Known): WorkspaceState =>
   stateFromSearch(view.q, known);
 
-/** The keys whose values the loaded data decides: a rule it has a run for, a school, a province or remoteness class. */
-const DATA_KEYS = new Set<StateKey>(["rule", "compare", "school", "hover", "prov", "loc"]);
+/**
+ * The keys whose values the loaded data decides: a rule it has a run for, a school, a province, a district or a
+ * remoteness class.
+ */
+const DATA_KEYS = new Set<StateKey>(["rule", "compare", "school", "hover", "prov", "dist", "loc"]);
 
 /**
  * The keys a view's stored state names that the loaded data no longer holds (a school since removed, a rule the API
@@ -36,7 +39,7 @@ const DATA_KEYS = new Set<StateKey>(["rule", "compare", "school", "hover", "prov
  */
 export function droppedKeys(q: string, known: Known): StateKey[] {
   const params = new URLSearchParams(q);
-  const loose: Known = { ...known, ruleIds: null, schoolKeys: null, provinces: null, localities: null };
+  const loose: Known = { ...known, ruleIds: null, schoolKeys: null, places: null, localities: null };
   return (Object.keys(KEYS) as StateKey[]).filter((key) => {
     const value = params.get(key);
     if (value === null || !DATA_KEYS.has(key)) return false;

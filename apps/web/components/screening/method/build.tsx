@@ -12,7 +12,7 @@ import type { CopyRuleId, CopySchool, ListedSchool } from "@/lib/screening/copy"
 import type { Method } from "@/lib/screening/copy/method";
 import { LABELLED_PLACES } from "@/lib/screening/marks";
 import { type Compared, compareFor } from "@/lib/screening/method/compare";
-import { admits, filterOptions, filtering, filteringAny } from "@/lib/screening/method/filters";
+import { admits, filterOptions, filtering, filteringAny } from "@/lib/screening/filters";
 import type { CompareResponse, ListedRow, Rule, RuleId, SchoolDetailResponse } from "@/lib/screening/types";
 import type { MapLayer, WorkspaceState } from "@/lib/screening/workspace/state";
 
@@ -83,7 +83,7 @@ export function buildMounts(input: BuildInput): Built {
   const a = (state.compare ?? null) as CopyRuleId | null;
   const setPop = (pop: WorkspaceState["pop"]) => store.setState({ pop: state.pop === pop ? null : pop });
   const closePop = () => store.setState({ pop: null });
-  const filters = { prov: state.prov, loc: state.loc };
+  const filters = { prov: state.prov, dist: state.dist, q: state.q, loc: state.loc };
   const visible = filtering(filters) ? ordered.filter((row) => admits(row, filters)) : ordered;
   const options = filterOptions(input.rows);
   const complete = ordered.filter((row) => row.cohort === "complete").length;
@@ -135,10 +135,8 @@ export function buildMounts(input: BuildInput): Built {
           <FilterPanel
             copy={copy}
             method={method}
-            provinces={options.provinces}
-            localities={options.localities}
-            prov={state.prov}
-            loc={state.loc}
+            options={options}
+            filters={filters}
             onChange={(patch) => store.setState(patch)}
           />
         </Popover>

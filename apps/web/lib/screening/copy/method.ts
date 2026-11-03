@@ -289,6 +289,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       allProvinces: "All provinces",
       allLocalities: "Any remoteness",
       chipProvince: (v: string) => `Province: ${v}`,
+      chipDistrict: (v: string) => `District: ${v}`,
+      chipName: (v: string) => `Name: ${v}`,
       chipLocality: (v: string) => `${T.need_locality.label}: ${v}`,
       chipsAria: "Active filters",
       remove: (t: string) => `Remove ${t} filter`,
