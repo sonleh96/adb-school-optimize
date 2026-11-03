@@ -5,6 +5,8 @@
  *  3. A school without coordinates reaches the map layer, which cannot draw it, or is dropped from the list.
  *  4. The first view frames the wrong area because of a school that has no position.
  *  5. A mark fades into the basemap: every mark must keep 3:1 against the land and the water.
+ *  6. The place numbers on the first ten dots fade into them. Those dots always take the darkest step (bands.ts cuts
+ *     the first band at 10), and their 10 px numbers need 4.5:1 against it.
  */
 import { describe, expect, it } from "vitest";
 
@@ -12,14 +14,17 @@ import { contrastRatio } from "@/lib/screening/contrast";
 import {
   INCOMPLETE_RING_HEX,
   LAND_COLOUR,
+  MARK_PAPER_HEX,
   RAMP_HEX,
   RANGE_RING_HEX,
   WATER_COLOUR,
   boundsOf,
   bandsOf,
   markOf,
+  numberOnMark,
   toMapSchools,
 } from "@/lib/screening/marks";
+import { bandOf, placeBands } from "@/lib/screening/workspace/bands";
 
 import { results } from "./fixtures";
 
@@ -49,6 +54,21 @@ describe("contrast", () => {
     const ratios = RAMP_HEX.map((hex) => contrastRatio(hex, LAND_COLOUR));
     expect([...ratios].sort((a, b) => b - a)).toEqual(ratios);
   });
+
+  it.each([1, 7, 10, 11, 25, 150, 400])(
+    "keeps 4.5:1 for the place numbers on their dots in a list of %i places",
+    (placed) => {
+      const bands = placeBands(placed);
+      let numbered = 0;
+      for (let rank = 1; rank <= placed; rank++) {
+        const mark = { kind: "dot", rank, step: bandOf(rank, bands) } as const;
+        if (numberOnMark(mark) === null) continue;
+        numbered++;
+        expect(contrastRatio(MARK_PAPER_HEX, RAMP_HEX[mark.step])).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(numbered).toBeGreaterThan(0);
+    }
+  );
 });
 
 describe("markOf", () => {
