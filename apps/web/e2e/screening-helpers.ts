@@ -91,11 +91,27 @@ export { expect };
 
 export const mapLocator = (page: Page) => page.locator("[data-testid=screening-map]");
 
+/**
+ * Waits until the workspace has drawn: the map with its marks wherever the layout shows a map. A phone's List fetches
+ * no map until Map is chosen, so there it waits for the controller's `ready`, which resolves once the list has settled.
+ */
 export async function waitForMap(page: Page) {
+  await waitForWorkspaceHook(page);
+  await page.evaluate(() => window.__screeningWorkspace!.ready);
+  if (!(await mapOnScreen(page))) return;
   await expect(page.locator("[data-testid=screening-map][data-map-ready=true]")).toHaveCount(1, {
     timeout: 25_000,
   });
 }
+
+/** Whether the layout shows the map: always above 1023 px; below, in the Map view or under a guide step's band. */
+export const mapOnScreen = (page: Page) =>
+  page
+    .getByTestId("screening-workspace")
+    .evaluate(
+      (root: HTMLElement) =>
+        root.dataset.layout !== "narrow" || root.dataset.pane === "map" || root.dataset.railBand === "step"
+    );
 
 /** WorkspaceProvider publishes `window.__screeningWorkspace` only after hydration, so wait for it before reading it. */
 export async function waitForWorkspaceHook(page: Page) {
@@ -116,9 +132,8 @@ export async function openWorkspace(page: Page, search = "") {
   await page.goto(`/screening${search}`);
   // Not the column's heading: a link that opens a card the list steps aside for hides the column. The controller's
   // readiness holds in every layout: its hook is published after hydration, and `ready` resolves once the map has
-  // drawn, with or without marks.
-  await waitForWorkspaceHook(page);
-  await page.evaluate(() => window.__screeningWorkspace!.ready);
+  // drawn, with or without marks, or on a phone's List, which fetches no map until Map is chosen, once the list has
+  // settled.
   await waitForMap(page);
   if (!search) await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
 }

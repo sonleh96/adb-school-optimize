@@ -29,6 +29,9 @@
  *                                                                      -> "under reduced motion, every disclosure's..."
  * 15. The open full key scrolls in the band, but the keyboard cannot reach what is scrolled out of view
  *                                                                      -> "the open full key can be scrolled..."
+ * 16. A phone fetches the map's script, worker, style or tiles while the List alone shows, so they hold up a slow
+ *     connection the reader is reading the list on; or Map, tapped, then shows no map
+ *                                                                      -> "on a phone, nothing of the map loads..."
  * The caveat's place in both views is in screening-layout.spec.ts ("the caveat shows once...").
  */
 import type { Page } from "@playwright/test";
@@ -170,6 +173,40 @@ test.describe("at 390 by 844", () => {
     await expect(page.locator("[data-region=pane-switch]")).toBeVisible();
     await expect(pane(page, "List")).toHaveAttribute("aria-pressed", "true");
     await expect(mapLocator(page)).toBeHidden();
+  });
+});
+
+test.describe("the map on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+
+  test("on a phone, nothing of the map loads until Map is tapped, and then the map draws", async ({
+    page,
+  }) => {
+    // The map's own files: its style and tiles, MapLibre's worker, and any script that holds MapLibre or deck.gl.
+    const mapFiles: string[] = [];
+    const reads: Promise<void>[] = [];
+    page.on("response", (response) => {
+      const url = response.url();
+      if (/basemap|maplibre|cartocdn|\.pbf|\.mvt/.test(url)) mapFiles.push(url);
+      else if (/\/_next\/static\/chunks\/.+\.js$/.test(url))
+        reads.push(
+          response.text().then((body) => {
+            if (body.includes("maplibregl-boxzoom") || body.includes("deck.gl")) mapFiles.push(url);
+          })
+        );
+    });
+    await page.goto("/screening");
+    await expect(page.locator(`${ORDERED} button`).first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await Promise.all(reads);
+    expect(mapFiles).toEqual([]);
+    await expect(mapLocator(page)).toHaveCount(0);
+
+    await pane(page, "Map").tap();
+    await waitForMap(page);
+    await expect(mapLocator(page)).toBeVisible();
+    await Promise.all(reads);
+    expect(mapFiles.length).toBeGreaterThan(0);
   });
 });
 
