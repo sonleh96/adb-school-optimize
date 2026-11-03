@@ -80,9 +80,11 @@
     background: #0d3888;
   }
 }
+/* Unavailable (Back on a guide's first step), the button greys but its word stays readable: 5:1 on the grey. */
 .rail .quiet:disabled {
-  opacity: 0.4;
+  background: var(--hair-2);
   cursor: default;
+  color: var(--ink-3);
 }
 .rail .primary kbd {
   padding: 1px 4px;
