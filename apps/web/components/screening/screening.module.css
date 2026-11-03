@@ -1038,11 +1038,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   outline-offset: -2px;
 }
 
+/* Figures are bold and set tight, a size up from the names beside them. */
 .place {
   text-align: right;
-  font: 500 16px/19px var(--sans);
+  font: 600 17px/19px var(--sans);
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--track-title);
   color: var(--ink);
 }
 .ord {
@@ -1050,11 +1051,11 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   top: -0.42em;
   margin-left: 0.5px;
   font-size: 0.62em;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 0;
   vertical-align: baseline;
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 .placeRange {
   display: grid;
@@ -1068,7 +1069,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 .placeTo {
   margin: 0 0.3em;
-  font: italic 400 13px/14px var(--serif);
+  font: 500 11px/14px var(--sans);
+  letter-spacing: 0.02em;
   color: var(--ink-3);
 }
 .placeRange .placeTo {
@@ -1085,7 +1087,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .name {
   font-size: 14px;
   line-height: 19px;
-  font-weight: 500;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 /* The separator and the province (or district) are one unbreakable piece, so "·" never ends a line (R6). */
@@ -1732,8 +1734,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 /* A name wraps at any character, so even an unbroken 59-character token stays inside the card (R1). */
 .cardName {
   margin: 0;
-  font: 500 24px/28px var(--serif);
-  letter-spacing: -0.008em;
+  font: 600 22px/27px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -1812,7 +1814,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 .heroLabel b {
   display: block;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
 }
 .heroLabel span {
@@ -2392,6 +2394,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .narrowHeadTitle {
     margin: 0;
     font: 600 15px/20px var(--sans);
+    letter-spacing: var(--track-title);
     color: var(--ink);
   }
   .cardCaveat {

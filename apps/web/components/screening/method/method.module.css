@@ -69,8 +69,8 @@
 }
 .ruleLabel {
   margin: 0;
-  font: 500 23px/27px var(--serif);
-  letter-spacing: -0.008em;
+  font: 600 21px/26px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -343,9 +343,9 @@
 }
 .place {
   text-align: right;
-  font: 500 15px/18px var(--sans);
+  font: 600 15px/18px var(--sans);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--track-title);
 }
 .place[data-range] {
   display: grid;

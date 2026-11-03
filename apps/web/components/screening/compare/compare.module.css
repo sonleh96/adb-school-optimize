@@ -62,7 +62,8 @@
   min-width: 0;
 }
 .pickerLabel {
-  font: 500 16px/20px var(--serif);
+  font: 600 15px/20px var(--sans);
+  letter-spacing: var(--track-title);
   overflow-wrap: anywhere;
 }
 .pickerRole {

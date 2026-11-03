@@ -228,8 +228,8 @@
 /* the start: what do you want to find out */
 .startTitle {
   margin: 4px 0 10px;
-  font: 500 30px/34px var(--serif);
-  letter-spacing: -0.016em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
 }
 /* The compact Start here: one line, and the control that unfolds the guides under it, beside the line where the
@@ -356,7 +356,7 @@
   min-width: 0;
 }
 .taskTitle {
-  font: 500 14px/19px var(--sans);
+  font: 600 14px/19px var(--sans);
   color: var(--ink);
   overflow-wrap: anywhere;
   transition: color 150ms ease;
@@ -395,7 +395,7 @@
   color: var(--navy);
 }
 .howTitle {
-  font: italic 400 17px/22px var(--serif);
+  font: 600 14px/20px var(--sans);
 }
 .rail .howLink .taskSub {
   grid-column: 1;
@@ -428,8 +428,8 @@
 /* a step */
 .stepTitle {
   margin: 4px 0 14px;
-  font: 500 26px/30px var(--serif);
-  letter-spacing: -0.012em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }

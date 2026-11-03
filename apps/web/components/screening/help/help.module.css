@@ -235,8 +235,8 @@
 }
 .title {
   margin: 4px 0 0;
-  font: 500 22px/26px var(--serif);
-  letter-spacing: -0.008em;
+  font: 600 19px/24px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
   outline: none;

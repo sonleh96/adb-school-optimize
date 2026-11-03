@@ -79,13 +79,15 @@
 }
 .title {
   margin: 14px 0 0;
-  font: 400 30px/36px var(--serif);
-  letter-spacing: -0.01em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
+/* A rule's name in the title: navy rather than a slanted sans, as names read elsewhere in the sans. */
 .title em {
-  font-style: italic;
+  font-style: normal;
+  color: var(--navy);
 }
 .lede {
   margin: 12px 0 0;
