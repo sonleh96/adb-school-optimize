@@ -7,7 +7,11 @@
  *  5. A mark fades into the basemap: every mark must keep 3:1 against the land and the water.
  *  6. The place numbers on the first ten dots fade into them. Those dots always take the darkest step (bands.ts cuts
  *     the first band at 10), and their 10 px numbers need 4.5:1 against it.
+ *  7. A range is drawn in two inks: the map's ring in one, the key and the range strips in another.
  */
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { contrastRatio } from "@/lib/screening/contrast";
@@ -48,6 +52,24 @@ describe("contrast", () => {
       expect(contrastRatio(ring, LAND_COLOUR)).toBeGreaterThanOrEqual(3);
       expect(contrastRatio(ring, WATER_COLOUR)).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it("draws the range ring in the second ink, the one the key and the range strips use", () => {
+    const css = readFileSync(
+      path.resolve(__dirname, "../../components/screening/screening.module.css"),
+      "utf8"
+    );
+    expect(RANGE_RING_HEX).toBe(css.match(/--ink-2:\s*(#[0-9a-f]{6})/i)?.[1]);
+    // The ink the ring had before the tokens moved, as a hex or as the rgb of a tint, is gone everywhere.
+    const components = path.resolve(__dirname, "../../components");
+    const files = readdirSync(components, { recursive: true, encoding: "utf8" }).filter((f) =>
+      /\.(css|tsx?)$/.test(f)
+    );
+    const old = files.filter((f) =>
+      /#4a4f57|74,\s*79,\s*87/i.test(readFileSync(path.join(components, f), "utf8"))
+    );
+    expect(old).toEqual([]);
+    expect(files.length).toBeGreaterThan(10);
   });
 
   it("keeps the ramp ordered from dark to light, so a better place is the darker mark", () => {
