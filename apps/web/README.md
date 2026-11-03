@@ -28,5 +28,6 @@ npm run dev
 - `npm run lint`, `npm run typecheck`, `npm run format:check` and `npm test` run without a browser.
 - `npm run test:e2e` builds against the mock API in `scripts/mock-api.mjs` and runs the Playwright tests.
   `CI_APP_PORT` and `CI_MOCK_API_PORT` choose the ports, so two checkouts can run side by side.
-- `npm run bundle:check` fails when the workspace's first load goes over 250 KiB gzip.
+- `npm run bundle:check`, after `npm run build`, fails when the script `/screening` loads up front goes over 230 KiB gzip, or when that script holds MapLibre or deck.gl.
+- `npm run analyze` writes the Turbopack bundle analysis to `.next/diagnostics/analyze`.
 - `npm run lighthouse` runs desktop Lighthouse on `/screening` and `/sign-in`.
