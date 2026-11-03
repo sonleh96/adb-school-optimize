@@ -2435,8 +2435,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .topBar .logo {
     grid-row: auto;
   }
+  /* One row: spanning the desktop masthead's two rows left the bar's content 10 px above its middle. */
   .topBar .mastActions {
     grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
   }
   .column > .masthead {
     display: none;
