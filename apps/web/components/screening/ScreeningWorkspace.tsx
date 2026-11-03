@@ -330,10 +330,18 @@ function Workspace() {
   const bands = useMemo(() => bandsOf(rows), [rows]);
   const mapSchools = useMemo(() => toMapSchools(rows, bands), [rows, bands]);
 
-  // The find control's choices are the provinces and districts the list holds; the store drops any other value.
+  // The find control's choices are the provinces and districts the list holds; the store drops any other value. A
+  // link read before the data came in may name one the data does not hold, and the screen says so, as a saved view's
+  // does, until the reader chooses a place.
   const options = useMemo(() => filterOptions(rows), [rows]);
+  const [linkLost, setLinkLost] = useState<readonly ("prov" | "dist")[]>([]);
   useEffect(() => {
-    if (rows.length > 0) store.setKnown({ places: options.places });
+    if (rows.length === 0) return;
+    const before = store.snapshot();
+    store.setKnown({ places: options.places });
+    const after = store.snapshot();
+    const lost = (["prov", "dist"] as const).filter((key) => before[key] !== null && after[key] === null);
+    if (lost.length > 0) setLinkLost(lost);
   }, [store, options, rows.length]);
   // Every filter in force, the find control's and the method details' (which are null on a plain screen). They hide
   // rows and fade marks; a row keeps the rank it has in the whole list.
@@ -673,6 +681,7 @@ function Workspace() {
   // it leaves. The method details keep their own filter in the list's head.
   const changeFind = (patch: FindPatch) => {
     store.setState(patch);
+    setLinkLost([]);
     list.current?.scrollTo({ top: 0 });
   };
   const toggleFind = () => {
@@ -717,6 +726,13 @@ function Workspace() {
         clear={copy.LAYOUT.clearFind}
         onClear={clearFind}
       />
+    ) : null;
+  // A province or district the link named that the data does not hold.
+  const linkLostLine =
+    linkLost.length > 0 ? (
+      <p className={styles.scopeDetail} role="status" data-region="link-lost">
+        {copy.LAYOUT.linkPartMissing(linkLost)}
+      </p>
     ) : null;
 
   const copyLink = (compact: boolean) => (
@@ -1025,6 +1041,7 @@ function Workspace() {
                                   {method.listExportButton}
                                 </span>
                               </div>
+                              {linkLostLine}
                               {scopeOpen && !found ? (
                                 <p className={styles.scopeDetail} id="screening-scope-detail">
                                   {shown.copy.scope(shown.rule).scopeDetail}
@@ -1060,6 +1077,7 @@ function Workspace() {
                           </div>
                           {method.on ? null : findPanel}
                           {method.on ? null : findStatus(queued.length, incomplete.length, "queue")}
+                          {method.on ? null : linkLostLine}
                           {/* The lead says none when there is no incomplete record; then there is nothing to group or
                               put in order. */}
                           <p className={styles.queueLead} data-term="queue">

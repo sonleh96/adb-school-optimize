@@ -18,6 +18,8 @@
  * 11. Moving through a list with the arrow keys folds it at the first key, before the reader reaches the province
  *     they want, or Enter does not fold it                                              -> "the arrow keys..."
  * 12. Typing a name folds the fields mid-word, or Enter leaves them open                -> "a choice folds..."
+ * 13. A link names a province or district the data does not hold, and the screen drops it without a word, or keeps
+ *     saying so after the reader has chosen a place                                     -> "a link that names a place..."
  */
 import type { Page } from "@playwright/test";
 
@@ -242,4 +244,27 @@ test("the arrow keys move through a list without folding it, and Enter folds it"
   await expect(panel(page)).toHaveCount(0);
   await expect(findButton(page)).toBeFocused();
   expect(search(page)).toBe("?prov=North+Province");
+});
+
+test("a link that names a place the data does not hold says so, as a saved view does, until a place is chosen", async ({
+  page,
+}) => {
+  const lost = page.locator("[data-region=link-lost]");
+  await openWorkspace(page, "?prov=West+Province&dist=West+One");
+  await expect(lost).toHaveText(
+    "Part of this link could not be opened: the province and the district are not in the data, so the screen shows no province filter and no district filter instead."
+  );
+  await expect(shownRows(page)).toHaveCount(listed.length);
+  expect(search(page)).toBe("");
+
+  // A district its province does not hold: the province stays.
+  await openWorkspace(page, "?prov=South+Province&dist=Nowhere");
+  await expect(lost).toHaveText(
+    "Part of this link could not be opened: the district is not in the data, so the screen shows no district filter instead."
+  );
+  await expect(status(page)).toHaveText(/ are in South Province\.$/);
+
+  await findButton(page).click();
+  await province(page).selectOption("North Province");
+  await expect(lost).toHaveCount(0);
 });

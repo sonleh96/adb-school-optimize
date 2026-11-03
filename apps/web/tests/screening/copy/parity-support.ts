@@ -86,6 +86,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [["school"], "upper"],
     [["rule"], "lower"],
   ],
+  "LAYOUT.linkPartMissing": [[["prov"]], [["dist"]], [["prov", "dist"]]],
   "LAYOUT.partAdds": [["Remoteness"], ["Classrooms not of permanent materials"]],
   "LAYOUT.listFileName": [
     ["Combined factors, without urgency", "2026-11-03", null],

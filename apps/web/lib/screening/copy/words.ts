@@ -247,6 +247,15 @@ export const LAYOUT = Object.freeze({
     });
     return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead${placement === "upper" ? ", and the order it saved for the schools that show a range still applies" : ""}.`;
   },
+  // The same for a link someone pasted or was sent, whose province or district the data does not hold.
+  linkPartMissing: (keys: readonly string[]) => {
+    const found = [...new Set(keys)].map((k) => {
+      const words = LOST[k];
+      if (!words) throw new Error(`No words for a link's ${k}`);
+      return words;
+    });
+    return `Part of this link could not be opened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} not in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead.`;
+  },
   removeView: (name: string) => textOf(removeViewSegments(name)),
   afterDownloadList: "Downloaded the research file. The method record is in the first lines of the file.",
   afterDownloadPack:
