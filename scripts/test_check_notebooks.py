@@ -43,6 +43,40 @@ class CheckTextTest(unittest.TestCase):
         cell = code_cell(outputs=[out], execution_count=3, source=[SECRET])
         self.assertNotIn(SECRET, "\n".join(check_notebooks.check_text(notebook(cell))))
 
+    def test_unknown_cell_type_is_not_echoed(self):
+        cell = code_cell(cell_type=SECRET, execution_count=1)
+        problems = check_notebooks.check_text(notebook(cell))
+        self.assertEqual(len(problems), 1)
+        self.assertNotIn(SECRET, problems[0])
+
+    def test_attachments_on_markdown_and_raw_cells_are_flagged(self):
+        # A pasted screenshot of a table is stored as a cell attachment.
+        for kind in ("markdown", "raw"):
+            with self.subTest(kind=kind):
+                cell = {
+                    "cell_type": kind,
+                    "metadata": {},
+                    "source": [],
+                    "attachments": {"t.png": {"image/png": SECRET}},
+                }
+                problems = check_notebooks.check_text(notebook(cell))
+                self.assertEqual(len(problems), 1)
+                self.assertIn("attachments", problems[0])
+
+    def test_empty_attachments_pass(self):
+        md = {"cell_type": "markdown", "metadata": {}, "source": [], "attachments": {}}
+        self.assertEqual(check_notebooks.check_text(notebook(md)), [])
+
+    def test_saved_widget_state_is_flagged(self):
+        nb = json.loads(notebook(code_cell()))
+        nb["metadata"]["widgets"] = {
+            "application/vnd.jupyter.widget-state+json": {"state": {"m": {SECRET: 1}}}
+        }
+        problems = check_notebooks.check_text(json.dumps(nb))
+        self.assertEqual(len(problems), 1)
+        self.assertIn("widgets", problems[0])
+        self.assertNotIn(SECRET, problems[0])
+
     def test_execution_count_zero_is_flagged(self):
         problems = check_notebooks.check_text(notebook(code_cell(execution_count=0)))
         self.assertEqual(len(problems), 1)
@@ -53,7 +87,8 @@ class CheckTextTest(unittest.TestCase):
         self.assertEqual(len(check_notebooks.check_text(notebook(md))), 1)
 
     def test_each_output_like_metadata_key_is_flagged(self):
-        for key in check_notebooks.OUTPUT_METADATA_KEYS:
+        # Listed here, not read from the module, so dropping a key fails the test.
+        for key in ("collapsed", "scrolled", "ExecuteTime", "execution", "outputExpanded", "outputs"):
             with self.subTest(key=key):
                 problems = check_notebooks.check_text(notebook(code_cell(metadata={key: True})))
                 self.assertEqual(len(problems), 1)
@@ -138,6 +173,20 @@ class TrackedFilesTest(unittest.TestCase):
     def test_clean_tracked_notebooks_exit_0(self):
         self.add("clean.ipynb", notebook(code_cell()))
         self.assertEqual(run_script(self.repo).returncode, 0)
+
+    def test_upper_and_mixed_case_extensions_are_checked(self):
+        self.add("UPPER.IPYNB", notebook(code_cell(execution_count=1)))
+        self.add("sub/Mixed.Ipynb", notebook(code_cell(execution_count=1)))
+        result = run_script(self.repo)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("UPPER.IPYNB: cell 0", result.stdout)
+        self.assertIn("sub/Mixed.Ipynb: cell 0", result.stdout)
+
+    def test_force_added_notebook_in_an_ignored_folder_is_checked(self):
+        self.add(".gitignore", "notebooks/\n")
+        self.add("notebooks/n.ipynb", notebook(code_cell(execution_count=1)), track=False)
+        git(self.repo, "add", "-f", "notebooks/n.ipynb")
+        self.assertEqual(run_script(self.repo).returncode, 1)
 
     def test_untracked_dirty_notebook_is_not_checked(self):
         self.add("scratch.ipynb", notebook(code_cell(execution_count=1)), track=False)
