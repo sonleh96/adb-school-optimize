@@ -501,33 +501,16 @@ test("with no saved views the rail and the sheet's tab say so, and restoring bri
   await expect(section(page).locator("[data-region=no-views]")).toHaveCount(0);
 });
 
-test("a guide step never lands on the saved views tab", async ({ page, problems }) => {
-  // The tab may start reading its rules' files before the step closes the sheet, depending on timing. The reads are
-  // held until the step has closed it, so a read that started is always cancelled by the close. That cancellation is
-  // the next test's subject, where reads are sure to start; here the step's screen is.
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  const reads: string[] = [];
-  await page.route(/\/exports\/top\.csv/, async (route) => {
-    reads.push(route.request().url());
-    await held;
-    // A read the page has already cancelled cannot be continued.
-    await route.continue().catch(() => undefined);
-  });
-
+test("a guide step never lands on the saved views tab", async ({ page }) => {
+  // The tab may start reading its rules' files before the step closes the sheet, and the close cancels them; the
+  // next test is about that cancellation, and here the step's screen is.
   await open(page, "?panel=export&pack=1&guide=q1&gstep=1");
   await expect(page.getByTestId("guide-step-title")).toBeVisible();
   await expect.poll(() => workspace(page)).toMatchObject({ panel: null, pack: false });
-  release();
-
-  // A cancelled read of the tab is the only failure allowed.
-  expect(problems.filter((p) => !reads.some((url) => p === `requestfailed: ${url}`))).toEqual([]);
-  problems.length = 0;
 });
 
 test("closing the sheet while the tab reads its files cancels the reads, and logs nothing", async ({
   page,
-  problems,
 }) => {
   let release!: () => void;
   const held = new Promise<void>((resolve) => (release = resolve));
@@ -548,10 +531,8 @@ test("closing the sheet while the tab reads its files cancels the reads, and log
   await expect(sheet(page)).toHaveCount(0);
   await expect.poll(() => cancelled.length).toBe(reads.length);
   release();
+  // Every read was cancelled, and the shared check finds no console message or other failure with them.
   expect(cancelled.sort()).toEqual(reads.sort());
-  // The cancelled reads are the only failures; no console message comes with them.
-  expect(problems.filter((p) => !reads.some((url) => p === `requestfailed: ${url}`))).toEqual([]);
-  problems.length = 0;
 });
 
 test("worst-case names stay inside the sheet's list", async ({ page, context }) => {

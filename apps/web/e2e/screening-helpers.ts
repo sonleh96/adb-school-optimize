@@ -42,7 +42,7 @@ export const numberedPlaces = (rule: string) =>
 
 /**
  * Every test fails on console errors and warnings, page errors, failed requests and HTTP errors, except the one
- * browser driver note that console-noise.ts describes. A test that provokes some on purpose empties `problems`
+ * browser driver note that console-noise.ts describes and the reads the page cancels on purpose. A test that provokes some on purpose empties `problems`
  * after asserting what it expects.
  */
 export const test = base.extend<{ problems: string[]; firstVisit: boolean; returningVisitor: void }>({
@@ -72,7 +72,12 @@ export const test = base.extend<{ problems: string[]; firstVisit: boolean; retur
           problems.push(`${entry.type}: ${entry.text}`);
       });
       page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
-      page.on("requestfailed", (request) => problems.push(`requestfailed: ${request.url()}`));
+      // The page cancels a read it no longer needs, such as the list of a rule the reader has already left. That
+      // is the page working, not failing, so only a read that failed for another reason is a problem.
+      page.on("requestfailed", (request) => {
+        if (request.failure()?.errorText !== "net::ERR_ABORTED")
+          problems.push(`requestfailed: ${request.url()}`);
+      });
       page.on("response", (response) => {
         if (response.status() >= 400) problems.push(`${response.status()}: ${response.url()}`);
       });

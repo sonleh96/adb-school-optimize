@@ -11,10 +11,59 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
 
+const originOf = (value) => {
+  try {
+    return value ? new URL(value).origin : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * What the pages may load. The API is reached through this origin's own /api/v1 proxy unless
+ * NEXT_PUBLIC_API_BASE_URL names another; the light basemap's style, tiles, sprites and label fonts come from
+ * *.cartocdn.com; MapLibre runs its worker from this origin or a blob URL, and it and deck.gl draw with WebGL, which
+ * needs no directive. Next.js puts the page's data and its boot script inline, so inline scripts are allowed; nothing
+ * else is, and no other site may frame the tool.
+ */
+function contentSecurityPolicy() {
+  const dev = process.env.NODE_ENV !== "production";
+  const api = originOf(process.env.NEXT_PUBLIC_API_BASE_URL);
+  const directives = {
+    "default-src": ["'self'"],
+    // The development server evaluates its modules and reloads them over a socket.
+    "script-src": ["'self'", "'unsafe-inline'", ...(dev ? ["'unsafe-eval'"] : [])],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "img-src": ["'self'", "data:", "blob:", "https://*.cartocdn.com"],
+    "font-src": ["'self'", "data:"],
+    "connect-src": ["'self'", "https://*.cartocdn.com", ...(api ? [api] : []), ...(dev ? ["ws:"] : [])],
+    "worker-src": ["'self'", "blob:"],
+    "child-src": ["'self'", "blob:"],
+    "object-src": ["'none'"],
+    "base-uri": ["'self'"],
+    "form-action": ["'self'"],
+    "frame-ancestors": ["'none'"],
+  };
+  return Object.entries(directives)
+    .map(([name, values]) => `${name} ${values.join(" ")}`)
+    .join("; ");
+}
+
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy() },
+  // Another site learns this origin, never the page's address with the school a reader opened.
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   // The app is the screening workspace. A redirect from the config keeps the query string, so a link with the
   // workspace's URL state in it opens the same view, and the page's boot script reads the final address.
   async redirects() {

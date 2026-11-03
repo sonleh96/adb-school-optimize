@@ -1,13 +1,14 @@
 "use client";
 
 import { ChevronUp } from "lucide-react";
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
 import { RAMP_HEX } from "@/lib/screening/marks";
 import type { Band } from "@/lib/screening/workspace/bands";
 
 import styles from "./screening.module.css";
+import { useOverflows } from "./useOverflows";
 
 /** The three marks, drawn as the map draws them. */
 function Mark({ kind }: { kind: "dot" | "range" | "ring" }) {
@@ -51,6 +52,8 @@ export function Legend({
 }) {
   const body = useId();
   const heading = useId();
+  const [bodyElement, setBodyElement] = useState<HTMLDivElement | null>(null);
+  const scrolls = useOverflows(bodyElement);
   const { LAYOUT, TERMS } = copy;
   const title = rule ? LAYOUT.underRule(TERMS.rank.label, copy.rulePlainName(rule)) : TERMS.rank.label;
   const label = (band: Band) =>
@@ -72,9 +75,17 @@ export function Legend({
       data-stale={stale || undefined}
     >
       {open ? (
-        // On a phone the open key can be taller than the band leaves it and scrolls, so it is a named stop for the
-        // keyboard, which can then scroll it to what is out of view.
-        <div id={body} className={styles.legendBody} role="region" aria-labelledby={heading} tabIndex={0}>
+        // On a phone the open key can be taller than the band leaves it and scrolls, so it is then a named stop for
+        // the keyboard, which can scroll it to what is out of view. Beside the map on a wide screen it fits, and is
+        // no stop at all.
+        <div
+          ref={setBodyElement}
+          id={body}
+          className={styles.legendBody}
+          role="region"
+          aria-labelledby={heading}
+          tabIndex={scrolls ? 0 : undefined}
+        >
           <p id={heading} className={styles.legendTitle} data-testid="legend-rule" data-term="rank">
             {title}
           </p>

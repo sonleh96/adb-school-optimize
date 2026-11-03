@@ -8,7 +8,12 @@
  *  3. An incomplete record's card has no reasons, or prints "null"      -> "an incomplete record's card..."
  *  4. The paper's persistence flag shows under another rule, or for a school without it, or a flag only just over
  *     the line does not say so                                          -> "the persistence flag..."
- *  5. The card's arrows leave the list's order, or its count is not the list's -> "the card steps..."
+ *  5. The card's arrows leave the list's order, or the card states a count beside its rank that contradicts it
+ *     ("14 of 22" beside "10th to 17th")                                -> "the card steps..."
+ *  5b. A bigger reason gets a later number than a smaller one, or the words that group the reasons stop being true
+ *                                                                       -> "the card numbers its reasons by size..."
+ *  5c. The part of a card that scrolls cannot be reached or named from the keyboard, or the key's body is a stop
+ *     for the keyboard when it does not scroll                          -> "the card's body..."
  *  6. A record that fails to load leaves the card blank or broken      -> "a card whose record..."
  *  7. Copy link copies another address, or fails silently             -> "Copy link..."
  *  8. The key's bands are hard-coded, or a one-school list breaks it (R12) -> "the key..."
@@ -172,19 +177,85 @@ test("each rule's persistence flag shows under its own rule only, in its own wor
   await expect(flag).toHaveCount(0);
 });
 
-test("the card steps through the list on screen and counts it", async ({ page }) => {
+test("the card steps through the list on screen, and states no count that could contradict its rank", async ({
+  page,
+}) => {
   await openWorkspace(page);
+  // A range school ranks 10th to 17th but sits lower in the list on screen, so a count beside it would disagree.
+  await orderedRow(page, "Sample School 17").click();
+  await expect(place(page)).toHaveText("10thto17th");
+  await expect(card(page).locator("[class*=cardBar]")).not.toContainText(/\d+ of \d+/);
   await orderedRow(page, "Sample School 08").click();
-  await expect(card(page)).toContainText("1 of 22");
   await expect(card(page).getByRole("button", { name: "Previous school" })).toBeDisabled();
   await card(page).getByRole("button", { name: "Next school" }).click();
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "true");
-  await expect(card(page)).toContainText("2 of 22");
+  await expect(card(page).locator("[class*=cardBar]")).not.toContainText(/\d+ of \d+/);
 
   await tab(page, /Missing information/).click();
   await queuedRow(page, "Sample School 24").click();
-  await expect(card(page)).toContainText("3 of 3");
   await expect(card(page).getByRole("button", { name: "Next school" })).toBeDisabled();
+});
+
+/** Each numbered reason as "number term", by the glossary term of its input, in the card's reading order. */
+const reasonNumbers = (page: Page) =>
+  card(page)
+    .locator("[data-region=inspector-why]")
+    .evaluate((why) =>
+      [...why.querySelectorAll("[data-term]")].flatMap((label) => {
+        // The number is a sibling of the label, or of the block that holds it.
+        for (let at: Element | null = label; at && at !== why; at = at.parentElement) {
+          const n = [...(at.parentElement?.children ?? [])].find((el) => /reasonN/.test(el.className));
+          if (n) return n.textContent ? [`${n.textContent} ${label.getAttribute("data-term")}`] : [];
+        }
+        return [];
+      })
+    );
+
+test("the card numbers its reasons by size, and its grouping words stay true", async ({ page }) => {
+  await openWorkspace(page);
+  // District context adds most, then two parts of school need: the group that holds the largest reason comes first.
+  await orderedRow(page, "Sample School 04").click();
+  const why = card(page).locator("[data-region=inspector-why]");
+  await expect(why.locator("[data-region=need-box]")).toBeVisible();
+  expect(await reasonNumbers(page)).toEqual(["1 area_context", "2 need_housing", "3 need_classrooms"]);
+  await expect(why.locator("p").first()).toHaveText(
+    "Three things add most to its score under the main method. One is not part of its school need."
+  );
+  await expect(why).toContainText(
+    "The other two are parts of its school need, the measure built from five parts of its own record."
+  );
+
+  // A reason outside school need sits between two parts of it in size: the numbers still follow size, and both
+  // parts stay in the school need box.
+  await orderedRow(page, "Sample School 07").click();
+  await expect(why.locator("[data-region=need-box]")).toBeVisible();
+  expect(await reasonNumbers(page)).toEqual(["1 need_housing", "3 need_locality", "2 area_context"]);
+  await expect(why).toContainText("The other is not part of its school need.");
+});
+
+test("the card's body is a named stop for the keyboard while it scrolls, and the key's body only while it scrolls", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await orderedRow(page, "Sample School 08").click();
+  await expect(card(page).locator("[data-region=inspector-breakdown]")).toBeVisible();
+  const body = card(page).locator("[class*=cardScroll]");
+  expect(await body.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  // After the bar's last button comes the body, named by the school, and the keyboard scrolls it.
+  await page.getByTestId("close-card").focus();
+  await page.keyboard.press("Tab");
+  await expect(body).toBeFocused();
+  await expect(body).toHaveAccessibleName("Sample School 08");
+  await page.keyboard.press("End");
+  await expect.poll(() => body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+
+  // The open key fits beside the map on a wide screen, so it is no stop at all.
+  await page.getByTestId("close-card").click();
+  await page.locator("[data-slot=legend]").getByRole("button", { name: "What the map shows" }).click();
+  const key = page.locator("[data-slot=legend] [class*=legendBody]");
+  await expect(key).toBeVisible();
+  expect(await key.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(false);
+  await expect(key).not.toHaveAttribute("tabindex", /.*/);
 });
 
 test("a card whose record does not load keeps the school's place and offers Retry", async ({

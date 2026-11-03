@@ -124,7 +124,6 @@ describe("every fixed string follows the writing rules", () => {
       fingerprints: [15],
       afterDownload: ["the top list"],
       viewOf: [2, 4],
-      positionOf: [3, 20],
       placeRange: ["3rd", "12th"],
       valueRange: ["0.487", "0.537"],
       underRule: ["Rank in the list", "the combined-factors rule with urgency (S)"],

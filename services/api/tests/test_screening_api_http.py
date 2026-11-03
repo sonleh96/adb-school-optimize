@@ -45,6 +45,7 @@ def test_every_screening_route_rejects_an_unauthenticated_request(api, monkeypat
     secret = "test-secret-with-sufficient-length"
     monkeypatch.setenv("AUTH_REQUIRED", "true")
     monkeypatch.setenv("SUPABASE_JWT_SECRET", secret)
+    monkeypatch.setenv("AUTH_ALLOWED_EMAILS", "analyst@example.org")
     get_settings.cache_clear()
     # Read the routes from the app itself, so a route added later is covered without editing this test.
     paths = {p for p in app.openapi()["paths"] if p.startswith("/api/v1/screening")}

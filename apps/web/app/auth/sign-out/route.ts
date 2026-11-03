@@ -20,5 +20,7 @@ export async function POST(request: NextRequest) {
   if (isCrossSite(request)) return new NextResponse(null, { status: 403 });
   const supabase = await createSupabaseServerClient();
   if (supabase) await supabase.auth.signOut();
-  return NextResponse.redirect(new URL("/sign-in", request.url), 303);
+  // A relative address keeps the browser on the origin it posted from. Next can name the server by another host, and
+  // the content policy's form-action 'self' blocks a form whose redirect leaves the origin.
+  return new NextResponse(null, { status: 303, headers: { Location: "/sign-in" } });
 }

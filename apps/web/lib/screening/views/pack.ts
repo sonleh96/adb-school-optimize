@@ -40,9 +40,12 @@ export function droppedKeys(q: string, known: Known): StateKey[] {
   return (Object.keys(KEYS) as StateKey[]).filter((key) => {
     const value = params.get(key);
     if (value === null || !DATA_KEYS.has(key)) return false;
-    // A value the key can hold at all, that this data does not hold. Junk text is not "dropped by the data".
+    // A value the key can hold at all, that this data does not hold. Junk text is not "dropped by the data", but
+    // any rule a view names is: the screen reads only the rules it has words for, and a saved view's rule was one.
     const parse = KEYS[key].parse as (value: unknown, known: Known) => unknown;
-    return typeof parse(value, known) === "symbol" && typeof parse(value, loose) !== "symbol";
+    const couldHold =
+      key === "rule" || key === "compare" ? value !== "" : typeof parse(value, loose) !== "symbol";
+    return typeof parse(value, known) === "symbol" && couldHold;
   });
 }
 

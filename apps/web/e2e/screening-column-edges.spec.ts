@@ -63,6 +63,31 @@ async function holdList(page: Page, rule: string) {
   return release;
 }
 
+test("a link with a rule the tool does not know opens the main method's list and drops the rule from the address", async ({
+  page,
+}) => {
+  // A link cut short in a message. The rules arrive last, as on a slow first visit, so nothing yet says the rule is
+  // unknown except the rule itself.
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/v1/screening/results")) asked.push(new URL(request.url()).search);
+  });
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/v1\/screening\/rules$/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/screening?rule=additive_");
+  await expect.poll(() => asked.length).toBeGreaterThan(0);
+  release();
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
+  await expect.poll(() => search(page)).toBe("");
+  // The cut-short rule is never asked for: the main method's list is, and whatever the screen compares it with.
+  expect(asked).toContain(`?rule=${MAIN_RULE}`);
+  expect(asked.filter((query) => new URLSearchParams(query).get("rule") === "additive_")).toEqual([]);
+});
+
 test("a URL that says nothing but defaults and junk is tidied, keeping the keys other layers own", async ({
   page,
 }) => {
@@ -152,10 +177,7 @@ test("while the rule just pressed loads, neither the statement nor a rule line s
   await expect(ruleLine(page)).toContainText("urgency is one of them");
 });
 
-test("a rule left before its list loaded is not the one What changed compares with", async ({
-  page,
-  problems,
-}) => {
+test("a rule left before its list loaded is not the one What changed compares with", async ({ page }) => {
   const release = await holdList(page, "additive_u");
   await openWorkspace(page);
 
@@ -170,10 +192,7 @@ test("a rule left before its list loaded is not the one What changed compares wi
   await expect(changed(page)).toHaveCount(0);
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithUrgency}`);
   // Switching back hands the held read from one hook to another, and the query library cancels it on the way and
-  // asks again. The browser reports the cancelled read as a failed request; nothing else may fail.
-  const cancelled = `requestfailed: ${APP_ORIGIN}/api/v1/screening/results?rule=additive_u`;
-  expect(problems.filter((p) => p !== cancelled)).toEqual([]);
-  problems.length = 0;
+  // asks again. The shared check lets the cancelled read pass; nothing else may fail.
 });
 
 test("each column control that removes itself on use hands focus to the rule's own control", async ({

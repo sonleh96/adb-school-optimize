@@ -13,6 +13,7 @@ import type { RuleId } from "../types";
 import {
   DEFAULT_STATE,
   type Known,
+  type Pane,
   type Patch,
   type WorkspaceState,
   applyPatch,
@@ -36,6 +37,49 @@ export interface WorkspaceController {
   readonly ready: Promise<void>;
 }
 
+/** The browser's address and history, as far as the workspace uses them. */
+export type BrowserLocation = Pick<Location, "search" | "pathname" | "hash">;
+export type BrowserHistory = Pick<History, "state" | "replaceState" | "pushState" | "back">;
+
+/**
+ * What the workspace keeps in each history entry it writes, beside the address. A school card, the export sheet and
+ * the narrow layout's Map view cover the list, and on a phone Back is how a reader closes them, so opening one pushes an
+ * entry and Back closes it. Nothing else does: stepping through schools, a rule or a tab only rewrites the entry.
+ */
+interface Entry {
+  /** How many entries the workspace has pushed up to and including this one: one per covering view opened. */
+  readonly depth: number;
+  /** The narrow layout's view, which the address never keeps, so Back from a card opened on the map returns there. */
+  readonly pane: Pane;
+}
+const ENTRY_KEY = "riseWorkspace";
+
+function entryOf(data: unknown): Entry | null {
+  const entry = (data as Record<string, unknown> | null)?.[ENTRY_KEY] as Partial<Entry> | undefined;
+  return entry && typeof entry.depth === "number" && (entry.pane === "list" || entry.pane === "map")
+    ? { depth: entry.depth, pane: entry.pane }
+    : null;
+}
+
+/** The workspace's part of a history entry's data, for another layer that rewrites the same entry. */
+export const keepWorkspaceEntry = (data: unknown): Record<string, Entry> | null => {
+  const entry = entryOf(data);
+  return entry ? { [ENTRY_KEY]: entry } : null;
+};
+
+/** The keys of the views that cover the list. */
+const covering = (s: WorkspaceState): Patch => ({
+  school: s.school,
+  panel: s.panel,
+  pack: s.pack,
+  pane: s.pane,
+});
+const opens = (from: WorkspaceState, to: WorkspaceState) =>
+  (from.school === null && to.school !== null) ||
+  (from.panel === null && to.panel !== null) ||
+  (from.pane === "list" && to.pane === "map");
+const closes = (from: WorkspaceState, to: WorkspaceState) => opens(to, from) && !opens(from, to);
+
 /** What the page itself needs on top of the public controller. */
 export interface WorkspaceStore extends WorkspaceController {
   /** The raw state, for `useSyncExternalStore`. Stable between changes. */
@@ -48,11 +92,11 @@ export interface WorkspaceStore extends WorkspaceController {
    * Read the URL once, on the page's first render in the browser, and keep it in step from then on. A URL that says
    * more than its state, such as an invalid value or a default spelled out, is rewritten at once.
    */
-  attachUrl(
-    location: Pick<Location, "search" | "pathname" | "hash">,
-    history: Pick<History, "replaceState">
-  ): void;
-  /** Read the URL again after Back or Forward, and follow it. */
+  attachUrl(location: BrowserLocation, history: BrowserHistory): void;
+  /**
+   * Read the URL again after Back or Forward, and follow it. Back past an entry the workspace pushed closes what that
+   * entry opened and keeps everything else on screen as it is.
+   */
   readUrl(): void;
   markReady(): void;
 }
@@ -62,29 +106,45 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
   let known: Known = { ruleIds: null, defaultRule, schoolKeys: null };
   const raw = new Set<() => void>();
   const listeners = new Set<(state: ResolvedState, previous: ResolvedState) => void>();
-  let url: {
-    location: Pick<Location, "search" | "pathname" | "hash">;
-    history: Pick<History, "replaceState">;
-  } | null = null;
+  let url: { location: BrowserLocation; history: BrowserHistory } | null = null;
+  /** The depth of the history entry on screen, as last read or written. */
+  let depth = 0;
+  /** A covering view was closed on screen and the store has gone back past its entry; the Back is under way. */
+  let returning = false;
   let markReady!: () => void;
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
   const resolve = (s: WorkspaceState): ResolvedState => ({ ...s, rule: shownRule(s, known) });
 
-  /** Write the state into the URL if the URL says anything else. */
-  function writeUrl() {
-    if (!url) return;
-    const search = searchWithState(url.location.search, state);
-    if (search !== url.location.search) {
-      url.history.replaceState(null, "", `${url.location.pathname}${search}${url.location.hash}`);
+  /**
+   * Write the state into the URL if the URL says anything else. After a caller's change (`from`, the state before it),
+   * opening a covering view pushes an entry, and closing the one whose entry is on screen goes back past it.
+   */
+  function writeUrl(from?: WorkspaceState) {
+    if (!url || returning) return;
+    const { location, history } = url;
+    const search = searchWithState(location.search, state);
+    const href = `${location.pathname}${search}${location.hash}`;
+    const here = entryOf(history.state);
+    depth = here?.depth ?? 0;
+    if (from && opens(from, state)) {
+      depth += 1;
+      history.pushState({ [ENTRY_KEY]: { depth, pane: state.pane } }, "", href);
+    } else if (from && closes(from, state) && depth > 0) {
+      // The entry goes with the view it opened, so a later Back never lands on a screen that looks the same.
+      returning = true;
+      history.back();
+    } else if (search !== location.search || (here?.pane ?? "list") !== state.pane) {
+      history.replaceState({ [ENTRY_KEY]: { depth, pane: state.pane } }, "", href);
     }
   }
 
-  function commit(next: WorkspaceState, previousKnown: Known = known) {
+  function commit(next: WorkspaceState, previousKnown: Known = known, byCaller = false) {
     if (next === state && previousKnown === known) return;
+    const from = state;
     const previous = resolve(state);
     state = next;
-    writeUrl();
+    writeUrl(byCaller ? from : undefined);
     raw.forEach((listener) => listener());
     const current = resolve(state);
     listeners.forEach((listener) => listener(current, previous));
@@ -92,7 +152,15 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
 
   function readUrl() {
     if (!url) return;
-    const next = stateFromSearch(url.location.search, known);
+    const entry = entryOf(url.history.state);
+    const landed = entry?.depth ?? 0;
+    const read = stateFromSearch(url.location.search, known);
+    const there = entry ? applyPatch(read, { pane: entry.pane }, known) : read;
+    // The store's own Back has nothing to follow: the close is already on screen. Back past an entry the workspace
+    // pushed closes what it opened, and keeps the rest; any other move, such as Forward, brings back the whole entry.
+    const next = returning ? state : landed < depth ? applyPatch(state, covering(there), known) : there;
+    returning = false;
+    depth = landed;
     if (!sameState(next, state)) commit(next);
     // A URL whose state is the one already held can still carry junk or spelled-out defaults.
     writeUrl();
@@ -100,7 +168,7 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
 
   return {
     getState: () => resolve(state),
-    setState: (patch) => commit(applyPatch(state, patch, known)),
+    setState: (patch) => commit(applyPatch(state, patch, known), known, true),
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

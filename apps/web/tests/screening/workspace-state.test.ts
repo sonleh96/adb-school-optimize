@@ -2,7 +2,8 @@
  * Failure modes of the workspace state and its URL:
  *  1. A pasted link does not reproduce the screen: a key is lost, renamed or read wrongly on the way back in.
  *  2. A link carries defaults, so two links to the same screen differ.
- *  3. An invalid value (an unknown rule or school, a word that is not an option) replaces a good one.
+ *  3. An invalid value (an unknown rule or school, a word that is not an option) replaces a good one, or a rule the
+ *     tool has no words for is kept until the rules load, so the page asks for a list it cannot show.
  *  4. `null` does not clear a key, so a layer cannot undo what it set.
  *  5. What changed compares a rule with itself.
  *  6. A school in a pasted link is dropped before the list has loaded, or kept after the list shows it does not exist.
@@ -98,6 +99,15 @@ describe("applyPatch", () => {
     });
   });
 
+  it("drops a rule the tool has no words for as soon as the URL is read, before the rules have loaded", () => {
+    // A link cut short in a message: nothing could show it, and asking the API for its list fails.
+    expect(stateFromSearch("?rule=additive_&compare=bogus", loading)).toEqual(DEFAULT_STATE);
+    // A rule the tool can show is kept until the API says whether it offers it.
+    expect(stateFromSearch("?rule=benchmark", loading).rule).toBe("benchmark");
+    expect(revalidate(stateFromSearch("?rule=benchmark", loading), loaded).rule).toBeNull();
+    expect(revalidate(stateFromSearch("?rule=need_first_u", loading), loaded).rule).toBe("need_first_u");
+  });
+
   it("accepts any school before the list has loaded, and drops one the list does not hold once it has", () => {
     const pasted = stateFromSearch("?school=k9&rule=need_first_u", loading);
     expect(pasted.school).toBe("k9");
@@ -110,10 +120,19 @@ describe("the store", () => {
   const browser = (search: string) => {
     const location = { search, pathname: "/screening", hash: "" };
     const writes: string[] = [];
+    // These tests open nothing that covers the list, so the store only ever rewrites the one entry.
     const history = {
-      replaceState: (_data: unknown, _unused: string, next: string | URL | null | undefined) => {
+      state: null as unknown,
+      replaceState: (data: unknown, _unused: string, next: string | URL | null | undefined) => {
+        history.state = data;
         writes.push(String(next));
         location.search = String(next).replace(/^\/screening/, "");
+      },
+      pushState: () => {
+        throw new Error("no entry is pushed here");
+      },
+      back: () => {
+        throw new Error("no entry is left here");
       },
     };
     return { location, history, writes };

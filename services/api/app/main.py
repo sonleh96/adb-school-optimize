@@ -46,6 +46,7 @@ def _log_to_stdout() -> None:
 async def lifespan(_app: FastAPI):
     _log_to_stdout()
     settings = get_settings()
+    settings.validate_auth()
     if settings.database_url:
         open_pool(settings)
     try:

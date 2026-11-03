@@ -7,8 +7,10 @@
  *  - an invalid value is ignored and the key keeps its value; `null` clears it to its default;
  *  - the rule being compared with is never the rule being shown;
  *  - a value the loaded data does not know (a rule the API has no run for, a school not in the list) is invalid once
- *    the data is known, and accepted until then, so a pasted link survives the page's first render.
+ *    the data is known, and accepted until then, so a pasted link survives the page's first render. A rule the
+ *    screen has no words for is invalid at once.
  */
+import { isCopyRuleId } from "../copy/rules";
 import type { RuleId, SchoolKey } from "../types";
 
 export type ListView = "ranked" | "queue";
@@ -162,7 +164,9 @@ const oneOf =
 
 const ruleKey: KeyDef<RuleId | null> = {
   parse: (value, known) => {
-    if (typeof value !== "string" || value === "") return INVALID;
+    // The screen can show only the rules its words describe, so any other id is invalid from the start: a link cut
+    // short, such as `rule=additive_`, falls back to the default before anything is asked of the API.
+    if (typeof value !== "string" || !isCopyRuleId(value)) return INVALID;
     if (known.ruleIds && !known.ruleIds.has(value)) return INVALID;
     return value as RuleId;
   },

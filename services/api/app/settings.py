@@ -85,8 +85,20 @@ class Settings:
     def validate_database(self) -> None:
         if not self.database_url:
             raise ValueError("DATABASE_URL is required for FastAPI to access Supabase Postgres.")
+
+    def validate_auth(self) -> None:
+        """Refuse a sign-in setup that would let any signed-in account through, or check tokens against nothing."""
+        if not self.auth_required:
+            return
         if not self.supabase_url:
-            raise ValueError("SUPABASE_URL is required.")
+            raise ValueError(
+                "SUPABASE_URL is required when AUTH_REQUIRED=true; tokens are checked against it."
+            )
+        if not self._allowed_emails and not self._allowed_domains:
+            raise ValueError(
+                "AUTH_REQUIRED=true needs AUTH_ALLOWED_EMAILS or AUTH_ALLOWED_EMAIL_DOMAINS; "
+                "without either, any signed-in Supabase account would be let in."
+            )
 
     @property
     def cors_origins(self) -> list[str]:
@@ -102,22 +114,27 @@ class Settings:
     def supabase_jwks_url(self) -> str | None:
         return f"{self.supabase_jwt_issuer}/.well-known/jwks.json" if self.supabase_jwt_issuer else None
 
-    def is_allowed_email(self, email: str | None) -> bool:
-        normalized = (email or "").strip().lower()
-        if not normalized:
-            return False
-        allowed_emails = {
+    @property
+    def _allowed_emails(self) -> set[str]:
+        return {
             item.strip().lower() for item in (self.auth_allowed_emails_raw or "").split(",") if item.strip()
         }
-        allowed_domains = {
+
+    @property
+    def _allowed_domains(self) -> set[str]:
+        return {
             item.strip().lower()
             for item in (self.auth_allowed_email_domains_raw or "").split(",")
             if item.strip()
         }
-        if not allowed_emails and not allowed_domains:
-            return True
+
+    def is_allowed_email(self, email: str | None) -> bool:
+        """Only an email the allowlist names, or one at a domain it names. An empty allowlist lets no one in."""
+        normalized = (email or "").strip().lower()
+        if not normalized:
+            return False
         domain = normalized.rsplit("@", 1)[-1] if "@" in normalized else ""
-        return normalized in allowed_emails or domain in allowed_domains
+        return normalized in self._allowed_emails or domain in self._allowed_domains
 
 
 @lru_cache(maxsize=1)

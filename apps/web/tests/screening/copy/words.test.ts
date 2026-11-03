@@ -98,7 +98,6 @@ describe("the words that join values", () => {
   it("say a place, a range of values, a rank and a saved view in one way", () => {
     expect(LAYOUT.placeRange("3rd", "12th")).toBe("3rd to 12th");
     expect(LAYOUT.valueRange("0.487", "0.537")).toBe("0.487 to 0.537");
-    expect(LAYOUT.positionOf(3, 20)).toBe("3 of 20");
     expect(LAYOUT.underRule("Rank in the list", "the combined-factors rule with urgency (S)")).toBe(
       "Rank in the list under the combined-factors rule with urgency (S)"
     );
