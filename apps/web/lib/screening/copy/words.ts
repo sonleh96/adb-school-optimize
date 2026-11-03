@@ -90,9 +90,10 @@ export const LAYOUT = Object.freeze({
   byProvince: "Province",
   // The find control on the plain screen: a province, a district of it, and part of a school's name. The button's own
   // word names the province, which first-time readers look for, and fits beside Download or print the list on a
-  // 360 px phone; its full name, the panel's title, says everything it finds by, and holds the word.
+  // 360 px phone; its full name, the panel's title, says everything it finds by and starts with that word, so a
+  // voice-control user who says "Province" reaches it.
   find: "Province",
-  findAria: "Find schools by province, district or name",
+  findAria: "Province, district or school name",
   district: "District",
   schoolName: "School name",
   allProvinces: "All provinces",
