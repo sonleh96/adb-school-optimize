@@ -357,7 +357,7 @@
     border-color 150ms ease;
 }
 .quietButton {
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-edge);
   background: var(--panel);
   color: var(--ink);
 }

@@ -59,8 +59,8 @@
     border-color 150ms ease;
 }
 .rail .quiet {
-  border: 1px solid var(--hair);
-  background: transparent;
+  border: 1px solid var(--control-edge);
+  background: var(--panel);
   color: var(--ink);
 }
 .rail .primary {
@@ -74,7 +74,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .rail .quiet:not(:disabled):hover {
-    border-color: rgba(21, 24, 29, 0.3);
+    border-color: color-mix(in srgb, var(--navy) 45%, transparent);
   }
   .rail .primary:hover {
     background: #0d3888;
@@ -156,10 +156,10 @@
   align-items: center;
   gap: 4px;
   margin: -4px -6px -4px 0;
-  padding: 3px 6px 4px 8px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-control);
-  background: transparent;
+  padding: 3px 8px 4px 10px;
+  border: 1px solid var(--control-edge);
+  border-radius: var(--r-chip);
+  background: var(--panel);
   cursor: pointer;
   font: 500 12.5px/17px var(--sans);
   color: var(--ink-2);
@@ -260,7 +260,7 @@
   gap: 4px;
   margin: 0;
   padding: 4px 10px 5px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-edge);
   border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
