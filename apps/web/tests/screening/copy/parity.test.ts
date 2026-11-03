@@ -701,6 +701,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));
+          one(`${t} equalReasons`, (api) => api.equalReasons(api.topDrivers(s, r)));
           one(`${t} contributions`, (api) => api.contributions(s, r));
         }
         for (const [a, b] of pairs)

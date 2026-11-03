@@ -72,7 +72,7 @@ import {
   tieNote,
   tieNoteSegments,
 } from "./rank";
-import { contributions, inputSentence, reasonSentence, topDrivers } from "./reasons";
+import { contributions, equalReasons, inputSentence, reasonSentence, topDrivers } from "./reasons";
 import {
   PRIMARY_RULE,
   RULE_IDS,
@@ -287,6 +287,7 @@ export function copyFor(data: CopyData = {}) {
     reasonSentence: (school: CopySchool, ruleId: CopyRuleId) => reasonSentence(school, ruleId, names),
     inputSentence,
     topDrivers,
+    equalReasons,
     contributions,
     missingSentence,
     missingSentences,
