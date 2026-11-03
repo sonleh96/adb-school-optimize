@@ -452,3 +452,11 @@
 .swap.swap {
   color: var(--ink-2);
 }
+
+/* Forced colours drop the ring and the white fill of the chosen side; an outline inside it marks it instead. */
+@media (forced-colors: active) {
+  .kSeg button[aria-pressed="true"]:not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

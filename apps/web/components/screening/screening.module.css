@@ -2739,3 +2739,14 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     }
   }
 }
+
+/* Forced colours drop the ring and the white fill that mark a switch's chosen side, so an outline inside the button
+   marks it. The focus ring is an outline too, so it takes over while the chosen side has the keyboard. */
+@media (forced-colors: active) {
+  .ruleButton[aria-pressed="true"]:not(:focus-visible),
+  .segmented button[aria-pressed="true"]:not(:focus-visible),
+  .paneSwitch button[aria-pressed="true"]:not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
