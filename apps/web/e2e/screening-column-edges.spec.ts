@@ -177,10 +177,7 @@ test("while the rule just pressed loads, neither the statement nor a rule line s
   await expect(ruleLine(page)).toContainText("urgency is one of them");
 });
 
-test("a rule left before its list loaded is not the one What changed compares with", async ({
-  page,
-  problems,
-}) => {
+test("a rule left before its list loaded is not the one What changed compares with", async ({ page }) => {
   const release = await holdList(page, "additive_u");
   await openWorkspace(page);
 
@@ -195,10 +192,7 @@ test("a rule left before its list loaded is not the one What changed compares wi
   await expect(changed(page)).toHaveCount(0);
   await expect(statement(page)).toHaveText(`${STATEMENT} ${LAYOUT.seeWithUrgency}`);
   // Switching back hands the held read from one hook to another, and the query library cancels it on the way and
-  // asks again. The browser reports the cancelled read as a failed request; nothing else may fail.
-  const cancelled = `requestfailed: ${APP_ORIGIN}/api/v1/screening/results?rule=additive_u`;
-  expect(problems.filter((p) => p !== cancelled)).toEqual([]);
-  problems.length = 0;
+  // asks again. The shared check lets the cancelled read pass; nothing else may fail.
 });
 
 test("each column control that removes itself on use hands focus to the rule's own control", async ({
