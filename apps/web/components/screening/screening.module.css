@@ -1024,6 +1024,11 @@
 .rowQueued {
   grid-template-columns: minmax(0, 1fr) 8px;
 }
+/* A range is one phrase, "1st to 9th", so its column grows to hold it on one line rather than stack its best rank
+   alone on top, where a reader takes it for a single place. */
+.row[data-cohort="interval"] {
+  grid-template-columns: auto minmax(0, 1fr) 8px;
+}
 li + li > .row::before {
   content: "";
   position: absolute;
@@ -1085,8 +1090,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-3);
 }
 .placeRange {
-  display: grid;
-  justify-items: end;
+  white-space: nowrap;
   font-size: 14px;
   line-height: 17px;
   color: var(--navy-2);
@@ -1100,7 +1104,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   letter-spacing: 0.02em;
   color: var(--ink-3);
 }
-.placeRange .placeTo {
+/* The group a range counts in goes under it. */
+.placeRange [data-of] {
+  display: block;
   margin: 0;
 }
 .ordinal {
