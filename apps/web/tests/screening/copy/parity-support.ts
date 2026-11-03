@@ -64,7 +64,6 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.fingerprints": [[15], [1]],
   "LAYOUT.afterDownload": [["the top list"]],
   "LAYOUT.viewOf": [[2, 4]],
-  "LAYOUT.positionOf": [[3, 20]],
   "LAYOUT.placeRange": [["3rd", "12th"]],
   "LAYOUT.valueRange": [["0.487", "0.537"]],
   "LAYOUT.underRule": [["Rank in the list", "the combined-factors rule with urgency (S)"]],

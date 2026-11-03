@@ -124,7 +124,6 @@ export const LAYOUT = Object.freeze({
   prevSchool: "Previous school",
   nextSchool: "Next school",
   notInList: "Not in the list",
-  positionOf: (i: number, n: number) => `${i} of ${n}`,
   placeTo: "to",
   placeRange: (a: string, b: string) => `${a} to ${b}`,
   valueRange: (lo: string, hi: string) => `${lo} to ${hi}`,

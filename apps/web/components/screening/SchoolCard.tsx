@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   type BoundCopy,
@@ -20,6 +20,7 @@ import { whyBlocks } from "@/lib/screening/workspace/why";
 import { PlaceText } from "./PlaceText";
 import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
+import { useOverflows } from "./useOverflows";
 
 type NeedKey = "classrooms" | "housing" | "facilities" | "services" | "locality";
 const NEED_KEYS: readonly NeedKey[] = ["classrooms", "housing", "facilities", "services", "locality"];
@@ -111,13 +112,15 @@ export function SchoolCard(props: CardProps) {
     }
   }, [detail.data, rule]);
   const school: CopySchool | ListedSchool = record ?? listed;
-  const scroll = useRef<HTMLDivElement>(null);
+  const [scroll, setScroll] = useState<HTMLDivElement | null>(null);
+  const scrolls = useOverflows(scroll);
   const card = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const headingId = useId();
   // A new school starts at the top of the card.
   useEffect(() => {
-    scroll.current?.scrollTo({ top: 0 });
-  }, [listed.id]);
+    scroll?.scrollTo({ top: 0 });
+  }, [scroll, listed.id]);
   // When the list steps aside for the card, the row that had focus goes with it, so the card takes focus: on its
   // heading, so the school's name is read first. Focus already in the card (its previous or next) stays where it is,
   // and so does focus in a guidance layer: a guide step that opened the card keeps its own title focused.
@@ -176,9 +179,8 @@ export function SchoolCard(props: CardProps) {
         >
           <ChevronLeft size={15} aria-hidden />
         </button>
-        <span className={styles.cardPos}>
-          {position.index >= 0 ? LAYOUT.positionOf(position.index + 1, position.total) : LAYOUT.notInList}
-        </span>
+        {/* No count of the list's rows: beside a rank, "14 of 22" reads as a second place that disagrees with it. */}
+        {position.index < 0 ? <span className={styles.cardPos}>{LAYOUT.notInList}</span> : null}
         <button
           type="button"
           className={styles.iconButton}
@@ -200,9 +202,18 @@ export function SchoolCard(props: CardProps) {
           <X size={15} aria-hidden />
         </button>
       </div>
-      <div ref={scroll} className={styles.cardScroll}>
+      {/* Taller than the window leaves it, the card scrolls: then its body is a stop for the keyboard, named by the
+          school, so the keyboard can scroll it to what is out of view. */}
+      <div
+        ref={setScroll}
+        className={styles.cardScroll}
+        data-region="card-body"
+        role="region"
+        aria-labelledby={headingId}
+        tabIndex={scrolls ? 0 : undefined}
+      >
         <header className={styles.cardHead}>
-          <h2 ref={heading} className={styles.cardName} tabIndex={-1}>
+          <h2 id={headingId} ref={heading} className={styles.cardName} tabIndex={-1}>
             {name}
           </h2>
           <p className={styles.cardMeta}>{copy.locationLine(listed)}</p>
