@@ -2,11 +2,17 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuthConfig, isAllowedEmail, safeNextPath, shouldEnforceAuth } from "@/lib/auth";
+import { toolAddressFor } from "@/lib/home/toolLink";
 import { SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE } from "@/lib/signInOff";
 
-const PUBLIC_PATHS = new Set(["/sign-in", "/auth/callback", "/healthz"]);
+// The homepage explains the project to anyone, so it stays public when sign-in is required; the tool does not.
+const PUBLIC_PATHS = new Set(["/", "/sign-in", "/auth/callback", "/healthz"]);
 
 export async function proxy(request: NextRequest) {
+  // An old link to the tool at `/` goes on to the tool with its query, which then asks for sign-in if it must.
+  const tool = toolAddressFor(request.nextUrl);
+  if (tool) return NextResponse.redirect(new URL(tool, request.url));
+
   const offCookie = request.cookies.get(SIGN_IN_OFF_COOKIE)?.value;
   if (!shouldEnforceAuth()) {
     const response = NextResponse.next();

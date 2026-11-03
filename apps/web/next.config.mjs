@@ -64,11 +64,8 @@ const nextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
-  // The app is the screening workspace. A redirect from the config keeps the query string, so a link with the
-  // workspace's URL state in it opens the same view, and the page's boot script reads the final address.
-  async redirects() {
-    return [{ source: "/", destination: "/screening", permanent: false }];
-  },
+  // `/` is the homepage. An old link to the tool at `/`, with the workspace's state in its query, goes on to
+  // /screening from the proxy (lib/home/toolLink.ts), which keeps the query.
   async rewrites() {
     if (!API_ORIGIN) return [];
     return [

@@ -6,7 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "RISE-PNG",
     description:
       "Decision-support dashboard for prioritizing secondary school investments in Papua New Guinea.",
-    start_url: "/",
+    // An installed app opens the tool; the homepage at `/` is for a first visit.
+    start_url: "/screening",
     display: "standalone",
     background_color: "#d7dade",
     theme_color: "#002569",

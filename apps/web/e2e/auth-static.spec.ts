@@ -14,6 +14,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";
 
+import { HOME } from "../lib/home/copy";
+
 import { expect, test } from "./screening-helpers";
 
 test.describe.configure({ mode: "serial", timeout: 90_000 });
@@ -97,7 +99,7 @@ test("with sign-in required, the manifest and the icon are public and the sign-i
 test("with sign-in required, nothing says sign-in is off, and a cookie that did is cleared", async ({
   request,
 }) => {
-  for (const path of ["/screening", "/sign-in", "/api/v1/screening/rules"]) {
+  for (const path of ["/", "/screening", "/sign-in", "/api/v1/screening/rules"]) {
     const fresh = await request.get(`${ORIGIN}${path}`, { maxRedirects: 0 });
     expect(
       fresh.headersArray().filter((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in/.test(h.value))
@@ -111,6 +113,27 @@ test("with sign-in required, nothing says sign-in is off, and a cookie that did 
       .find((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in=/.test(h.value));
     expect(cleared?.value, path).toMatch(/rise-sign-in=;.*(Max-Age=0|Expires=Thu, 01 Jan 1970)/i);
   }
+});
+
+// Failure modes: the homepage, which explains the project to anyone, sends a signed-out person to sign in; or making
+// it public opens the tool too, so an old link to the tool at `/` skips sign-in.
+test("with sign-in required, the homepage is public, and an old link to the tool still meets sign-in", async ({
+  request,
+}) => {
+  const home = await request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+  expect(home.status()).toBe(200);
+  expect(await home.text()).toContain(HOME.problem.title);
+
+  const old = await request.get(`${ORIGIN}/?rule=additive_u`, { maxRedirects: 0 });
+  expect(old.status()).toBe(307);
+  const tool = new URL(old.headers()["location"], ORIGIN);
+  expect(`${tool.pathname}${tool.search}`).toBe("/screening?rule=additive_u");
+
+  const signIn = await request.get(tool.href, { maxRedirects: 0 });
+  expect(signIn.status()).toBe(307);
+  const to = new URL(signIn.headers()["location"], ORIGIN);
+  expect(to.pathname).toBe("/sign-in");
+  expect(to.searchParams.get("next")).toBe("/screening?rule=additive_u");
 });
 
 test("with sign-in required, the workspace and the API still send a signed-out person to sign in", async ({

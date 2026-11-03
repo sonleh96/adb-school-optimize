@@ -13,7 +13,7 @@ import { expect, test } from "./screening-helpers";
 test("every page is sent a content policy that no other site can frame, a referrer policy, and no X-Powered-By", async ({
   request,
 }) => {
-  for (const path of ["/screening", "/sign-in", "/healthz"]) {
+  for (const path of ["/", "/screening", "/sign-in", "/healthz"]) {
     const headers = (await request.get(path)).headers();
     expect(headers["x-powered-by"], path).toBeUndefined();
     expect(headers["referrer-policy"], path).toBe("strict-origin-when-cross-origin");
