@@ -4,6 +4,11 @@ assertNoTestSeams(process.env);
 
 const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
 
+/** The server the app's `/api/v1` routes go to, or "" when they go nowhere (a build with no API to proxy to). */
+const API_ORIGIN = (
+  process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
+).replace(/\/$/, "");
+
 const originOf = (value) => {
   try {
     return value ? new URL(value).origin : null;
@@ -54,6 +59,8 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The homepage reads its counts on the server, from the same API the rewrite below proxies to (lib/home/counts.ts).
+  env: { SCREENING_API_ORIGIN: API_ORIGIN },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
@@ -63,14 +70,11 @@ const nextConfig = {
     return [{ source: "/", destination: "/screening", permanent: false }];
   },
   async rewrites() {
-    const target = (
-      process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
-    ).replace(/\/$/, "");
-    if (!target) return [];
+    if (!API_ORIGIN) return [];
     return [
       {
         source: "/api/v1/:path*",
-        destination: `${target}/api/v1/:path*`,
+        destination: `${API_ORIGIN}/api/v1/:path*`,
       },
     ];
   },

@@ -7,6 +7,9 @@
  *  3. The lightest ink comes so close to the second that the two levels of text look the same
  *                                                                        -> "the three inks..."
  *  4. The sign-in page's copy of a token drifts from the workspace's    -> "the sign-in page..."
+ *  5. The homepage's copy of a token drifts from the workspace's        -> "the homepage's colours share..."
+ *  6. A homepage text colour falls under 4.5:1 on a surface it sits on, or its text on the navy band, the navy card
+ *     and the footer under 7:1                                          -> "the homepage's colours keep..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -25,6 +28,7 @@ const tokensOf = (file: string): Record<string, string> =>
   );
 const WORKSPACE = tokensOf("components/screening/screening.module.css");
 const SIGN_IN = tokensOf("app/sign-in/sign-in.module.css");
+const HOME = tokensOf("app/home.module.css");
 const hex = (value: string) => (value === "#fff" ? "#ffffff" : value);
 
 describe("the workspace's inks", () => {
@@ -45,5 +49,27 @@ describe("the workspace's inks", () => {
     const shared = Object.keys(SIGN_IN).filter((k) => k in WORKSPACE);
     expect(shared).toEqual(expect.arrayContaining(["ink", "ink-2", "ink-3", "paper", "navy"]));
     for (const k of shared) expect(SIGN_IN[k], k).toBe(WORKSPACE[k]);
+  });
+});
+
+describe("the homepage's colours", () => {
+  it("share the workspace's values for the tokens both use", () => {
+    const shared = Object.keys(HOME).filter((k) => k in WORKSPACE);
+    expect(shared).toEqual(
+      expect.arrayContaining(["paper", "panel", "ink", "ink-2", "ink-3", "navy", "navy-2"])
+    );
+    for (const k of shared) expect(HOME[k], k).toBe(WORKSPACE[k]);
+  });
+
+  it("keep each text colour readable on every surface it sits on", () => {
+    const ratio = (ink: string, surface: string) => contrastRatio(hex(HOME[ink]), hex(HOME[surface]));
+    // The light bands and cards: body text, the lightest text, the eyebrows and figures, and the headline's accent.
+    for (const surface of ["paper", "panel", "navy-tint"])
+      for (const ink of ["ink", "ink-2", "ink-3", "navy", "navy-2"])
+        expect(ratio(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    // The navy band, the navy card, the footer and the near-black panel carry body text, so they keep 7:1.
+    for (const surface of ["navy", "ink"])
+      for (const ink of ["on-navy", "on-navy-2"])
+        expect(ratio(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(7);
   });
 });

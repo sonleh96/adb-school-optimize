@@ -20,3 +20,9 @@ const mono = IBM_Plex_Mono({
 
 /** Class names that define `--font-screening-serif`, `-sans` and `-mono` on the element that carries them. */
 export const screeningFonts = `${serif.variable} ${sans.variable} ${mono.variable}`;
+
+/**
+ * The homepage sets everything in Plex Sans, its headlines at 600 with tight tracking, so it carries only that face:
+ * the same files the workspace preloads, so a reader who goes on to the list already has them.
+ */
+export const homeFonts = sans.variable;
