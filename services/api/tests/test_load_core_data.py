@@ -59,10 +59,14 @@ def _pool_threads() -> list[str]:
     return [t.name for t in threading.enumerate() if t.name.startswith("pool-")]
 
 
-def test_loader_leaves_no_connection_or_pool_thread_behind(connection, database_url, tmp_path, monkeypatch, capsys):
+def test_loader_leaves_no_connection_or_pool_thread_behind(
+    connection, database_url, tmp_path, monkeypatch, capsys
+):
     schools, districts = _write_inputs(tmp_path)
     monkeypatch.setenv("DATABASE_URL", database_url)
-    monkeypatch.setattr(sys, "argv", ["load_core_data", "--schools", str(schools), "--districts", str(districts)])
+    monkeypatch.setattr(
+        sys, "argv", ["load_core_data", "--schools", str(schools), "--districts", str(districts)]
+    )
     get_settings.cache_clear()
     before = _pool_threads()
     try:

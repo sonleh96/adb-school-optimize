@@ -73,12 +73,13 @@ def close_pool() -> None:
 
 @contextmanager
 def get_db(settings: Settings | None = None) -> Iterator[psycopg.Connection]:
-    """Yield a pooled connection when available; otherwise open a one-off connection."""
+    """Yield a connection from the API's pool while it is open; otherwise one connection, closed afterwards.
+
+    Only the API opens the pool, at startup, and closes it at shutdown. A script that opened one here would leave it
+    open: its connection stays on the server and its threads hold up the interpreter's exit.
+    """
     settings = settings or get_settings()
     pool = _pool
-    if pool is None and settings.database_url:
-        pool = open_pool(settings)
-
     if pool is not None:
         try:
             with pool.connection() as connection:
