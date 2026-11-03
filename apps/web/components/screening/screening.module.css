@@ -9,10 +9,11 @@
   --paper: #f3f1ec;
   --panel: #fff;
   --rail-bg: #f8f7f3;
-  /* Inks in navy-slate. The third is the lightest text, at 5.4:1 or more on every surface above and on a chosen row. */
+  /* Inks in navy-slate. The third is the lightest text: 7:1 on the white panels and 6.2:1 or more on the paper, the
+     rail and a chosen row (tests/screening/tokens.test.ts). */
   --ink: #111a2c;
   --ink-2: #3d4759;
-  --ink-3: #586274;
+  --ink-3: #4f596b;
   --hair: rgba(17, 26, 44, 0.12);
   --hair-2: rgba(17, 26, 44, 0.075);
   /* The one accent: the ADB logo's own navy (adb.org's adb-logo.svg), and its tints. */
