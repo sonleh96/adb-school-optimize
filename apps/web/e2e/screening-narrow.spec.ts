@@ -471,6 +471,19 @@ test.describe("the disclosures' chevrons under reduced motion", () => {
     );
     expect(transitions).toEqual(["opacity", "opacity", "opacity"]);
   });
+
+  test("under reduced motion, pressing Change or Province does not animate a scale", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/screening");
+    await waitForMap(page);
+    for (const selector of ["[data-region=rule-change]", "[data-region=find]:visible"]) {
+      const property = await page
+        .locator(selector)
+        .first()
+        .evaluate((el) => getComputedStyle(el).transitionProperty);
+      expect(property, selector).not.toMatch(/\b(transform|all|scale)\b/);
+    }
+  });
 });
 
 for (const size of [
