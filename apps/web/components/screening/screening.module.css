@@ -280,6 +280,14 @@
   gap: 6px 14px;
   margin-top: 8px;
 }
+/* Under the urgency link, set as a note on it: why the main method leaves the rating out. */
+.urgencyWhy {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
 .ruleNowText {
   margin: 0;
   font-size: 13px;

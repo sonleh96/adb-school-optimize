@@ -148,6 +148,12 @@ export function RuleArea(props: RuleAreaProps) {
           </button>
           {open || comparing || !line ? null : line === PRIMARY_RULE ? seeWithUrgency : back}
         </div>
+        {/* Why the main method leaves urgency out, under its link: before this, it waited behind Change. */}
+        {!open && !comparing && line === PRIMARY_RULE ? (
+          <p className={styles.urgencyWhy} data-region="urgency-why">
+            {LAYOUT.urgencyWhy}
+          </p>
+        ) : null}
       </div>
       {open ? (
         <div id="screening-rule-choices" className={styles.ruleChoices}>
