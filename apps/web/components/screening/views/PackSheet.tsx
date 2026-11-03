@@ -81,8 +81,9 @@ export function usePackSheet(input: PackSheetInput): PackSheet {
   // states), not whatever length the top list tab was left at: the record says what the file holds.
   const records = useQueries({
     queries: rules.map((rule) => ({
-      queryKey: ["screening", "export", "top", rule, PACK_LENGTH, null],
-      queryFn: ({ signal }: { signal: AbortSignal }) => fetchTopList(rule, PACK_LENGTH, null, signal),
+      queryKey: ["screening", "export", "top", rule, PACK_LENGTH, null, null],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        fetchTopList(rule, PACK_LENGTH, { province: null, district: null }, signal),
       enabled,
       retry: (failures: number, error: Error) =>
         failures < 1 && ["server", "network"].includes(classifyFailure(error)),

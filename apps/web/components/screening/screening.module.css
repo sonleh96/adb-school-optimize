@@ -124,6 +124,26 @@
   position: absolute;
   inset: 0 0 0 var(--rail-w);
 }
+/* Skip to the list: out of sight until the keyboard reaches it, then over everything at the top left. It appears at
+   once, as a keyboard action should. */
+.skipLink {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 60;
+  padding: 9px 14px;
+  border-radius: 6px;
+  background: var(--navy);
+  color: #fff;
+  font: 500 13px/1 var(--sans);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 16px));
+}
+.skipLink:focus {
+  transform: none;
+  outline: 2px solid var(--navy-2);
+  outline-offset: 2px;
+}
 /* Popovers render here, above the panels, so a panel's clipping never cuts them. */
 .layer {
   position: absolute;
@@ -646,9 +666,241 @@
   margin: 0 0 3px;
   font: 500 13px/18px var(--sans);
 }
+
+/* ---------- the find control: one compact button on the line above each list, its panel, and what it leaves ---------- */
+.findRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+/* The line takes the room the buttons leave; when that is under 14em, the buttons move under it together. */
+.findRow > :first-child {
+  flex: 1 1 14em;
+  min-width: 0;
+}
+.findActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin-left: auto;
+}
+/* As tall as a touch target needs, without making its line taller: the first school stays where it was. */
+.findToggle {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  margin: -5px 0;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 12.5px/1 var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.findToggle:active {
+  transform: scale(0.97);
+}
+.findToggle[aria-expanded="true"] {
+  border-color: rgba(10, 46, 115, 0.28);
+  background: var(--navy-wash);
+  color: var(--navy);
+}
+/* A filter is on and the panel is closed. */
+.findToggle[data-active]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--navy);
+}
+.queueTitle + .findToggle {
+  margin-top: -5px;
+}
+/* Download or print the list beside Find: only in the narrow layout, where the actions hide in Menu. */
+.listExport {
+  display: none;
+}
+.findPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 10px;
+  min-width: 0;
+  margin: 10px 0 2px;
+  padding: 0;
+  border: 0;
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+@starting-style {
+  .findPanel {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.root[data-instant] .findPanel {
+  transition: none;
+}
+.findLegend {
+  float: left;
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.findField {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-2);
+}
+.findName {
+  grid-column: 1 / -1;
+}
+.findField select,
+.findField input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--hair);
+  border-radius: 6px;
+  background: var(--panel);
+  font: 400 13px/1.2 var(--sans);
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+.findField select:focus-visible,
+.findField input:focus-visible {
+  outline: 2px solid var(--navy-2);
+  outline-offset: 1px;
+}
+.findStatus {
+  color: var(--ink);
+}
+
+/* ---------- the printout (PrintView): the list on screen, whole, under what it is; never the controls or the map ---------- */
+.print {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  .root {
+    position: static;
+    overflow: visible;
+    background: #fff;
+  }
+  .root > :not(.print) {
+    display: none !important;
+  }
+  .print {
+    display: block;
+    color: #000;
+    font: 400 10pt/1.35 var(--sans);
+  }
+  .printTitle {
+    margin: 0 0 6pt;
+    font: 600 14pt/1.25 var(--sans);
+  }
+  .printLine {
+    margin: 0 0 3pt;
+    font-size: 9.5pt;
+    color: #222;
+  }
+  .printTable {
+    width: 100%;
+    margin-top: 10pt;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  /* A school's name keeps to a line or two; the Why line, or what to verify, takes the rest of the page. */
+  .printTable[data-kind="list"] th:nth-child(1) {
+    width: 11%;
+  }
+  .printTable[data-kind="list"] th:nth-child(2) {
+    width: 24%;
+  }
+  .printTable[data-kind="list"] th:nth-child(3),
+  .printTable[data-kind="list"] th:nth-child(4) {
+    width: 14%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(1) {
+    width: 30%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(2),
+  .printTable[data-kind="queue"] th:nth-child(3) {
+    width: 17%;
+  }
+  /* The column heads come again at the top of every page. */
+  .printTable thead {
+    display: table-header-group;
+  }
+  .printTable th {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 1pt solid #000;
+    text-align: left;
+    font: 600 8.5pt/1.2 var(--sans);
+  }
+  .printTable td {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 0.5pt solid #bbb;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .printTable tr {
+    break-inside: avoid;
+  }
+}
+.findStatus > [role="status"] {
+  overflow-wrap: anywhere;
+}
+/* A phone zooms the page into a field set smaller than 16 px, and a finger needs the taller box. */
+@media (pointer: coarse) {
+  .findField select,
+  .findField input {
+    height: 40px;
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .findPanel {
+    transition-property: opacity;
+  }
+  @starting-style {
+    .findPanel {
+      transform: none;
+    }
+  }
+}
 .queueLead {
   margin: 0 0 6px;
   font: 400 15.5px/21px var(--serif);
+  text-wrap: pretty;
+}
+.queueGroups {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
   text-wrap: pretty;
 }
 .groupBy {
@@ -922,6 +1174,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   padding: 28px 20px;
   color: var(--ink-3);
   font-size: 13px;
+}
+/* Under the loading line once the load has taken a few seconds. */
+.stillLoading {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-2);
 }
 .refreshFailed {
   margin: 0;
@@ -2199,6 +2457,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .slotHint {
     display: none;
   }
+  .listExport {
+    display: inline-flex;
+  }
   /* The key sits at the band's foot; the caveat is the list's, in its head. The open key never grows past the band:
      its title and toggle stay in view under the switch, and what does not fit scrolls inside the key. */
   .foot {
@@ -2271,6 +2532,44 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     margin-top: 6px;
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+  /* The blocks above the list are set closer too, so on a 1440 by 900 laptop at 200 percent zoom (720 by 450) the
+     first school and its reason still show on a first visit, with Start here open. */
+  .root[data-pane] {
+    --switch-h: 38px;
+  }
+  .root[data-pane] .paneSwitch {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .narrowHead {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .tab {
+    padding-top: 7px;
+    padding-bottom: 6px;
+  }
+  .listHead {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
+/* A short window (a phone on its side, or a page zoomed to 400 percent): the top bar and the List / Map switch would
+   take 100 of 256 px, so they scroll away with the list instead of staying. A card or a guide step in the band covers
+   the list region under them, so while one is open they stay, and the card keeps its own scroll. */
+@media (max-width: 1023px) and (max-height: 440px) {
+  .root:not([data-has-insp]):not([data-rail-band]) .stage {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The column grows to its rows and scrolls with the stage, so a wheel or a swipe over it moves the whole page. */
+  .root:not([data-has-insp]):not([data-rail-band]) .column {
+    bottom: auto;
+    overflow: visible;
+    overscroll-behavior: auto;
   }
 }
 

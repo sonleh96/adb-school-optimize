@@ -5,8 +5,8 @@
  *  2. The statement and What changed show together, or What changed compares the wrong rules, or the way back does
  *     not return to the default screen                                               -> "the statement..."
  * 10. The first view asks a reader to choose a rule: the switch, the statement or the analyst letters show before
- *     Change, the urgency comparison is more than one click away, or the address keeps the open area
- *                                                                                    -> "the rule area starts..."
+ *     Change, or the address keeps the open area. The urgency comparison waits behind Change too
+ *     (screening-urgency-line.spec.ts)                                               -> "the rule area starts..."
  *  3. Other rules hides a rule, stays open after a choice, traps Escape, animates a keyboard open, or the rule line
  *     does not name the rule chosen                                                  -> "Other rules..."
  *  4. Counts in the tabs or the scope line are not the run's own                       -> "a pasted link...", "the scope line..."
@@ -77,20 +77,20 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
   await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
   // The run's own counts: one school fewer can be put in order with urgency.
   await expect(tab(page, /The list/)).toHaveText("The list(21)");
-  await expect(tab(page, /Missing information/)).toHaveText("Missing information(4)");
+  await expect(tab(page, /Not in the list yet/)).toHaveText("Not in the list yet(4)");
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
   expect(search(page)).toBe("?rule=additive_u&scope=1&guide=start");
 
-  await tab(page, /Missing information/).click();
+  await tab(page, /Not in the list yet/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
   expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
   // The same link, opened again, is the same screen. The rule area is not part of the address: it opens closed.
   await page.reload();
   await waitForMap(page);
-  await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Not in the list yet/)).toHaveAttribute("aria-selected", "true");
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
@@ -151,9 +151,7 @@ test("the statement shows under the main rule only, never beside What changed, a
   await expect(statement(page)).toBeVisible();
 });
 
-test("the rule area starts as one plain line, keeps the urgency comparison one click away, and opens with Change", async ({
-  page,
-}) => {
+test("the rule area starts as one plain line, and opens with Change", async ({ page }) => {
   await openWorkspace(page);
   const area = page.locator("[data-region=rule-identity]");
   // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
@@ -171,12 +169,6 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);
   expect(await area.innerText()).not.toMatch(/\bS0?\b/);
   expect(await area.innerText()).not.toMatch(/%/);
-
-  // What the urgency rating changes is one click away, and answers on the main rule's list.
-  await area.locator("[data-region=see-with-urgency]").click();
-  await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
-  expect(search(page)).toBe("?compare=additive_u");
-  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
 
   // The control opens the switch, the other ways and the statement, and closes them again; the address never keeps
   // either.
@@ -313,7 +305,7 @@ test("the incomplete records are grouped by province or by what is missing, with
   const headings = page.locator(`${INCOMPLETE} > li > div`);
   const rows = page.locator(`${INCOMPLETE} button`);
   const byProvince = page.getByRole("button", { name: "Province", exact: true });
-  const byMissing = page.getByRole("button", { name: "Missing details" });
+  const byMissing = page.getByRole("button", { name: "What to verify" });
   await expect(byProvince).toHaveAttribute("aria-pressed", "true");
   await expect(headings).toHaveText(["North Province2", "South Province2"]);
   await expect(page.locator("[data-region=queue-order]")).toHaveText(
@@ -341,7 +333,7 @@ test("the incomplete records are grouped by province or by what is missing, with
   await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
   // Each grouping says how the list is ordered.
   await expect(page.locator("[data-region=queue-order]")).toHaveText(
-    "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
+    "Grouped by what to verify, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
   );
 
   // The arrow keys follow the groups on screen, not the order the rows arrived in.

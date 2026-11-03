@@ -1,7 +1,7 @@
 /**
  * The narrow layout leads with the list. Failure modes and the test for each:
  *  1. On a first visit, with Start here open, the first school's name or its Why line is below the fold on a phone or
- *     a tablet, or at 1024 px beside Start here, or the rule line's link runs past the window's edge
+ *     a tablet, at 1024 px beside Start here, or on a 1440 by 900 laptop at 200 percent zoom
  *                                                                      -> "on a first visit at <size>, the first school..."
  *  2. The list is not what shows first, the map hidden behind it can still be reached, or Map does not open the band
  *     and its key                                                      -> "List shows first, and Map opens the band..."
@@ -63,6 +63,8 @@ for (const size of [
   { width: 360, height: 740, scale: 2 },
   { width: 768, height: 1024, scale: 1 },
   { width: 800, height: 500, scale: 2 },
+  // A 1440 by 900 laptop at 200 percent zoom.
+  { width: 720, height: 450, scale: 2 },
   // The widest common laptop size that still shows Start here beside a narrowed list.
   { width: 1024, height: 768, scale: 1 },
 ]) {
@@ -86,9 +88,6 @@ for (const size of [
       // The name and the Why line, not the row's padding, are inside the window.
       for (const part of [first.locator("> span").last(), first.locator("[data-region=row-why]")])
         await expect(part).toBeInViewport({ ratio: 1 });
-      // The rule line's one link wraps inside the window, however long its words.
-      const link = (await page.locator("[data-region=see-with-urgency]").boundingBox())!;
-      expect(link.x + link.width).toBeLessThanOrEqual(size.width);
     });
   });
 }

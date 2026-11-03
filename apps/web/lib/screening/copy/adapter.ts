@@ -56,6 +56,7 @@ import type {
   ResultsByRule,
   Top20Change,
   UnreadableInput,
+  VerifyGroup,
 } from "./model";
 import { countsFrom } from "./counts";
 import { OTHER_GATES } from "./gates";
@@ -241,6 +242,28 @@ function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[
   ];
 }
 
+/**
+ * Which of the paper's groups a record to verify is in, from the engine's own reasons: a core detail missing
+ * (`missing_stock_field`, which the engine sends when any of the ten counts or either source is blank), or 0
+ * classrooms recorded (`nonpositive_denominator` with the classroom share unworkable and no count missing or
+ * negative). The list rows carry these, so a record built from a list alone says what one built from the stored
+ * inputs says. Undefined for a school that can be put in order.
+ */
+function verifyOf(
+  row: Pick<ListedRow, "cohort" | "gate_failures"> & {
+    readonly need_parts: Pick<ListedRow["need_parts"], "permanent_classroom_deficit">;
+  }
+): VerifyGroup | undefined {
+  if (row.cohort !== "verification_queue") return undefined;
+  const sent = row.gate_failures;
+  if (sent.includes("missing_stock_field")) return "missing";
+  return sent.includes("nonpositive_denominator") &&
+    !sent.includes("negative_stock_value") &&
+    row.need_parts.permanent_classroom_deficit == null
+    ? "zero"
+    : "other";
+}
+
 /** What a rule's stochastic test says about a school. Absent where the rule has no such test. */
 interface Flags {
   readonly persistent_candidate?: boolean | null;
@@ -330,6 +353,7 @@ function buildSchool(
     components,
     raw,
     gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
+    ...(cohort === "queue" ? { verify: verifyOf(shown) } : {}),
     results,
     contributions,
     ...(unreadable.length ? { unreadable } : {}),
@@ -450,6 +474,7 @@ export function placedFromResults(first: ResultsResponse, ...others: ResultsResp
         emissions: row.components.E === null,
         land: row.components.L === null,
       },
+      ...(cohort === "queue" ? { verify: verifyOf(row) } : {}),
     };
   });
 }
@@ -490,6 +515,8 @@ export function countsFromResults(response: ResultsResponse, schools?: readonly 
       const c = countsFrom(schools, test);
       out.emissionsNone = c.emissionsNone;
       out.remotenessOnly = c.remotenessOnly;
+      out.queueMissing = c.queueMissing;
+      out.queueZero = c.queueZero;
       if (test && schools.every((s) => s.persistence?.[test] !== undefined))
         out.flagged = c.flagged as number;
     }

@@ -97,8 +97,8 @@ export const GUIDE = Object.freeze({
     urgency: Object.freeze({ name: "With and without the urgency rating" }),
     range: Object.freeze({ name: "A school with a range of ranks" }),
     queue: Object.freeze({
-      name: "Schools with missing information",
-      onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what is missing`,
+      name: "Not in the list yet",
+      onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what to verify`,
     }),
   }),
   // Show only in presentation mode; see KEYS.
@@ -141,9 +141,10 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "download",
-            title: "Take the top list with you",
-            onScreen: "The button that downloads the top list",
-            tryIt: "Open Download the top list to see the first 20 schools and the method record.",
+            title: "Take the list with you",
+            onScreen: "The button that downloads or prints the list",
+            tryIt:
+              "Open Download or print the list to save the list as a spreadsheet or print it, with the method and the date at the top.",
           },
         ],
       },
@@ -212,11 +213,11 @@ export const GUIDE = Object.freeze({
                 : count === 0
                   ? "Every school is in the list"
                   : `${count} schools are not in the list yet`,
-            onScreen: "The Missing information tab and its list",
+            onScreen: 'The "Not in the list yet" tab and its list',
           },
           {
             key: "group",
-            title: "Group them by what is missing",
+            title: "Group them by what to verify",
             onScreen: '"Group by" above the list, and the first group',
             tryIt: "Choose a kind of missing detail to show only those schools.",
           },

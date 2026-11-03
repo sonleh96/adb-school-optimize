@@ -358,7 +358,7 @@ export function topDrivers(school: CopySchool, ruleId: CopyRuleId): Driver[] {
 export function reasonSentence(school: CopySchool, ruleId: CopyRuleId, ruleNames?: RuleNames): string {
   const r = ruleFor(ruleId, ruleNames);
   if (school.cohort === "queue") {
-    return "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing.";
+    return "This school is not in the list yet, so there is no score to explain. Its entry shows what to verify.";
   }
   if (!resultFor(school, ruleId)) return `No result for this school under ${r.name}.`;
   if (!contributions(school, ruleId))

@@ -175,11 +175,19 @@ export interface NamedSchool {
   readonly district: string | null;
 }
 
+/**
+ * Why a school's record waits to be verified, in the paper's two groups (publication follow-up, 2026-10-29): a detail
+ * school need is built from is missing, or the record gives 0 classrooms in total; `other` is any further reason.
+ */
+export type VerifyGroup = "missing" | "zero" | "other";
+
 export interface PlacedSchool extends NamedSchool {
   readonly cohort: CopyCohort;
   readonly results: ResultsByRule | null;
   readonly missing_env?: MissingEnv;
   readonly raw?: Partial<CopyRaw>;
+  /** For a record to verify, its group as the engine's reasons say it; absent where the record says it instead. */
+  readonly verify?: VerifyGroup;
 }
 
 /** A school with its whole record, which the reasons, the missing-detail notes and the counts need. */
@@ -216,6 +224,7 @@ export interface CountableSchool {
   readonly missing_env?: Partial<MissingEnv>;
   readonly condition?: Readonly<Record<string, unknown>>;
   readonly persistence?: Partial<Record<PersistenceRule, PersistenceFlag>>;
+  readonly verify?: VerifyGroup;
 }
 
 /**
@@ -246,6 +255,9 @@ export type Counts = {
   readonly emissionsNone: number;
   readonly airMissing: number;
   readonly remotenessOnly: number;
+  /** Records to verify with a detail school need is built from missing, and with 0 classrooms recorded (`verifyGroup`). */
+  readonly queueMissing: number;
+  readonly queueZero: number;
   /** Schools flagged under the rule asked for; absent when `countsFrom` was not told which rule. */
   readonly flagged?: number;
   readonly ranked: number;

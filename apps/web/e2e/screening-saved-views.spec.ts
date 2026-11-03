@@ -17,7 +17,7 @@
  *     a rule's record, or is not named in plain words                                           -> "the sheet's saved views tab ..."
  * 10. The plain tab shows method words; the method tab loses the formula and the fingerprints   -> "the sheet's saved ..."
  *                                                                                                  and "with the method details ..."
- * 11. A guide step lands on the saved views tab, or the next "Download the top list" opens on it -> "a guide step ..."
+ * 11. A guide step lands on the saved views tab, or the next "Download or print the list" opens on it -> "a guide step ..."
  * 12. The narrow layout scrolls sideways, or hides the views or the step's controls             -> "in the narrow layout ..."
  * 13. Restore the starting views drops a saved view without asking, asks when nothing of the person's would be
  *     lost, or leaves the focus nowhere                                                          -> "restoring the starting views ..."
@@ -63,7 +63,7 @@ const SEEDS = [
   "Top of the list under the main method",
   "With and without the urgency rating",
   "A school with a range of ranks",
-  "Schools with missing information",
+  "Not in the list yet",
 ];
 /** The range school the seed chooses by role: the best possible place, then the worst. */
 const RANGE_KEY = rowsOf("additive_no_u")
@@ -360,7 +360,7 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   const items = sheet(page).locator("[data-region=pack-table] li");
   await expect(items).toHaveCount(4);
   await expect(items.nth(1)).toContainText("Combined factors, without urgency");
-  await expect(items.nth(3)).toContainText("Missing information");
+  await expect(items.nth(3)).toContainText("Not in the list yet");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("Rules the saved views use");
@@ -400,11 +400,11 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
     page.getByRole("status").filter({ hasText: "Downloaded the saved views for meetings." })
   ).toBeVisible();
 
-  // Closing the sheet closes the tab: Download the top list opens on the top list.
+  // Closing the sheet closes the tab: Download or print the list opens on the list.
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toHaveCount(0);
-  await page.getByRole("button", { name: "Download the top list" }).click();
-  await expect(sheet(page).getByRole("button", { name: "Top list", exact: true })).toHaveAttribute(
+  await page.getByRole("button", { name: "Download or print the list" }).click();
+  await expect(sheet(page).getByRole("button", { name: "The list", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true"
   );
@@ -424,7 +424,7 @@ test("with the method details on, the tab shows each rule's formula and the file
   await expect(shows.nth(0)).toHaveText("Schools in order");
   await expect(shows.nth(1)).toHaveText("Schools in order · compared with Combined");
   await expect(shows.nth(2)).toHaveText(/^Schools in order · /);
-  await expect(shows.nth(3)).toHaveText("Missing information, grouped by what is missing");
+  await expect(shows.nth(3)).toHaveText("Not in the list yet, grouped by what to verify");
   await expect(table.locator("tbody tr").nth(1)).toContainText("compared with");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");

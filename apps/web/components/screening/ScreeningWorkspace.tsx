@@ -16,14 +16,19 @@ import {
 } from "react";
 
 import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
+import { type Filters, NO_FILTERS, admits, filterOptions, filtering, finding } from "@/lib/screening/filters";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
 import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
+import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
 import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
+import { type PlainList, listHead, plainRows, queueHead } from "@/lib/screening/workspace/plain-list";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
+import { FindPanel, type FindPatch, FindStatus, FindToggle } from "./Find";
+import { PrintView } from "./PrintView";
 import { ActionsMenu, GuidanceLayer, HelpMenu } from "./guide/GuidanceLayer";
 import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
 import type { GuideData } from "./guide/types";
@@ -180,6 +185,23 @@ function useFootHeight(foot: React.RefObject<HTMLElement | null>, deps: readonly
   return height;
 }
 
+/** How long the first load runs before the screen says it is still loading. */
+const SLOW_LOAD_MS = 5000;
+
+/** What a click can choose to work with: a control, or anything Tab reaches. */
+const CONTROL = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/** True once `active` has held for `ms`; false whenever it does not hold. */
+function useSlow(active: boolean, ms: number): boolean {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setSlow(true), ms);
+    return () => clearTimeout(timer);
+  }, [active, ms]);
+  return active && slow;
+}
+
 /**
  * Whether the last action came from the keyboard. Keyboard actions never animate: the column, the card and the map
  * move at once after a key, and with motion after a click.
@@ -287,6 +309,19 @@ function Workspace() {
   // its masthead and one loading line, so nothing on screen moves when the rule area, tabs and rows arrive together.
   const ready = view.kind === "ready" && shown !== null && !data.empty && data.statementReady;
   const firstLoad = !ready && !data.empty && view.kind !== "failed";
+  // A load that takes more than a few seconds says so, in the same status line, so a slow connection does not read
+  // as a page that has stopped.
+  const slowLoad = useSlow(firstLoad, SLOW_LOAD_MS);
+  const loadingLine = (
+    <p className={styles.state} role="status">
+      {copy.LAYOUT.loading}
+      {slowLoad ? (
+        <span className={styles.stillLoading} data-region="still-loading">
+          {copy.LAYOUT.stillLoading}
+        </span>
+      ) : null}
+    </p>
+  );
   const keyboard = useKeyboardLast(root);
 
   // The map's script is fetched once the list (or its failure) has been painted.
@@ -297,6 +332,66 @@ function Workspace() {
   const schools = useMemo(() => new Map((shown?.schools ?? []).map((s) => [s.id, s])), [shown]);
   const bands = useMemo(() => bandsOf(rows), [rows]);
   const mapSchools = useMemo(() => toMapSchools(rows, bands), [rows, bands]);
+
+  // The find control's choices are the provinces and districts the list holds; the store drops any other value. A
+  // link read before the data came in may name one the data does not hold, and the screen says so, as a saved view's
+  // does, until the reader chooses a place.
+  const options = useMemo(() => filterOptions(rows), [rows]);
+  const [linkLost, setLinkLost] = useState<readonly ("prov" | "dist")[]>([]);
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const before = store.snapshot();
+    store.setKnown({ places: options.places });
+    const after = store.snapshot();
+    const lost = (["prov", "dist"] as const).filter((key) => before[key] !== null && after[key] === null);
+    if (lost.length > 0) setLinkLost(lost);
+  }, [store, options, rows.length]);
+  // Every filter in force, the find control's and the method details' (which are null on a plain screen). They hide
+  // rows and fade marks; a row keeps the rank it has in the whole list.
+  const filters = useMemo(
+    (): Filters => ({ prov: state.prov, dist: state.dist, q: state.q, loc: state.loc, miss: state.miss }),
+    [state.prov, state.dist, state.q, state.loc, state.miss]
+  );
+  const found = finding(filters);
+  const listed = useMemo(
+    () => (filtering(filters) ? ordered.filter((row) => admits(row, filters)) : ordered),
+    [ordered, filters]
+  );
+  const [findOpen, setFindOpen] = useState(false);
+  const [findFocus, setFindFocus] = useState(false);
+  const findPaint = useMemo(
+    (): MarkPaint =>
+      found
+        ? {
+            ...NO_PAINT,
+            faint: new Set(rows.filter((row) => !admits(row, filters)).map((row) => row.school.school_key)),
+          }
+        : NO_PAINT,
+    [found, rows, filters]
+  );
+  // What the find control holds, in the words its sentence uses.
+  const findWords = {
+    province: state.prov === null ? null : copy.cleanName(state.prov),
+    district: state.dist === null ? null : copy.cleanName(state.dist),
+    name: state.q === null || state.q.trim() === "" ? null : state.q.trim().replace(/\s+/g, " "),
+  };
+  const listStatus =
+    found && shown ? copy.LAYOUT.findShowing(listed.length, ordered.length, "list", findWords) : null;
+
+  // The list on screen as the plain download and the printout write it, filter and all.
+  const plainListRows = useMemo(
+    () => (shown ? plainRows(listed, schools, shown.copy, shown.rule) : []),
+    [shown, listed, schools]
+  );
+  const plainList = useMemo(
+    (): PlainList => ({
+      rows: plainListRows,
+      version: shown?.response.run.input_version ?? "",
+      status: listStatus,
+      where: findWords.district ?? findWords.province,
+    }),
+    [plainListRows, shown, listStatus, findWords.district, findWords.province]
+  );
 
   // One selection serves the list, the map and the card. A school the current rows do not hold is no selection.
   const selectedKey = reconcileSelection(state.school, rows);
@@ -347,9 +442,18 @@ function Workspace() {
     [mode, docked, column, card, cardOpen, footHeight]
   );
   // Each time the clear part of the map changes shape, the map frames the country in it again: the layout, the list
-  // stepping aside, and the guide rail, which narrows the map from the left as it opens.
+  // stepping aside, and the guide rail, which narrows the map from the left as it opens. A province or district chosen
+  // frames its schools instead, and clearing it frames the country; a name typed moves nothing, so the map holds still
+  // while a reader types.
   const [frame, setFrame] = useState(0);
-  const shape = `${layout.mode}:${layout.docked}:${guidance.rail ?? 0}`;
+  const placeKey = `${state.prov ?? ""}|${state.dist ?? ""}`;
+  const shape = `${layout.mode}:${layout.docked}:${guidance.rail ?? 0}:${placeKey}`;
+  const focus = useMemo(() => {
+    if (state.prov === null) return null;
+    const place = { ...NO_FILTERS, prov: state.prov, dist: state.dist };
+    const keys = new Set(rows.filter((row) => admits(row, place)).map((row) => row.school.school_key));
+    return mapSchools.filter((school) => keys.has(school.key));
+  }, [rows, mapSchools, state.prov, state.dist]);
   const lastShape = useRef(shape);
   useEffect(() => {
     if (lastShape.current === shape) return;
@@ -457,13 +561,70 @@ function Workspace() {
     onPointerHover: setPointerHover,
     onRule: changeRule,
     onNotify: notify,
+    plainList,
   });
-  // The incomplete records on screen: in the method details, the ones their filters leave.
-  const queued = method.queueRows ? method.queueRows(incomplete) : incomplete;
+  // The records to verify on screen: the ones the filters leave, the method details' included.
+  const queued = method.queueRows
+    ? method.queueRows(incomplete)
+    : found
+      ? incomplete.filter((row) => admits(row, filters))
+      : incomplete;
+  // The printout: the tab on screen, whole and filtered, under the lines that say what it is. It waits until the list
+  // has painted, so it never delays the first school.
+  const printReady = useAfterPaint(ready);
+  const queueStatus =
+    found && shown ? copy.LAYOUT.findShowing(queued.length, incomplete.length, "queue", findWords) : null;
+  // The sheet's Print the list prints the list the sheet shows, whichever tab is behind it.
+  const printQueue = state.view === "queue" && state.panel !== "export";
+  const print = useMemo(() => {
+    if (!shown || !printReady) return null;
+    const P = shown.copy;
+    const now = new Date();
+    if (!printQueue)
+      return {
+        kind: "list" as const,
+        title: `${P.LAYOUT.productName}: ${P.LAYOUT.productSub}`,
+        lines: listHead(P, shown.rule, plainList, now),
+        columns: [
+          P.LAYOUT.rankHead,
+          P.LAYOUT.schoolHead,
+          P.LAYOUT.byProvince,
+          P.LAYOUT.district,
+          P.LAYOUT.whyKey,
+        ],
+        rows: plainList.rows.map((r) => ({
+          key: r.key,
+          cells: [r.rank, r.school, r.province, r.district, r.why],
+        })),
+      };
+    return {
+      kind: "queue" as const,
+      title: `${P.LAYOUT.productName}: ${P.LAYOUT.incompleteTab}`,
+      lines: queueHead(P, shown.rule, { version: plainList.version, status: queueStatus }, now),
+      columns: [P.LAYOUT.schoolHead, P.LAYOUT.byProvince, P.LAYOUT.district, P.LAYOUT.whatMissing],
+      rows: queued.flatMap((row) => {
+        const school = schools.get(row.school.school_key);
+        if (!school) return [];
+        const place = (value: string | null) => (value?.trim() ? P.cleanName(value) : "");
+        return [
+          {
+            key: row.school.school_key,
+            cells: [
+              P.distinctName(school),
+              place(school.province),
+              place(school.district),
+              P.missingLabels(school).join("; "),
+            ],
+          },
+        ];
+      }),
+    };
+  }, [shown, printReady, printQueue, plainList, queueStatus, queued, schools]);
+
   // The card steps through the list on screen, in its order.
   const onScreen =
     state.view !== "queue"
-      ? ordered
+      ? listed
       : shown
         ? incompleteGroups(queued, schools, shown.copy, state.qgroup).flatMap((group) => group.rows)
         : queued;
@@ -518,6 +679,75 @@ function Workspace() {
       ) : null}
     </button>
   );
+
+  // The find control, in plain words: the button on the line above each list, its panel, and the line that says what
+  // it leaves. The method details keep their own filter in the list's head.
+  const changeFind = (patch: FindPatch) => {
+    store.setState(patch);
+    setLinkLost([]);
+    list.current?.scrollTo({ top: 0 });
+  };
+  const toggleFind = () => {
+    const opening = !findOpen;
+    // Opening from the button hands the keyboard to the panel's first field as the panel appears.
+    setFindFocus(opening);
+    setFindOpen(opening);
+  };
+  const closeFind = () => {
+    setFindOpen(false);
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus());
+  };
+  // A click outside the panel folds it. A control the click chose keeps the focus; a click on words, which leaves it on
+  // the page or on a region that only scripts focus (the list), hands it back to the button, as Escape does.
+  const dismissFind = () => {
+    setFindOpen(false);
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active.matches(CONTROL)) return;
+      root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus();
+    });
+  };
+  const clearFind = () => {
+    changeFind({ prov: null, dist: null, q: null });
+    // The status line and its Clear leave the page, so focus goes to the button.
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus());
+  };
+  const findToggle = (
+    <FindToggle
+      copy={copy}
+      open={findOpen}
+      active={found && !findOpen}
+      onToggle={toggleFind}
+      onClose={closeFind}
+    />
+  );
+  const findPanel = findOpen ? (
+    <FindPanel
+      copy={copy}
+      options={options}
+      value={{ prov: state.prov, dist: state.dist, q: state.q }}
+      focusFirst={findFocus}
+      onFocused={() => setFindFocus(false)}
+      onChange={changeFind}
+      onClose={closeFind}
+      onDismiss={dismissFind}
+    />
+  ) : null;
+  const findStatus = (shownCount: number, total: number, of: "list" | "queue") =>
+    found ? (
+      <FindStatus
+        text={copy.LAYOUT.findShowing(shownCount, total, of, findWords)}
+        clear={copy.LAYOUT.clearFind}
+        onClear={clearFind}
+      />
+    ) : null;
+  // A province or district the link named that the data does not hold.
+  const linkLostLine =
+    linkLost.length > 0 ? (
+      <p className={styles.scopeDetail} role="status" data-region="link-lost">
+        {copy.LAYOUT.linkPartMissing(linkLost)}
+      </p>
+    ) : null;
 
   const copyLink = (compact: boolean) => (
     <CopyLink copy={copy} disabled={!ready} onCopied={notify} compact={compact} />
@@ -593,6 +823,21 @@ function Workspace() {
         if (event.key === "Escape" && state.school !== null) clearSelection();
       }}
     >
+      {/* The keyboard's first stop: past the map, its zoom buttons, its credits and the guides, to the first school. */}
+      {ready && !layout.docked && !guidance.page ? (
+        <a
+          href="#screening-list"
+          className={styles.skipLink}
+          data-region="skip"
+          onClick={(event) => {
+            event.preventDefault();
+            const panel = root.current?.querySelector<HTMLElement>("#screening-list");
+            (panel?.querySelector<HTMLElement>("[data-school-key]") ?? panel)?.focus();
+          }}
+        >
+          {copy.LAYOUT.skipToList}
+        </a>
+      ) : null}
       <div className={styles.stage} data-slot="stage" inert={guidance.page}>
         <ScreeningMap
           load={loadMap}
@@ -605,7 +850,9 @@ function Workspace() {
           hoverKey={state.hover}
           onHoverChange={setPointerHover}
           tipFor={tipFor}
-          paint={method.paint}
+          // Schools outside the filter fade, so the map shows the same schools as the list.
+          paint={method.on ? method.paint : findPaint}
+          focus={focus}
           emphasis={state.view === "queue" ? "incomplete" : "all"}
           frame={frame}
           instant={keyboard}
@@ -696,9 +943,7 @@ function Workspace() {
           <div data-slot="start-slot" />
 
           {firstLoad ? (
-            <p className={styles.state} role="status">
-              {copy.LAYOUT.loading}
-            </p>
+            loadingLine
           ) : method.compareColumn ? (
             method.compareColumn
           ) : (
@@ -741,6 +986,8 @@ function Workspace() {
                 className={`${styles.listScroll} ${stale ? styles.stale : ""}`}
                 role="tabpanel"
                 aria-labelledby={`screening-tab-${state.view}`}
+                // Skip to the list lands here when no school is on screen to land on.
+                tabIndex={-1}
               >
                 {data.empty || view.kind === "failed" ? (
                   <FullPanelState
@@ -750,16 +997,16 @@ function Workspace() {
                     retry={data.retry}
                   />
                 ) : !ready || !shown ? (
-                  <p className={styles.state} role="status">
-                    {copy.LAYOUT.loading}
-                  </p>
+                  loadingLine
                 ) : (
                   <>
                     {view.kind === "ready" && view.refreshFailed ? (
                       <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
-                        {shown.copy.LAYOUT.refreshFailed}{" "}
+                        {view.refreshFailed === "stale"
+                          ? shown.copy.LAYOUT.refreshStale
+                          : shown.copy.LAYOUT.refreshFailed}{" "}
                         <button type="button" className={styles.linkButton} onClick={data.retry}>
-                          {copy.LAYOUT.retry}
+                          {view.refreshFailed === "stale" ? copy.LAYOUT.checkAgain : copy.LAYOUT.retry}
                         </button>
                       </p>
                     ) : null}
@@ -783,26 +1030,44 @@ function Workspace() {
                         {method.rankedList ?? (
                           <>
                             <header className={styles.listHead} data-region="scope">
-                              <p className={styles.scopeLine}>
-                                {shown.copy.scope(shown.rule).scopeShort}{" "}
-                                <button
-                                  type="button"
-                                  className={styles.moreLink}
-                                  aria-expanded={scopeOpen}
-                                  aria-controls="screening-scope-detail"
-                                  onClick={() => store.setState({ scope: !state.scope })}
-                                >
-                                  {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
-                                </button>
-                              </p>
-                              {scopeOpen ? (
+                              {/* The find button shares the scope line, so the first school stays where it was. */}
+                              <div className={styles.findRow}>
+                                {found ? (
+                                  findStatus(listed.length, ordered.length, "list")
+                                ) : (
+                                  <p className={styles.scopeLine} data-region="scope-line">
+                                    {shown.copy.scope(shown.rule).scopeShort}{" "}
+                                    <button
+                                      type="button"
+                                      className={styles.moreLink}
+                                      aria-expanded={scopeOpen}
+                                      aria-controls="screening-scope-detail"
+                                      onClick={() => store.setState({ scope: !state.scope })}
+                                    >
+                                      {scopeOpen ? shown.copy.HELP.readLess : shown.copy.HELP.readMore}
+                                    </button>
+                                  </p>
+                                )}
+                                {/* In the narrow layout, where the actions hide in Menu, the way to download or
+                                    print the list sits beside Find, and both move under the line on a phone. */}
+                                <span className={styles.findActions}>
+                                  {findToggle}
+                                  {method.listExportButton}
+                                </span>
+                              </div>
+                              {linkLostLine}
+                              {scopeOpen && !found ? (
                                 <p className={styles.scopeDetail} id="screening-scope-detail">
                                   {shown.copy.scope(shown.rule).scopeDetail}
                                 </p>
                               ) : null}
+                              {findPanel}
+                              {found && listed.length === 0 ? (
+                                <p className={styles.scopeDetail}>{shown.copy.LAYOUT.findNoneHint}</p>
+                              ) : null}
                             </header>
                             <OrderedList
-                              rows={ordered}
+                              rows={listed}
                               schools={schools}
                               copy={shown.copy}
                               rule={shown.rule}
@@ -819,7 +1084,14 @@ function Workspace() {
                     ) : (
                       <>
                         <header className={styles.listHead}>
-                          <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
+                          <div className={styles.findRow}>
+                            <h2 className={styles.queueTitle}>{shown.copy.TERMS.queue.label}</h2>
+                            {/* The method details filter from the list's head, on the other tab. */}
+                            {method.on ? null : findToggle}
+                          </div>
+                          {method.on ? null : findPanel}
+                          {method.on ? null : findStatus(queued.length, incomplete.length, "queue")}
+                          {method.on ? null : linkLostLine}
                           {/* The lead says none when there is no incomplete record; then there is nothing to group or
                               put in order. */}
                           <p className={styles.queueLead} data-term="queue">
@@ -827,6 +1099,10 @@ function Workspace() {
                           </p>
                           {incomplete.length > 0 ? (
                             <>
+                              {/* The paper's two groups, counted from the list on screen. */}
+                              <p className={styles.queueGroups} data-region="queue-groups">
+                                {shown.copy.STRINGS.queueGroups}
+                              </p>
                               <div data-region="queue-missing">
                                 {method.queueFilter}
                                 <div className={styles.groupBy}>
@@ -864,7 +1140,12 @@ function Workspace() {
                           ) : null}
                         </header>
                         {queued.length === 0 && incomplete.length > 0 ? (
-                          <p className={styles.state}>{shown.copy.LAYOUT.emptyIncompleteFiltered}</p>
+                          <p className={styles.state}>
+                            {/* The plain screen's line above already says none is left, and by what. */}
+                            {method.on
+                              ? shown.copy.LAYOUT.emptyIncompleteFiltered
+                              : shown.copy.LAYOUT.findNoneHint}
+                          </p>
                         ) : null}
                         <IncompleteList
                           rows={queued}
@@ -910,6 +1191,7 @@ function Workspace() {
       <p className={styles.toast} role="status" aria-live="polite" data-on={toast ? "" : undefined}>
         {toast?.message}
       </p>
+      {print ? <PrintView {...print} /> : null}
     </div>
   );
 }
@@ -937,6 +1219,9 @@ function FullPanelState({
       </div>
     );
   }
+  // No data loaded yet, and results an earlier engine stored: neither is fixed by asking again until someone loads
+  // the data again, so each says what is wrong and its button checks without promising.
+  const waiting = failure === null || failure === "stale";
   return (
     <div
       className={styles.fullState}
@@ -944,9 +1229,15 @@ function FullPanelState({
       data-failure={failure ?? undefined}
       data-empty={failure ? undefined : ""}
     >
-      <p>{failure ? LAYOUT.loadFailed : LAYOUT.emptyData}</p>
+      <p>{failure === "stale" ? LAYOUT.staleRun : failure ? LAYOUT.loadFailed : LAYOUT.emptyData}</p>
       <button type="button" className={styles.retryButton} onClick={retry} disabled={retrying}>
-        {retrying ? LAYOUT.retrying : LAYOUT.retry}
+        {waiting
+          ? retrying
+            ? LAYOUT.checkingAgain
+            : LAYOUT.checkAgain
+          : retrying
+            ? LAYOUT.retrying
+            : LAYOUT.retry}
       </button>
     </div>
   );

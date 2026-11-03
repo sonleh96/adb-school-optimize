@@ -276,16 +276,16 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     queue: {
       technical: `Verification queue${schoolsSuffix(c, "queue")}`,
-      label: `Schools with missing information${countSuffix(c, "queue")}`,
-      line: "Schools with details missing that school need uses, so they cannot be put in order yet.",
-      help: "Each one shows what is missing, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
+      label: `Not in the list yet${countSuffix(c, "queue")}`,
+      line: "Schools whose records need verifying before they can be put in order: a detail school need uses is missing, or a recorded value needs checking.",
+      help: "Each one shows what to verify, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. A recorded 0 is not treated as a mistake or as blank; it needs checking. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
       where: "Queue tab, queue map marks, school panel for these schools",
     },
     not_placed: {
       technical: "Queue status",
       label: "Cannot be put in order yet",
-      line: "The status of a school with information missing, so it is not in the list yet.",
-      help: "It changes once the missing details are checked and completed. It says nothing about the school's need.",
+      line: "The status of a school whose record needs verifying, so it is not in the list yet.",
+      help: "It changes once the record is checked and completed. It says nothing about the school's need.",
       where: "List rows, map tooltips and school panel for schools with incomplete records",
     },
     missing_classrooms: {
@@ -322,7 +322,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       line: "The record gives the remoteness category and nothing else about the school's classrooms, teachers, facilities, power or water.",
       help: [
         known(c, "remotenessOnly") && known(c, "queue")
-          ? `${formatCount(c.remotenessOnly)} of the ${formatCount(c.queue)} incomplete records are like this.`
+          ? `${formatCount(c.remotenessOnly)} of the ${formatCount(c.queue)} records to verify ${plural(c.remotenessOnly, "is", "are")} like this.`
           : "",
         "Classroom, teacher, housing, facility, power and water details are all blank.",
       ]
@@ -348,7 +348,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Not calculable from incomplete parts",
       label: "Cannot be worked out",
       line: "A figure built from other parts cannot be calculated because one of those parts is blank or unusable.",
-      help: "School need for every school with an incomplete record reads this way, with the specific reason. It is never shown as not recorded or as 0.",
+      help: "School need reads this way for every school whose record needs verifying, with the specific reason. It is never shown as not recorded or as 0.",
       where: 'School need row for schools with incomplete records (missingValueKind "not_calculable")',
     },
     list_order: {
@@ -395,9 +395,9 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     export: {
       technical: "Shortlist export",
-      label: "Download the top list as a spreadsheet",
-      line: "A spreadsheet of the top list with the information behind it and how it was made.",
-      help: "The file keeps exact school names, full-precision values, blanks as blanks, and the method record at the top, so someone else can rebuild the same list.",
+      label: "Download or print the list",
+      line: "A spreadsheet or a printout of the schools in the list, in order, with the main reason for each.",
+      help: "Its first line names the method, the date and the data version. The research team's file, one step further on, keeps exact school names, full-precision values, blanks as blanks, and the method record at the top, so someone else can rebuild the same list.",
       where: "Export button, export sheet",
     },
     manifest: {
@@ -445,7 +445,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     mark_ring: {
       technical: "Queue mark",
       label: "Empty ring",
-      line: "A school with information missing, so it is not in the list yet.",
+      line: "A school whose record needs verifying, so it is not in the list yet.",
       help: "It is drawn smaller than every other mark, so it never looks like a school low in the list.",
       where: "Map and key",
     },

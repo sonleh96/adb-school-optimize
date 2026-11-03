@@ -1,7 +1,8 @@
 /**
  * Failure modes of the list area's states:
  *  1. A session that ended reads as a generic failure, so the user retries instead of signing in; a 404, a 5xx
- *     and a body the page cannot read are all worded alike.
+ *     and a body the page cannot read are all worded alike; a run stored by an earlier engine (409) reads as a failure
+ *     that trying again could fix.
  *  2. A background refresh fails and the good rows already on screen are replaced by an error.
  *  3. Rows of the previous rule are shown as if they belonged to the new one, with no sign they are stale.
  *  4. Nothing loaded yet and no error: the page must say it is loading, not show an empty list.
@@ -21,6 +22,7 @@ describe("classifyFailure", () => {
   it.each([
     [new ApiRequestError("no", 401), "session"],
     [new ApiRequestError("no", 404), "not_found"],
+    [new ApiRequestError("stale_run", 409), "stale"],
     [new ApiRequestError("no", 500), "server"],
     [new ApiRequestError("no", 503), "server"],
     [new ApiRequestError("no", 422), "other"],

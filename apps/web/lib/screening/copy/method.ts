@@ -289,6 +289,8 @@ export function buildMethod(ctx: MethodContext = {}) {
       allProvinces: "All provinces",
       allLocalities: "Any remoteness",
       chipProvince: (v: string) => `Province: ${v}`,
+      chipDistrict: (v: string) => `District: ${v}`,
+      chipName: (v: string) => `Name: ${v}`,
       chipLocality: (v: string) => `${T.need_locality.label}: ${v}`,
       chipsAria: "Active filters",
       remove: (t: string) => `Remove ${t} filter`,
@@ -322,10 +324,10 @@ export function buildMethod(ctx: MethodContext = {}) {
       viewsH: "Saved views, in order",
       stop: "Saved view",
       shows: "Shows",
-      // What a saved view opens on: the list in order, or the incomplete records and how they are grouped.
+      // What a saved view opens on: the list in order, or the records to verify and how they are grouped.
       showsRanked: "Schools in order",
       showsQueue: (grouping: "province" | "evidence") =>
-        `Missing information, grouped by ${grouping === "evidence" ? "what is missing" : "province"}`,
+        `Not in the list yet, grouped by ${grouping === "evidence" ? "what to verify" : "province"}`,
       showsMethod: "method details on",
       showsCompare: (a: string, b: string) => `Comparing ${a} with ${b}`,
       comparedWith: (s: string) => `compared with ${s}`,

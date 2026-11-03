@@ -64,8 +64,8 @@ export function buildHow(
           known(c, "queue") && c.queue === 0
             ? null
             : known(c, "queue") && c.queue === 1
-              ? "The other one has information missing and is not in the list yet, and it shows what is missing."
-              : `The other${known(c, "queue") && c.queue > 1 ? ` ${formatCount(c.queue)}` : "s"} have information missing and are not in the list yet, and each one shows what is missing.`,
+              ? "The other one is not in the list yet because its record needs verifying, and it shows what to verify."
+              : `The other${known(c, "queue") && c.queue > 1 ? ` ${formatCount(c.queue)}` : "s"} are not in the list yet because their records need verifying, and each one shows what to verify.`,
           "The tool never fills in a missing detail or counts it as 0.",
         ],
       },

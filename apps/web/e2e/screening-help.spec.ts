@@ -94,8 +94,8 @@ test("help mode marks the key concepts, a mark explains instead of acting, and l
   expect(await marks(page).count()).toBeLessThanOrEqual(40);
   await expect(page.getByTestId("help-bar")).toBeVisible();
 
-  // The Missing information tab explains itself instead of switching the list.
-  await page.getByRole("tab", { name: /Missing information/ }).click();
+  // The Not in the list yet tab explains itself instead of switching the list.
+  await page.getByRole("tab", { name: /Not in the list yet/ }).click();
   await expect(card(page)).toBeVisible();
   await expect(card(page).getByRole("heading")).toBeFocused();
   await expect(page.getByRole("tab", { name: /The list/ })).toHaveAttribute("aria-selected", "true");
@@ -157,7 +157,7 @@ test("a card's example never says what the open school card already says", async
 test("a card opens beside the panel that holds its subject, inside the window", async ({ page }) => {
   await openWorkspace(page);
   await page.keyboard.press("?");
-  await page.locator("[data-region=scope] > p[data-xp]").click();
+  await page.locator("[data-region=scope-line][data-xp]").click();
   await expect(card(page)).toBeVisible();
   const box = (await card(page).boundingBox())!;
   const column = (await page.locator("[data-slot=column]").boundingBox())!;

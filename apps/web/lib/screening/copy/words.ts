@@ -17,8 +17,16 @@ const LOST: Readonly<Record<string, { readonly missing: string; readonly instead
   compare: { missing: "the other rule in the comparison", instead: "no comparison" },
   school: { missing: "the school", instead: "no school selected" },
   prov: { missing: "the province", instead: "no province filter" },
+  dist: { missing: "the district", instead: "no district filter" },
   loc: { missing: "the remoteness class", instead: "no remoteness filter" },
 };
+
+/** What the find control holds, in the words its sentence uses: a province, a district of it, part of a name. */
+export interface FindWords {
+  readonly province: string | null;
+  readonly district: string | null;
+  readonly name: string | null;
+}
 
 // Short interface words, so every variant names the same controls the same way.
 export const LAYOUT = Object.freeze({
@@ -36,12 +44,12 @@ export const LAYOUT = Object.freeze({
   helpAria: "Help and guides",
   amongAll124: "Among all schools that can be put in order",
   orderedTab: "The list",
-  incompleteTab: "Missing information",
+  incompleteTab: "Not in the list yet",
   legendNoAirQuality: "No air-quality figure",
-  legendIncomplete: "Missing information",
+  legendIncomplete: "Not in the list yet",
   workspaceHint: "Select a school to see why it is where it is in the list.",
   tooltipHint: "Select to see why",
-  missingFilters: "Missing details",
+  missingFilters: "What to verify",
   groupBy: "Group by",
   // Moved from the final design's REQ object in round 4; same text, same shapes.
   methodSwitch: "For researchers: show method details",
@@ -50,13 +58,15 @@ export const LAYOUT = Object.freeze({
   orderControl: "Change how the list is ordered",
   // The narrow layout's choice between the list and the map band.
   paneAria: "Show the list or the map",
+  // The first stop for the keyboard: past the map, its buttons and the guides, straight to the first school.
+  skipToList: "Skip to the list",
   paneList: "List",
   paneMap: "Map",
   rulePair: "How the list is ordered",
   howBack: "Back to the map",
   showMe: "Show me on the screen",
-  // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
-  // puts the urgency rating back.
+  // Under Change, after the statement that says why the main rule leaves urgency out: the link to the comparison with
+  // the rule that puts the urgency rating back.
   seeWithUrgency: "Compare with the earlier method, which also counts an urgency rating",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
@@ -65,9 +75,9 @@ export const LAYOUT = Object.freeze({
   fullComparison: "See the full comparison",
   example: "Example",
   whyKey: "Why",
-  rowHintQueue: "Select a school to see what information is missing.",
+  rowHintQueue: "Select a school to see what to verify.",
   why: "Why it sits here",
-  whatMissing: "What is missing",
+  whatMissing: "What to verify",
   recordSays: "What the record says",
   numbers: "In numbers",
   adds: "What each item adds",
@@ -78,6 +88,47 @@ export const LAYOUT = Object.freeze({
   partAdds: (label: string) => `Of that, ${lowerFirst(label)}`,
   needParts: "Parts of school need",
   byProvince: "Province",
+  // The find control on the plain screen: a province, a district of it, and part of a school's name. The button's own
+  // word names the province, which first-time readers look for, and fits beside Download or print the list on a
+  // 360 px phone; its full name, the panel's title, says everything it finds by, and holds the word.
+  find: "Province",
+  findAria: "Find schools by province, district or name",
+  district: "District",
+  schoolName: "School name",
+  allProvinces: "All provinces",
+  allDistricts: "All districts",
+  clearFind: "Clear",
+  // How many schools the find control leaves, of how many, and what it holds. `of` is the tab: the list, or the
+  // schools not in the list yet. "3 of the 31 schools in the list are in Highlands."
+  findShowing: (shown: number, total: number, of: "list" | "queue", find: FindWords) => {
+    const one = shown <= 1;
+    // On the second tab, the schools by the tab's own name; its lead and the paper's groups say records to verify.
+    const group = (n: number) =>
+      of === "queue"
+        ? plural(n, "school not in the list yet", "schools not in the list yet")
+        : plural(n, "school in the list", "schools in the list");
+    const where = find.province
+      ? `${one ? "is" : "are"} in ${find.district ? `${find.district}, ${find.province}` : find.province}`
+      : null;
+    const named = find.name
+      ? `${one ? "has" : "have"} "${find.name}" in ${one ? "its" : "their"} name`
+      : null;
+    const parts = [where, named].filter((part): part is string => part !== null);
+    // Nothing to find by: the whole group, as the tab counts it.
+    if (parts.length === 0) return `${formatCount(total)} ${group(total)}.`;
+    const holds = joinList(parts);
+    // "No school not in the list yet" would read as a double negative.
+    if (shown === 0)
+      return of === "queue"
+        ? `None of the ${total > 0 ? `${formatCount(total)} ` : ""}${group(2)} ${holds}.`
+        : `No ${group(1)} ${holds}.`;
+    if (shown === total)
+      return total === 1
+        ? `The one ${group(1)} ${holds}.`
+        : `All ${formatCount(total)} ${group(total)} ${holds}.`;
+    return `${formatCount(shown)} of the ${formatCount(total)} ${group(total)} ${holds}.`;
+  },
+  findNoneHint: "Check the spelling, or choose another province or district.",
   /** The heading of the group of incomplete records whose province is blank. */
   provinceNotRecorded: "Province not recorded",
   savedViews: "Saved views for meetings",
@@ -85,6 +136,41 @@ export const LAYOUT = Object.freeze({
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
   // The plain download's name: the list's length and the rule's plain label, with no rule letters.
   topListFileName: (n: number, ruleLabel: string) => `rise-png-top-${n}-${slug(ruleLabel)}.csv`,
+  // The plain download: the list on screen, by the day it is made and, when the screen shows one province or
+  // district, by that too.
+  listFileName: (ruleLabel: string, day: string, where: string | null) =>
+    `rise-png-list-${where ? `${slug(where)}-` : ""}${slug(ruleLabel)}-${day}.csv`,
+  // What the plain download and the printout hold, the rows the sheet shows of them, and the line every copy of the
+  // list starts with. The sheet opens over either tab, so it says "in the list", not "on screen"; `filtered` says
+  // the find control holds something.
+  listLede: (n: number, filtered: boolean) => {
+    const which = filtered ? "the search leaves" : "in the list";
+    return n === 0
+      ? "No school in the list matches the search, so there is nothing to download or print. Clear the search to see every school."
+      : n === 1
+        ? `A spreadsheet or a printout of the one school ${which}, with the main reason it is where it is in the list.`
+        : `A spreadsheet or a printout of the ${formatCount(n)} schools ${which}, in order, with the main reason for each.`;
+  },
+  // The plain sheet's main button, beside Print the list.
+  downloadList: "Download the list",
+  listFirstLine: "Its first line names the method, the date and the data version.",
+  listMore: (n: number) => `And ${formatCount(n)} more in the file.`,
+  listMade: (name: string, label: string, day: string, version: string) =>
+    `Schools to look at first under ${name} (${label}), made on ${day} from data version ${version}.`,
+  // The first line of the records' printout. They are no order to look in, so it never says "look at first".
+  queueMade: (name: string, label: string, day: string, version: string) =>
+    `Schools not in the list yet under ${name} (${label}), made on ${day} from data version ${version}.`,
+  rankHead: "Rank",
+  printList: "Print the list",
+  // The research team's file, the API's own: the plain sheet's second choice and the method sheet's download.
+  researchFile: "Download the research file",
+  forResearchers: "For researchers",
+  researchNote: (k: number) =>
+    `The research team's file of the first ${k} schools under this method, with every input, score and source fingerprint, so anyone can rebuild the list.`,
+  researchNotByName: "It follows the province and district, but not the name search.",
+  researchFailed: "The research file did not download.",
+  loadingResearch: "Getting the research file",
+  afterDownloadPlain: "Downloaded the list. Its first line names the method, the date and the data version.",
   // In the export sheet, when a remoteness filter is on screen: the API cannot cut the file by remoteness.
   fileNotByRemoteness:
     "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here.",
@@ -129,10 +215,12 @@ export const LAYOUT = Object.freeze({
   valueRange: (lo: string, hi: string) => `${lo} to ${hi}`,
   underRule: (label: string, ruleName: string) => `${label} under ${ruleName}`,
   emptyFiltered: "No school that can be put in order matches these filters.",
-  emptyIncompleteFiltered: "No school with missing information matches these filters.",
+  emptyIncompleteFiltered: "No record to verify matches these filters.",
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
+  // Under that line once loading has taken a few seconds: a slow connection, not a broken page.
+  stillLoading: "Still loading. On a slow connection this can take up to a minute.",
   // A comparison of two rules, and the top-list file the export sheet reads.
   loadingComparison: "Loading the comparison",
   loadingTopList: "Loading the top list",
@@ -165,8 +253,17 @@ export const LAYOUT = Object.freeze({
     });
     return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead${placement === "upper" ? ", and the order it saved for the schools that show a range still applies" : ""}.`;
   },
+  // The same for a link someone pasted or was sent, whose province or district the data does not hold.
+  linkPartMissing: (keys: readonly string[]) => {
+    const found = [...new Set(keys)].map((k) => {
+      const words = LOST[k];
+      if (!words) throw new Error(`No words for a link's ${k}`);
+      return words;
+    });
+    return `Part of this link could not be opened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} not in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead.`;
+  },
   removeView: (name: string) => textOf(removeViewSegments(name)),
-  afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",
+  afterDownloadList: "Downloaded the research file. The method record is in the first lines of the file.",
   afterDownloadPack:
     "Downloaded the saved views for meetings. The method record is in the first lines of the file.",
   copyNotDone: "That did not copy. Select the text and copy it by hand.",
@@ -201,17 +298,24 @@ export const LAYOUT = Object.freeze({
   // The dark numbered circles on the map.
   keyNumbers: "Numbered: ranks 1 to 10",
   // An empty or failed load: one sentence and Retry.
-  emptyData: "No schools came back, so there is nothing to show until you try again.",
+  emptyData: "No school data has been loaded yet, so there is no list to show.",
+  staleRun:
+    "The saved results are out of date with this version of the tool, so there is no list to show until the team that runs it loads the data again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
   retry: "Retry",
   // The heading of the school column in the export table.
   schoolHead: "School",
   retrying: "Trying again",
+  // The empty store and a stale run: asking again does not fix either until the data is loaded again, so the button
+  // checks and promises nothing.
+  checkAgain: "Check again",
+  checkingAgain: "Checking again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
-  mapKeyboard: "To choose a school with the keyboard, use the list or the schools with missing information.",
+  mapKeyboard: 'To choose a school with the keyboard, use the list or the "Not in the list yet" tab.',
   basemapUnavailable: "The map's background did not load. The schools and the list still work.",
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
+  refreshStale: "The results for this rule are out of date, so this is the last list that loaded.",
   sessionEnded: "Your session has ended.",
   signIn: "Sign in again",
   signOut: "Sign out",

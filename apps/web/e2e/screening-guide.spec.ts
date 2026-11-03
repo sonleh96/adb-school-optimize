@@ -604,7 +604,7 @@ test("Page Down and Page Up stay with How this works and the glossary while eith
 test("with no schools the guides cannot be started", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");
   await page.goto("/screening");
-  await expect(page.getByText("No schools came back")).toBeVisible();
+  await expect(page.getByText("No school data has been loaded yet")).toBeVisible();
   await expect(rail(page).locator("button[data-guide]")).toHaveCount(0);
   await rail(page).getByRole("button", { name: "Explore on my own" }).click();
   await expect(await helpItem(page, "Guides")).toBeDisabled();
@@ -637,7 +637,7 @@ test.describe("in the narrow layout", () => {
     await expect(page.getByTestId("screening-map")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth === window.innerWidth)).toBe(true);
     await page.getByTestId("guide-compact").getByRole("button", { name: "Next", exact: true }).click();
-    // Guide 1 step 4 points at Download the top list, which the narrow layout keeps in its menu: the ring is round
+    // Guide 1 step 4 points at Download or print the list, which the narrow layout keeps in its menu: the ring is round
     // the menu's button.
     await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
     await ringed(page);

@@ -14,7 +14,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { schoolsFromLists } from "@/lib/screening/copy";
-import { admits, filterOptions, lacks } from "@/lib/screening/method/filters";
+import { NO_FILTERS, admits, filterOptions, lacks } from "@/lib/screening/filters";
 import { parseWith } from "@/lib/screening/schema";
 import { inputsResponse } from "@/lib/screening/types";
 import { MISSING_DETAILS } from "@/lib/screening/workspace/state";
@@ -40,7 +40,7 @@ describe("the filter by what is missing", () => {
       for (const detail of MISSING_DETAILS) {
         const gates = records.get(row.school.school_key)!.gate_failures as readonly string[];
         expect(lacks(row, detail), `${row.school.school_key} ${detail}`).toBe(gates.includes(detail));
-        expect(admits(row, { prov: null, loc: null, miss: detail })).toBe(gates.includes(detail));
+        expect(admits(row, { ...NO_FILTERS, miss: detail })).toBe(gates.includes(detail));
         if (gates.includes(detail)) lacking += 1;
       }
     expect(lacking).toBeGreaterThan(0);
@@ -49,9 +49,7 @@ describe("the filter by what is missing", () => {
   it("keeps every school that can be put in order (6)", () => {
     const ordered = rows.filter((r) => r.cohort !== "verification_queue");
     for (const detail of MISSING_DETAILS)
-      expect(ordered.filter((r) => admits(r, { prov: null, loc: null, miss: detail }))).toHaveLength(
-        ordered.length
-      );
+      expect(ordered.filter((r) => admits(r, { ...NO_FILTERS, miss: detail }))).toHaveLength(ordered.length);
   });
 });
 
@@ -64,10 +62,10 @@ describe("filters (1)", () => {
     const prov = rows[0].school.province!;
     const loc = rows[0].school.locality!;
     expect(localities).toContain(loc);
-    const kept = rows.filter((r) => admits(r, { prov, loc }));
+    const kept = rows.filter((r) => admits(r, { ...NO_FILTERS, prov, loc }));
     expect(kept.length).toBeGreaterThan(0);
     expect(kept.every((r) => r.school.province === prov && r.school.locality === loc)).toBe(true);
-    expect(rows.filter((r) => admits(r, { prov: null, loc: null }))).toHaveLength(rows.length);
+    expect(rows.filter((r) => admits(r, NO_FILTERS))).toHaveLength(rows.length);
   });
 
   it("offers each value once, in order, and no blank", () => {

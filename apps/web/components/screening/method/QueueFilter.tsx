@@ -2,7 +2,7 @@
 
 import type { BoundCopy } from "@/lib/screening/copy";
 import type { Method } from "@/lib/screening/copy/method";
-import { lacks } from "@/lib/screening/method/filters";
+import { lacks } from "@/lib/screening/filters";
 import type { ListedRow } from "@/lib/screening/types";
 import { MISSING_DETAILS, type MissingDetail } from "@/lib/screening/workspace/state";
 

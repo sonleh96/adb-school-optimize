@@ -93,6 +93,7 @@ const SIZES = [
   { name: "1024 by 768", width: 1024, height: 768, scale: 1, minMap: 320 },
   { name: "768 by 1024", width: 768, height: 1024, scale: 1, minMap: null },
   { name: "1600 by 1000 at 200 percent", width: 800, height: 500, scale: 2, minMap: null },
+  { name: "1440 by 900 at 200 percent", width: 720, height: 450, scale: 2, minMap: null },
 ];
 
 for (const size of SIZES) {

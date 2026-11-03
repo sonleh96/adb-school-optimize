@@ -17,20 +17,17 @@ import { GUIDE } from "@/lib/screening/copy/later";
 
 import { textProblems } from "./helpers";
 
-describe("an empty or failed load", () => {
-  it("is one sentence that says what happened and what to do, and an action named Retry", () => {
-    expect(LAYOUT.emptyData).toBe("No schools came back, so there is nothing to show until you try again.");
-    expect(LAYOUT.loadFailed).toBe(
-      "Some of the information did not load, so there is nothing to show until you try again."
-    );
-    expect(LAYOUT.retry).toBe("Retry");
-    expect(LAYOUT.retrying).toBe("Trying again");
-    for (const t of [LAYOUT.emptyData, LAYOUT.loadFailed, LAYOUT.availableAfterLoad])
+describe("an empty, stale or failed load", () => {
+  it("is one sentence each, and only a failure that asking again can fix says to try again", () => {
+    for (const t of [LAYOUT.emptyData, LAYOUT.staleRun, LAYOUT.loadFailed, LAYOUT.availableAfterLoad])
       expect(textProblems(t), t).toEqual([]);
-    for (const t of [LAYOUT.emptyData, LAYOUT.loadFailed]) {
+    for (const t of [LAYOUT.emptyData, LAYOUT.staleRun, LAYOUT.loadFailed]) {
       expect(t.match(/[.?!]/g)).toHaveLength(1);
-      expect(t).not.toMatch(/\b(fail|failed|error|invalid|unable|file|json|404|server|network)\b/i);
+      expect(t).not.toMatch(/\b(fail|failed|error|invalid|unable|file|json|404|409|server|network)\b/i);
     }
+    // Asking again cannot fill an empty store or remake stale results, so neither says it will.
+    for (const t of [LAYOUT.emptyData, LAYOUT.staleRun]) expect(t, t).not.toMatch(/try again|retry/i);
+    expect(LAYOUT.loadFailed).toMatch(/try again/);
   });
 });
 
@@ -79,10 +76,10 @@ describe("the guide rail's status lines", () => {
       "Top of the list under the main method",
       "With and without the urgency rating",
       "A school with a range of ranks",
-      "Schools with missing information",
+      "Not in the list yet",
     ]);
     expect(v.queue.onScreen(LAYOUT.incompleteTab)).toBe(
-      'The "Missing information" tab, grouped by what is missing'
+      'The "Not in the list yet" tab, grouped by what to verify'
     );
     // A name a user may save is at most 60 characters, and the seeds fit.
     for (const n of Object.values(v).map((x) => x.name)) expect(n.length).toBeLessThanOrEqual(60);
@@ -105,7 +102,7 @@ describe("the words that join values", () => {
     expect(LAYOUT.removeView("J")).toBe("Remove the saved view J");
     expect(LAYOUT.tooltipMissing("power source blank")).toBe("Missing: power source blank");
     expect(LAYOUT.afterDownloadList).toBe(
-      "Downloaded the top list. The method record is in the first lines of the file."
+      "Downloaded the research file. The method record is in the first lines of the file."
     );
   });
 });
@@ -137,8 +134,8 @@ describe("the order of the incomplete records", () => {
   it("is said for the grouping the list is in, and neither sentence claims the other's order", () => {
     for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
       expect(textProblems(t), t).toEqual([]);
-    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
-    expect(copy.STRINGS.queueOrderMissing).toMatch(/what is missing/);
+    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what to verify/);
+    expect(copy.STRINGS.queueOrderMissing).toMatch(/what to verify/);
   });
 });
 

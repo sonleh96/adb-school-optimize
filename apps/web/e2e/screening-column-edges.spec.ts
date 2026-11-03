@@ -198,14 +198,14 @@ test("a rule left before its list loaded is not the one What changed compares wi
 test("each column control that removes itself on use hands focus to the rule's own control", async ({
   page,
 }) => {
-  await openWorkspace(page);
+  await openWorkspace(page, "?rule=additive_u");
   const other = page.getByRole("button", { name: "Other ways to order the list (5)" });
 
-  // Closed, the rule area's own link opens What changed and hands focus to Change, as Hide then does.
-  await page.locator("[data-region=rule-identity] [data-region=see-with-urgency]").press("Enter");
-  await expect(ruleChange(page)).toBeFocused();
-  await changed(page).getByRole("button", { name: LAYOUT.hideComparison }).press("Enter");
-  await expect(changed(page)).toHaveCount(0);
+  // Closed, under another rule, the way back to the main rule goes as it is used and hands focus to Change.
+  await page
+    .locator("[data-region=rule-identity]")
+    .getByRole("button", { name: LAYOUT.backToMainRule })
+    .press("Enter");
   await expect(ruleChange(page)).toBeFocused();
 
   // Open, the statement's link keeps the main rule on screen, so focus goes to its button.
@@ -245,7 +245,7 @@ test("the arrow keys move between the tabs and show the one they reach, with one
 }) => {
   await openWorkspace(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Missing information/);
+  const queue = tab(page, /Not in the list yet/);
   await expect(list).toHaveAttribute("tabindex", "0");
   await expect(queue).toHaveAttribute("tabindex", "-1");
 

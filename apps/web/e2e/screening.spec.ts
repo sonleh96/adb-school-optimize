@@ -67,7 +67,7 @@ test("shows the rows in the API's order, with range schools between complete one
 
   // Counts appear with the data, never before it.
   await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
-  await expect(tab(page, /Missing information/)).toHaveText("Missing information(3)");
+  await expect(tab(page, /Not in the list yet/)).toHaveText("Not in the list yet(3)");
 });
 
 test("an exact range keeps the range treatment and carries its scope in the row", async ({ page }) => {
@@ -177,7 +177,7 @@ test("clicking a mark selects its row, on the tab that holds it", async ({ page 
   const queued = keyOf(MAIN_RULE, "Sample School 21");
   const queuedPoint = await settledMark(page, queued);
   await page.mouse.click(queuedPoint.x, queuedPoint.y);
-  await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Not in the list yet/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 21")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
 });
@@ -190,17 +190,17 @@ test("switching the rule shows that rule's rows and keeps the selection on the t
   // In the list under the main rule, which does not read its unknown urgency.
   await orderedRow(page, "Sample School 23").click();
   await expect(page.getByTestId("card-place")).toHaveText("17th");
-  await expect(tab(page, /Missing information/)).toHaveText("Missing information(3)");
+  await expect(tab(page, /Not in the list yet/)).toHaveText("Not in the list yet(3)");
 
   // Urgency is included, so the selected school is held back and the list follows it to its tab.
   await openRules(page);
   await mainRule(page, RULE.urgency).click();
-  await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Not in the list yet/)).toHaveAttribute("aria-selected", "true");
   await expect(queuedRow(page, "Sample School 23")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("card-place")).toHaveText("Cannot be put in order yet");
   await tab(page, /The list/).click();
   expect(await listNames(page)).toEqual(orderedNames(URGENCY_RULE));
-  await tab(page, /Missing information/).click();
+  await tab(page, /Not in the list yet/).click();
   await queuedRow(page, "Sample School 23").click();
 
   // Back on the main rule, the school has its rank again and the list follows it.
@@ -236,7 +236,7 @@ test("arrow keys move through the list in the order on screen and Escape closes 
 
 test("arrow keys on the incomplete records follow the grouped order on screen", async ({ page }) => {
   await openWorkspace(page);
-  await tab(page, /Missing information/).click();
+  await tab(page, /Not in the list yet/).click();
   const onScreen = await page.locator(`${INCOMPLETE} button span[class*=name]`).allTextContents();
   expect(onScreen).toEqual(queuedNames(MAIN_RULE));
 
@@ -277,7 +277,7 @@ test("the map can be reached and left with the keyboard, and closing the card re
   // It has a name that points to the list as the keyboard route.
   await expect(canvas).toHaveAttribute(
     "aria-label",
-    "Map of secondary schools in Papua New Guinea. To choose a school with the keyboard, use the list or the schools with missing information."
+    'Map of secondary schools in Papua New Guinea. To choose a school with the keyboard, use the list or the "Not in the list yet" tab.'
   );
 
   // Focus shows: an outline the user can see.

@@ -7,6 +7,7 @@ import type { BoundCopy, CopyRuleId, CopySchool } from "@/lib/screening/copy";
 import { type OrderedRow, neighbour } from "@/lib/screening/list";
 import type { ListedRow, QueuedRow, SchoolKey } from "@/lib/screening/types";
 import type { QueueGrouping } from "@/lib/screening/workspace/state";
+import { whyLine } from "@/lib/screening/workspace/plain-list";
 import { firstRangeIndex, groupRows, placeForm, tieNoteAfter } from "@/lib/screening/workspace/rows";
 
 import { PlaceText } from "./PlaceText";
@@ -70,16 +71,6 @@ function NameLine({ name, place }: { name: string; place: string | null }) {
 }
 
 const cleaned = (copy: BoundCopy, value: string | null) => (value?.trim() ? copy.cleanName(value) : null);
-
-/**
- * Why a school sits where it does, in one line: the input that adds most for a school with one position; for a range
- * school, why it shows a range, naming every reading it lacks when it lacks more than one.
- */
-function whyLine(copy: BoundCopy, school: CopySchool, rule: CopyRuleId): string {
-  const unread = school.cohort === "interval" ? copy.rangeRowWhy(school) : null;
-  if (unread) return unread;
-  return copy.topDrivers(school, rule)[0]?.sentence ?? copy.reasonSentence(school, rule);
-}
 
 export function OrderedList({
   rows,

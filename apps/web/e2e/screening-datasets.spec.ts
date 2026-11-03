@@ -2,8 +2,8 @@
  * The column on the mock API's worst-case datasets (see scripts/mock-api.mjs). Failure modes and the test for each:
  *  1. An empty or failed list never tells the guide layer the map is ready, or shows counts beside its failure
  *     -> "an empty store and a failed list..."
- *  2. An empty Missing information tab says schools are in it, offers a grouping, or can be chosen
- *     -> "an empty Missing information tab..."
+ *  2. An empty Not in the list yet tab says schools are in it, offers a grouping, or can be chosen
+ *     -> "an empty Not in the list yet tab..."
  *  3. Exact ties go unmarked, or the tie sentence is missing or repeated (R15)     -> "exact ties..."
  *  4. A blank name shows a raw value, a long unbroken name overflows its row, or "·" ends a line apart from its
  *     province (R6, R8)                                                             -> "blank and unbroken names..."
@@ -36,17 +36,26 @@ async function open(page: Page, search = "") {
 
 test.describe("an empty store and a failed list", () => {
   const cases = [
-    { name: "an empty store", dataset: "empty", fail: {}, state: "[data-empty]", words: LAYOUT.emptyData },
+    // Asking again cannot fill an empty store, so its sentence promises nothing and its button only checks.
+    {
+      name: "an empty store",
+      dataset: "empty",
+      fail: {},
+      state: "[data-empty]",
+      words: LAYOUT.emptyData,
+      button: LAYOUT.checkAgain,
+    },
     {
       name: "a failing list",
       dataset: "default",
       fail: { results: 503 },
       state: "[role=alert][data-failure=server]",
       words: LAYOUT.loadFailed,
+      button: LAYOUT.retry,
     },
   ] as const;
-  for (const { name, dataset, fail, state, words } of cases) {
-    test(`${name} shows one sentence with Retry and no counts, and the map still reports ready`, async ({
+  for (const { name, dataset, fail, state, words, button } of cases) {
+    test(`${name} shows one sentence with a way on and no counts, and the map still reports ready`, async ({
       page,
       context,
       problems,
@@ -55,7 +64,8 @@ test.describe("an empty store and a failed list", () => {
       await page.goto("/screening");
       const panel = page.locator(state);
       await expect(panel).toContainText(words);
-      await expect(panel.getByRole("button", { name: LAYOUT.retry })).toBeVisible();
+      if (dataset === "empty") await expect(panel).not.toContainText(/try again/i);
+      await expect(panel.getByRole("button", { name: button })).toBeVisible();
       await expect(tab(page, /The list/)).toHaveText("The list");
       await expect(page.locator(ORDERED)).toHaveCount(0);
 
@@ -76,15 +86,15 @@ test.describe("an empty store and a failed list", () => {
   }
 });
 
-test("an empty Missing information tab says no school is in it and cannot be chosen", async ({
+test("an empty Not in the list yet tab says no school is in it and cannot be chosen", async ({
   page,
   context,
 }) => {
   await useMockDataset(context, "worst-names");
   await open(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Missing information/);
-  await expect(queue).toHaveText("Missing information(0)");
+  const queue = tab(page, /Not in the list yet/);
+  await expect(queue).toHaveText("Not in the list yet(0)");
   await expect(queue).toBeDisabled();
   // The arrow keys pass over it.
   await list.focus();
@@ -98,7 +108,7 @@ test("an empty Missing information tab says no school is in it and cannot be cho
   await expect(queue).toBeEnabled();
   await expect(page.locator(`${INCOMPLETE} button`)).toHaveCount(0);
   await expect(page.locator("#screening-list header p").first()).toHaveText(
-    "No school is left out of the list yet for any missing information. One would show what is missing. That says nothing about its need."
+    "No school is left out of the list because its record needs verifying. One would show what to verify. That says nothing about its need."
   );
   await expect(page.locator("#screening-list")).not.toContainText("Some schools");
   await expect(page.locator("[data-region=queue-missing], [data-region=queue-order]")).toHaveCount(0);
@@ -167,7 +177,7 @@ test("a list of one school states only its own counts", async ({ page, context }
   await useMockDataset(context, "one");
   await open(page);
   await expect(tab(page, /The list/)).toHaveText("The list(1)");
-  await expect(tab(page, /Missing information/)).toHaveText("Missing information(0)");
+  await expect(tab(page, /Not in the list yet/)).toHaveText("Not in the list yet(0)");
   // Every count the column states is the one school's: its rank, its count, and no school in the other groups.
   // The rule area's "Other ways to order the list (5)" counts rules, not schools, and each row's Why line states the school's own
   // readings, so only the text that states counts is read: the statement, the tabs, the scope line and the list notes.

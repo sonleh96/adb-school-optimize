@@ -1034,7 +1034,7 @@ describe("what is missing from a record", () => {
       copyFor({ counts: { ...COUNTS, remotenessOnly: 1 } }).termsFor("additive_u").missing_all_but_remoteness
         .help
     ).toBe(
-      "1 of the 4 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
+      "1 of the 4 records to verify is like this. Classroom, teacher, housing, facility, power and water details are all blank."
     );
   });
 
@@ -1161,7 +1161,7 @@ describe("why a school sits where it does, from the engine's own scores", () => 
   it("says a school with an incomplete record has nothing to explain", () => {
     const q = school({ id: "q", cohort: "queue", gate: ["service_deficit"] });
     expect(copy.reasonSentence(q, "additive_u")).toBe(
-      "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing."
+      "This school is not in the list yet, so there is no score to explain. Its entry shows what to verify."
     );
     expect(copy.topDrivers(q, "additive_u")).toEqual([]);
     expect(copy.contributions(q, "additive_u")).toBeNull();

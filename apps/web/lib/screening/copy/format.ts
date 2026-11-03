@@ -39,6 +39,24 @@ export function formatApprox(n: number): string {
   return formatCount(Math.round(n / factor) * factor);
 }
 
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+/** A day as the copy writes it, in the reader's own time zone: 3 November 2026. */
+export const formatDay = (day: Date): string =>
+  `${day.getDate()} ${MONTHS[day.getMonth()]} ${day.getFullYear()}`;
+
 /** A percentage with at most one decimal and no trailing ".0": 0.075 -> "7.5%". */
 export function formatPercent(fraction: number): string {
   const v = Number((fraction * 100).toFixed(1));

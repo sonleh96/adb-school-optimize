@@ -134,7 +134,24 @@ describe("every fixed string follows the writing rules", () => {
       removeView: ["Top of the list"],
       viewsFull: [50],
       viewPartMissing: [["rule", "school", "hover"], "upper"],
+      linkPartMissing: [["prov", "dist"]],
       partAdds: ["Remoteness"],
+      findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "alder" }],
+      listLede: [31, true],
+      listMore: [21],
+      listMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
+      queueMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
+      researchNote: [20],
     };
     const LAYOUT_SENTENCES = new Set([
       "workspaceHint",
@@ -148,20 +165,35 @@ describe("every fixed string follows the writing rules", () => {
       "copyNotDone",
       "linkNotCopied",
       "emptyData",
+      "staleRun",
+      "stillLoading",
+      "refreshStale",
       "loadFailed",
       "availableAfterLoad",
       "fileNotByRemoteness",
       "noViews",
       "viewsFull",
       "viewPartMissing",
+      "linkPartMissing",
       "mapKeyboard",
       "basemapUnavailable",
       "refreshFailed",
       "sessionEnded",
+      "findShowing",
+      "findNoneHint",
+      "listLede",
+      "listFirstLine",
+      "listMore",
+      "listMade",
+      "queueMade",
+      "researchNote",
+      "researchNotByName",
+      "researchFailed",
+      "afterDownloadPlain",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       // A file name is a name, not a sentence; its own test checks it.
-      if (k === "topListFileName") continue;
+      if (k === "topListFileName" || k === "listFileName") continue;
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
       corpus.add(`LAYOUT.${k}`, text, { sentence: LAYOUT_SENTENCES.has(k) });
     }
@@ -201,7 +233,7 @@ describe("every fixed string follows the writing rules", () => {
       if (on)
         corpus.add(
           `GUIDE.seedViews.${k}.onScreen`,
-          typeof on === "function" ? on("Incomplete records") : on,
+          typeof on === "function" ? on(copy.LAYOUT.incompleteTab) : on,
           { sentence: false }
         );
     }
@@ -389,10 +421,10 @@ describe("the three ideas", () => {
   it("never says 'Some schools' of a single school, and uses the plural for several", () => {
     const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
     expect(one.ranges.title).toBe("One school shows a range because an air-quality figure is missing");
-    expect(one.queue.title).toBe("One school is not in the list yet because information about it is missing");
+    expect(one.queue.title).toBe("One school is not in the list yet because its record needs verifying");
     for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
       expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
-    expect(one.queue.long).toMatch(/^One of the 12 schools has information missing/);
+    expect(one.queue.long).toMatch(/^One of the 12 schools has a record to verify/);
     const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
     expect(several.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(several.queue.short).toMatch(/^4 schools are not in the list yet/);

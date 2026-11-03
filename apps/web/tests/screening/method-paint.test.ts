@@ -19,7 +19,13 @@ describe("compare mode's map colours", () => {
   const pair = parseWith(compareResponse, readFixture("compare/additive_u__benchmark.json"), "compare");
   const compared = compareFor(pair, "additive_u" as RuleId, "benchmark" as RuleId, 20);
   const rows = results("benchmark").rows;
-  const paint = paintFor({ hide: [], rows, filters: { prov: null, loc: null }, compared, edges: [4, 14] });
+  const paint = paintFor({
+    hide: [],
+    rows,
+    filters: { prov: null, dist: null, q: null, loc: null },
+    compared,
+    edges: [4, 14],
+  });
 
   it("gives every dot a colour from the comparison, and the schools outside it one neutral colour (1)", () => {
     const dots = rows.filter((r) => r.cohort === "complete").map((r) => r.school.school_key);

@@ -11,6 +11,11 @@ export type Failure =
   | "session"
   /** 404: the API has no such rule, version or school. */
   | "not_found"
+  /**
+   * 409: the stored results were made by an engine whose rule details this API no longer serves. Loading the data
+   * again fixes it; asking again does not, so the page never says it will.
+   */
+  | "stale"
   /** 5xx: the API failed. */
   | "server"
   /** The API answered, but not with what the page expects. */
@@ -24,6 +29,7 @@ export function classifyFailure(error: unknown): Failure {
   if (error instanceof ApiRequestError) {
     if (error.status === 401) return "session";
     if (error.status === 404) return "not_found";
+    if (error.status === 409) return "stale";
     if (error.status >= 500) return "server";
     return "other";
   }
