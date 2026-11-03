@@ -255,14 +255,27 @@
   z-index: 3;
 }
 
+/*
+ * ADB's identity: the logo on white, under a navy rule. A navy band would swallow the logo's own navy square (1:1),
+ * so the band is the rule along the top and the logo keeps its edge. Clear space round the logo is at least a third
+ * of its size: 10 px for the 30 px mark.
+ */
 .masthead {
+  position: relative;
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) auto;
   column-gap: 12px;
   row-gap: 1px;
   align-items: center;
-  padding: 12px 20px 11px;
+  padding: 14px 20px 11px;
   border-bottom: 1px solid var(--hair-2);
+}
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--navy);
 }
 /* The official mark keeps its square corners. */
 .logo {
@@ -2396,6 +2409,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   /* The guide rail's layer (5), so a step's rings, which live inside the rail, still draw over the Menu button they
      point at. While Help's or the Menu's list is open the bar rises over the rail (below), so the list opens over
      Start here or a step in the band. */
+  /* The masthead's navy rule along its top. It sits inside the bar's 56 px, so nothing under the bar moves. */
   .topBar {
     position: absolute;
     top: 0;
@@ -2409,6 +2423,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     height: 56px;
     padding: 0 12px 0 16px;
     background: var(--panel);
+    border-top: 4px solid var(--navy);
     border-bottom: 1px solid var(--hair);
   }
   .topBar:has([data-menu-open]) {

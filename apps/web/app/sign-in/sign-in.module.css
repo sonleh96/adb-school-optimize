@@ -33,13 +33,23 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Under the workspace's navy rule, which the card clips to its corners. */
 .card {
+  position: relative;
+  overflow: hidden;
   width: min(100%, 400px);
-  padding: 24px 32px 32px;
+  padding: 28px 32px 32px;
   border: 1px solid var(--edge);
   border-radius: var(--r-panel);
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--navy);
 }
 
 /* The workspace's masthead, as it reads at the head of the column: the logo on white, with clear space round it. */
