@@ -142,8 +142,8 @@
   min-width: 0;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   font: 400 13.5px/1 var(--sans);
   color: var(--ink);

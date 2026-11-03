@@ -402,8 +402,8 @@
 .field select {
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   font: 400 13px/1 var(--sans);
   color: var(--ink);
@@ -415,8 +415,8 @@
   margin: 10px 6px 4px;
   padding: 0 8px;
   height: 30px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   color: var(--ink-3);
 }
 .search input {

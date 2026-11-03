@@ -800,8 +800,8 @@
   min-width: 0;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   font: 400 13px/1.2 var(--sans);
   color: var(--ink);
@@ -1690,8 +1690,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     color: var(--ink);
   }
 }
+/* Unavailable, the icon pales but keeps 3:1 on the panel, so the arrow can still be found. */
 .iconButton:disabled {
-  opacity: 0.35;
+  opacity: 0.62;
 }
 .cardPos {
   min-width: 64px;

@@ -108,15 +108,15 @@
 .form input {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid rgba(21, 24, 29, 0.28);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: #fff;
   font: inherit;
   color: var(--ink);
 }
+/* Unavailable, the box keeps its edge, so it still reads as the place for an email, and greys inside. */
 .form input:disabled {
-  border-color: var(--hair);
-  background: transparent;
+  background: var(--hair-2);
 }
 .form input:focus-visible,
 .form button:focus-visible {
@@ -137,11 +137,12 @@
 .form button:not(:disabled):active {
   transform: scale(0.98);
 }
+/* Unavailable, the button greys but its words stay readable: 8:1 on the grey. */
 .form button:disabled {
   border-color: var(--hair);
   background: var(--hair-2);
   cursor: default;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .hint {
