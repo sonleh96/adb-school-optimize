@@ -18,6 +18,9 @@ Set these runtime variables or secrets:
 - `AUTH_ALLOWED_EMAIL_DOMAINS=adb.org` and/or `AUTH_ALLOWED_EMAILS`
 - `CORS_ORIGINS` with the exact Vercel production and approved preview origins
 
+With `AUTH_REQUIRED=true`, the API refuses to start unless `SUPABASE_URL` and at least one allowlist variable are set, since an empty allowlist would let any signed-in Supabase account in.
+With `AUTH_REQUIRED=false`, it needs only `DATABASE_URL`.
+
 Use `SUPABASE_JWT_SECRET` only for a project that still signs access tokens with legacy HS256.
 With asymmetric signing, the API discovers the public signing key from the Supabase JWKS endpoint and caches it for five minutes.
 Never provide the Supabase service-role key to the browser.
