@@ -25,7 +25,7 @@
   font: 500 13px/18px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
   white-space: nowrap;
 }
@@ -192,7 +192,7 @@
   background: rgba(21, 24, 29, 0.12);
 }
 .progress i[data-at="done"] {
-  background: rgba(10, 46, 115, 0.4);
+  background: color-mix(in srgb, var(--navy) 40%, transparent);
 }
 .progress i[data-at="current"] {
   background: var(--navy);
@@ -560,7 +560,7 @@
   top: 0;
   border: 2px solid var(--navy);
   border-radius: 10px;
-  box-shadow: 0 0 0 4px rgba(10, 46, 115, 0.13);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--navy) 13%, transparent);
 }
 /* A ring already on screen moves to the next step's place; the size eases with it (notes/final.md, "Critique pass 2"). */
 .ring[data-moving] {
@@ -677,7 +677,7 @@
   font: 500 13px/18px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
   white-space: nowrap;
 }

@@ -85,8 +85,8 @@ test("reads quieter than the other actions, at 4.5:1 or more on the map behind i
     const style = getComputedStyle(button);
     return { color: style.color, weight: style.fontWeight, background: style.backgroundColor };
   });
-  // The second ink (#4a4f57), not the button ink (#15181d) the other actions use, at the weight the action sets.
-  expect(hex(look.color)).toBe("#4a4f57");
+  // The second ink (#3d4759), not the button ink (#111a2c) the other actions use, at the weight the action sets.
+  expect(hex(look.color)).toBe("#3d4759");
   expect(look.weight).toBe("500");
   // It has no fill of its own, so the map shows behind it: land or water.
   expect(look.background).toBe("rgba(0, 0, 0, 0)");

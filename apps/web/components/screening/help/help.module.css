@@ -9,7 +9,7 @@
   text-decoration-line: underline;
   text-decoration-style: dotted;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: rgba(10, 46, 115, 0.55);
+  text-decoration-color: color-mix(in srgb, var(--navy) 55%, transparent);
   text-underline-offset: 3px;
   border-radius: 3px;
   transition:
@@ -28,11 +28,11 @@
 }
 .helpOn :global([data-xp][data-xp-block]) {
   text-decoration: none;
-  box-shadow: -8px 0 0 -6px rgba(10, 46, 115, 0.55);
+  box-shadow: -8px 0 0 -6px color-mix(in srgb, var(--navy) 55%, transparent);
 }
 .helpOn :global([data-region="rule-switch"] [data-xp]) {
   text-decoration: none;
-  outline: 1px dashed rgba(10, 46, 115, 0.5);
+  outline: 1px dashed color-mix(in srgb, var(--navy) 50%, transparent);
   outline-offset: -2px;
 }
 .helpOn :global([data-region="rule-switch"] [data-xp][aria-pressed="true"]) {
@@ -76,7 +76,7 @@
   font: 500 12.5px/16px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
 }
 :is(.card, .drawer) .quietLink {
@@ -484,7 +484,7 @@
   position: fixed;
   z-index: 9;
   pointer-events: none;
-  border: 2px solid var(--navy, #0a2e73);
+  border: 2px solid var(--navy, #002569);
   border-radius: 6px;
 }
 

@@ -43,7 +43,7 @@
   font: 500 14px/20px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
 }
 @media (hover: hover) and (pointer: fine) {

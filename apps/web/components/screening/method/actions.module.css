@@ -55,7 +55,7 @@
   transition: transform 160ms var(--ease-out);
 }
 .switch[aria-checked="true"] {
-  border-color: rgba(10, 46, 115, 0.45);
+  border-color: color-mix(in srgb, var(--navy) 45%, transparent);
   color: var(--navy);
 }
 .switch[aria-checked="true"] .switchTrack {
@@ -73,7 +73,7 @@
 .open {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid rgba(10, 46, 115, 0.45);
+  border: 1px solid color-mix(in srgb, var(--navy) 45%, transparent);
   border-radius: 6px;
   background: var(--panel);
   box-shadow: var(--shadow);
