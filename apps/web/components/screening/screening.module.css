@@ -670,12 +670,20 @@
 /* ---------- the find control: one compact button on the line above each list, its panel, and what it leaves ---------- */
 .findRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px;
+  gap: 10px 12px;
 }
+/* The line takes the room the buttons leave; when that is under 14em, the buttons move under it together. */
 .findRow > :first-child {
-  flex: 1;
+  flex: 1 1 14em;
   min-width: 0;
+}
+.findActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin-left: auto;
 }
 /* As tall as a touch target needs, without making its line taller: the first school stays where it was. */
 .findToggle {
@@ -721,6 +729,10 @@
 }
 .queueTitle + .findToggle {
   margin-top: -5px;
+}
+/* Download or print the list beside Find: only in the narrow layout, where the actions hide in Menu. */
+.listExport {
+  display: none;
 }
 .findPanel {
   display: grid;
@@ -2444,6 +2456,9 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .actions,
   .slotHint {
     display: none;
+  }
+  .listExport {
+    display: inline-flex;
   }
   /* The key sits at the band's foot; the caveat is the list's, in its head. The open key never grows past the band:
      its title and toggle stay in view under the switch, and what does not fit scrolls inside the key. */

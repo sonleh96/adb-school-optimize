@@ -92,7 +92,13 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     ["Combined factors, without urgency", "2026-11-03", "Upper Valley"],
     ['Équipe / mix (S0): "a" b', "2026-01-09", "Écôle Hill"],
   ],
-  "LAYOUT.listLede": [[0], [1], [2], [1284]],
+  "LAYOUT.listLede": [
+    [0, true],
+    [1, false],
+    [1, true],
+    [2, false],
+    [1284, true],
+  ],
   "LAYOUT.listMore": [[1], [114]],
   "LAYOUT.listMade": [
     ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],

@@ -134,14 +134,19 @@ export const LAYOUT = Object.freeze({
   // district, by that too.
   listFileName: (ruleLabel: string, day: string, where: string | null) =>
     `rise-png-list-${where ? `${slug(where)}-` : ""}${slug(ruleLabel)}-${day}.csv`,
-  // What the plain download holds, the rows its sheet shows of them, and the line every copy of the list starts with:
-  // the file and the printout alike.
-  listLede: (n: number) =>
-    n === 0
-      ? "No school is on screen, so there is nothing to download. Clear the search to see every school."
+  // What the plain download and the printout hold, the rows the sheet shows of them, and the line every copy of the
+  // list starts with. The sheet opens over either tab, so it says "in the list", not "on screen"; `filtered` says
+  // the find control holds something.
+  listLede: (n: number, filtered: boolean) => {
+    const which = filtered ? "the search leaves" : "in the list";
+    return n === 0
+      ? "No school in the list matches the search, so there is nothing to download or print. Clear the search to see every school."
       : n === 1
-        ? "A spreadsheet of the one school on screen, with the main reason it is where it is in the list."
-        : `A spreadsheet of the ${formatCount(n)} schools on screen, in order, with the main reason for each.`,
+        ? `A spreadsheet or a printout of the one school ${which}, with the main reason it is where it is in the list.`
+        : `A spreadsheet or a printout of the ${formatCount(n)} schools ${which}, in order, with the main reason for each.`;
+  },
+  // The plain sheet's main button, beside Print the list.
+  downloadList: "Download the list",
   listFirstLine: "Its first line names the method, the date and the data version.",
   listMore: (n: number) => `And ${formatCount(n)} more in the file.`,
   listMade: (name: string, label: string, day: string, version: string) =>

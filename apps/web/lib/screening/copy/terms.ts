@@ -395,8 +395,8 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     export: {
       technical: "Shortlist export",
-      label: "Download the list",
-      line: "A spreadsheet of the schools on screen, in order, with the main reason for each.",
+      label: "Download or print the list",
+      line: "A spreadsheet or a printout of the schools in the list, in order, with the main reason for each.",
       help: "Its first line names the method, the date and the data version. The research team's file, one step further on, keeps exact school names, full-precision values, blanks as blanks, and the method record at the top, so someone else can rebuild the same list.",
       where: "Export button, export sheet",
     },

@@ -117,7 +117,7 @@ test.describe("in the narrow layout", () => {
     expect((await menu.getByRole("button").allTextContents()).map((text) => text.trim())).toEqual([
       "For researchers: show method details",
       "Copy link",
-      "Download the list",
+      "Download or print the list",
       "Sign out",
     ]);
   });

@@ -528,7 +528,7 @@ export function ExportSheet(props: ExportSheetProps) {
               {props.pack
                 ? pack.lede
                 : plain
-                  ? `${LAYOUT.listLede(rows.length)}${rows.length > 0 ? ` ${LAYOUT.listFirstLine}` : ""}`
+                  ? `${LAYOUT.listLede(rows.length, props.list.status !== null)}${rows.length > 0 ? ` ${LAYOUT.listFirstLine}` : ""}`
                   : `${method.sheet.lede(n, copy.ruleName(rule), hasRanges)}${
                       props.comparedWith ? method.sheet.ledeCompare(copy.ruleName(props.comparedWith)) : ""
                     }`}
@@ -553,23 +553,30 @@ export function ExportSheet(props: ExportSheetProps) {
                 >
                   {LAYOUT.copyRecord}
                 </button>
-                {plain ? (
-                  <button type="button" className={styles.quietButton} onClick={() => window.print()}>
-                    {LAYOUT.printList}
-                  </button>
-                ) : (
-                  <span className={styles.hint}>{TERMS.manifest.line}</span>
-                )}
+                {plain ? null : <span className={styles.hint}>{TERMS.manifest.line}</span>}
                 <span className={styles.spacer} />
+                {/* The two ways to take the list away, side by side. The printout is the list this sheet shows, on
+                    either tab. */}
                 {plain ? (
-                  <button
-                    type="button"
-                    className={styles.primary}
-                    disabled={rows.length === 0}
-                    onClick={downloadList}
-                  >
-                    {TERMS.export.label}
-                  </button>
+                  <span className={styles.pair}>
+                    <button
+                      type="button"
+                      className={styles.quietButton}
+                      data-region="print-list"
+                      disabled={rows.length === 0}
+                      onClick={() => window.print()}
+                    >
+                      {LAYOUT.printList}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.primary}
+                      disabled={rows.length === 0}
+                      onClick={downloadList}
+                    >
+                      {LAYOUT.downloadList}
+                    </button>
+                  </span>
                 ) : (
                   <button type="button" className={styles.primary} disabled={!file} onClick={download}>
                     {LAYOUT.researchFile}

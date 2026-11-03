@@ -326,6 +326,12 @@
 .spacer {
   flex: 1;
 }
+/* Print the list and Download the list stay side by side, and move to a line of their own together. */
+.pair {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
 .hint {
   font-size: 12px;
   line-height: 16px;

@@ -1,5 +1,5 @@
 /**
- * Download the list. Failure modes and the test for each:
+ * Download or print the list. Failure modes and the test for each:
  *  1. The plain download is not the list on screen: other columns than rank, school, province, district and Why, a
  *     Why other than the screen's, a school missing, or no line naming the method, the date and the data version
  *                                                                                      -> "the plain sheet downloads..."
@@ -54,7 +54,7 @@ const listed = (name: string) => {
 
 const sheet = (page: Page) => page.getByRole("dialog");
 const openSheet = async (page: Page) => {
-  await page.getByRole("button", { name: "Download the list" }).click();
+  await page.getByRole("button", { name: "Download or print the list" }).click();
   await expect(sheet(page)).toBeVisible();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
 };
@@ -101,7 +101,7 @@ test("the plain sheet downloads the list on screen as a spreadsheet a director c
     }))
   );
   await openSheet(page);
-  await expect(sheet(page).getByRole("heading")).toHaveText("Download the list");
+  await expect(sheet(page).getByRole("heading")).toHaveText("Download or print the list");
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(10);
   await expect(sheet(page).locator("[data-region=export-more]")).toHaveText(
     `And ${ORDERED_COUNT - 10} more in the file.`
@@ -219,7 +219,7 @@ test("Escape closes the sheet first, then the card behind it", async ({ page }) 
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toHaveCount(0);
   await expect(page.locator("[data-slot=school-card]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download the list" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Download or print the list" })).toBeFocused();
   expect(search(page)).not.toContain("panel");
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-slot=school-card]")).toHaveCount(0);
@@ -280,7 +280,7 @@ test("with no schools the button waits, and with one school the sheet lists it",
   await useMockDataset(context, "empty");
   await page.goto("/screening");
   await expect(page.locator("[data-empty]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download the list" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Download or print the list" })).toBeDisabled();
   await expect(page.getByRole("switch", { name: "Show method details" })).toBeDisabled();
   // The empty store answers 404, as the API does; those answers were expected.
   expect(problems.every((p) => p.includes("404"))).toBe(true);
@@ -408,7 +408,7 @@ test("a failed load of the sheet's code says so and loads it again on Retry", as
   await openWorkspace(page);
   // Every script from now on fails, as on a dropped connection, so the sheet's code cannot load.
   await page.route("**/_next/static/chunks/**", (route) => route.abort());
-  await page.getByRole("button", { name: "Download the list" }).click();
+  await page.getByRole("button", { name: "Download or print the list" }).click();
   const failure = page.getByRole("alert").filter({ hasText: "Some of the information did not load" });
   await expect(failure).toBeVisible();
   await page.unroute("**/_next/static/chunks/**");

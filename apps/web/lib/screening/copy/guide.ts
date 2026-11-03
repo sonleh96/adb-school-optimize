@@ -142,9 +142,9 @@ export const GUIDE = Object.freeze({
           {
             key: "download",
             title: "Take the list with you",
-            onScreen: "The button that downloads the list",
+            onScreen: "The button that downloads or prints the list",
             tryIt:
-              "Open Download the list to see the schools on screen as a spreadsheet, with the method record.",
+              "Open Download or print the list to save the list as a spreadsheet or print it, with the method and the date at the top.",
           },
         ],
       },

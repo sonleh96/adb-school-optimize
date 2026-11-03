@@ -8,6 +8,7 @@
  * the export sheet each load in their own chunk on first use, and the method words through the copy's `methodFor`.
  * Every change goes through the workspace controller, so a guide, a pasted link and a click land on the same screen.
  */
+import { Download } from "lucide-react";
 import { type ReactNode, createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type BoundCopy, type CopyRuleId, type CopySchool, RULE_IDS } from "@/lib/screening/copy";
@@ -105,8 +106,10 @@ export interface Mounts {
   /** The method details are drawn. */
   on: boolean;
   methodSwitch: ReactNode;
-  /** "Download the top list", in the actions. */
+  /** "Download or print the list", in the actions. */
   exportButton: ReactNode;
+  /** The same, at the head of the list, shown only in the narrow layout, where the actions hide in Menu. */
+  listExportButton: ReactNode;
   /** The method switch and Download the top list as choices of the narrow layout's menu, which puts Copy link
    * between them (notes/final.md, "Responsive layout"). */
   methodMenuItem: (act: MenuAct) => ReactNode;
@@ -198,7 +201,12 @@ export function useMethodMounts(input: MountInput): Mounts {
     />
   );
 
-  const openSheet = () => store.setState({ panel: "export", pop: null });
+  // The button that opened the sheet, so closing it hands focus back there; none for the menu's choice, which leaves.
+  const openedFrom = useRef<HTMLElement | null>(null);
+  const openSheet = (from: HTMLElement | null) => {
+    openedFrom.current = from;
+    store.setState({ panel: "export", pop: null });
+  };
   const exportButton = (
     <button
       ref={exportOpener}
@@ -211,8 +219,25 @@ export function useMethodMounts(input: MountInput): Mounts {
       aria-expanded={state.panel === "export"}
       onPointerEnter={loadSheet}
       onFocus={loadSheet}
-      onClick={openSheet}
+      onClick={(event) => openSheet(event.currentTarget)}
     >
+      {copy.TERMS.export.label}
+    </button>
+  );
+  // The same action at the head of the list, for the narrow layout, where the actions above hide in Menu.
+  const listExportButton = (
+    <button
+      type="button"
+      className={`${base.findToggle} ${base.listExport}`}
+      data-region="list-export"
+      disabled={!ready}
+      aria-haspopup="dialog"
+      aria-expanded={state.panel === "export"}
+      onPointerEnter={loadSheet}
+      onFocus={loadSheet}
+      onClick={(event) => openSheet(event.currentTarget)}
+    >
+      <Download size={13} aria-hidden />
       {copy.TERMS.export.label}
     </button>
   );
@@ -234,7 +259,7 @@ export function useMethodMounts(input: MountInput): Mounts {
       disabled={!ready}
       onClick={act(() => {
         loadSheet();
-        openSheet();
+        openSheet(null);
       })}
     >
       {copy.TERMS.export.label}
@@ -282,10 +307,11 @@ export function useMethodMounts(input: MountInput): Mounts {
         onLength={(n) => store.setState({ n })}
         onClose={() => {
           store.setState({ panel: null });
-          // The sheet leaves the page as it closes, so focus goes back to the button that opened it: the actions'
-          // button, or in the narrow layout, where the actions are hidden, the menu's button.
+          // The sheet leaves the page as it closes, so focus goes back to the button that opened it: the one at the
+          // head of the list, or the actions' button, or in the narrow layout, where the actions are hidden, the
+          // menu's button.
           requestAnimationFrame(() => {
-            const opener = exportOpener.current;
+            const opener = openedFrom.current?.isConnected ? openedFrom.current : exportOpener.current;
             const shown = opener && opener.getClientRects().length > 0 ? opener : null;
             (shown ?? document.querySelector<HTMLElement>('[data-region="actions-menu"]'))?.focus({
               preventScroll: true,
@@ -296,7 +322,16 @@ export function useMethodMounts(input: MountInput): Mounts {
       />
     ) : null;
 
-  const common = { on, methodSwitch, exportButton, methodMenuItem, exportMenuItem, exportSheet, paint };
+  const common = {
+    on,
+    methodSwitch,
+    exportButton,
+    listExportButton,
+    methodMenuItem,
+    exportMenuItem,
+    exportSheet,
+    paint,
+  };
   if (!on || !mod || !method || !rule) {
     return {
       ...common,

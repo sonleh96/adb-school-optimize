@@ -563,7 +563,8 @@ function Workspace() {
   const printReady = useAfterPaint(ready);
   const queueStatus =
     found && shown ? copy.LAYOUT.findShowing(queued.length, incomplete.length, "queue", findWords) : null;
-  const printQueue = state.view === "queue";
+  // The sheet's Print the list prints the list the sheet shows, whichever tab is behind it.
+  const printQueue = state.view === "queue" && state.panel !== "export";
   const print = useMemo(() => {
     if (!shown || !printReady) return null;
     const P = shown.copy;
@@ -1017,7 +1018,12 @@ function Workspace() {
                                     </button>
                                   </p>
                                 )}
-                                {findToggle}
+                                {/* In the narrow layout, where the actions hide in Menu, the way to download or
+                                    print the list sits beside Find, and both move under the line on a phone. */}
+                                <span className={styles.findActions}>
+                                  {findToggle}
+                                  {method.listExportButton}
+                                </span>
                               </div>
                               {scopeOpen && !found ? (
                                 <p className={styles.scopeDetail} id="screening-scope-detail">
