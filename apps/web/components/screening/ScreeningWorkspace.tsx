@@ -188,6 +188,9 @@ function useFootHeight(foot: React.RefObject<HTMLElement | null>, deps: readonly
 /** How long the first load runs before the screen says it is still loading. */
 const SLOW_LOAD_MS = 5000;
 
+/** What a click can choose to work with: a control, or anything Tab reaches. */
+const CONTROL = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 /** True once `active` has held for `ms`; false whenever it does not hold. */
 function useSlow(active: boolean, ms: number): boolean {
   const [slow, setSlow] = useState(false);
@@ -694,6 +697,16 @@ function Workspace() {
     setFindOpen(false);
     requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus());
   };
+  // A click outside the panel folds it. A control the click chose keeps the focus; a click on words, which leaves it on
+  // the page or on a region that only scripts focus (the list), hands it back to the button, as Escape does.
+  const dismissFind = () => {
+    setFindOpen(false);
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && active.matches(CONTROL)) return;
+      root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus();
+    });
+  };
   const clearFind = () => {
     changeFind({ prov: null, dist: null, q: null });
     // The status line and its Clear leave the page, so focus goes to the button.
@@ -717,6 +730,7 @@ function Workspace() {
       onFocused={() => setFindFocus(false)}
       onChange={changeFind}
       onClose={closeFind}
+      onDismiss={dismissFind}
     />
   ) : null;
   const findStatus = (shownCount: number, total: number, of: "list" | "queue") =>

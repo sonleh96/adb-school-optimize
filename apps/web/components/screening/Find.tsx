@@ -7,7 +7,7 @@
  * downloads and the printout all carry it. A filter hides rows and fades marks; it never renumbers a rank.
  */
 import { Search } from "lucide-react";
-import { type KeyboardEvent, useId, useLayoutEffect, useRef } from "react";
+import { type KeyboardEvent, useEffect, useEffectEvent, useId, useLayoutEffect, useRef } from "react";
 
 import type { BoundCopy } from "@/lib/screening/copy";
 import type { FilterOptions } from "@/lib/screening/filters";
@@ -43,8 +43,9 @@ function pairOf(value: string): [string, string] | null {
 
 /**
  * The three fields, for the plain screen's panel and the method details' filter. `onChosen` hears that a choice is
- * made: a province or district picked with the pointer or a finger, or Enter in any field. A list moved through with
- * the arrow keys changes at each key on some systems, so a key's change is not a choice until Enter.
+ * made: a district picked with the pointer or a finger, or Enter in any field. A province picked that way is not the
+ * end of it: the keyboard goes on to District, so a district can follow without another click. A list moved through
+ * with the arrow keys changes at each key on some systems, so a key's change is not a choice until Enter.
  */
 export function FindFields({
   copy,
@@ -65,9 +66,8 @@ export function FindFields({
   const districts = value.prov !== null ? (options.places.get(value.prov) ?? []) : null;
   // The last thing that moved a list: a key, or the pointer.
   const byKey = useRef(false);
-  const chosen = (picked: string) => {
-    if (picked !== "" && !byKey.current) onChosen?.();
-  };
+  const districtList = useRef<HTMLSelectElement>(null);
+  const picked = (value: string) => value !== "" && !byKey.current && onChosen !== undefined;
   const listEvents = {
     onPointerDown: () => {
       byKey.current = false;
@@ -90,10 +90,10 @@ export function FindFields({
           id={`${ids}-prov`}
           value={value.prov ?? ""}
           {...listEvents}
-          // A new province starts with all its districts.
+          // A new province starts with all its districts, and the keyboard goes on to them.
           onChange={(event) => {
             onChange({ prov: event.target.value || null, dist: null });
-            chosen(event.target.value);
+            if (picked(event.target.value)) districtList.current?.focus();
           }}
         >
           <option value="">{LAYOUT.allProvinces}</option>
@@ -107,18 +107,19 @@ export function FindFields({
       <label className={styles.findField} htmlFor={`${ids}-dist`}>
         <span>{LAYOUT.district}</span>
         <select
+          ref={districtList}
           id={`${ids}-dist`}
           value={districts ? (value.dist ?? "") : ""}
           {...listEvents}
           onChange={(event) => {
-            const picked = event.target.value;
-            if (districts) onChange({ dist: picked || null });
+            const chosen = event.target.value;
+            if (districts) onChange({ dist: chosen || null });
             else {
-              const pair = pairOf(picked);
+              const pair = pairOf(chosen);
               if (!pair) return;
               onChange({ prov: pair[0], dist: pair[1] });
             }
-            chosen(picked);
+            if (picked(chosen)) onChosen?.();
           }}
         >
           <option value="">{LAYOUT.allDistricts}</option>
@@ -209,7 +210,8 @@ export function FindToggle({
 /**
  * The panel the button opens, under its line. Opened from the button, it takes the keyboard into its first field as
  * it appears (`focusFirst`, which `onFocused` then clears); the same panel shown again on the other tab leaves focus
- * where it is. Escape, or a choice (see `FindFields`), closes it and hands focus back to the button.
+ * where it is. Escape, or a choice (see `FindFields`), closes it and hands focus back to the button. A click outside
+ * it, once done, closes it too (`onDismiss`), so nothing moves under the pointer while the click is still on its way.
  */
 export function FindPanel({
   copy,
@@ -219,6 +221,7 @@ export function FindPanel({
   onFocused,
   onChange,
   onClose,
+  onDismiss,
 }: {
   copy: BoundCopy;
   options: FilterOptions;
@@ -227,6 +230,7 @@ export function FindPanel({
   onFocused: () => void;
   onChange: (patch: FindPatch) => void;
   onClose: () => void;
+  onDismiss: () => void;
 }) {
   const panel = useRef<HTMLFieldSetElement>(null);
   useLayoutEffect(() => {
@@ -234,6 +238,20 @@ export function FindPanel({
     panel.current?.querySelector<HTMLElement>("select")?.focus({ preventScroll: true });
     onFocused();
   }, [focusFirst, onFocused]);
+  // One listener for the panel's life. React's own listener sits on the document too, before it, so a listener swapped
+  // while React handles a click (a school chosen re-renders the page) would miss that click.
+  const outside = useEffectEvent((event: MouseEvent) => {
+    const target = event.target;
+    if (!(target instanceof Node) || panel.current?.contains(target)) return;
+    // The button opens and closes the panel itself.
+    if (target instanceof Element && target.closest("[data-region=find]")) return;
+    onDismiss();
+  });
+  useEffect(() => {
+    const listener = (event: MouseEvent) => outside(event);
+    document.addEventListener("click", listener);
+    return () => document.removeEventListener("click", listener);
+  }, []);
   return (
     <fieldset
       ref={panel}
@@ -250,8 +268,8 @@ export function FindPanel({
       }}
     >
       <legend className={styles.findLegend}>{copy.LAYOUT.findAria}</legend>
-      {/* A choice folds the fields away, so the list is not pushed down on a phone: the line that says what is
-          chosen, with Clear, and the button that opens them again stay. */}
+      {/* A district, a name or Enter folds the fields away, so the list is not pushed down on a phone: the line that
+          says what is chosen, with Clear, and the button that opens them again stay. */}
       <FindFields copy={copy} options={options} value={value} onChange={onChange} onChosen={onClose} />
     </fieldset>
   );

@@ -13,11 +13,16 @@
  *                                                                                       -> "Escape closes the panel..."
  *  9. A chosen province leaves its schools a small cluster on a map of the whole country, or Clear leaves the map
  *     zoomed on a province no longer chosen                                             -> "a province frames the map..."
- * 10. A choice leaves the fields open, so on a phone they push the list down; or folding them loses the line that
- *     says what is chosen, the button that opens them again, or the keyboard's place    -> "a choice folds..."
+ * 10. A district, a name or Enter leaves the fields open, so on a phone they push the list down; or folding them loses
+ *     the line that says what is chosen, the button that opens them again, or the keyboard's place
+ *                                                                                       -> "a province keeps..."
+ * 15. A province folds the fields before its district can be picked, or does not take the keyboard on to District
+ *                                                                                       -> "a province keeps..."
+ * 16. A click outside the fields leaves them open over the list, or drops the keyboard on the page
+ *                                                                                       -> "a click outside..."
  * 11. Moving through a list with the arrow keys folds it at the first key, before the reader reaches the province
  *     they want, or Enter does not fold it                                              -> "the arrow keys..."
- * 12. Typing a name folds the fields mid-word, or Enter leaves them open                -> "a choice folds..."
+ * 12. Typing a name folds the fields mid-word, or Enter leaves them open                -> "a province keeps..."
  * 13. A link names a province or district the data does not hold, and the screen drops it without a word, or keeps
  *     saying so after the reader has chosen a place                                     -> "a link that names a place..."
  * 14. The button does not say it finds by province, so first-time readers miss it; its word is not in the name a
@@ -81,7 +86,6 @@ test("the district list follows the province, and a new province starts with all
   await openWorkspace(page);
   await findButton(page).click();
   await province(page).selectOption("North Province");
-  await findButton(page).click();
   await expect(district(page).locator("option")).toHaveText(["All districts", "North One", "North Two"]);
   await district(page).selectOption("North Two");
   expect(search(page)).toBe("?prov=North+Province&dist=North+Two");
@@ -89,7 +93,6 @@ test("the district list follows the province, and a new province starts with all
 
   await findButton(page).click();
   await province(page).selectOption("South Province");
-  await findButton(page).click();
   await expect(district(page)).toHaveValue("");
   await expect(district(page).locator("option")).toHaveText(["All districts", "South One", "South Two"]);
   expect(search(page)).toBe("?prov=South+Province");
@@ -123,7 +126,6 @@ test("when nothing matches, the screen says so in words, and Clear shows every s
   await openWorkspace(page);
   await findButton(page).click();
   await province(page).selectOption("East Province");
-  await findButton(page).click();
   await schoolName(page).fill("Sample School 08");
   await expect(shownRows(page)).toHaveCount(0);
   await expect(status(page)).toHaveText(
@@ -208,26 +210,48 @@ test("a province frames the map on its schools, and Clear frames the country aga
   await expect.poll(spread, { timeout: 10_000 }).toBeLessThan(country * 1.2);
 });
 
-test("a choice folds the fields away, and the line that says what is chosen and Find stay", async ({
+test("a province keeps the fields open for its districts, and a district, a name or Enter folds them", async ({
   page,
 }) => {
   await openWorkspace(page);
   await findButton(page).click();
   await province(page).selectOption("South Province");
-  await expect(panel(page)).toHaveCount(0);
+  // The province narrows the list at once, and the keyboard goes on to its districts.
   await expect(status(page)).toHaveText(/ are in South Province\.$/);
+  await expect(panel(page)).toBeVisible();
+  await expect(district(page)).toBeFocused();
+
+  await district(page).selectOption("South One");
+  await expect(panel(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText(/ are in South One, South Province\.$/);
   await expect(findButton(page)).toBeFocused();
   await expect(findButton(page)).toHaveAttribute("data-active", "true");
 
   // Find opens them again as they were left. Typing a name narrows the list and keeps them open; Enter folds them.
   await findButton(page).click();
-  await expect(province(page)).toHaveValue("South Province");
+  await expect(district(page)).toHaveValue("South One");
   await schoolName(page).fill("sample");
   await expect(panel(page)).toBeVisible();
   await schoolName(page).press("Enter");
   await expect(panel(page)).toHaveCount(0);
   await expect(findButton(page)).toBeFocused();
-  expect(search(page)).toBe("?prov=South+Province&q=sample");
+  expect(search(page)).toBe("?prov=South+Province&dist=South+One&q=sample");
+});
+
+test("a click outside folds the fields, and focus goes back to Find", async ({ page }) => {
+  await openWorkspace(page);
+  await findButton(page).click();
+  await expect(panel(page)).toBeVisible();
+  // Words that take no focus, outside the fields: the start of the line above them.
+  await page.locator("[data-region=scope-line]").click({ position: { x: 4, y: 6 } });
+  await expect(panel(page)).toHaveCount(0);
+  await expect(findButton(page)).toBeFocused();
+
+  // A school clicked outside them keeps the keyboard it took; the fields fold all the same.
+  await findButton(page).click();
+  await shownRows(page).first().click();
+  await expect(panel(page)).toHaveCount(0);
+  await expect(findButton(page)).not.toBeFocused();
 });
 
 test("the arrow keys move through a list without folding it, and Enter folds it", async ({ page }) => {
