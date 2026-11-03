@@ -1110,7 +1110,6 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--navy-2);
 }
 .placeTo {
-  margin: 0 0.3em;
   font: 500 11px/14px var(--sans);
   letter-spacing: 0.02em;
   color: var(--ink-3);
@@ -1820,7 +1819,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .heroFigure .placeTo {
   position: relative;
   top: -0.5em;
-  margin: 0 0.35em;
+  margin: 0 0.1em;
   font: 500 0.36em/1 var(--sans);
   letter-spacing: 0;
 }

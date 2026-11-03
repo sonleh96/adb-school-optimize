@@ -258,14 +258,14 @@ test("the scope line opens its detail in place, and a range row's place names th
   await expect(page.locator("#screening-scope-detail")).toHaveCount(0);
 
   // A range row says which group it counts in, so its number never reads as a single rank (R19).
-  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thto17thof 22");
-  await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("22ndof 22");
+  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10th to 17th of 22");
+  await expect(orderedRow(page, "Sample School 25").locator("[data-place]")).toHaveText("22nd of 22");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place]")).toHaveText("1st");
 
   // Under the need-first rule a range school sits at exactly 10th beside a complete school's 10th; the detail stays
   // the reader's to open.
   await page.goto("/screening?rule=need_first_u");
-  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10thof 21");
+  await expect(orderedRow(page, "Sample School 17").locator("[data-place]")).toHaveText("10th of 21");
   await expect(orderedRow(page, "Sample School 07").locator("[data-place]")).toHaveText("10th");
   await expect(page.getByRole("button", { name: "Read more" })).toHaveAttribute("aria-expanded", "false");
   await waitForMap(page);
