@@ -19,7 +19,7 @@
 
 export const GUIDE_IDS = ["q1", "q2", "q3", "q4", "q5"] as const;
 export type GuideId = (typeof GUIDE_IDS)[number];
-export const isGuideId = (value: unknown): value is GuideId =>
+const isGuideId = (value: unknown): value is GuideId =>
   typeof value === "string" && (GUIDE_IDS as readonly string[]).includes(value);
 
 export type Rail =
@@ -76,7 +76,7 @@ export interface Model {
 /** The guides the loaded data can teach, in order, with how many steps each has. `null` until the data is known. */
 export type Catalog = readonly { readonly id: GuideId; readonly steps: number }[];
 
-export const CLOSED_GLOSSARY: Glossary = Object.freeze({ open: false, q: "", x: null });
+const CLOSED_GLOSSARY: Glossary = Object.freeze({ open: false, q: "", x: null });
 export const EMPTY_MEMORY: Memory = Object.freeze({ seen: false, done: [], last: null });
 
 export const INITIAL_STATE = Object.freeze<LayerState>({
@@ -291,7 +291,7 @@ export function revalidateViews(state: LayerState, views: readonly string[]): La
 /* ------------------------------------------------------------------ the URL */
 
 /** The URL keys the guidance layers own; the workspace keeps every other key. */
-export const LAYER_KEYS = [
+const LAYER_KEYS = [
   "guide",
   "gstep",
   "gview",

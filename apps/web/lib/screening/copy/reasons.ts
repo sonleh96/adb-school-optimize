@@ -38,7 +38,7 @@ export const NEED_FIELDS: Readonly<Record<NeedKey, NeedField>> = {
   services: "service_deficit",
   locality: "locality_disadvantage",
 };
-export const NEED_KEYS = Object.keys(NEED_FIELDS) as NeedKey[];
+const NEED_KEYS = Object.keys(NEED_FIELDS) as NeedKey[];
 export const isNeedKey = (key: string): key is NeedKey => (NEED_KEYS as readonly string[]).includes(key);
 export const ORDER: readonly InputKey[] = [
   ...NEED_KEYS,
@@ -353,6 +353,30 @@ export function topDrivers(school: CopySchool, ruleId: CopyRuleId): Driver[] {
     picked.push(items[picked.length]);
   }
   return picked.map((x) => ({ ...x, sentence: inputSentence(school, x.key) }));
+}
+
+// The card numbers the reasons largest first, 1 for the largest. Reasons that add exactly the same still get
+// different numbers, by a fixed order of the inputs, so this says which they are; null when no two are equal.
+export function equalReasons(drivers: readonly { readonly value: number }[]): string | null {
+  const groups: number[][] = [];
+  drivers.forEach((d, i) => {
+    const group = groups[groups.length - 1];
+    if (i > 0 && Math.abs(d.value - drivers[i - 1].value) < 1e-12) group.push(i + 1);
+    else groups.push([i + 1]);
+  });
+  const equal = groups.filter((g) => g.length > 1);
+  if (equal.length === 0) return null;
+  const [first, ...more] = equal.map((g) => joinList(g.map(String)));
+  const pairs = equal.every((g) => g.length === 2);
+  const order =
+    equal.length === 1
+      ? pairs
+        ? "neither comes before the other"
+        : "none comes before another"
+      : pairs
+        ? "neither of a pair comes before the other"
+        : "none comes before another it equals";
+  return `Reasons ${first} add exactly the same, ${more.map((g) => `and so do reasons ${g}, `).join("")}so ${order}.`;
 }
 
 export function reasonSentence(school: CopySchool, ruleId: CopyRuleId, ruleNames?: RuleNames): string {

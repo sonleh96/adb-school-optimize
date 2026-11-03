@@ -25,8 +25,7 @@ const overlapAt = (row: PairwiseRow, k: TopSize): number | undefined =>
 
 // One framing for agreement everywhere: "The same 20 schools make the top 20 under both methods, and the same 40 make the top 40."
 // base: the top-list length to lead with (10 or 20). both: how to name the pair, such as "under both methods".
-export const pairSize = (row: PairwiseRow): number | null =>
-  Number.isInteger(row.n) ? (row.n as number) : null;
+const pairSize = (row: PairwiseRow): number | null => (Number.isInteger(row.n) ? (row.n as number) : null);
 export const pairPhrase = (row: PairwiseRow): string =>
   theSchools({ n: pairSize(row) ?? undefined }, "n", "with one rank under both methods");
 export function agreementSentence(row: PairwiseRow, base: 10 | 20, both: string): string {

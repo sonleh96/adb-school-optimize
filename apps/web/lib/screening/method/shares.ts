@@ -12,7 +12,3 @@ export function shareText(share: Share): string {
   const hundredths = share.value * 100;
   return Math.abs(hundredths - Math.round(hundredths)) < 1e-9 ? share.value.toFixed(2) : share.fraction;
 }
-
-/** The shares as one line: "N 0.60 · A 0.15 · ...". */
-export const sharesLine = (shares: readonly Share[]): string =>
-  shares.map((s) => `${s.component} ${shareText(s)}`).join(" · ");

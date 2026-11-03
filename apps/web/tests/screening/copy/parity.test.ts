@@ -357,7 +357,16 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       );
     for (const f of [0, 0.075, 0.1, 0.25, 0.3333, 0.5, 0.9996, 1, 0.00049, 0.0005, 0.12345, 0.61078])
       same(`formatPercent(${f})`, proto.formatPercent(f), port.formatPercent(f));
-    for (const s of ["  Alder  Junior High   School ", "", " ", "A", "Lumi "])
+    for (const s of [
+      "  Alder  Junior High   School ",
+      "",
+      " ",
+      "A",
+      "Lumi ",
+      "Kareba'S",
+      "O'Kane",
+      "Tamu’S Day",
+    ])
       same(`cleanName(${show(s)})`, proto.cleanName(s), port.cleanName(s));
     flush();
   });
@@ -701,6 +710,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));
+          one(`${t} equalReasons`, (api) => api.equalReasons(api.topDrivers(s, r)));
           one(`${t} contributions`, (api) => api.contributions(s, r));
         }
         for (const [a, b] of pairs)

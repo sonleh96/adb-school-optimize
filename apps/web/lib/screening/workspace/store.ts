@@ -112,8 +112,11 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
   let url: { location: BrowserLocation; history: BrowserHistory } | null = null;
   /** The depth of the history entry on screen, as last read or written. */
   let depth = 0;
-  /** A covering view was closed on screen and the store has gone back past its entry; the Back is under way. */
-  let returning = false;
+  /**
+   * The state on screen when the store went back past the entry of a covering view it closed, while that Back is under
+   * way; null otherwise. A view opened before the Back lands is pushed against it once it does.
+   */
+  let backFrom: WorkspaceState | null = null;
   let markReady!: () => void;
   const ready = new Promise<void>((resolve) => (markReady = resolve));
 
@@ -124,7 +127,7 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
    * opening a covering view pushes an entry, and closing the one whose entry is on screen goes back past it.
    */
   function writeUrl(from?: WorkspaceState) {
-    if (!url || returning) return;
+    if (!url || backFrom) return;
     const { location, history } = url;
     const search = searchWithState(location.search, state);
     const href = `${location.pathname}${search}${location.hash}`;
@@ -135,7 +138,7 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
       history.pushState({ [ENTRY_KEY]: { depth, pane: state.pane } }, "", href);
     } else if (from && closes(from, state) && depth > 0) {
       // The entry goes with the view it opened, so a later Back never lands on a screen that looks the same.
-      returning = true;
+      backFrom = state;
       history.back();
     } else if (search !== location.search || (here?.pane ?? "list") !== state.pane) {
       history.replaceState({ [ENTRY_KEY]: { depth, pane: state.pane } }, "", href);
@@ -161,12 +164,14 @@ export function createWorkspaceStore(defaultRule: RuleId): WorkspaceStore {
     const there = entry ? applyPatch(read, { pane: entry.pane }, known) : read;
     // The store's own Back has nothing to follow: the close is already on screen. Back past an entry the workspace
     // pushed closes what it opened, and keeps the rest; any other move, such as Forward, brings back the whole entry.
-    const next = returning ? state : landed < depth ? applyPatch(state, covering(there), known) : there;
-    returning = false;
+    const settled = backFrom;
+    const next = settled ? state : landed < depth ? applyPatch(state, covering(there), known) : there;
+    backFrom = null;
     depth = landed;
     if (!sameState(next, state)) commit(next);
-    // A URL whose state is the one already held can still carry junk or spelled-out defaults.
-    writeUrl();
+    // A view opened while the store's own Back was under way gets its entry now. A URL whose state is the one already
+    // held can still carry junk or spelled-out defaults.
+    writeUrl(settled ?? undefined);
   }
 
   return {

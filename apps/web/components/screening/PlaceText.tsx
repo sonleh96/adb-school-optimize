@@ -5,7 +5,8 @@ const PART = /(\d+)(st|nd|rd|th)\b| (to) | (of [\d,]+)/g;
 /**
  * A place as the copy wrote it ("3rd", "12th to 27th", "10th of 21"), set as the design sets places: each ordinal
  * with its suffix raised, and the joining words ("to", "of 21") small and italic. The words are the copy's; only their
- * setting changes. Each piece is its own element, so a grid parent can stack them.
+ * setting changes. A joining word keeps its spaces, at its own small size, so the place reads and copies as words.
+ * The group a range counts in ("of 21") is marked, so a range can set it on a line of its own.
  */
 export function PlaceText({ text }: { text: string }) {
   const parts: React.ReactNode[] = [];
@@ -20,8 +21,8 @@ export function PlaceText({ text }: { text: string }) {
           <sup className={styles.ord}>{match[2]}</sup>
         </span>
       ) : (
-        <i key={at} className={styles.placeTo}>
-          {match[3] ?? match[4]}
+        <i key={at} className={styles.placeTo} data-of={match[4] ? "" : undefined}>
+          {match[0]}
         </i>
       )
     );

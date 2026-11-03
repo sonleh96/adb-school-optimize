@@ -441,3 +441,11 @@
 .seg.seg button[aria-pressed="true"] {
   color: var(--navy);
 }
+
+/* Forced colours drop the ring and the white fill of the chosen side; an outline inside it marks it instead. */
+@media (forced-colors: active) {
+  .seg button[aria-pressed="true"]:not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

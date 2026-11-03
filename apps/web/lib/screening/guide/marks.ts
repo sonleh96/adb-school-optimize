@@ -26,7 +26,7 @@ const firstOnly =
   (_: Element, index: number): CardId | null =>
     index === 0 ? `term:${key}` : null;
 
-export const MARKS: readonly MarkRule[] = [
+const MARKS: readonly MarkRule[] = [
   // The closed rule area: its plain line and the control that opens the choice explain the rule on screen, as the
   // open area's shares line does.
   { selector: '[data-region="rule-now"]', card: (_, __, ctx) => `rule:${ctx.rule}`, block: true },

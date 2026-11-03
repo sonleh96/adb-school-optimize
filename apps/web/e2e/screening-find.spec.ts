@@ -25,8 +25,8 @@
  * 12. Typing a name folds the fields mid-word, or Enter leaves them open                -> "a province keeps..."
  * 13. A link names a province or district the data does not hold, and the screen drops it without a word, or keeps
  *     saying so after the reader has chosen a place                                     -> "a link that names a place..."
- * 14. The button does not say it finds by province, so first-time readers miss it; its word is not in the name a
- *     screen reader hears; or on a 360 px phone it no longer fits beside Download or print the list, spilling past
+ * 14. The button does not say it finds by province, so first-time readers miss it; the name a screen reader hears
+ *     does not start with its word, so voice control misses it; or on a 360 px phone it no longer fits beside Download or print the list, spilling past
  *     the head of the list or pushing the first school out of the window             -> "the button names the province..."
  */
 import type { Page } from "@playwright/test";
@@ -36,8 +36,7 @@ import { MAIN_RULE, ORDERED, expect, markAt, openWorkspace, rowsOf, tab, test } 
 test.use({ viewport: { width: 1440, height: 900 } });
 test.describe.configure({ timeout: 60_000 });
 
-const FIND = "Find schools by province, district or name";
-const findButton = (page: Page) => page.getByRole("button", { name: FIND }).filter({ visible: true });
+const findButton = (page: Page) => page.locator("button[data-region=find]").filter({ visible: true });
 const panel = (page: Page) => page.locator("[data-region=find-panel]");
 const status = (page: Page) =>
   page.locator("[data-region=find-status] [role=status]").filter({ visible: true });
@@ -304,8 +303,8 @@ test.describe("at 360 by 740", () => {
   }) => {
     await openWorkspace(page);
     await expect(findButton(page)).toHaveText("Province");
-    // Someone who says the word they see reaches the button: the name a screen reader hears holds it.
-    expect((await findButton(page).getAttribute("aria-label"))!.toLowerCase()).toContain("province");
+    // Someone who says the word they see reaches the button: the name a screen reader hears starts with it.
+    expect(await findButton(page).getAttribute("aria-label")).toMatch(/^Province\b/);
 
     const find = (await findButton(page).boundingBox())!;
     const action = (await page.locator("[data-region=list-export]").boundingBox())!;

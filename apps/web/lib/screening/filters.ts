@@ -22,7 +22,7 @@ export interface Filters {
 export const NO_FILTERS: Filters = Object.freeze({ prov: null, dist: null, q: null, loc: null, miss: null });
 
 /** Text as the name search compares it: accents dropped, lower case, runs of spaces as one. */
-export const searchText = (text: string): string =>
+const searchText = (text: string): string =>
   text
     .normalize("NFKD")
     .replace(/\p{M}+/gu, "")

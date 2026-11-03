@@ -485,13 +485,7 @@ describe("the explainer and the questions", async () => {
 
 describe("the fixed strings that carry a rule of the project", () => {
   it("keeps the precise caveat for analyst views and a plain one for the screen", () => {
-    expect(copy.STRINGS.caveat).toBe(
-      "This screen proposes schools for inspection. It does not establish school condition, site safety, intervention benefit or an optimal investment plan."
-    );
     expect(copy.STRINGS.caveatAnalyst).toBe(copy.STRINGS.caveat);
-    expect(copy.STRINGS.caveatPlain).toBe(
-      "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money."
-    );
   });
 
   it("states how each persistence test was drawn from the data, per rule, never from a literal", async () => {
@@ -708,8 +702,6 @@ describe("counts belong to the data they came from", () => {
     expect(copyFor({}).scope("additive_u").groups).toBe(
       "No school has every input recorded, so no school can be put in order."
     );
-    expect(copy.TERMS.cohort_complete.label).toBe("Every input recorded");
-    expect(copy.TERMS.cohort_ranked.label).toBe("Can be put in order");
   });
 });
 

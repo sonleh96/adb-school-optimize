@@ -68,6 +68,7 @@ export {
 } from "./rank";
 export {
   contributions,
+  equalReasons,
   INPUT_KEYS,
   inputSentence,
   reasonSentence,

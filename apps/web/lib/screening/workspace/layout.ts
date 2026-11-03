@@ -11,8 +11,8 @@
  */
 export type LayoutMode = "wide" | "desktop" | "compact" | "narrow";
 
-export const MIN_MAP = 480;
-export const GAP = 16;
+const MIN_MAP = 480;
+const GAP = 16;
 export const BREAKPOINTS = { wide: 1440, desktop: 1280, compact: 1024 } as const;
 const WIDTHS: Record<Exclude<LayoutMode, "narrow">, { column: number; card: number }> = {
   wide: { column: 416, card: 392 },
@@ -20,10 +20,9 @@ const WIDTHS: Record<Exclude<LayoutMode, "narrow">, { column: number; card: numb
   compact: { column: 360, card: 360 },
 };
 /**
- * The narrow layout's top bar and the share of the window its map band takes. A short window (a laptop at 200
- * percent zoom is 800 by 500) gives the band less, so the list region still shows its first school without a scroll.
+ * The share of the window the narrow layout's map band takes. A short window (a laptop at 200 percent zoom is 800
+ * by 500) gives the band less, so the list region still shows its first school without a scroll.
  */
-export const TOP_BAR = 56;
 const SHORT = 600;
 const BAND = { share: 0.4, min: 200 };
 const BAND_SHORT = { share: 0.32, min: 160 };

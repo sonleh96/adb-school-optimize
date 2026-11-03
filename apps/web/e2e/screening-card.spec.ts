@@ -107,7 +107,7 @@ test("a range school's card shows its range, names the missing figure, and label
 }) => {
   await openWorkspace(page);
   await orderedRow(page, "Sample School 17").click();
-  await expect(place(page)).toHaveText("10thto17th");
+  await expect(place(page)).toHaveText("10th to 17th");
   await expect(page.getByTestId("card-context")).toContainText(
     "Its air-quality figure, an air-pollution index for its location, is missing"
   );
@@ -183,7 +183,7 @@ test("the card steps through the list on screen, and states no count that could 
   await openWorkspace(page);
   // A range school ranks 10th to 17th but sits lower in the list on screen, so a count beside it would disagree.
   await orderedRow(page, "Sample School 17").click();
-  await expect(place(page)).toHaveText("10thto17th");
+  await expect(place(page)).toHaveText("10th to 17th");
   await expect(card(page).locator("[class*=cardBar]")).not.toContainText(/\d+ of \d+/);
   await orderedRow(page, "Sample School 08").click();
   await expect(card(page).getByRole("button", { name: "Previous school" })).toBeDisabled();

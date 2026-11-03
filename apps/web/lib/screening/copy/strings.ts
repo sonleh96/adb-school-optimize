@@ -36,7 +36,7 @@ function marginPoints(se: number | undefined): number | null {
  * experiment: neither is read as the other's result, and the rule without urgency is not a re-labelled copy of the
  * circulated one.
  */
-export const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object.freeze({
+const PERSISTENT_FLAG: Readonly<Record<PersistenceRule, string>> = Object.freeze({
   additive_no_u:
     "Often in the top 20 when the paper changed the factors' shares at random. That test drew new shares for the six factors this rule uses, so it is a fresh run for this rule, not a measure of what the urgency rating changes.",
   additive_u:

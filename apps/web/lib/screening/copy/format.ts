@@ -63,8 +63,18 @@ export function formatPercent(fraction: number): string {
   return `${Number.isInteger(v) ? v : v.toFixed(1)}%`;
 }
 
-/** Display only: trims and collapses repeated spaces ("Alder Junior High  School"). Joins use school.id. */
-export const cleanName = (name: string): string => String(name).trim().replace(/\s+/g, " ");
+/**
+ * Display only: trims and collapses repeated spaces ("Alder Junior High  School"), and lowers the lone letter that
+ * title-casing raised after an apostrophe ("Kareba'S" to "Kareba's", while "O'Kane" stays). Joins use school.id.
+ */
+export const cleanName = (name: string): string =>
+  String(name)
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(
+      /(\p{L}['’])(\p{Lu})(?!\p{L})/gu,
+      (_m, head: string, letter: string) => head + letter.toLowerCase()
+    );
 
 /**
  * True when nothing is left once whitespace and zero-width characters (U+200B to U+200D, U+2060 and U+FEFF) go.

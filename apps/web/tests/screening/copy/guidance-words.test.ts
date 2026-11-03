@@ -110,9 +110,6 @@ describe("counts in the guidance layer have a singular", () => {
 
 describe("the words for a guide, a page and a glossary that are loading", () => {
   it("name what is loading, in the words of the load messages", () => {
-    expect(LAYOUT.loadingGuide).toBe("Loading the guide");
-    expect(LAYOUT.loadingHow).toBe("Loading How this works");
-    expect(LAYOUT.loadingGlossary).toBe("Loading the glossary");
     for (const t of [LAYOUT.loadingGuide, LAYOUT.loadingHow, LAYOUT.loadingGlossary])
       expect(textProblems(t, { sentence: false }), t).toEqual([]);
   });

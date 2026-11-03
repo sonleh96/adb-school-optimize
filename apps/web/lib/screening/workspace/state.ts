@@ -24,14 +24,7 @@ export type Pop = "layers" | "filter" | "pickA" | "pickB" | "rules";
 export type Pane = "list" | "map";
 /** The map layers the method details can hide. */
 export type MapLayer = "ranked" | "numerals" | "range" | "queue" | "provinces" | "districts";
-export const MAP_LAYERS: readonly MapLayer[] = [
-  "ranked",
-  "numerals",
-  "range",
-  "queue",
-  "provinces",
-  "districts",
-];
+const MAP_LAYERS: readonly MapLayer[] = ["ranked", "numerals", "range", "queue", "provinces", "districts"];
 /** The parts of school need an incomplete record can lack, which the method details filter those records by. */
 export type MissingDetail =
   "permanent_classroom_deficit" | "teacher_housing_deficit" | "facility_presence_deficit" | "service_deficit";

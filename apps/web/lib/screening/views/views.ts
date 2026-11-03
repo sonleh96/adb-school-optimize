@@ -8,7 +8,7 @@
  */
 import { type Known, type WorkspaceState, searchWithState, shownRule } from "../workspace/state";
 
-export const SEED_KEYS = ["top", "urgency", "range", "queue"] as const;
+const SEED_KEYS = ["top", "urgency", "range", "queue"] as const;
 export type SeedKey = (typeof SEED_KEYS)[number];
 const isSeedKey = (value: unknown): value is SeedKey =>
   typeof value === "string" && (SEED_KEYS as readonly string[]).includes(value);

@@ -12,6 +12,8 @@
  *  6. Back takes back what changed while the card was open, such as the rule
  *                                                                       -> "Back closes the card and keeps the rule..."
  *  7. The address of an open card changes form, so a shared link differs from before  -> "Back closes the card..."
+ *  8. A card opened while the store's own Back is under way gets no entry, so Back then leaves the tool
+ *                                                                       -> "a card opened before the store's own Back..."
  */
 import type { Page } from "@playwright/test";
 
@@ -118,6 +120,26 @@ test("a card closed with its own button leaves no entry behind, and stepping thr
   // The card's entry went with it, so the next Back leaves the tool at once.
   await page.goBack();
   await expect(page).toHaveURL(/\/the-page-before$/);
+});
+
+test("a card opened before the store's own Back has landed still gets an entry, so Back closes it", async ({
+  page,
+}) => {
+  await openFromElsewhere(page);
+  await orderedRow(page, SCHOOL).tap();
+  await expect(card(page)).toContainText(SCHOOL);
+  // Closing the card goes back past its entry. Opening one again in the same task lands inside that Back.
+  await page.evaluate((key) => {
+    const ws = window.__screeningWorkspace!;
+    ws.setState({ school: null });
+    ws.setState({ school: key });
+  }, KEY);
+  await expect(card(page)).toContainText(SCHOOL);
+  await expect.poll(() => search(page)).toBe(`?school=${KEY}`);
+
+  await back(page);
+  await expect(card(page)).toHaveCount(0);
+  expect(search(page)).toBe("");
 });
 
 test("Back closes the card and keeps the rule chosen while it was open", async ({ page }) => {

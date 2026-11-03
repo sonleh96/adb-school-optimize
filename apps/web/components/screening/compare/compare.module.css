@@ -359,8 +359,8 @@
   display: block;
 }
 .glyphRange {
-  fill: rgba(74, 79, 87, 0.14);
-  stroke: #4a4f57;
+  fill: rgba(61, 71, 89, 0.14);
+  stroke: #3d4759;
   stroke-width: 1;
 }
 
@@ -451,4 +451,12 @@
 .kSeg.kSeg button:not([aria-pressed="true"]),
 .swap.swap {
   color: var(--ink-2);
+}
+
+/* Forced colours drop the ring and the white fill of the chosen side; an outline inside it marks it instead. */
+@media (forced-colors: active) {
+  .kSeg button[aria-pressed="true"]:not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
 }

@@ -289,11 +289,9 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
 
 function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; school: CopySchool }) {
   const { LAYOUT, STRINGS, TERMS } = copy;
-  const why = whyBlocks<InputKey>(
-    copy.reasonSentence(school, rule),
-    copy.topDrivers(school, rule),
-    NEED_KEYS
-  );
+  const drivers = copy.topDrivers(school, rule);
+  const why = whyBlocks<InputKey>(copy.reasonSentence(school, rule), drivers, NEED_KEYS);
+  const equal = why.blocks.length ? copy.equalReasons(drivers) : null;
   const needValue = school.components.N;
   const persistence = copy.persistenceNote(school, rule);
   return (
@@ -349,6 +347,12 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
             );
         }
       })}
+      {/* The numbers order the reasons by size; this says which add exactly the same, where a fixed order decided. */}
+      {equal ? (
+        <p className={styles.whyText} data-region="equal-reasons">
+          {equal}
+        </p>
+      ) : null}
       {/* The paper's flag, under each rule the test ran for in that rule's words; near the line only by its own band. */}
       {persistence.length ? (
         <p className={styles.flag} data-region="persistent-flag">

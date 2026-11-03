@@ -62,7 +62,7 @@ test("shows the rows in the API's order, with range schools between complete one
 
   // The range school reads as a range, never as one rank.
   const range = orderedRow(page, "Sample School 17");
-  await expect(range.locator("[data-place=range]")).toContainText("10thto17th");
+  await expect(range.locator("[data-place=range]")).toContainText("10th to 17th");
   await expect(orderedRow(page, "Sample School 08").locator("[data-place=point]")).toHaveText("1st");
 
   // Counts appear with the data, never before it.
@@ -77,19 +77,19 @@ test("an exact range keeps the range treatment and carries its scope in the row"
   const row = orderedRow(page, "Sample School 25");
   const place = row.locator("[data-place]");
   await expect(place).toHaveAttribute("data-place", "scoped");
-  await expect(place).toHaveText("22ndof 22");
+  await expect(place).toHaveText("22nd of 22");
   await expect(page.locator("[data-place=point]", { hasText: "of" })).toHaveCount(0);
 
   // The card's figure carries the scope too, and says why the place cannot move.
   await row.click();
-  await expect(page.getByTestId("card-place")).toHaveText("22ndof 22");
+  await expect(page.getByTestId("card-place")).toHaveText("22nd of 22");
   await expect(page.getByTestId("card-context")).toContainText(
     "but under this rule that cannot change its rank in the list."
   );
 
   // A range school whose ends differ shows its range, never one rank.
   await orderedRow(page, "Sample School 17").click();
-  await expect(page.getByTestId("card-place")).toHaveText("10thto17th");
+  await expect(page.getByTestId("card-place")).toHaveText("10th to 17th");
 });
 
 test("names the scope each place is counted in, in the list header, the card and the tooltip", async ({
