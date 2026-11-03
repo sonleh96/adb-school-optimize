@@ -97,8 +97,8 @@ export const GUIDE = Object.freeze({
     urgency: Object.freeze({ name: "With and without the urgency rating" }),
     range: Object.freeze({ name: "A school with a range of ranks" }),
     queue: Object.freeze({
-      name: "Schools with missing information",
-      onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what is missing`,
+      name: "Records to verify",
+      onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what to verify`,
     }),
   }),
   // Show only in presentation mode; see KEYS.
@@ -212,11 +212,11 @@ export const GUIDE = Object.freeze({
                 : count === 0
                   ? "Every school is in the list"
                   : `${count} schools are not in the list yet`,
-            onScreen: "The Missing information tab and its list",
+            onScreen: "The Records to verify tab and its list",
           },
           {
             key: "group",
-            title: "Group them by what is missing",
+            title: "Group them by what to verify",
             onScreen: '"Group by" above the list, and the first group',
             tryIt: "Choose a kind of missing detail to show only those schools.",
           },

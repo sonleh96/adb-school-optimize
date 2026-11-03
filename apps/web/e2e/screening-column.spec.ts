@@ -77,20 +77,20 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
   await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
   // The run's own counts: one school fewer can be put in order with urgency.
   await expect(tab(page, /The list/)).toHaveText("The list(21)");
-  await expect(tab(page, /Missing information/)).toHaveText("Missing information(4)");
+  await expect(tab(page, /Records to verify/)).toHaveText("Records to verify(4)");
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
   expect(search(page)).toBe("?rule=additive_u&scope=1&guide=start");
 
-  await tab(page, /Missing information/).click();
+  await tab(page, /Records to verify/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
   expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
   // The same link, opened again, is the same screen. The rule area is not part of the address: it opens closed.
   await page.reload();
   await waitForMap(page);
-  await expect(tab(page, /Missing information/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Records to verify/)).toHaveAttribute("aria-selected", "true");
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");
@@ -313,7 +313,7 @@ test("the incomplete records are grouped by province or by what is missing, with
   const headings = page.locator(`${INCOMPLETE} > li > div`);
   const rows = page.locator(`${INCOMPLETE} button`);
   const byProvince = page.getByRole("button", { name: "Province", exact: true });
-  const byMissing = page.getByRole("button", { name: "Missing details" });
+  const byMissing = page.getByRole("button", { name: "What to verify" });
   await expect(byProvince).toHaveAttribute("aria-pressed", "true");
   await expect(headings).toHaveText(["North Province2", "South Province2"]);
   await expect(page.locator("[data-region=queue-order]")).toHaveText(
@@ -341,7 +341,7 @@ test("the incomplete records are grouped by province or by what is missing, with
   await expect(rows.first()).toContainText("Sample School 24 · South Two, South Province");
   // Each grouping says how the list is ordered.
   await expect(page.locator("[data-region=queue-order]")).toHaveText(
-    "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
+    "Grouped by what to verify, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority."
   );
 
   // The arrow keys follow the groups on screen, not the order the rows arrived in.

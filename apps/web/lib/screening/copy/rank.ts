@@ -13,6 +13,7 @@ import {
   oneRange,
   rangePhrase,
   type Reads,
+  verifyGroup,
 } from "./counts";
 import { capitalise, cleanedOrNull, displayName, formatCount, joinList, ordinal, plural } from "./format";
 import type {
@@ -134,6 +135,22 @@ function shortlistClause(res: WithBounds, k: number | undefined): string {
   return ` It may or may not be in the top ${k}, depending on the missing figure.`;
 }
 
+/**
+ * Why a school's record waits to be verified, as the clause a sentence says it in. A record that gives 0 classrooms
+ * has every detail school need is built from, so it is never said to have information missing (the paper's 36); the
+ * school's own entry names any other reason.
+ */
+const heldBecause = (school: PlacedSchool): string =>
+  verifyGroup(school) === "zero"
+    ? "its record gives 0 classrooms in total, which needs checking"
+    : "information about it is missing";
+
+/** What a school waiting to be verified needs before it is in the list, and that this says nothing about need. */
+const heldSentence = (school: PlacedSchool): string =>
+  verifyGroup(school) === "zero"
+    ? `${capitalise(heldBecause(school))}, so it is not in the list until someone verifies it. That says nothing about its need.`
+    : "Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
+
 // opts.name: start with the school's name. opts.shortlist: a top-list length such as 20,
 // which adds whether a range school is inside it either way. opts.counts: from countsFrom.
 export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): Segments {
@@ -141,8 +158,7 @@ export function rankSegments(school: PlacedSchool, ruleId: CopyRuleId, opts: Pla
   const c = countsOf(opts, ruleId);
   const nm = opts.name ? nameSegment(distinctName(school, opts.schools)) : null;
   if (school.cohort === "queue") {
-    const rest =
-      "be put in order yet. Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
+    const rest = `be put in order yet. ${heldSentence(school)}`;
     return nm ? seg`${nm} cannot ${rest}` : seg`Cannot ${rest}`;
   }
   const res = resultFor(school, ruleId);
@@ -223,8 +239,7 @@ export function rowPlace(
 export function placeContext(school: PlacedSchool, ruleId: CopyRuleId, opts: PlaceOpts = {}): string {
   const r = ruleFor(ruleId, opts.ruleNames);
   const c = countsOf(opts, ruleId);
-  if (school.cohort === "queue")
-    return "Information about it is missing, so it is not in the list until the missing details are checked. That says nothing about its need.";
+  if (school.cohort === "queue") return heldSentence(school);
   const res = resultFor(school, ruleId);
   if (school.cohort === "interval") {
     if (!hasBounds(res)) return `${capitalise(r.name)} has no result for this school.`;
@@ -296,7 +311,7 @@ export function rangeComparisonSegments(
   const held = school.cohort === "queue";
   if (sa.kind === "none" && sb.kind === "none") {
     return held
-      ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because information about it is missing.`
+      ? seg`${nm} cannot be put in order under ${a.name} or ${b.name} yet, because ${heldBecause(school)}.`
       : seg`${nm} has no result under ${a.name} or ${b.name}.`;
   }
   if (sa.kind === "point" && sb.kind === "point") {
@@ -338,7 +353,7 @@ export function rangeComparisonSegments(
         ? seg`Under ${rr.name}, ${subject} is ${ordinal(st.best)} among ${orderedPhrase(c)}.`
         : seg`Under ${rr.name}, ${subject} could be anywhere from ${ordinal(st.best)} to ${ordinal(st.worst)} among ${orderedPhrase(c)}.`;
     return held
-      ? seg`It cannot be put in order under ${rr.name} yet, because information about it is missing.`
+      ? seg`It cannot be put in order under ${rr.name} yet, because ${heldBecause(school)}.`
       : seg`It has no result under ${rr.name}.`;
   };
   const sides: [Standing, { name: string }, CountBag | undefined, Reads][] = [

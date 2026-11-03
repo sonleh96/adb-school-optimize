@@ -789,6 +789,13 @@
   font: 400 15.5px/21px var(--serif);
   text-wrap: pretty;
 }
+.queueGroups {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
 .groupBy {
   display: flex;
   align-items: center;

@@ -510,7 +510,7 @@ test("the incomplete records filter by what is missing, count each choice and re
 
   await openWorkspace(page, "?analyst=1&view=queue");
   const chips = page.getByRole("group", { name: "Show only schools missing this detail" });
-  const rows = page.locator("ol[aria-label='Missing information'] button[data-school-key]");
+  const rows = page.locator("ol[aria-label='Records to verify'] button[data-school-key]");
   await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(queued.length);
   await expect(page.locator("[class*=missLabel]")).toHaveText("Missing detail");
@@ -534,7 +534,7 @@ test("guide 4's group step stays in the plain layer and offers no Try it, since 
 }) => {
   await openWorkspace(page, "?guide=q4&gstep=2");
   const rail = page.getByTestId("guide-rail");
-  await expect(page.getByTestId("guide-step-title")).toHaveText("Group them by what is missing");
+  await expect(page.getByTestId("guide-step-title")).toHaveText("Group them by what to verify");
   await expect(rail.getByText("Try it")).toHaveCount(0);
   await expect(rail).not.toContainText("Choose a kind of missing detail");
   await expect(methodSwitch(page)).toHaveAttribute("aria-checked", "false");

@@ -104,7 +104,7 @@ export async function waitForWorkspaceHook(page: Page) {
 
 /** The lists' accessible names, as the copy system words the tabs. */
 export const ORDERED = "ol[aria-label='The list']";
-export const INCOMPLETE = "ol[aria-label='Missing information']";
+export const INCOMPLETE = "ol[aria-label='Records to verify']";
 /** The two rules of the switch by their labels: the main rule, which the screen opens on, then the urgency sensitivity. */
 export const RULE = {
   main: "Combined factors, without urgency",

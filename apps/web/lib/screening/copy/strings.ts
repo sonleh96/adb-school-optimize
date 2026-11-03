@@ -13,6 +13,7 @@ import {
   everyInput,
   groupsSentence,
   known,
+  queueGroups,
   rangeSubject,
   theirScore,
   theyWould,
@@ -133,11 +134,13 @@ export function buildStrings(c: CountBag = {}) {
       "A suggested order to look in, not a verdict on any school's condition or safety, repairs or funding.",
     groupsMeaning: GROUPS_MEANING,
     queueIntro:
-      "These schools are not in the list yet because information about them is missing. Not being in the list yet does not mean their need is low.",
+      "These schools are not in the list yet because their records need verifying. Not being in the list yet does not mean their need is low.",
+    // The records to verify in the paper's two groups, with the counts of the list on screen.
+    queueGroups: queueGroups(c),
     queueOrder: "Listed by province, district and school name. This is not an order of priority.",
-    // The order when the incomplete records are grouped by what is missing, the largest group first.
+    // The order when the records to verify are grouped by what to verify, the largest group first.
     queueOrderMissing:
-      "Grouped by what is missing, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority.",
+      "Grouped by what to verify, the largest group first. Within a group, listed by province, district and school name. This is not an order of priority.",
     notRecorded: "Not recorded",
     noReading: "No figure",
     notPlaced: "Cannot be put in order yet",

@@ -933,6 +933,10 @@ function Workspace() {
                           </p>
                           {incomplete.length > 0 ? (
                             <>
+                              {/* The paper's two groups, counted from the list on screen. */}
+                              <p className={styles.queueGroups} data-region="queue-groups">
+                                {shown.copy.STRINGS.queueGroups}
+                              </p>
                               <div data-region="queue-missing">
                                 {method.queueFilter}
                                 <div className={styles.groupBy}>

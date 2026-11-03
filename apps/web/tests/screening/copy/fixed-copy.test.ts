@@ -392,10 +392,10 @@ describe("the three ideas", () => {
   it("never says 'Some schools' of a single school, and uses the plural for several", () => {
     const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
     expect(one.ranges.title).toBe("One school shows a range because an air-quality figure is missing");
-    expect(one.queue.title).toBe("One school is not in the list yet because information about it is missing");
+    expect(one.queue.title).toBe("One school is not in the list yet because its record needs verifying");
     for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
       expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
-    expect(one.queue.long).toMatch(/^One of the 12 schools has information missing/);
+    expect(one.queue.long).toMatch(/^One of the 12 schools has a record to verify/);
     const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
     expect(several.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(several.queue.short).toMatch(/^4 schools are not in the list yet/);

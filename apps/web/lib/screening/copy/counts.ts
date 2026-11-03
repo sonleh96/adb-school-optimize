@@ -4,7 +4,7 @@
  */
 import { SMALL, capitalise, formatCount, plural } from "./format";
 import { isNeedGate } from "./gates";
-import type { CountBag, CountableSchool, Counts, PersistenceRule } from "./model";
+import type { CountBag, CountableSchool, Counts, PersistenceRule, VerifyGroup } from "./model";
 
 /** A school whose record gives only its remoteness category and nothing else. */
 export function isRemotenessOnly(school: CountableSchool): boolean {
@@ -15,6 +15,39 @@ export function isRemotenessOnly(school: CountableSchool): boolean {
     Object.values(school.condition).every((v) => v == null) &&
     school.locality != null
   );
+}
+
+/** The details of a record that school need is built from: the twelve the paper's record check counts. */
+const CORE_DETAILS = [
+  "classrooms_total",
+  "classrooms_permanent",
+  "teachers",
+  "teacher_houses",
+  "libraries",
+  "workshops",
+  "practical_skills",
+  "home_economics",
+  "computer_labs",
+  "specialized_classrooms",
+  "power_source",
+  "water_source",
+] as const;
+
+/**
+ * Why a school's record waits to be verified, in the paper's two groups: a detail school need is built from is
+ * missing (blank, or recorded in a form that cannot be read), or every such detail is there and the record gives 0
+ * classrooms in total. A recorded 0 needs checking, but it is neither a mistake nor a blank. Anything else (a negative
+ * count, a district figure, walking reach, the urgency rating) is `other`. The group the engine's reasons give
+ * (`verify`, set by the adapter) comes first; a record without one is read from its details. Null for a school that
+ * can be put in order, or a record whose details are not known here.
+ */
+export function verifyGroup(school: CountableSchool): VerifyGroup | null {
+  if (school.cohort !== "queue") return null;
+  if (school.verify) return school.verify;
+  const condition = school.condition;
+  if (!condition) return null;
+  if (CORE_DETAILS.some((detail) => condition[detail] == null)) return "missing";
+  return condition.classrooms_total === 0 ? "zero" : "other";
 }
 
 /**
@@ -31,6 +64,8 @@ export function countsFrom(schools: readonly CountableSchool[] = [], flaggedRule
     emissionsNone: 0,
     airMissing: 0,
     remotenessOnly: 0,
+    queueMissing: 0,
+    queueZero: 0,
     flagged: 0,
     ranked: 0,
   };
@@ -42,6 +77,9 @@ export function countsFrom(schools: readonly CountableSchool[] = [], flaggedRule
     if (s.cohort !== "queue" && s.raw && s.raw.E_raw === 0) c.emissionsNone += 1;
     if (s.cohort !== "queue" && ((s.raw && s.raw.Q_raw == null) || s.missing_env?.aqi)) c.airMissing += 1;
     if (s.cohort === "queue" && isRemotenessOnly(s)) c.remotenessOnly += 1;
+    const group = verifyGroup(s);
+    if (group === "missing") c.queueMissing += 1;
+    else if (group === "zero") c.queueZero += 1;
     if (flaggedRule && s.persistence?.[flaggedRule]?.persistent) c.flagged += 1;
   }
   c.ranked = c.complete + c.range;
@@ -106,6 +144,36 @@ export const numbersHelp = (c: CountBag | undefined, reads?: Reads): string => {
 export const theyWould = (c: CountBag | undefined): string =>
   oneRange(c) ? "it would sit" : "they would sit";
 export const theirScore = (c: CountBag | null | undefined): string => (oneRange(c) ? "its" : "their");
+/**
+ * The records to verify in the paper's two groups, with the data's counts: "52 have a detail missing. 36 record 0
+ * classrooms in total, which needs checking." A group of none is left out, and records held for anything else are
+ * said apart, so the counts always add up to the tab's.
+ */
+export function queueGroups(c: CountBag | undefined): string {
+  if (!known(c, "queue") || !known(c, "queueMissing") || !known(c, "queueZero"))
+    return "Some have a detail missing. Others record a value that needs checking, such as 0 classrooms in total.";
+  if (c.queue === 0) return "No record needs verifying.";
+  const other = c.queue - c.queueMissing - c.queueZero;
+  const said = [
+    c.queueMissing > 0
+      ? `${formatCount(c.queueMissing)} ${plural(c.queueMissing, "has", "have")} a detail missing.`
+      : null,
+    c.queueZero > 0
+      ? `${formatCount(c.queueZero)} ${plural(c.queueZero, "records", "record")} 0 classrooms in total, which needs checking.`
+      : null,
+    other > 0
+      ? `${formatCount(other)} ${plural(other, "needs", "need")} checking for another reason, which ${plural(other, "its entry names", "each entry names")}.`
+      : null,
+  ]
+    .filter((sentence): sentence is string => sentence !== null)
+    .join(" ");
+  // Counts that do not add up (a group counted from another list) say nothing rather than something false.
+  return (
+    said ||
+    "Some have a detail missing. Others record a value that needs checking, such as 0 classrooms in total."
+  );
+}
+
 export const amongAllOrdered = (c: CountBag | undefined): string =>
   known(c, "ranked") && c.ranked > 0
     ? `all ${formatCount(c.ranked)} schools that can be put in order`

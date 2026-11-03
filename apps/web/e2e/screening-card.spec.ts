@@ -191,7 +191,7 @@ test("the card steps through the list on screen, and states no count that could 
   await expect(orderedRow(page, "Sample School 15")).toHaveAttribute("aria-pressed", "true");
   await expect(card(page).locator("[class*=cardBar]")).not.toContainText(/\d+ of \d+/);
 
-  await tab(page, /Missing information/).click();
+  await tab(page, /Records to verify/).click();
   await queuedRow(page, "Sample School 24").click();
   await expect(card(page).getByRole("button", { name: "Next school" })).toBeDisabled();
 });
@@ -418,7 +418,7 @@ test("a failed load shows one sentence and Retry, with every action off", async 
   const failure = page.locator("[role=alert][data-failure]");
   await expect(failure).toContainText(LOAD_FAILED);
   await expect(page.getByRole("button", { name: "Copy link" })).toBeDisabled();
-  await expect(tab(page, /Missing information/)).toBeDisabled();
+  await expect(tab(page, /Records to verify/)).toBeDisabled();
   expect(problems.length).toBeGreaterThan(0);
   problems.length = 0;
 });

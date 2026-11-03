@@ -48,24 +48,26 @@ export function buildIdeas(c: CountBag = {}) {
             short: `${rangeLead} schools lack an air-quality figure, an air-pollution index for their location. They show the highest and lowest ranks they could take in the list.`,
             long: `${rangeLead} schools lack an air-quality figure, an air-pollution index for each school's location, and the tool does not guess it. It works out the highest and lowest ranks each one could take among ${ordered} schools that can be put in order. The list shows them where they would sit if air quality added nothing at all to their score.`,
           },
+    // A record waits to be verified when a detail is missing or a value needs checking, such as 0 classrooms; the
+    // paper does not call every one of them incomplete, so neither does the idea.
     queue: noQueue
       ? {
-          title: "No school is left out of the list because information about it is missing",
+          title: "No school is left out of the list because its record needs verifying",
           short:
-            "No school is left out of the list yet for any missing information. One would show what is missing. That says nothing about its need.",
-          long: "No school has information missing, like a blank power source or 0 classrooms. School need is built from five parts of each school's information, so a school missing a part could not be put in order until someone checked it. Its entry would show what is missing. Not being in the list yet would not mean its need is low.",
+            "No school is left out of the list because its record needs verifying. One would show what to verify. That says nothing about its need.",
+          long: "No school has a record to verify, like a blank power source or 0 classrooms. School need is built from five parts of each school's information, so such a school could not be put in order until someone checked it. Its entry would show what to verify. Not being in the list yet would not mean its need is low.",
         }
       : oneQueued
         ? {
-            title: "One school is not in the list yet because information about it is missing",
+            title: "One school is not in the list yet because its record needs verifying",
             short:
-              "One school is not in the list yet because information about it is missing. Its entry shows what is missing. That says nothing about need.",
-            long: `One of ${ofAll} schools has information missing, such as a blank power source or 0 classrooms recorded. School need is built from five parts of each school's information, so this school cannot be put in order until someone checks it. Its entry shows what is missing. Not being in the list yet does not mean its need is low.`,
+              "One school is not in the list yet because its record needs verifying first. Its entry shows what to verify. That says nothing about need.",
+            long: `One of ${ofAll} schools has a record to verify, like a blank power source or 0 classrooms. School need is built from five parts of each school's information, so this school cannot be put in order until someone checks it. Its entry shows what to verify. Not being in the list yet does not mean its need is low.`,
           }
         : {
-            title: "Some schools are not in the list yet because information about them is missing",
-            short: `${queueLead} schools are not in the list yet because information about them is missing. Each one shows what is missing. That says nothing about need.`,
-            long: `${queueOfAll} schools have information missing, such as a blank power source or 0 classrooms. School need is built from five parts of each school's information, so these schools cannot be put in order until someone checks them. Each school's entry shows what is missing. Not being in the list yet does not mean their need is low.`,
+            title: "Some schools are not in the list yet because their records need verifying",
+            short: `${queueLead} schools are not in the list yet because their records need verifying first. Each one shows what to verify. That says nothing about need.`,
+            long: `${queueOfAll} schools have records to verify, like a blank power source or 0 classrooms. School need is built from five parts of each school's information, so these schools cannot be put in order until someone checks them. Each school's entry shows what to verify. Not being in the list yet does not mean their need is low.`,
           },
   });
 }

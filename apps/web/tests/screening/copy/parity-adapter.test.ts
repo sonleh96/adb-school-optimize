@@ -130,7 +130,41 @@ afterAll(() => {
 /* ------------------------------------------------- design record to API response */
 
 const runOf = (rule_id: string) => ({ rule_id, input_version: "design", package_version: "design" });
-const gateCodes = (s: any) => [...new Set(s.gate_failures.map((f: string) => GATE_CODE[f]))];
+/** The engine's count fields (`_STOCK_NUMERIC`): the classrooms, teachers, teacher houses and six facilities. */
+const STOCK = [
+  "classrooms_total",
+  "classrooms_permanent",
+  "teachers",
+  "teacher_houses",
+  "libraries",
+  "workshops",
+  "practical_skills",
+  "home_economics",
+  "computer_labs",
+  "specialized_classrooms",
+];
+/**
+ * The reasons a held school's row carries, as the engine decides them (`_gate_failures` in
+ * school_scoring/screening/components.py): a blank count or source is `missing_stock_field`, a classroom or teacher
+ * count at or below 0 is `nonpositive_denominator`, and the design's other reasons keep their codes. The records to
+ * verify are told apart by these, so a row that called every blank part a missing count would hide the paper's
+ * second group, the records that give 0 classrooms.
+ */
+const gateCodes = (s: any) => {
+  const c = s.condition ?? {};
+  const blank = STOCK.some((k) => c[k] == null) || c.power_source == null || c.water_source == null;
+  const zero = [c.classrooms_total, c.teachers].some((v) => typeof v === "number" && v <= 0);
+  const others = s.gate_failures
+    .map((f: string) => GATE_CODE[f])
+    .filter((code: string | undefined) => code !== undefined && code !== "missing_stock_field");
+  return [
+    ...new Set([
+      ...(blank ? ["missing_stock_field"] : []),
+      ...(zero ? ["nonpositive_denominator"] : []),
+      ...others,
+    ]),
+  ];
+};
 
 const wireIdentity = (s: any) => ({
   school_key: s.id,

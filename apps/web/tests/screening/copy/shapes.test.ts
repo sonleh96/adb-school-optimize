@@ -189,6 +189,8 @@ describe("data of other sizes", () => {
       emissionsNone: 0,
       airMissing: 2,
       remotenessOnly: 1,
+      queueMissing: 2,
+      queueZero: 1,
     });
     expect(P.scope("additive_u").groups).toBe(
       "5 schools have every input recorded, and two more lack a figure such as air quality and show a range of ranks, so 7 schools can be put in order."
@@ -196,7 +198,7 @@ describe("data of other sizes", () => {
     expect(P.scope("additive_u").scopeDetail).toContain(
       "7 schools can be put in order, 5 with every input recorded and 2 that show a range of ranks."
     );
-    expect(P.termsFor("additive_u").queue.label).toBe("Schools with missing information (3)");
+    expect(P.termsFor("additive_u").queue.label).toBe("Records to verify (3)");
     expect(P.termsFor("additive_u").cohort_ranked.label).toBe("Can be put in order (7)");
     expect(P.termsFor("additive_u").missing_all_but_remoteness.help).toBe(
       "1 of the 3 incomplete records are like this. Classroom, teacher, housing, facility, power and water details are all blank."
@@ -205,7 +207,7 @@ describe("data of other sizes", () => {
     expect(P.scope("additive_u").amongAll).toBe("All 7 schools that can be put in order");
     expect(P.IDEAS.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
     expect(P.IDEAS.queue.title).toBe(
-      "Some schools are not in the list yet because information about them is missing"
+      "Some schools are not in the list yet because their records need verifying"
     );
   });
 
@@ -269,7 +271,7 @@ describe("data of other sizes", () => {
       P.scope("additive_u").listOrder.startsWith("The one school that shows a range is listed where ")
     ).toBe(true);
     expect((await P.later()).HOW_IT_WORKS.find((s) => s.key === "placed")?.sentences).toContain(
-      "The other one has information missing and is not in the list yet, and it shows what is missing."
+      "The other one is not in the list yet because its record needs verifying, and it shows what to verify."
     );
   });
 });
@@ -371,6 +373,8 @@ describe("no schools, and one school", () => {
       emissionsNone: 0,
       airMissing: 0,
       remotenessOnly: 0,
+      queueMissing: 0,
+      queueZero: 0,
     });
     expect(P.STRINGS.urgencyDefinition).toMatch(/not known\.$/);
     expect(P.scope("additive_u").amongAll).toBe("All schools that can be put in order");

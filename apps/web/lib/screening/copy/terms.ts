@@ -276,16 +276,16 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     queue: {
       technical: `Verification queue${schoolsSuffix(c, "queue")}`,
-      label: `Schools with missing information${countSuffix(c, "queue")}`,
-      line: "Schools with details missing that school need uses, so they cannot be put in order yet.",
-      help: "Each one shows what is missing, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
+      label: `Records to verify${countSuffix(c, "queue")}`,
+      line: "Schools whose records need verifying before they can be put in order: a detail school need uses is missing, or a recorded value needs checking.",
+      help: "Each one shows what to verify, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. A recorded 0 is not treated as a mistake or as blank; it needs checking. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
       where: "Queue tab, queue map marks, school panel for these schools",
     },
     not_placed: {
       technical: "Queue status",
       label: "Cannot be put in order yet",
-      line: "The status of a school with information missing, so it is not in the list yet.",
-      help: "It changes once the missing details are checked and completed. It says nothing about the school's need.",
+      line: "The status of a school whose record needs verifying, so it is not in the list yet.",
+      help: "It changes once the record is checked and completed. It says nothing about the school's need.",
       where: "List rows, map tooltips and school panel for schools with incomplete records",
     },
     missing_classrooms: {
@@ -445,7 +445,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     mark_ring: {
       technical: "Queue mark",
       label: "Empty ring",
-      line: "A school with information missing, so it is not in the list yet.",
+      line: "A school whose record needs verifying, so it is not in the list yet.",
       help: "It is drawn smaller than every other mark, so it never looks like a school low in the list.",
       where: "Map and key",
     },

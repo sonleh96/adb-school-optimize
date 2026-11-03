@@ -79,10 +79,10 @@ describe("the guide rail's status lines", () => {
       "Top of the list under the main method",
       "With and without the urgency rating",
       "A school with a range of ranks",
-      "Schools with missing information",
+      "Records to verify",
     ]);
     expect(v.queue.onScreen(LAYOUT.incompleteTab)).toBe(
-      'The "Missing information" tab, grouped by what is missing'
+      'The "Records to verify" tab, grouped by what to verify'
     );
     // A name a user may save is at most 60 characters, and the seeds fit.
     for (const n of Object.values(v).map((x) => x.name)) expect(n.length).toBeLessThanOrEqual(60);
@@ -137,8 +137,8 @@ describe("the order of the incomplete records", () => {
   it("is said for the grouping the list is in, and neither sentence claims the other's order", () => {
     for (const t of [copy.STRINGS.queueOrder, copy.STRINGS.queueOrderMissing])
       expect(textProblems(t), t).toEqual([]);
-    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what is missing/);
-    expect(copy.STRINGS.queueOrderMissing).toMatch(/what is missing/);
+    expect(copy.STRINGS.queueOrder).not.toMatch(/largest|what to verify/);
+    expect(copy.STRINGS.queueOrderMissing).toMatch(/what to verify/);
   });
 });
 

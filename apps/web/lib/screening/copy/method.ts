@@ -327,7 +327,7 @@ export function buildMethod(ctx: MethodContext = {}) {
       // What a saved view opens on: the list in order, or the incomplete records and how they are grouped.
       showsRanked: "Schools in order",
       showsQueue: (grouping: "province" | "evidence") =>
-        `Missing information, grouped by ${grouping === "evidence" ? "what is missing" : "province"}`,
+        `Records to verify, grouped by ${grouping === "evidence" ? "what to verify" : "province"}`,
       showsMethod: "method details on",
       showsCompare: (a: string, b: string) => `Comparing ${a} with ${b}`,
       comparedWith: (s: string) => `compared with ${s}`,

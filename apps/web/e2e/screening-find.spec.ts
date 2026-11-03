@@ -145,16 +145,16 @@ test("a link that carries the filter opens on it, says it is on, and survives a 
   await expect(shownRows(page)).toHaveCount(southOne.length);
 });
 
-test("the schools with missing information follow the same filter", async ({ page }) => {
+test("the records to verify follow the same filter", async ({ page }) => {
   const queued = rowsOf(MAIN_RULE).filter((r) => r.cohort === "verification_queue");
   const north = queued.filter(
     (r) => (r.school as unknown as { province: string }).province === "North Province"
   );
   await openWorkspace(page, "?prov=North+Province");
-  await tab(page, /Missing information/).click();
+  await tab(page, /Records to verify/).click();
   await expect(page.locator("[data-region=queue-list] button[data-school-key]")).toHaveCount(north.length);
   await expect(status(page)).toHaveText(
-    `${north.length} of the ${queued.length} schools with missing information are in North Province.`
+    `${north.length} of the ${queued.length} records to verify are in North Province.`
   );
 });
 

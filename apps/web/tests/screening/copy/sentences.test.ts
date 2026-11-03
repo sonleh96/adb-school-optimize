@@ -1161,7 +1161,7 @@ describe("why a school sits where it does, from the engine's own scores", () => 
   it("says a school with an incomplete record has nothing to explain", () => {
     const q = school({ id: "q", cohort: "queue", gate: ["service_deficit"] });
     expect(copy.reasonSentence(q, "additive_u")).toBe(
-      "This school is not in the list yet, so there is no score to explain. Its entry shows what is missing."
+      "This school is not in the list yet, so there is no score to explain. Its entry shows what to verify."
     );
     expect(copy.topDrivers(q, "additive_u")).toEqual([]);
     expect(copy.contributions(q, "additive_u")).toBeNull();

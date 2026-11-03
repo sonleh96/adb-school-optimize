@@ -44,12 +44,12 @@ export const LAYOUT = Object.freeze({
   helpAria: "Help and guides",
   amongAll124: "Among all schools that can be put in order",
   orderedTab: "The list",
-  incompleteTab: "Missing information",
+  incompleteTab: "Records to verify",
   legendNoAirQuality: "No air-quality figure",
-  legendIncomplete: "Missing information",
+  legendIncomplete: "Records to verify",
   workspaceHint: "Select a school to see why it is where it is in the list.",
   tooltipHint: "Select to see why",
-  missingFilters: "Missing details",
+  missingFilters: "What to verify",
   groupBy: "Group by",
   // Moved from the final design's REQ object in round 4; same text, same shapes.
   methodSwitch: "For researchers: show method details",
@@ -73,9 +73,9 @@ export const LAYOUT = Object.freeze({
   fullComparison: "See the full comparison",
   example: "Example",
   whyKey: "Why",
-  rowHintQueue: "Select a school to see what information is missing.",
+  rowHintQueue: "Select a school to see what to verify.",
   why: "Why it sits here",
-  whatMissing: "What is missing",
+  whatMissing: "What to verify",
   recordSays: "What the record says",
   numbers: "In numbers",
   adds: "What each item adds",
@@ -96,12 +96,12 @@ export const LAYOUT = Object.freeze({
   allDistricts: "All districts",
   clearFind: "Clear",
   // How many schools the find control leaves, of how many, and what it holds. `of` is the tab: the list, or the
-  // schools with missing information. "3 of the 31 schools in the list are in Highlands."
+  // records to verify. "3 of the 31 schools in the list are in Highlands."
   findShowing: (shown: number, total: number, of: "list" | "queue", find: FindWords) => {
     const one = shown <= 1;
     const group = (n: number) =>
       of === "queue"
-        ? plural(n, "school with missing information", "schools with missing information")
+        ? plural(n, "record to verify", "records to verify")
         : plural(n, "school in the list", "schools in the list");
     const where = find.province
       ? `${one ? "is" : "are"} in ${find.district ? `${find.district}, ${find.province}` : find.province}`
@@ -172,7 +172,7 @@ export const LAYOUT = Object.freeze({
   valueRange: (lo: string, hi: string) => `${lo} to ${hi}`,
   underRule: (label: string, ruleName: string) => `${label} under ${ruleName}`,
   emptyFiltered: "No school that can be put in order matches these filters.",
-  emptyIncompleteFiltered: "No school with missing information matches these filters.",
+  emptyIncompleteFiltered: "No record to verify matches these filters.",
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
@@ -252,7 +252,7 @@ export const LAYOUT = Object.freeze({
   retrying: "Trying again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
-  mapKeyboard: "To choose a school with the keyboard, use the list or the schools with missing information.",
+  mapKeyboard: "To choose a school with the keyboard, use the list or the records to verify.",
   basemapUnavailable: "The map's background did not load. The schools and the list still work.",
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
   sessionEnded: "Your session has ended.",
