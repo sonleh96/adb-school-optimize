@@ -212,18 +212,19 @@
   color: var(--ink-3);
   text-wrap: balance;
 }
+/* The workspace's switch: a grey track, the chosen side white with a navy ring. */
 .kSeg {
   display: inline-flex;
   padding: 2px;
-  border: 1px solid var(--hair);
   border-radius: var(--r-control);
   gap: 2px;
+  background: var(--track);
 }
 .kSeg button {
   height: 26px;
   padding: 0 10px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   cursor: pointer;
   white-space: nowrap;
@@ -232,8 +233,10 @@
   transition: background-color 150ms ease;
 }
 .kSeg button[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  font-weight: 600;
 }
 .slopeHost {
   width: 100%;
@@ -443,7 +446,7 @@
 
 /* The workspace sets every button's colour to inherit; these keep their own. */
 .kSeg.kSeg button[aria-pressed="true"] {
-  color: #fff;
+  color: var(--navy);
 }
 .kSeg.kSeg button:not([aria-pressed="true"]),
 .swap.swap {

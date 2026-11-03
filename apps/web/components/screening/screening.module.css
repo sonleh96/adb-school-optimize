@@ -25,6 +25,11 @@
   /* Edges: a navy hairline round what floats, and 3:1 for what marks a field or a control's state (WCAG 1.4.11). */
   --edge: color-mix(in srgb, var(--navy) 10%, transparent);
   --field-edge: rgba(17, 26, 44, 0.48);
+  /* Controls: a switch is a grey track whose chosen side is white with a navy ring (12:1 on the track), and an
+     outlined button or chip has a navy-tinted edge. */
+  --track: #e8ecf2;
+  --ring-chosen: 0 1px 2px rgba(10, 20, 40, 0.12), inset 0 0 0 1.5px var(--navy);
+  --control-edge: color-mix(in srgb, var(--navy) 26%, transparent);
   /* Depth: a soft shadow with a negative spread, so a panel floats without a dark rim. */
   --shadow: 0 1px 2px rgba(10, 20, 40, 0.06), 0 18px 40px -24px rgba(10, 20, 40, 0.34);
   --shadow-pop: 0 1px 2px rgba(10, 20, 40, 0.08), 0 24px 48px -20px rgba(10, 20, 40, 0.4);
@@ -107,15 +112,22 @@
   text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
 }
-.arrowLink,
+/* An arrow link is a sentence: it wraps when the window is narrower than its words, its arrow after the last word. */
+.arrowLink {
+  display: inline-block;
+  max-width: 100%;
+  text-align: left;
+}
+.arrowLink svg {
+  display: inline;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
 .otherRules {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-}
-.otherRules {
   gap: 4px;
+  white-space: nowrap;
 }
 .otherRules svg {
   opacity: 0.7;
@@ -314,18 +326,6 @@
   border-bottom: 1px solid var(--hair-2);
 }
 /* Closed, the rule area is one plain line, Change beside it, and one link under it. */
-/* The rule line's link wraps when the window is narrower than its words, its arrow after the last word. */
-.ruleNowRow .arrowLink {
-  display: inline-block;
-  max-width: 100%;
-  white-space: normal;
-  text-align: left;
-}
-.ruleNowRow .arrowLink svg {
-  display: inline;
-  margin-left: 3px;
-  vertical-align: -1px;
-}
 .ruleNowRow {
   display: flex;
   flex-wrap: wrap;
@@ -346,7 +346,7 @@
   gap: 4px;
   flex: none;
   padding: 2px 8px 3px 10px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-edge);
   border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
@@ -354,6 +354,7 @@
   color: var(--navy);
   transition:
     background-color 150ms ease,
+    border-color 150ms ease,
     transform 160ms var(--ease-out);
 }
 .ruleChange:not(:disabled):active {
@@ -374,7 +375,8 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .ruleChange:not(:disabled):hover {
-    background: rgba(21, 24, 29, 0.05);
+    border-color: color-mix(in srgb, var(--navy) 45%, transparent);
+    background: var(--navy-wash);
   }
 }
 /* What the rule on screen weighs, with its shares: the first thing the open choice says. */
@@ -396,14 +398,15 @@
   align-items: baseline;
   justify-content: space-between;
 }
+/* The two rules as a switch: a grey track, the chosen side white with a navy ring. */
 .ruleSeg {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin-top: 8px;
-  border: 1px solid var(--hair);
-  border-radius: var(--r-control);
+  border-radius: var(--r-box);
   padding: 3px;
   gap: 3px;
+  background: var(--track);
 }
 .ruleButton {
   display: grid;
@@ -412,7 +415,7 @@
   align-items: center;
   padding: 6px 10px 7px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--r-control);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -420,6 +423,10 @@
     background-color 150ms ease,
     color 150ms ease,
     transform 160ms var(--ease-out);
+}
+/* Above the workspace's `.root button { color: inherit }`, so the side not chosen takes the quieter ink. */
+.ruleSeg .ruleButton {
+  color: var(--ink-2);
 }
 .ruleButtonLabel {
   font: 500 13px/17px var(--sans);
@@ -430,16 +437,20 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .ruleButton:not([aria-pressed="true"]):not(:disabled):hover {
-    background: rgba(21, 24, 29, 0.05);
+    background: rgba(255, 255, 255, 0.6);
   }
 }
 .ruleButton[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
   cursor: default;
 }
+.ruleButton[aria-pressed="true"] .ruleButtonLabel {
+  font-weight: 600;
+}
 .ruleButton:disabled:not([aria-pressed="true"]) {
-  opacity: 0.55;
+  color: var(--ink-3);
 }
 /* With nothing loaded the rule cannot change: the chosen side fades too, and Other rules stops reading as a link. */
 .ruleButton[aria-pressed="true"]:disabled {
@@ -613,6 +624,7 @@
   right: 0;
   bottom: -1px;
   height: 2px;
+  border-radius: 2px 2px 0 0;
   background: var(--navy);
 }
 
@@ -728,7 +740,7 @@
   height: 28px;
   margin: -5px 0;
   padding: 0 10px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-edge);
   border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
@@ -948,21 +960,23 @@
   display: inline-flex;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--hair);
   border-radius: var(--r-control);
+  background: var(--track);
 }
 .segmented button {
   padding: 1px 10px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
   font: 500 12px/18px var(--sans);
   color: var(--ink-2);
   cursor: pointer;
 }
 .segmented button[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  font-weight: 600;
 }
 .segmented button:disabled {
   cursor: default;
@@ -993,6 +1007,11 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
+  transition: background-color 150ms ease;
+}
+/* A row chosen or passed over from the keyboard changes at once, as every keyboard action here does. */
+.root[data-instant] .row {
+  transition: none;
 }
 .rowQueued {
   grid-template-columns: minmax(0, 1fr) 8px;
@@ -1027,7 +1046,7 @@ li + li > .row::before {
   top: 6px;
   bottom: 6px;
   width: 3px;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 3px 3px 0;
   background: var(--navy);
 }
 li + li > .row[aria-pressed="true"]::before,
@@ -1905,9 +1924,20 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink);
   text-wrap: pretty;
 }
+/* The reasons' numbers in small ringed circles, like the guides' numbers in Start here. A part that is not one of the
+   reasons keeps an empty slot, never an empty ring that would read as a radio button. */
 .reasonN {
-  font: italic 400 15px/18px var(--serif);
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--control-edge);
+  border-radius: 50%;
+  font: 600 10.5px/1 var(--sans);
   color: var(--navy);
+}
+.reasonN:empty {
+  border-color: transparent;
 }
 .reason {
   display: grid;
@@ -2337,19 +2367,30 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     height: var(--switch-h);
     padding: 6px 12px;
     background: var(--panel);
-    border-bottom: 1px solid var(--hair);
+    border-bottom: 1px solid var(--hair-2);
+  }
+  /* The switch's track, under the two buttons. */
+  .root[data-pane] .paneSwitch::before {
+    content: "";
+    position: absolute;
+    inset: 6px 12px;
+    border-radius: var(--r-box);
+    background: var(--track);
   }
   .root[data-rail-band] .paneSwitch {
     display: none;
   }
+  /* The chosen side is white with a navy ring, set 3 px inside the track as in the other switches. */
   .paneSwitch button {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     min-width: 0;
-    border: 1px solid var(--hair);
-    background: var(--panel);
+    border: 0;
+    border-radius: var(--r-box);
+    background: transparent;
     cursor: pointer;
     font: 500 13.5px/18px var(--sans);
     color: var(--ink-2);
@@ -2357,17 +2398,13 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
       background-color 150ms ease,
       color 150ms ease;
   }
-  .paneSwitch button:first-child {
-    border-radius: 8px 0 0 8px;
-  }
-  .paneSwitch button:last-child {
-    border-left: 0;
-    border-radius: 0 8px 8px 0;
-  }
   .paneSwitch button[aria-pressed="true"] {
-    background: var(--navy);
-    border-color: var(--navy);
-    color: #fff;
+    background: var(--panel);
+    box-shadow:
+      inset 0 0 0 3px var(--track),
+      inset 0 0 0 4.5px var(--navy);
+    color: var(--navy);
+    font-weight: 600;
   }
   /* The list alone sits right under the switch, whose own line is the edge between them. */
   .root[data-pane="list"]:not([data-rail-band]) .column,

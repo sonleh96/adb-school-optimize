@@ -107,9 +107,9 @@
   column-gap: 10px;
   align-items: center;
   padding: 9px 12px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--control-edge);
   border-radius: var(--r-box);
-  background: transparent;
+  background: var(--panel);
   text-align: left;
   cursor: pointer;
   transition:
@@ -122,7 +122,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .tile:not(:disabled):hover {
-    border-color: rgba(21, 24, 29, 0.28);
+    border-color: color-mix(in srgb, var(--navy) 45%, transparent);
   }
 }
 .tileSym {
@@ -144,8 +144,11 @@
 }
 .tile[aria-pressed="true"] {
   border-color: var(--navy);
-  background: var(--navy-wash);
+  background: var(--panel);
   box-shadow: inset 0 0 0 0.5px var(--navy);
+}
+.tile[aria-pressed="true"] .tileName {
+  font-weight: 600;
 }
 .tile[aria-pressed="true"] .tileSym,
 .tile[aria-pressed="true"] .tileName {

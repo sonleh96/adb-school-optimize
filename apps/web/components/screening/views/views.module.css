@@ -37,8 +37,8 @@
 /* R2: number, name and the remove button share one row; the name wraps anywhere and the button stays in the row. */
 .row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  column-gap: 8px;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  column-gap: 12px;
   align-items: start;
   border-bottom: 1px solid var(--hair);
 }
@@ -93,10 +93,18 @@
   outline-offset: 2px;
   border-radius: 4px;
 }
+/* Numbered as the guides above them are: a ringed circle. */
 .n {
-  font: italic 400 15px/19px var(--serif);
-  color: var(--ink-3);
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: -2px;
+  border: 1px solid var(--control-edge);
+  border-radius: 50%;
+  font: 600 11.5px/1 var(--sans);
   font-variant-numeric: tabular-nums;
+  color: var(--navy);
 }
 .name {
   min-width: 0;
@@ -188,20 +196,21 @@
 }
 
 /* ---------- the export sheet's Saved views for meetings tab ---------- */
+/* The workspace's switch: a grey track, the chosen side white with a navy ring. */
 .tabs {
   display: inline-flex;
   max-width: calc(100% - 44px);
   padding: 2px;
-  border: 1px solid var(--hair);
   border-radius: var(--r-control);
   gap: 2px;
+  background: var(--track);
 }
 .tabs button {
   min-width: 0;
   min-height: 30px;
   padding: 5px 12px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   cursor: pointer;
   font: 500 13px/18px var(--sans);
@@ -215,8 +224,10 @@
   transform: scale(0.97);
 }
 .tabs button[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  font-weight: 600;
 }
 .tabs button:focus-visible {
   outline: 2px solid var(--navy);
