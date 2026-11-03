@@ -2719,6 +2719,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 
 @media (prefers-reduced-motion: reduce) {
   .ruleButton,
+  .ruleChange,
+  .findToggle,
   .pop,
   .chevron,
   .column,
