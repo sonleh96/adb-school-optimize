@@ -301,11 +301,12 @@
   border-top: 1px solid var(--hair);
 }
 /* R23: the step count sits beside the title and the title wraps, so nothing leaves the rail. */
+/* A guide: its number in a ringed circle, its title and line, and its step count as a chip under them. */
 .rail .task {
   position: relative;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
-  column-gap: 8px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 12px;
   align-items: start;
   width: 100%;
   padding: 11px 0 12px;
@@ -349,8 +350,15 @@
   opacity: 0.55;
 }
 .taskN {
-  font: italic 400 17px/19px var(--serif);
-  color: var(--ink-3);
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: -1px;
+  border: 1px solid var(--control-edge);
+  border-radius: 50%;
+  font: 600 11.5px/1 var(--sans);
+  color: var(--navy);
 }
 .taskText {
   display: flex;
@@ -370,17 +378,25 @@
   color: var(--ink-3);
   text-wrap: pretty;
 }
+/* Unseen, an outlined chip; seen, a filled one with its tick, so the two read apart at a glance. */
 .taskStatus {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding-top: 1px;
-  font: 400 12px/18px var(--sans);
-  color: var(--ink-3);
+  margin-top: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--control-edge);
+  border-radius: var(--r-chip);
+  font: 600 11px/18px var(--sans);
+  color: var(--navy);
   white-space: nowrap;
 }
 .taskStatus[data-seen] {
-  color: var(--navy);
+  border-color: transparent;
+  background: var(--navy-wash-2);
 }
 .rail .howLink {
   display: grid;

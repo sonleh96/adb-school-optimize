@@ -1927,9 +1927,20 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink);
   text-wrap: pretty;
 }
+/* The reasons' numbers in small ringed circles, like the guides' numbers in Start here. A part that is not one of the
+   reasons keeps an empty slot, never an empty ring that would read as a radio button. */
 .reasonN {
-  font: italic 400 15px/18px var(--serif);
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--control-edge);
+  border-radius: 50%;
+  font: 600 10.5px/1 var(--sans);
   color: var(--navy);
+}
+.reasonN:empty {
+  border-color: transparent;
 }
 .reason {
   display: grid;
