@@ -20,9 +20,16 @@ const nextField = (page: import("@playwright/test").Page) => page.locator("input
 for (const value of CRAFTED) {
   test(`the sign-in form does not carry ${JSON.stringify(value)}`, async ({ page }) => {
     await page.goto(`/sign-in?next=${encodeURIComponent(value)}`);
-    await expect(nextField(page)).toHaveValue("/");
+    await expect(nextField(page)).toHaveValue("/screening");
   });
 }
+
+// Failure mode: a person who opens the sign-in page itself is sent, once signed in, to `/`, which is now the
+// homepage, instead of the list they signed in to see.
+test("the sign-in form sends a person who came without a path to the list", async ({ page }) => {
+  await page.goto("/sign-in");
+  await expect(nextField(page)).toHaveValue("/screening");
+});
 
 test("the sign-in form keeps a path on this origin", async ({ page }) => {
   await page.goto(`/sign-in?next=${encodeURIComponent("/screening?rule=additive_no_u")}`);

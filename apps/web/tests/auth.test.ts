@@ -1,7 +1,8 @@
 /**
  * `safeNextPath` decides where the sign-in callback sends a person after signing in, from a `next` the address
- * carries. Failure mode: a value the browser resolves to another origin gets through, so the callback redirects a
- * signed-in person to a site the sender chose. Each rejected value below is one way to write that.
+ * carries. Failure modes: a value the browser resolves to another origin gets through, so the callback redirects a
+ * signed-in person to a site the sender chose; each rejected value below is one way to write that. And a missing or
+ * refused value sends the person to the homepage, which `/` now is, instead of the list they signed in to see.
  */
 import { describe, expect, it } from "vitest";
 
@@ -35,12 +36,12 @@ describe("safeNextPath", () => {
     ["an encoded percent sign before an encoded backslash", "/50%25%5Cevil.com"],
     ["nothing", ""],
   ])("refuses %s", (_name, value) => {
-    expect(safeNextPath(value)).toBe("/");
+    expect(safeNextPath(value)).toBe("/screening");
   });
 
   it("refuses a missing value", () => {
-    expect(safeNextPath(null)).toBe("/");
-    expect(safeNextPath(undefined)).toBe("/");
+    expect(safeNextPath(null)).toBe("/screening");
+    expect(safeNextPath(undefined)).toBe("/screening");
   });
 
   // Each decoding can reveal a host, so a value still changing after the five decodings the check allows is refused
@@ -58,7 +59,7 @@ describe("safeNextPath", () => {
     ["six encodings of a backslash", `/${encodedTimes("\\evil.com", 6)}`],
     ["eight encodings of a backslash", `/${encodedTimes("\\evil.com", 8)}`],
   ])("refuses %s", (_name, value) => {
-    expect(safeNextPath(value)).toBe("/");
+    expect(safeNextPath(value)).toBe("/screening");
   });
 
   it.each([
@@ -122,9 +123,9 @@ describe("safeNextPath on random values", () => {
       const length = 1 + Math.floor(next() * 7);
       const value = (next() < 0.85 ? "/" : "") + Array.from({ length }, pick).join("");
       const result = safeNextPath(value);
-      if (result !== "/" && result !== value)
+      if (result !== "/screening" && result !== value)
         leaks.push(`${JSON.stringify(value)} became ${JSON.stringify(result)}`);
-      if (result === value && value !== "/") {
+      if (result === value && value !== "/screening") {
         kept += 1;
         if (!staysHere(value)) leaks.push(JSON.stringify(value));
       }
