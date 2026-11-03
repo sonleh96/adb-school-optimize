@@ -1,16 +1,16 @@
 /**
  * The homepage's words. Most readers are education officials who open the site once, then ADB staff, partners and
- * researchers, so the words are plain and the sentences short. They pass the same writing guards as the workspace's
- * copy, its banned words included (tests/home/copy.test.ts), and the page writes no word of its own.
+ * researchers, so the words are plain, the sentences short, and each idea is said in one place only. They pass the
+ * same writing guards as the workspace's copy, its banned words included (tests/home/copy.test.ts), and the page
+ * writes no word of its own.
  *
- * Each factual sentence rests on the research paper or on what the workspace's own copy already says; the claims
- * table, `.audit-work/build/screening-20261020/w9/claims.md`, maps every one to its source. The page never states
- * a count as a literal: the numbers come from the API (`lib/home/counts.ts`) and every sentence here reads true
- * without them.
+ * Each factual sentence rests on the research paper, the repository's own documents, or what the workspace's copy
+ * already says; the claims table, `.audit-work/build/screening-20261020/w9/claims.md`, maps every one to its
+ * source. The page never states a count as a literal: the numbers come from the API (`lib/home/counts.ts`) and every
+ * sentence here reads true without them.
  */
 // Relative imports, as the workspace's copy uses, so the browser tests can read the same words.
 import { formatCount, plural } from "../screening/copy/format";
-import { STRINGS } from "../screening/copy/strings";
 import { LAYOUT } from "../screening/copy/words";
 
 import type { HomeCounts } from "./counts";
@@ -22,14 +22,14 @@ export const phraseText = (phrase: Phrase): string =>
   phrase.map((part) => (typeof part === "string" ? part : part.accent)).join("");
 
 /**
- * Phrases a line never breaks inside: the product's name at its hyphen, the country's name, and a grade and its
- * number. As a pattern with one group, so `split` keeps each phrase as its own part.
+ * Phrases a line never breaks inside: the product's name at its hyphen, the country's name, the bank's name, and a
+ * grade and its number. As a pattern with one group, so `split` keeps each phrase as its own part.
  */
-export const KEEP_TOGETHER = /(RISE-PNG|Papua New Guinea|Grade \d+)/;
+export const KEEP_TOGETHER = /(RISE-PNG|Papua New Guinea|Asian Development Bank|Grade \d+)/;
 
 /**
- * The main method's shares, by factor, from its formula: school need 12 parts, district context 3 and the four
- * smaller factors 1 each, of 19. tests/home/copy.test.ts holds them to the workspace's own statement of each share.
+ * The main method's weights, by factor, from its formula: school need 12 parts, district context 3 and the four
+ * smaller factors 1 each, of 19. tests/home/copy.test.ts holds them to the workspace's own statement of each one.
  */
 export const MAIN_SHARES = Object.freeze({
   N: 12 / 19,
@@ -42,11 +42,16 @@ export const MAIN_SHARES = Object.freeze({
 
 const about = (share: number) => `about ${Math.round(share * 100)}%`;
 
+/** What the whole site is, for the description every page carries and for an installed app. */
+export const SITE = Object.freeze({
+  description:
+    "RISE-PNG suggests which secondary schools in Papua New Guinea to look at first, from the records already gathered, and shows the reasons for each.",
+});
+
 export const HOME = Object.freeze({
   meta: {
     title: LAYOUT.productSub,
-    description:
-      "RISE-PNG suggests which secondary schools in Papua New Guinea to look at first, from the records already gathered, and shows the reasons for each. It is not a verdict on any school.",
+    description: `${SITE.description} It is not a verdict on any school.`,
   },
   skip: "Skip to the main content",
   open: "Open the list",
@@ -55,45 +60,24 @@ export const HOME = Object.freeze({
     eyebrow: "Planning school inspections in Papua New Guinea",
     title: ["See which secondary schools to ", { accent: "look at first" }, ", and why."] as Phrase,
     lead: "Visits have to start somewhere, and school records are uneven. RISE-PNG uses the records already gathered to suggest an order to look in, and shows the reasons for each school.",
+    who: "Built for Asian Development Bank (ADB) staff, from a study by the project's research team.",
     how: "How it works",
     figuresTitle: "What the records cover",
     figuresNote:
       "A record needs verifying when a detail is missing or a figure needs checking, such as 0 classrooms.",
+    // When the API cannot be read, the card keeps its three rows, each named as the tool names the group.
     noFigures: [
-      "The list covers the secondary schools whose records the study gathered.",
-      "A school with enough detail in its record can be put in order now.",
-      "The others need their records verified first.",
+      { term: "All records", text: "The secondary school records the study gathered." },
+      { term: "In the list", text: "Schools with enough detail to put in order now." },
+      { term: LAYOUT.incompleteTab, text: "Schools whose records need verifying first." },
     ],
     queueLink: "See the schools not in the list yet",
-  },
-
-  problem: {
-    eyebrow: "Why the list exists",
-    title: "Where should inspections start?",
-    lead: "An inspection plan has to begin with some schools and not others. The records that could guide that choice are uneven.",
-    cards: [
-      {
-        eyebrow: "The question",
-        title: "Which schools first?",
-        body: "The list suggests which existing secondary schools to look at first. It works only from records already gathered.",
-      },
-      {
-        eyebrow: "The records",
-        title: "Records with gaps.",
-        body: "Some school records miss a detail, such as a power source. Others hold a figure that needs checking, such as 0 classrooms. The tool never fills in a missing detail.",
-      },
-      {
-        eyebrow: "The reasons",
-        title: "Reasons anyone can check.",
-        body: "Each school in the list comes with the main reasons for its rank, taken from its own record. A choice that shows its reasons can be questioned.",
-      },
-    ],
   },
 
   scope: {
     eyebrow: "What the list can and cannot tell you",
     title: "It suggests where to look first. It is not a verdict on any school.",
-    lead: "A high rank means what is known about a school points to visiting it sooner. A low rank does not mean the school is fine. Only an inspection visit can establish the real facts.",
+    lead: "A school near the top is one whose records point to an early visit. A school lower down is not shown to be fine. Only an inspection visit can establish the real facts.",
     does: {
       title: "What the list does",
       items: [
@@ -107,7 +91,7 @@ export const HOME = Object.freeze({
       items: [
         "It does not show a school's real condition or safety.",
         "It does not say whether repairs would help, or how to spend money.",
-        "It does not replace an inspection visit.",
+        "It has not yet been checked against what inspection visits find.",
       ],
     },
   },
@@ -115,9 +99,9 @@ export const HOME = Object.freeze({
   method: {
     eyebrow: "How the list is made",
     title: "School need counts most.",
-    lead: "The main method adds up a few factors for each school, each with a fixed share of the score. The shares are choices the research team states openly. They were not worked out from past results.",
-    sharesTitle: "What counts, and how much",
-    shares: [
+    lead: "Each school gets a score from a few parts. Each part has a fixed weight, which is how much it counts. The research team chose the weights and states them openly. They are policy choices, not estimates of what an inspection would gain.",
+    weightsTitle: "How much each part counts",
+    weights: [
       {
         key: "N",
         share: about(MAIN_SHARES.N),
@@ -133,40 +117,23 @@ export const HOME = Object.freeze({
       {
         key: "small",
         share: `${about(MAIN_SHARES.R)} each`,
-        name: "Four smaller factors",
+        name: "Four smaller parts",
         line: "How many people live within walking distance, air quality, nearby emissions and land cover.",
       },
     ],
-    pathTitle: "Which schools are in the list",
-    path: {
-      records: {
-        title: "School records gathered",
-        note: "The records the study gathered, one for each school.",
+    notesTitle: "Three things to know",
+    notes: [
+      {
+        title: "Missing figures show as ranges.",
+        body: "A school without an air-quality figure shows its highest and lowest possible rank. The tool does not guess the figure.",
       },
-      inOrder: {
-        title: "Can be put in order",
-        note: "A school that lacks an air-quality figure shows a range of ranks instead of one. The tool does not guess the figure.",
-      },
-      toVerify: {
-        title: "Need verifying first",
-        note: "Each shows what to verify. Not being in the list yet does not mean need is low.",
-      },
-      visit: {
-        title: "Then a visit or a check",
-        note: "Only an inspection visit can establish the real facts. A record that is checked can then be put in order.",
-      },
-    },
-    pathCaption:
-      "How a school record reaches the list, redrawn in plain words from the research paper's workflow figure.",
-    checksTitle: "Two checks on the method",
-    checks: [
       {
         title: "The urgency rating is left out.",
-        body: "The original school data came with an urgency rating. No one could trace how it was made, so the main method leaves it out. The tool keeps it one click away, as a check.",
+        body: `It came with the original school data, but how it was made has not been traced. To see the list with it, choose ${LAYOUT.orderControl} in the tool.`,
       },
       {
-        title: "A test with the shares changed at random.",
-        body: "The research team changed the shares at random, many times over, and noted which schools stayed in the top 20 each time. It shows how much the list depends on the chosen shares, not what a visit will find.",
+        title: "The weights were tested.",
+        body: "The research team changed the weights at random, thousands of times. Some schools stayed in the top 20 at least four times in five, so their rank does not hang on one exact set of weights. Others moved in and out.",
       },
     ],
   },
@@ -175,75 +142,56 @@ export const HOME = Object.freeze({
     eyebrow: "How to use it",
     title: "Start with your province.",
     steps: [
-      {
-        title: "Find your province.",
-        body: "Open the list and choose Province. Pick a province or a district, or type part of a school's name.",
-      },
-      {
-        title: "Share or print a list.",
-        body: "The web address keeps what you chose, so a link you send opens the same list. Download or print the list for a meeting, with the method and the date at the top.",
-      },
-      {
-        title: "Follow the guides.",
-        body: "Short guides in the tool show how to read each part of the screen. To see them again, choose Help, then Guides.",
-      },
+      "Choose Province in the list to see one province or district, or to find a school by name.",
+      "Send the page's address to share the list you see, or download or print it for a meeting.",
+      "Choose Help, then Guides, for a short tour of each part of the screen.",
     ],
+    example: {
+      caption:
+        "One row of the list: a school's rank, its name and province, and the main reason. This school is made up.",
+      rank: "1st",
+      name: "Example Secondary School",
+      where: "Example Province",
+      why: "2 of its 8 classrooms are built of permanent materials.",
+    },
     guides: "Open the guides",
   },
 
   research: {
-    eyebrow: "The research behind it",
+    eyebrow: "About the study",
     title: "A decision-support case study, not yet final.",
-    lead: "The list follows a research paper by the project's research team. The paper calls the work a documented decision-support case study in choosing schools to inspect when the evidence is incomplete.",
-    data: {
-      title: "The data",
-      sentences: [
-        "The study uses the records gathered for secondary schools in Papua New Guinea: classrooms, teacher housing, facilities, power, water and remoteness.",
-        "It adds district figures, such as the share of students moving on from Grade 7, and mapped measures of walking reach, air quality, nearby emissions and land cover.",
-        "The study does not claim that the records cover every school in the country.",
-      ],
-    },
-    limits: {
-      title: "The limits",
-      sentences: [
-        "The study had no independent checks of school condition or location.",
-        "So the list cannot show true need, or what a visit would achieve.",
-        "No one outside the project has reproduced the results yet, and planners have not yet tested the tool.",
-      ],
-    },
+    sentences: [
+      "The paper calls itself a documented decision-support case study in choosing schools to inspect when the evidence is incomplete.",
+      "The school records have no single collection date. The paper keeps each source's own date, such as 2025 for the emissions and land-cover maps.",
+      "The study does not claim that the records cover every school in the country.",
+    ],
     status: {
       title: "Where the paper stands",
       sentences: [
-        "The research team is still reviewing the paper.",
-        "It has yet to decide whether to change the main method.",
+        "The research team is still reviewing the paper, and has yet to decide whether to change the main method.",
+        "No one outside the project has reproduced its results yet.",
       ],
     },
   },
 
   footer: {
-    about: "RISE-PNG is a decision-support tool for screening secondary schools in Papua New Guinea.",
-    caveat: STRINGS.caveatShort,
     navLabel: "More on this site",
     links: {
       open: "Open the list",
       how: "How the list is made",
       use: "How to use it",
-      research: "The research behind it",
+      research: "About the study",
       queue: "Schools not in the list yet",
       guides: "Open the guides",
     },
   },
 });
 
-/**
- * One figure: the number as shown, what it counts worded to read after it in the hero's card, and the title of its
- * box in the path of a record, which agrees with the number.
- */
+/** One figure in the hero's card: the number as shown, and what it counts, worded to read after the number. */
 export interface Figure {
   readonly key: "records" | "inOrder" | "toVerify";
   readonly value: string;
   readonly label: string;
-  readonly title: string;
 }
 
 /** The three figures, or none when the counts are not known. */
@@ -255,19 +203,12 @@ export function figuresFor(counts: HomeCounts): readonly Figure[] | null {
       key: "records",
       value: formatCount(records),
       label: `secondary school ${plural(records, "record", "records")}`,
-      title: plural(records, "School record gathered", HOME.method.path.records.title),
     },
-    {
-      key: "inOrder",
-      value: formatCount(inOrder),
-      label: "can be put in order now",
-      title: HOME.method.path.inOrder.title,
-    },
+    { key: "inOrder", value: formatCount(inOrder), label: "can be put in order now" },
     {
       key: "toVerify",
       value: formatCount(toVerify),
       label: plural(toVerify, "needs its record verified first", "need their records verified first"),
-      title: plural(toVerify, "Needs verifying first", HOME.method.path.toVerify.title),
     },
   ];
 }

@@ -122,7 +122,7 @@ test("with sign-in required, the homepage is public, and an old link to the tool
 }) => {
   const home = await request.get(`${ORIGIN}/`, { maxRedirects: 0 });
   expect(home.status()).toBe(200);
-  expect(await home.text()).toContain(HOME.problem.title);
+  expect(await home.text()).toContain(HOME.method.title);
 
   const old = await request.get(`${ORIGIN}/?rule=additive_u`, { maxRedirects: 0 });
   expect(old.status()).toBe(307);

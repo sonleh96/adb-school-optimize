@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { AdbLogo } from "@/components/AdbLogo";
-import { HOME, KEEP_TOGETHER, MAIN_SHARES, figuresFor, type Figure, type Phrase } from "@/lib/home/copy";
+import { HOME, KEEP_TOGETHER, MAIN_SHARES, figuresFor, type Phrase } from "@/lib/home/copy";
 import { readHomeCounts } from "@/lib/home/counts";
 import { LAYOUT } from "@/lib/screening/copy/words";
 
@@ -24,10 +24,7 @@ const TOOL = {
   guides: "/screening?guide=start",
 } as const;
 
-/** The problem cards' surfaces, in order: a navy card, a plain one and a tinted one, as Darkhorse sets theirs. */
-const CARD_TONES = ["navy", "plain", "tint"] as const;
-
-/** The main method's shares as the bar draws them: school need, district context, then the four smaller factors. */
+/** The main method's weights as the bar draws them: school need, district context, then the four smaller parts. */
 const SEGMENTS = (Object.entries(MAIN_SHARES) as [keyof typeof MAIN_SHARES, number][]).map(
   ([key, share]) => ({
     key,
@@ -61,28 +58,20 @@ function Unbroken({ text }: { text: string }) {
   );
 }
 
-/** A box in the path of a record: its figure and a title that agrees with it when the count is known. */
-function PathBox({
-  step,
-  figure,
-  tone,
-}: {
-  step: { title: string; note: string };
-  figure?: Figure;
-  tone: "all" | "in" | "verify" | "visit";
-}) {
+/** A rank with its ordinal set small and raised, as the list sets it. */
+function Rank({ text }: { text: string }) {
+  const [, number = text, ordinal = ""] = text.match(/^(\d+)(\D*)$/) ?? [];
   return (
-    <div className={styles.box} data-tone={tone}>
-      {figure ? <p className={styles.boxValue}>{figure.value}</p> : null}
-      <p className={styles.boxTitle}>{figure?.title ?? step.title}</p>
-      <p className={styles.boxNote}>{step.note}</p>
-    </div>
+    <>
+      {number}
+      <span className={styles.ordinal}>{ordinal}</span>
+    </>
   );
 }
 
 export default async function HomePage() {
   const figures = figuresFor(await readHomeCounts(process.env.SCREENING_API_ORIGIN ?? ""));
-  const figure = (key: Figure["key"]) => figures?.find((f) => f.key === key);
+  const { example } = HOME.use;
   const footerLinks = [
     [HOME.footer.links.open, TOOL.list],
     [HOME.footer.links.how, "#how"],
@@ -130,53 +119,34 @@ export default async function HomePage() {
                   {HOME.hero.how}
                 </a>
               </div>
+              <p className={styles.who}>
+                <Unbroken text={HOME.hero.who} />
+              </p>
             </div>
             <div className={styles.figures} data-testid="home-figures">
               <p id="home-figures-title" className={styles.cardEyebrow}>
                 {HOME.hero.figuresTitle}
               </p>
-              {figures ? (
-                <>
-                  <ul className={styles.figureList} aria-labelledby="home-figures-title">
-                    {figures.map((f) => (
+              <ul className={styles.figureList} aria-labelledby="home-figures-title">
+                {figures
+                  ? figures.map((f) => (
                       <li key={f.key} className={styles.figure}>
                         <span className={styles.figureValue}>{f.value}</span>{" "}
                         <span className={styles.figureLabel}>{f.label}</span>
                       </li>
+                    ))
+                  : HOME.hero.noFigures.map((row) => (
+                      <li key={row.term} className={styles.figure} data-kind="words">
+                        <span className={styles.figureTerm}>{row.term}</span>{" "}
+                        <span className={styles.figureLabel}>{row.text}</span>
+                      </li>
                     ))}
-                  </ul>
-                  <p className={styles.figuresNote}>{HOME.hero.figuresNote}</p>
-                </>
-              ) : (
-                HOME.hero.noFigures.map((text) => (
-                  <p key={text} className={styles.figuresText}>
-                    {text}
-                  </p>
-                ))
-              )}
+              </ul>
+              <p className={styles.figuresNote}>{HOME.hero.figuresNote}</p>
               <a className={styles.arrowLink} href={TOOL.queue}>
                 {HOME.hero.queueLink}
               </a>
             </div>
-          </div>
-        </section>
-
-        <section className={`${styles.band} ${styles.white}`} aria-labelledby="home-problem">
-          <div className={styles.wrap}>
-            <p className={styles.eyebrow}>{HOME.problem.eyebrow}</p>
-            <h2 id="home-problem" className={styles.title}>
-              {HOME.problem.title}
-            </h2>
-            <p className={styles.lead}>{HOME.problem.lead}</p>
-            <ul className={styles.cards}>
-              {HOME.problem.cards.map((card, i) => (
-                <li key={card.title} className={styles.card} data-tone={CARD_TONES[i]}>
-                  <p className={styles.cardEyebrow}>{card.eyebrow}</p>
-                  <h3 className={styles.cardTitle}>{card.title}</h3>
-                  <p className={styles.cardBody}>{card.body}</p>
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
 
@@ -213,8 +183,8 @@ export default async function HomePage() {
             </h2>
             <p className={styles.lead}>{HOME.method.lead}</p>
 
-            <div className={`${styles.panel} ${styles.method}`}>
-              <h3 className={styles.panelTitle}>{HOME.method.sharesTitle}</h3>
+            <div className={styles.panel}>
+              <h3 className={styles.panelTitle}>{HOME.method.weightsTitle}</h3>
               <div className={styles.shareBar} aria-hidden="true">
                 {SEGMENTS.map((s) => (
                   <span
@@ -226,51 +196,28 @@ export default async function HomePage() {
                 ))}
               </div>
               <ul className={styles.shareList}>
-                {HOME.method.shares.map((s) => (
-                  <li key={s.key} className={styles.shareItem} data-factor={s.key}>
-                    <span className={styles.shareValue}>{s.share}</span>{" "}
-                    <span className={styles.shareName}>{s.name}</span>{" "}
+                {HOME.method.weights.map((w) => (
+                  <li key={w.key} className={styles.shareItem} data-factor={w.key}>
+                    <span className={styles.shareValue}>{w.share}</span>{" "}
+                    <span className={styles.shareName}>{w.name}</span>{" "}
                     <span className={styles.shareLine}>
-                      <Unbroken text={s.line} />
+                      <Unbroken text={w.line} />
                     </span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <figure className={`${styles.panel} ${styles.method}`}>
-              <h3 className={styles.panelTitle}>{HOME.method.pathTitle}</h3>
-              <ol className={styles.path}>
-                <li className={styles.stage}>
-                  <PathBox step={HOME.method.path.records} figure={figure("records")} tone="all" />
-                </li>
-                <li className={styles.stage}>
-                  <ul className={styles.fork}>
-                    <li>
-                      <PathBox step={HOME.method.path.inOrder} figure={figure("inOrder")} tone="in" />
-                    </li>
-                    <li>
-                      <PathBox step={HOME.method.path.toVerify} figure={figure("toVerify")} tone="verify" />
-                    </li>
-                  </ul>
-                </li>
-                <li className={styles.stage}>
-                  <PathBox step={HOME.method.path.visit} tone="visit" />
-                </li>
-              </ol>
-              <figcaption className={styles.caption}>{HOME.method.pathCaption}</figcaption>
-            </figure>
-
-            <div className={styles.checks}>
-              <h3 className={styles.panelTitle}>{HOME.method.checksTitle}</h3>
-              <ol className={styles.checkList}>
-                {HOME.method.checks.map((check, i) => (
-                  <li key={check.title} className={styles.check}>
-                    <span className={styles.checkNumber} aria-hidden="true">
+            <div className={styles.notes}>
+              <h3 className={styles.panelTitle}>{HOME.method.notesTitle}</h3>
+              <ol className={styles.noteList}>
+                {HOME.method.notes.map((note, i) => (
+                  <li key={note.title} className={styles.note}>
+                    <span className={styles.noteNumber} aria-hidden="true">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <h4 className={styles.checkTitle}>{check.title}</h4>
-                    <p className={styles.checkBody}>{check.body}</p>
+                    <h4 className={styles.noteTitle}>{note.title}</h4>
+                    <p className={styles.noteBody}>{note.body}</p>
                   </li>
                 ))}
               </ol>
@@ -279,56 +226,63 @@ export default async function HomePage() {
         </section>
 
         <section id="use" className={`${styles.band} ${styles.white}`} aria-labelledby="home-use">
-          <div className={styles.wrap}>
-            <p className={styles.eyebrow}>{HOME.use.eyebrow}</p>
-            <h2 id="home-use" className={styles.title}>
-              {HOME.use.title}
-            </h2>
-            <ol className={styles.steps}>
-              {HOME.use.steps.map((step, i) => (
-                <li key={step.title} className={styles.step}>
-                  <span className={styles.stepNumber} aria-hidden="true">
-                    {i + 1}
-                  </span>
-                  <h3 className={styles.stepTitle}>{step.title}</h3>
-                  <p className={styles.stepBody}>{step.body}</p>
-                </li>
-              ))}
-            </ol>
-            <div className={styles.actions}>
-              <a className={`${styles.button} ${styles.primary}`} href={TOOL.list}>
-                {HOME.open}
-              </a>
-              <a className={`${styles.button} ${styles.secondary}`} href={TOOL.guides}>
+          <div className={`${styles.wrap} ${styles.useGrid}`}>
+            <div>
+              <p className={styles.eyebrow}>{HOME.use.eyebrow}</p>
+              <h2 id="home-use" className={styles.title}>
+                {HOME.use.title}
+              </h2>
+              <ol className={styles.strip}>
+                {HOME.use.steps.map((step, i) => (
+                  <li key={step} className={styles.stripStep}>
+                    <span className={styles.stepNumber} aria-hidden="true">
+                      {i + 1}
+                    </span>
+                    <p>{step}</p>
+                  </li>
+                ))}
+              </ol>
+              <a className={styles.arrowLink} href={TOOL.guides}>
                 {HOME.use.guides}
               </a>
             </div>
+            <figure className={styles.example}>
+              <div className={styles.exampleRow}>
+                <span className={styles.exampleRank}>
+                  <Rank text={example.rank} />
+                </span>
+                <span className={styles.exampleText}>
+                  <span className={styles.exampleName}>{example.name}</span>{" "}
+                  <span className={styles.exampleWhere}>· {example.where}</span>
+                  <span className={styles.exampleWhy}>
+                    <b className={styles.exampleWhyKey}>{LAYOUT.whyKey}</b> {example.why}
+                  </span>
+                </span>
+              </div>
+              <figcaption className={styles.exampleCaption}>{example.caption}</figcaption>
+            </figure>
           </div>
         </section>
 
         <section id="research" className={`${styles.band} ${styles.paper}`} aria-labelledby="home-research">
-          <div className={styles.wrap}>
-            <p className={styles.eyebrow}>{HOME.research.eyebrow}</p>
-            <h2 id="home-research" className={styles.title}>
-              {HOME.research.title}
-            </h2>
-            <p className={styles.lead}>{HOME.research.lead}</p>
-            <div className={styles.research}>
-              {[
-                { part: HOME.research.data, tone: "plain" },
-                { part: HOME.research.limits, tone: "plain" },
-                { part: HOME.research.status, tone: "ink" },
-              ].map(({ part, tone }) => (
-                <div key={part.title} className={styles.researchCard} data-tone={tone}>
-                  <h3 className={styles.cardTitle}>{part.title}</h3>
-                  <div className={styles.researchText}>
-                    {part.sentences.map((sentence) => (
-                      <p key={sentence} className={styles.cardBody}>
-                        <Unbroken text={sentence} />
-                      </p>
-                    ))}
-                  </div>
-                </div>
+          <div className={`${styles.wrap} ${styles.aboutGrid}`}>
+            <div>
+              <p className={styles.eyebrow}>{HOME.research.eyebrow}</p>
+              <h2 id="home-research" className={styles.title}>
+                {HOME.research.title}
+              </h2>
+              {HOME.research.sentences.map((sentence) => (
+                <p key={sentence} className={styles.aboutText}>
+                  <Unbroken text={sentence} />
+                </p>
+              ))}
+            </div>
+            <div className={styles.status}>
+              <h3 className={styles.statusTitle}>{HOME.research.status.title}</h3>
+              {HOME.research.status.sentences.map((sentence) => (
+                <p key={sentence} className={styles.statusText}>
+                  {sentence}
+                </p>
               ))}
             </div>
           </div>
@@ -346,9 +300,6 @@ export default async function HomePage() {
               <p className={styles.footSub}>{LAYOUT.productSub}</p>
             </div>
           </div>
-          <p className={styles.footAbout}>
-            <Unbroken text={HOME.footer.about} />
-          </p>
           <nav className={styles.footNav} aria-label={HOME.footer.navLabel}>
             <ul>
               {footerLinks.map(([label, href]) => (
@@ -358,7 +309,6 @@ export default async function HomePage() {
               ))}
             </ul>
           </nav>
-          <p className={styles.footCaveat}>{HOME.footer.caveat}</p>
         </div>
       </footer>
     </div>

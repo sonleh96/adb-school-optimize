@@ -113,14 +113,10 @@ test("one banner, one main and one footer, headings in order, and a keyboard way
   await expect(page.getByRole("contentinfo")).toHaveCount(1);
   await expect(page.getByRole("navigation", { name: HOME.footer.navLabel })).toHaveCount(1);
   await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-  for (const title of [
-    HOME.problem.title,
-    HOME.scope.title,
-    HOME.method.title,
-    HOME.use.title,
-    HOME.research.title,
-  ])
+  for (const title of [HOME.scope.title, HOME.method.title, HOME.use.title, HOME.research.title])
     await expect(page.getByRole("region", { name: title }), title).toHaveCount(1);
+  // The example row is a figure named by its caption, which says the school is made up.
+  await expect(page.getByRole("figure", { name: HOME.use.example.caption })).toBeVisible();
   const levels = await page
     .locator("h1, h2, h3, h4, h5, h6")
     .evaluateAll((headings) => headings.map((h) => Number(h.tagName.slice(1))));
@@ -176,11 +172,9 @@ test("made while its API could not be reached, the page says the same things wit
   page,
 }) => {
   await page.goto("/");
-  const card = page.getByTestId("home-figures");
-  for (const text of HOME.hero.noFigures) await expect(card.getByText(text)).toBeVisible();
-  await expect(card).not.toContainText(/\d/);
-  const path = page.getByRole("figure");
-  await expect(path).toContainText(HOME.method.path.records.title);
-  await expect(path).not.toContainText(/\d/);
+  // The card keeps its three rows, each naming its group where its number would be, so it reads as whole.
+  const rows = page.getByTestId("home-figures").getByRole("listitem");
+  await expect(rows).toHaveText(HOME.hero.noFigures.map((row) => `${row.term} ${row.text}`));
+  for (const row of await rows.allTextContents()) expect(row).not.toMatch(/\d/);
   await expect(page.locator("body")).not.toContainText(/undefined|NaN|\bnull\b/);
 });
