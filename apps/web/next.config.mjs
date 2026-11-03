@@ -58,6 +58,8 @@ const SECURITY_HEADERS = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // `next dev` would otherwise write its own AGENTS.md into the app's folder on every start.
+  agentRules: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // The homepage reads its counts on the server, from the same API the rewrite below proxies to (lib/home/counts.ts).
   env: { SCREENING_API_ORIGIN: API_ORIGIN },

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
+import { SITE } from "@/lib/home/copy";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,8 +10,7 @@ export const metadata: Metadata = {
     default: "RISE-PNG Dashboard",
     template: "%s | RISE-PNG",
   },
-  description:
-    "Decision-support dashboard for prioritizing secondary school investments in Papua New Guinea.",
+  description: SITE.description,
 };
 
 export default function RootLayout({
