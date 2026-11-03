@@ -7,6 +7,8 @@
  *  3. A school that gives 0 classrooms is told, on its own, that information about it is missing.
  *  4. A term's words call the records to verify incomplete records, though some are complete and give 0 classrooms.
  *  5. The tab names these schools one way and the map key and the guide another, so a reader does not connect them.
+ *  6. The line that counts what the find control leaves on that tab calls them by another name than the tab's, or
+ *     reads as a double negative when none is left.
  * The datasets are the API's own saved responses: the default one, and the one with a record for each reason the
  * engine can hold a school for.
  */
@@ -53,6 +55,19 @@ describe("the records to verify", () => {
     expect(step.steps[0].onScreen).toContain(`"${P.LAYOUT.incompleteTab}" tab`);
     // Inside the tab, the lead says they are records to verify before they can be put in order.
     expect(P.IDEAS.queue.short).toMatch(/not in the list yet because their records need verifying first\./);
+  });
+
+  it("are counted on their tab by the tab's own name when the find control holds a place (6)", () => {
+    const { LAYOUT } = copy;
+    const highlands = { province: "Highlands", district: null, name: null };
+    const tabName = LAYOUT.incompleteTab.toLowerCase();
+    expect(LAYOUT.findShowing(2, 13, "queue", highlands)).toBe(
+      `2 of the 13 schools ${tabName} are in Highlands.`
+    );
+    expect(LAYOUT.findShowing(1, 1, "queue", highlands)).toBe(`The one school ${tabName} is in Highlands.`);
+    expect(LAYOUT.findShowing(0, 13, "queue", highlands)).toBe(
+      `None of the 13 schools ${tabName} is in Highlands.`
+    );
   });
 
   it("say how many have a detail missing and how many give 0 classrooms, from the list on screen (2)", () => {

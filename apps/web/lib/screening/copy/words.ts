@@ -99,12 +99,13 @@ export const LAYOUT = Object.freeze({
   allDistricts: "All districts",
   clearFind: "Clear",
   // How many schools the find control leaves, of how many, and what it holds. `of` is the tab: the list, or the
-  // records to verify. "3 of the 31 schools in the list are in Highlands."
+  // schools not in the list yet. "3 of the 31 schools in the list are in Highlands."
   findShowing: (shown: number, total: number, of: "list" | "queue", find: FindWords) => {
     const one = shown <= 1;
+    // On the second tab, the schools by the tab's own name; its lead and the paper's groups say records to verify.
     const group = (n: number) =>
       of === "queue"
-        ? plural(n, "record to verify", "records to verify")
+        ? plural(n, "school not in the list yet", "schools not in the list yet")
         : plural(n, "school in the list", "schools in the list");
     const where = find.province
       ? `${one ? "is" : "are"} in ${find.district ? `${find.district}, ${find.province}` : find.province}`
@@ -116,7 +117,11 @@ export const LAYOUT = Object.freeze({
     // Nothing to find by: the whole group, as the tab counts it.
     if (parts.length === 0) return `${formatCount(total)} ${group(total)}.`;
     const holds = joinList(parts);
-    if (shown === 0) return `No ${group(1)} ${holds}.`;
+    // "No school not in the list yet" would read as a double negative.
+    if (shown === 0)
+      return of === "queue"
+        ? `None of the ${total > 0 ? `${formatCount(total)} ` : ""}${group(2)} ${holds}.`
+        : `No ${group(1)} ${holds}.`;
     if (shown === total)
       return total === 1
         ? `The one ${group(1)} ${holds}.`

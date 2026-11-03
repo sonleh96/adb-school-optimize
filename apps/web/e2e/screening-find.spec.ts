@@ -171,7 +171,7 @@ test("the records to verify follow the same filter", async ({ page }) => {
   await tab(page, /Not in the list yet/).click();
   await expect(page.locator("[data-region=queue-list] button[data-school-key]")).toHaveCount(north.length);
   await expect(status(page)).toHaveText(
-    `${north.length} of the ${queued.length} records to verify are in North Province.`
+    `${north.length} of the ${queued.length} schools not in the list yet are in North Province.`
   );
 });
 

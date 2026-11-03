@@ -120,7 +120,7 @@ test("with a province on, the records' printout says what it is, and the groups 
   // What it is, then the province's share, then all of them and the paper's groups of all of them, together.
   await expect(printout(page).locator("p")).toHaveText([
     QUEUE_MADE,
-    `${north.length} of the ${queued.length} records to verify are in North Province.`,
+    `${north.length} of the ${queued.length} schools not in the list yet are in North Province.`,
     QUEUE_LEAD,
     GROUPS,
     QUEUE_ORDER,
