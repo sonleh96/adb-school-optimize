@@ -25,7 +25,7 @@ const MapCanvas = dynamic(() => import("./MapCanvas"), { ssr: false, loading: Ma
 /**
  * Nothing is fetched for the map until `load` is true. The page sets it once the list has been painted, so the
  * map's roughly 430 KiB (gzip) of script and its first draw never compete with the data and the list the user
- * came for, on a slow link or a slow laptop.
+ * came for, on a slow link or a slow laptop. On a phone it waits longer, until the map is on screen.
  */
 export function ScreeningMap({ load, ...props }: MapCanvasProps & { load: boolean }) {
   return load ? <MapCanvas {...props} /> : <MapLoading />;

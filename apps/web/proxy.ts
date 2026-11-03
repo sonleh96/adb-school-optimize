@@ -2,13 +2,30 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { getAuthConfig, isAllowedEmail, safeNextPath, shouldEnforceAuth } from "@/lib/auth";
+import { SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE } from "@/lib/signInOff";
 
 const PUBLIC_PATHS = new Set(["/sign-in", "/auth/callback", "/healthz"]);
 
 export async function proxy(request: NextRequest) {
-  if (!shouldEnforceAuth() || PUBLIC_PATHS.has(request.nextUrl.pathname)) {
-    return NextResponse.next();
+  const offCookie = request.cookies.get(SIGN_IN_OFF_COOKIE)?.value;
+  if (!shouldEnforceAuth()) {
+    const response = NextResponse.next();
+    if (offCookie !== SIGN_IN_OFF_VALUE) {
+      response.cookies.set(SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE, {
+        path: "/",
+        sameSite: "lax",
+        secure: request.nextUrl.protocol === "https:",
+      });
+    }
+    return response;
   }
+  const response = await enforce(request);
+  if (offCookie !== undefined) response.cookies.delete(SIGN_IN_OFF_COOKIE);
+  return response;
+}
+
+async function enforce(request: NextRequest) {
+  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return NextResponse.next();
 
   const config = getAuthConfig();
   if (!config) return signInRedirect(request, "configuration");

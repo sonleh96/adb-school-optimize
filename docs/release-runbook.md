@@ -14,7 +14,8 @@ The merge gate includes:
 - API and scoring Ruff checks and pytest suites;
 - a clean API Docker build.
 
-The current initial-route JavaScript budget is 250 KiB gzip for the workspace, excluding dynamically loaded map chunks.
+The workspace's initial JavaScript budget is 230 KiB gzip: every chunk the prerendered `/screening` names, measured on the `npm run build` output.
+The map's chunks load later and must stay out of it.
 The WebGL regression test must keep exactly one context alive across repeated visits to the workspace.
 
 ## Local verification
@@ -84,7 +85,7 @@ API rollback target is the previously recorded healthy Cloud Run revision and im
 
 ## Performance baseline
 
-Reopen performance work if the workspace keeps more than one WebGL context alive, the workspace crosses 250 KiB gzip initial JavaScript, desktop Lighthouse performance falls below 90, or production p95 increases by more than 20 percent without an explained data change.
+Reopen performance work if the workspace keeps more than one WebGL context alive, the workspace crosses 230 KiB gzip initial JavaScript, desktop Lighthouse performance falls below 90, or production p95 increases by more than 20 percent without an explained data change.
 
 ## Dependency security baseline
 

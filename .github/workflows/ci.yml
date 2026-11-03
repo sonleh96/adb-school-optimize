@@ -41,14 +41,16 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm audit --omit=dev --audit-level=high
-      - run: npm run analyze
+      # The budget is checked on the build that ships, the same one the analysis reads.
+      - run: npm run build
       - run: npm run bundle:check
+      - run: npm run analyze
 
       - uses: actions/upload-artifact@v4
         with:
           name: bundle-analysis
           path: |
-            apps/web/.next/analyze/
+            apps/web/.next/diagnostics/analyze/
             apps/web/.next/bundle-budget.json
 
   browser:

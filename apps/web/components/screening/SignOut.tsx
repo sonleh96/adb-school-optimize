@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 
+import { signInIsOff } from "@/lib/signInOff";
+
 /**
  * Whether to offer "Sign out": the app asks `/auth/user`, which says whether sign-in is required here and who is
  * signed in. With sign-in off (a contributor's machine, the browser tests) or nobody signed in, there is nothing
- * to sign out of, so the action stays away.
+ * to sign out of, so the action stays away. When the proxy has already said sign-in is off, nothing is asked.
  */
 export function useSignedIn(): boolean {
   const [signedIn, setSignedIn] = useState(false);
   useEffect(() => {
+    if (signInIsOff()) return;
     const controller = new AbortController();
     void fetch("/auth/user", { cache: "no-store", signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))

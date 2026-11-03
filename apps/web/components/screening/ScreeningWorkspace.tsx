@@ -320,9 +320,6 @@ function Workspace() {
   );
   const keyboard = useKeyboardLast(root);
 
-  // The map's script is fetched once the list (or its failure) has been painted.
-  const loadMap = useAfterPaint(view.kind !== "loading" || data.empty);
-
   const rows = useMemo(() => shown?.response.rows ?? [], [shown]);
   const { ordered, incomplete } = useMemo(() => splitRows(rows), [rows]);
   const schools = useMemo(() => new Map((shown?.schools ?? []).map((s) => [s.id, s])), [shown]);
@@ -417,6 +414,17 @@ function Workspace() {
     cardOpen,
     rail: guidance.rail ?? 0,
   });
+  // The map's script is fetched once the list (or its failure) has been painted, and on a phone only once the map is
+  // on screen: Map chosen, or a guide step that takes the band. The List alone never shows it, and its roughly
+  // 600 KB of script and tiles would hold up a slow connection the reader is using to read the list. Once fetched,
+  // the map stays, so List and Map switch without drawing it again.
+  const listSettled = view.kind !== "loading" || data.empty;
+  const mapHeldBack = layout.mode === "narrow" && state.pane === "list" && !guidance.stepping;
+  const loadMap = useAfterPaint(listSettled && !mapHeldBack);
+  // The controller's `ready` waits for the map's first draw; a map held back has nothing to draw yet.
+  useEffect(() => {
+    if (listSettled && mapHeldBack) store.markReady();
+  }, [store, listSettled, mapHeldBack]);
   // The same object while its values hold, so the map does not re-run its framing on unrelated renders.
   const { mode, docked, column, card } = layout;
   const foot = useRef<HTMLDivElement>(null);
