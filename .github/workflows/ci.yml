@@ -6,6 +6,21 @@ on:
   pull_request:
 
 jobs:
+  notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Saved notebook outputs once leaked real school data into this public repo.
+      - name: Notebooks carry no saved outputs
+        run: |
+          python -m unittest discover -s scripts -p 'test_*.py'
+          python scripts/check_notebooks.py
+
   web:
     runs-on: ubuntu-latest
     defaults:

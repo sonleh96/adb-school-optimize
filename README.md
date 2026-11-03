@@ -28,6 +28,12 @@ docs/                     Architecture, security and release docs
 prototype/                Design prototype of the workspace
 ```
 
+## Notebooks
+
+Strip saved outputs before committing a notebook, for example with `jupyter nbconvert --clear-output --inplace <file>`.
+CI runs `scripts/check_notebooks.py` and fails any pull request that adds outputs, execution counts, output-related cell metadata, cell attachments or saved widget state.
+Remove attachments, such as pasted images, and widget state in Jupyter, because `--clear-output` may leave them.
+
 ## Product scope
 
 The workspace opens at `/`.
