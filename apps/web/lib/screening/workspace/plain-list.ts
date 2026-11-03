@@ -114,3 +114,24 @@ export function listHead(
     copy.STRINGS.caveatPlain,
   ];
 }
+
+/**
+ * The lines the records' printout starts with: what they are, which is no order to look in; what the find control
+ * holds; then all the records and the paper's two groups of them, side by side, so a province's share never reads
+ * as the groups' count; the order they are listed in; and the caveat.
+ */
+export function queueHead(
+  copy: BoundCopy,
+  rule: CopyRuleId,
+  list: Pick<PlainList, "version" | "status">,
+  day: Date
+): string[] {
+  return [
+    copy.LAYOUT.queueMade(copy.rulePlainName(rule), copy.ruleLabel(rule), copy.formatDay(day), list.version),
+    ...(list.status ? [list.status] : []),
+    copy.IDEAS.queue.short,
+    copy.STRINGS.queueGroups,
+    copy.STRINGS.queueOrder,
+    copy.STRINGS.caveatPlain,
+  ];
+}

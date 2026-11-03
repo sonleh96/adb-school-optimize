@@ -97,6 +97,9 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.listMade": [
     ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
   ],
+  "LAYOUT.queueMade": [
+    ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
+  ],
   "LAYOUT.researchNote": [[20], [10]],
   "LAYOUT.findShowing": [
     [9, 47, "list", { province: "Highlands", district: null, name: null }],

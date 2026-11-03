@@ -144,6 +144,12 @@ describe("every fixed string follows the writing rules", () => {
         "3 November 2026",
         "paper-2026-10-12",
       ],
+      queueMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
       researchNote: [20],
     };
     const LAYOUT_SENTENCES = new Set([
@@ -178,6 +184,7 @@ describe("every fixed string follows the writing rules", () => {
       "listFirstLine",
       "listMore",
       "listMade",
+      "queueMade",
       "researchNote",
       "researchNotByName",
       "researchFailed",

@@ -24,7 +24,7 @@ import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
-import { type PlainList, listHead, plainRows } from "@/lib/screening/workspace/plain-list";
+import { type PlainList, listHead, plainRows, queueHead } from "@/lib/screening/workspace/plain-list";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
 import { FindPanel, type FindPatch, FindStatus, FindToggle } from "./Find";
@@ -585,11 +585,10 @@ function Workspace() {
           cells: [r.rank, r.school, r.province, r.district, r.why],
         })),
       };
-    const head = listHead(P, shown.rule, { version: plainList.version, status: queueStatus }, now);
     return {
       kind: "queue" as const,
-      title: `${P.LAYOUT.productName}: ${P.termsFor(shown.rule).queue.label}`,
-      lines: [...head.slice(0, -1), P.STRINGS.queueGroups, ...head.slice(-1)],
+      title: `${P.LAYOUT.productName}: ${P.LAYOUT.incompleteTab}`,
+      lines: queueHead(P, shown.rule, { version: plainList.version, status: queueStatus }, now),
       columns: [P.LAYOUT.schoolHead, P.LAYOUT.byProvince, P.LAYOUT.district, P.LAYOUT.whatMissing],
       rows: queued.flatMap((row) => {
         const school = schools.get(row.school.school_key);

@@ -148,6 +148,9 @@ export const LAYOUT = Object.freeze({
   listMore: (n: number) => `And ${formatCount(n)} more in the file.`,
   listMade: (name: string, label: string, day: string, version: string) =>
     `Schools to look at first under ${name} (${label}), made on ${day} from data version ${version}.`,
+  // The first line of the records' printout. They are no order to look in, so it never says "look at first".
+  queueMade: (name: string, label: string, day: string, version: string) =>
+    `Schools not in the list yet under ${name} (${label}), made on ${day} from data version ${version}.`,
   rankHead: "Rank",
   printList: "Print the list",
   // The research team's file, the API's own: the plain sheet's second choice and the method sheet's download.
