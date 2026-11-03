@@ -17,8 +17,8 @@
     "build:ci-browser": "API_PROXY_TARGET=http://127.0.0.1:${CI_MOCK_API_PORT:-4100} NEXT_PUBLIC_SCREENING_TEST_HOOKS=true NEXT_PUBLIC_SCREENING_BASEMAP_STYLE=/api/v1/test/basemap-style.json next build",
     "test:e2e": "npm run build:ci-browser && playwright test",
     "bundle:check": "node scripts/check-bundle-budget.mjs",
-    "analyze": "ANALYZE=true next build --webpack",
-    "lighthouse": "npm run build:ci-browser && lhci autorun"
+    "analyze": "next analyze --output",
+    "lighthouse": "npm run build:ci-browser && npx --yes @lhci/cli@0.15.1 autorun"
   },
   "dependencies": {
     "@deck.gl/core": "^9.4.0",
@@ -35,8 +35,6 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@lhci/cli": "^0.15.1",
-    "@next/bundle-analyzer": "16.4.2",
     "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",

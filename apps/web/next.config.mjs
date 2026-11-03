@@ -1,13 +1,6 @@
-import bundleAnalyzer from "@next/bundle-analyzer";
-
 import { assertNoTestSeams } from "./scripts/test-seams.mjs";
 
 assertNoTestSeams(process.env);
-
-const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === "true",
-  openAnalyzer: false,
-});
 
 const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
 
@@ -83,4 +76,4 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default nextConfig;
