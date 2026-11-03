@@ -42,22 +42,21 @@
   box-shadow: var(--shadow);
 }
 
-/* The workspace's masthead, as it reads at the head of the column. */
+/* The workspace's masthead, as it reads at the head of the column: the logo on white, with clear space round it. */
 .brand {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  column-gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 12px;
   row-gap: 1px;
   align-items: center;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--hair-2);
 }
+/* The official mark keeps its square corners. */
 .logo {
   grid-row: 1 / 3;
-  width: 26px;
-  height: 26px;
-  border-radius: 3px;
-  font-family: var(--serif);
+  width: 30px;
+  height: 30px;
 }
 .name {
   margin: 0;

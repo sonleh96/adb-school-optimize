@@ -257,19 +257,18 @@
 
 .masthead {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  column-gap: 10px;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  column-gap: 12px;
   row-gap: 1px;
   align-items: center;
   padding: 12px 20px 11px;
   border-bottom: 1px solid var(--hair-2);
 }
+/* The official mark keeps its square corners. */
 .logo {
   grid-row: 1 / 3;
-  width: 26px;
-  height: 26px;
-  border-radius: 3px;
-  font-family: var(--serif);
+  width: 30px;
+  height: 30px;
 }
 .mastName {
   grid-column: 2;
@@ -2404,8 +2403,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     right: 0;
     z-index: 5;
     display: grid;
-    grid-template-columns: 26px minmax(0, 1fr) auto;
-    column-gap: 10px;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    column-gap: 12px;
     align-items: center;
     height: 56px;
     padding: 0 12px 0 16px;
