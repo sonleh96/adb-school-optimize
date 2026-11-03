@@ -7,8 +7,8 @@
  *  2. A sentence loses its full stop, or a label gains one              -> "every string passes..."
  *  3. A count reads wrong: "1 records", "1 need", or a number where the API gave none
  *                                                                          -> "the figures read..."
- *  4. The page says the paper is published or peer reviewed, which it is not
- *                                                                          -> "the page never claims..."
+ *  4. The page says the paper is published or peer reviewed, which it is not, or calls it "under review", which a
+ *     reader takes to mean a journal's review                              -> "the page never claims..."
  *  5. The share bar and its words drift from the main method's shares as the workspace states them
  *                                                                          -> "the shares are..."
  */
@@ -89,7 +89,8 @@ describe("the homepage's words", () => {
   });
 
   it("the page never claims the paper is published or peer reviewed", () => {
-    for (const [at, text] of strings(HOME)) expect(text, at).not.toMatch(/\bpublished\b|\bpeer[- ]review/i);
+    for (const [at, text] of strings(HOME))
+      expect(text, at).not.toMatch(/\bpublished\b|\bpeer[- ]review|\bunder review\b/i);
   });
 
   it("the shares are the main method's, as the workspace states them", () => {

@@ -52,7 +52,7 @@ export const HOME = Object.freeze({
   open: "Open the list",
 
   hero: {
-    eyebrow: "School inspections in Papua New Guinea",
+    eyebrow: "Planning school inspections in Papua New Guinea",
     title: ["See which secondary schools to ", { accent: "look at first" }, ", and why."] as Phrase,
     lead: "Visits have to start somewhere, and school records are uneven. RISE-PNG uses the records already gathered to suggest an order to look in, and shows the reasons for each school.",
     how: "How it works",
@@ -115,7 +115,7 @@ export const HOME = Object.freeze({
   method: {
     eyebrow: "How the list is made",
     title: "School need counts most.",
-    lead: "The main method adds up a few factors for each school, each with a fixed share of the score. The research team set the shares before anyone looked at which schools came out on top.",
+    lead: "The main method adds up a few factors for each school, each with a fixed share of the score. The shares are choices the research team states openly. They were not worked out from past results.",
     sharesTitle: "What counts, and how much",
     shares: [
       {
@@ -193,7 +193,7 @@ export const HOME = Object.freeze({
 
   research: {
     eyebrow: "The research behind it",
-    title: "A decision-support case study, still under review.",
+    title: "A decision-support case study, not yet final.",
     lead: "The list follows a research paper by the project's research team. The paper calls the work a documented decision-support case study in choosing schools to inspect when the evidence is incomplete.",
     data: {
       title: "The data",
