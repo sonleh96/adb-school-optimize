@@ -783,6 +783,16 @@
 .queueTitle + .findToggle {
   margin-top: -5px;
 }
+/* A 320 px phone leaves the line 280 px: Province and Download or print the list fit it with less room inside. */
+@media (max-width: 359px) {
+  .findActions {
+    gap: 6px;
+  }
+  .findToggle {
+    gap: 4px;
+    padding: 0 7px;
+  }
+}
 /* Download or print the list beside Find: only in the narrow layout, where the actions hide in Menu. */
 .listExport {
   display: none;
