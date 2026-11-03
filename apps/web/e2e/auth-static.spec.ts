@@ -92,6 +92,27 @@ test("with sign-in required, the manifest and the icon are public and the sign-i
   expect(read.errors.map((e) => e.message)).toEqual([]);
 });
 
+// Failure mode: a server with sign-in required tells the page sign-in is off, or leaves that word in place from a time
+// it was off, so the page sends its reads without a token and every one is refused.
+test("with sign-in required, nothing says sign-in is off, and a cookie that did is cleared", async ({
+  request,
+}) => {
+  for (const path of ["/screening", "/sign-in", "/api/v1/screening/rules"]) {
+    const fresh = await request.get(`${ORIGIN}${path}`, { maxRedirects: 0 });
+    expect(
+      fresh.headersArray().filter((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in/.test(h.value))
+    ).toEqual([]);
+    const stale = await request.get(`${ORIGIN}${path}`, {
+      maxRedirects: 0,
+      headers: { Cookie: "rise-sign-in=off" },
+    });
+    const cleared = stale
+      .headersArray()
+      .find((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in=/.test(h.value));
+    expect(cleared?.value, path).toMatch(/rise-sign-in=;.*(Max-Age=0|Expires=Thu, 01 Jan 1970)/i);
+  }
+});
+
 test("with sign-in required, the workspace and the API still send a signed-out person to sign in", async ({
   request,
 }) => {

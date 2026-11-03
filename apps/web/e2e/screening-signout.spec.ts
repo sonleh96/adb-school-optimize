@@ -1,7 +1,8 @@
 /**
  * Sign out in the workspace. Failure modes and the test for each:
- *  1. The action shows when sign-in is off, so a contributor or a test run is offered a sign-out of nothing
- *     -> "is absent when sign-in is not required"
+ *  1. The action shows when sign-in is off, so a contributor or a test run is offered a sign-out of nothing; or, with
+ *     sign-in off, the page still asks /auth/token and /auth/user, so its first reads wait a round trip for an answer
+ *     that is always "not required"                                    -> "is absent when sign-in is not required..."
  *  2. The action is there but does not end the session or leave the page (the form does not post to /auth/sign-out)
  *     -> "posts to /auth/sign-out and lands on the sign-in page"
  *  3. A mouse can reach it and a keyboard cannot
@@ -13,7 +14,8 @@
  *  6. The narrow Menu lists its choices in another order than the specification's ("Responsive layout"), mixes in the
  *     kinds of help that Help holds, or Sign out is not last                                                -> "is last in the Menu..."
  * The mock app has no sign-in, so the tests that need a signed-in person answer `/auth/user` as the real route
- * does when sign-in is required; `/auth/sign-out` is the app's own route.
+ * does when sign-in is required, and clear the cookie that says sign-in is off, as the proxy does when sign-in is
+ * required; `/auth/sign-out` is the app's own route.
  */
 import type { Page } from "@playwright/test";
 
@@ -22,26 +24,34 @@ import { LAYOUT } from "../lib/screening/copy";
 import { LAND_COLOUR, WATER_COLOUR } from "../lib/screening/marks";
 import { expect, openWorkspace, test } from "./screening-helpers";
 
-const signedIn = (page: Page) =>
-  page.route("**/auth/user", (route) =>
-    route.fulfill({ json: { required: true, email: "analyst@example.org" } })
-  );
+/** As on a server with sign-in required, whose proxy clears the cookie before the page's script reads it. */
+const signInRequired = (page: Page, email: string | null) =>
+  Promise.all([
+    page.addInitScript(() => {
+      document.cookie = "rise-sign-in=; path=/; max-age=0";
+    }),
+    page.route("**/auth/user", (route) => route.fulfill({ json: { required: true, email } })),
+  ]);
+const signedIn = (page: Page) => signInRequired(page, "analyst@example.org");
 const signOut = (page: Page) => page.getByRole("button", { name: LAYOUT.signOut, exact: true });
 const sentToSignIn = async (page: Page) => {
   await expect(page).toHaveURL(/\/sign-in$/);
   await expect(page.getByRole("heading", { name: "Sign in to see the school screening" })).toBeVisible();
 };
 
-test("is absent when sign-in is not required", async ({ page }) => {
-  const answered = page.waitForResponse("**/auth/user");
+test("is absent when sign-in is not required, and the page asks nothing about sign-in", async ({ page }) => {
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname.startsWith("/auth/")) asked.push(request.url());
+  });
   await openWorkspace(page);
-  expect(await (await answered).json()).toEqual({ required: false, email: null });
   await expect(page.getByRole("button", { name: LAYOUT.copyLink })).toBeVisible();
   await expect(signOut(page)).toHaveCount(0);
+  expect(asked).toEqual([]);
 });
 
 test("is absent when sign-in is required and nobody is signed in", async ({ page }) => {
-  await page.route("**/auth/user", (route) => route.fulfill({ json: { required: true, email: null } }));
+  await signInRequired(page, null);
   const answered = page.waitForResponse("**/auth/user");
   await openWorkspace(page);
   await answered;

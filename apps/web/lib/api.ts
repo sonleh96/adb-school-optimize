@@ -1,3 +1,5 @@
+import { signInIsOff } from "./signInOff";
+
 // Prefer same-origin `/api/v1/*` (Next rewrite proxy) to avoid Cloud Run CORS on local ports.
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 /** A request the API (or the sign-in check before it) answered with a failure. `status` is the HTTP status. */
@@ -33,7 +35,8 @@ async function fetchAccessToken(): Promise<string | null> {
 
 async function getApiAccessToken(): Promise<string | null> {
   const now = Math.floor(Date.now() / 1000);
-  if (cachedAuthState?.required === false) return null;
+  // With sign-in off the proxy says so in a cookie, so the first reads go out at once (lib/signInOff.ts).
+  if (cachedAuthState?.required === false || signInIsOff()) return null;
   if (cachedAuthState?.required && cachedAuthState.expiresAt > now + 30) return cachedAuthState.token;
   // Reads that start together (a page's first requests) share one token request instead of each making their own.
   pendingToken ??= fetchAccessToken().finally(() => {
