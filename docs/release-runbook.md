@@ -10,11 +10,12 @@ The merge gate includes:
 
 - frontend lint, formatting, type checking, Vitest, production audit at critical severity, production build, analyzer output, and gzip bundle budgets;
 - Playwright tests of sign-in, the screening workspace, and the check that leaving the workspace releases its WebGL context;
-- desktop Lighthouse performance of at least 90 and accessibility of at least 95 for the workspace and the sign-in page;
+- desktop Lighthouse performance of at least 95 and accessibility of 100 for the homepage, and of at least 90 and 95 for the workspace and the sign-in page;
 - API and scoring Ruff checks and pytest suites;
 - a clean API Docker build.
 
 The workspace's initial JavaScript budget is 230 KiB gzip: every chunk the prerendered `/screening` names, measured on the `npm run build` output.
+The homepage's is 138 KiB gzip, measured the same way on `/`, which loads only the framework's own script.
 The map's chunks load later and must stay out of it.
 The WebGL regression test must keep exactly one context alive across repeated visits to the workspace.
 
