@@ -141,9 +141,10 @@ export const GUIDE = Object.freeze({
           },
           {
             key: "download",
-            title: "Take the top list with you",
-            onScreen: "The button that downloads the top list",
-            tryIt: "Open Download the top list to see the first 20 schools and the method record.",
+            title: "Take the list with you",
+            onScreen: "The button that downloads the list",
+            tryIt:
+              "Open Download the list to see the schools on screen as a spreadsheet, with the method record.",
           },
         ],
       },

@@ -136,6 +136,15 @@ describe("every fixed string follows the writing rules", () => {
       viewPartMissing: [["rule", "school", "hover"], "upper"],
       partAdds: ["Remoteness"],
       findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "pori" }],
+      listLede: [31],
+      listMore: [21],
+      listMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
+      researchNote: [20],
     };
     const LAYOUT_SENTENCES = new Set([
       "workspaceHint",
@@ -161,10 +170,18 @@ describe("every fixed string follows the writing rules", () => {
       "sessionEnded",
       "findShowing",
       "findNoneHint",
+      "listLede",
+      "listFirstLine",
+      "listMore",
+      "listMade",
+      "researchNote",
+      "researchNotByName",
+      "researchFailed",
+      "afterDownloadPlain",
     ]);
     for (const [k, v] of Object.entries(copy.LAYOUT)) {
       // A file name is a name, not a sentence; its own test checks it.
-      if (k === "topListFileName") continue;
+      if (k === "topListFileName" || k === "listFileName") continue;
       const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
       corpus.add(`LAYOUT.${k}`, text, { sentence: LAYOUT_SENTENCES.has(k) });
     }

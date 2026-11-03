@@ -9,7 +9,15 @@
  * once, at the data boundary, and pass it down: nothing below the boundary should import the count-free exports.
  */
 import { countsFrom, groupsSentence, urgencyDefinition } from "./counts";
-import { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
+import {
+  cleanName,
+  displayName,
+  formatApprox,
+  formatCount,
+  formatDay,
+  formatPercent,
+  ordinal,
+} from "./format";
 import {
   comparisonSegments,
   comparisonSentence,
@@ -309,6 +317,7 @@ export function copyFor(data: CopyData = {}) {
     formatCount,
     formatApprox,
     formatPercent,
+    formatDay,
   });
 }
 

@@ -23,17 +23,29 @@ export interface TopListFile {
   readonly list: TopList;
 }
 
+/** The province and district the screen shows, which the API cuts the file to. */
+export interface FilePlace {
+  readonly province: string | null;
+  readonly district: string | null;
+}
+
 /**
- * The top list of `rule` at length `k`. `province` cuts it as the screen's filter does; the API names the filter in
- * the file's own record. The API has no remoteness filter, so the sheet says when one is on screen and not in the file.
+ * The top list of `rule` at length `k`. The province and district cut it as the screen's filter does; the API names
+ * the filter in the file's own record. The API has no remoteness or name filter, so the sheet says when one is on
+ * screen and not in the file.
  */
 export async function fetchTopList(
   rule: RuleId,
   k: number,
-  province: string | null,
+  place: FilePlace,
   signal?: AbortSignal
 ): Promise<TopListFile> {
-  const url = screeningUrl("/exports/top.csv", { rule, k: String(k), province: province ?? undefined });
+  const url = screeningUrl("/exports/top.csv", {
+    rule,
+    k: String(k),
+    province: place.province ?? undefined,
+    district: place.district ?? undefined,
+  });
   const read = await apiFetchFile(url, { signal });
   const file = parseTopCsv(read.text);
   return {
@@ -45,11 +57,11 @@ export async function fetchTopList(
   };
 }
 
-/** The top list of `rule` at length `k`, cut to `province` when one is set, or nothing while `enabled` is false. */
-export function useTopList(rule: RuleId | null, k: number, province: string | null, enabled: boolean) {
+/** The top list of `rule` at length `k`, cut to the province and district on screen, or nothing until `enabled`. */
+export function useTopList(rule: RuleId | null, k: number, place: FilePlace, enabled: boolean) {
   return useQuery({
-    queryKey: ["screening", "export", "top", rule, k, province],
-    queryFn: ({ signal }) => fetchTopList(rule as RuleId, k, province, signal),
+    queryKey: ["screening", "export", "top", rule, k, place.province, place.district],
+    queryFn: ({ signal }) => fetchTopList(rule as RuleId, k, place, signal),
     enabled: enabled && rule !== null,
     retry: (failures, error) => failures < 1 && ["server", "network"].includes(classifyFailure(error)),
     // A file carries the time it was made, so an open sheet keeps the file it showed.

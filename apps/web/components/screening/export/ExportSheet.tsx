@@ -2,15 +2,17 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { type BoundCopy, type CopyRuleId, type CopySchool, isName } from "@/lib/screening/copy";
+import { nameQuery } from "@/lib/screening/filters";
 import { sourceValue } from "./source";
 import type { Method } from "@/lib/screening/copy/method";
-import { recordText, saveFile, useTopList } from "@/lib/screening/method/export";
+import { fetchTopList, recordText, saveFile, useTopList } from "@/lib/screening/method/export";
 import { recordValue } from "@/lib/screening/method/top-csv";
 import type { TopRow } from "@/lib/screening/method/top-list";
 import type { RuleId } from "@/lib/screening/types";
+import { type PlainList, isoDay, listHead, plainCsv } from "@/lib/screening/workspace/plain-list";
 import type { TopLength } from "@/lib/screening/workspace/state";
 
 import { RuleSymbol } from "../RuleArea";
@@ -21,6 +23,8 @@ import styles from "./export.module.css";
 
 const f3 = (value: number) => value.toFixed(3);
 const LENGTHS: readonly TopLength[] = [10, 20, 30];
+/** How many of the list's schools the plain sheet shows before saying how many more the file holds. */
+const PREVIEW = 10;
 
 export interface ExportSheetProps {
   copy: BoundCopy;
@@ -31,10 +35,12 @@ export interface ExportSheetProps {
   comparedWith: CopyRuleId | null;
   n: TopLength;
   /**
-   * The method details' filters on screen. The file follows the province; the API has no remoteness filter, so a
-   * remoteness filter is shown as not applied to the file. The plain sheet has none: a plain screen is never filtered.
+   * The filters on screen. The research file follows the province and district; the API has no remoteness or name
+   * filter, so the method sheet shows those as not applied to the file, and the plain sheet says so of the name.
    */
-  filters: { prov: string | null; loc: string | null };
+  filters: { prov: string | null; dist: string | null; q: string | null; loc: string | null };
+  /** The list on screen, which the plain sheet previews and downloads as it stands. */
+  list: PlainList;
   /** The schools of the list on screen, so a name shows in the one display form (R17). */
   schools: ReadonlyMap<string, CopySchool>;
   layer: HTMLElement | null;
@@ -48,15 +54,19 @@ export interface ExportSheetProps {
 }
 
 /**
- * Download the top list: the first 10, 20 or 30 of the list under the rule on screen, previewed from the file the API
- * writes, with its method record, and downloaded as that same file. The plain sheet says it all in the copy system's
- * words; with the method details on it keeps the formula, the shares, the ids and the fingerprints.
+ * Download the list. The plain sheet previews the list on screen, filter and all, and downloads it as a spreadsheet
+ * a director can read: rank, school, province, district and the Why line, after a line naming the method, the date
+ * and the data version. The research team's file, the API's own with its method record, is its second choice. With
+ * the method details on, the sheet is the research file's: the first 10, 20 or 30 under the rule, previewed from the
+ * file, with the formula, the shares, the ids and the fingerprints.
  */
 export function ExportSheet(props: ExportSheetProps) {
   const { copy, method, rule, n, schools, layer, onNotify } = props;
   const { TERMS, LAYOUT, STRINGS, HELP } = copy;
   const plain = method === null;
-  const read = useTopList(rule as RuleId, n, plain ? null : props.filters.prov, !props.pack);
+  const place = { province: props.filters.prov, district: props.filters.dist };
+  // The plain sheet reads the research file only when asked for it; the method sheet previews it.
+  const read = useTopList(rule as RuleId, n, place, !props.pack && !plain);
   const pack = usePackSheet({ copy, method, schools, enabled: props.pack, onNotify });
   const closeButton = useRef<HTMLButtonElement>(null);
   const file = read.data ?? null;
@@ -64,6 +74,7 @@ export function ExportSheet(props: ExportSheetProps) {
   const needFirst = file?.file.rows.some((row) => row.sort_key_primary !== null) ?? false;
   const scoreHead = needFirst ? TERMS.school_need.label : TERMS.score.label;
   const bare = (label: string) => label.replace(/\s*\(\d+\)$/, "");
+  const searched = nameQuery(props.filters.q) !== null;
   const nameOf = (row: TopRow) => {
     const school = schools.get(row.key);
     return school ? copy.distinctName(school) : copy.displayName({ name: row.name });
@@ -87,12 +98,11 @@ export function ExportSheet(props: ExportSheetProps) {
         ? copy.ordinal(row.best)
         : LAYOUT.placeRange(copy.ordinal(row.best), copy.ordinal(row.worst));
 
-  // The file is the API's in both layers: its method record is what lets someone rebuild the list. What the plain
-  // sheet names and copies is in plain words; the method sheet keeps the API's name and the technical record.
-  const title = LAYOUT.listTitle(n, copy.rulePlainName(rule));
+  // The plain list's lines and file are made when they are asked for, so they carry the day they were made.
+  const rows = props.list.rows;
   const plainRecord = () =>
     [
-      title,
+      listHead(copy, rule, props.list, new Date())[0],
       ...(
         [
           [TERMS.rule.label, copy.ruleLabel(rule)],
@@ -107,17 +117,45 @@ export function ExportSheet(props: ExportSheetProps) {
       ).map(([label, value]) => `${label}: ${value}`),
       STRINGS.caveat,
     ].join("\n");
-  // The plain download is named from the list's length and the rule's plain label; the method sheet keeps the API's.
-  const plainName = LAYOUT.topListFileName(n, copy.ruleLabel(rule));
+  const downloadList = () => {
+    const now = new Date();
+    const text = plainCsv(
+      listHead(copy, rule, props.list, now),
+      [LAYOUT.rankHead, LAYOUT.schoolHead, LAYOUT.byProvince, LAYOUT.district, LAYOUT.whyKey],
+      rows
+    );
+    saveFile(text, LAYOUT.listFileName(copy.ruleLabel(rule), isoDay(now), props.list.where), "text/csv");
+    onNotify(LAYOUT.afterDownloadPlain);
+  };
+
+  // The research file on its own: read when asked for, and its read cancelled if the sheet closes first.
+  const [research, setResearch] = useState<"idle" | "loading" | "failed">("idle");
+  const researchRead = useRef<AbortController | null>(null);
+  useEffect(() => () => researchRead.current?.abort(), []);
+  const downloadResearch = async () => {
+    researchRead.current?.abort();
+    const controller = new AbortController();
+    researchRead.current = controller;
+    setResearch("loading");
+    try {
+      const got = await fetchTopList(rule as RuleId, n, place, controller.signal);
+      saveFile(got.text, got.name ?? `${rule}.csv`, got.type);
+      setResearch("idle");
+      onNotify(LAYOUT.afterDownloadList);
+    } catch {
+      if (!controller.signal.aborted) setResearch("failed");
+    }
+  };
+
   const download = () => {
     if (!file) return;
-    saveFile(file.text, plain ? plainName : (file.name ?? `${rule}.csv`), file.type);
+    saveFile(file.text, file.name ?? `${rule}.csv`, file.type);
     onNotify(LAYOUT.afterDownloadList);
   };
   const copyRecord = async () => {
-    if (!file) return;
+    if (!plain && !file) return;
     try {
-      await navigator.clipboard.writeText(plain ? plainRecord() : recordText(file.file));
+      await navigator.clipboard.writeText(plain ? plainRecord() : recordText(file!.file));
       onNotify(LAYOUT.recordCopied);
     } catch {
       onNotify(LAYOUT.copyNotDone);
@@ -142,12 +180,44 @@ export function ExportSheet(props: ExportSheetProps) {
     </div>
   );
 
+  const listTable = (
+    <table className={styles.table} data-region="export-table">
+      <colgroup>
+        <col className={styles.colRange} />
+        <col />
+        <col className={styles.colWhy} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">{LAYOUT.rankHead}</th>
+          <th scope="col">{LAYOUT.schoolHead}</th>
+          <th scope="col">{LAYOUT.whyKey}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.slice(0, PREVIEW).map((row) => {
+          const where = [row.district, row.province].filter(Boolean).join(", ");
+          return (
+            <tr key={row.key}>
+              <td className={styles.rank}>{row.rank}</td>
+              <td className={styles.name}>
+                {row.school}
+                {where ? <span className={styles.quiet}>{` · ${where}`}</span> : null}
+              </td>
+              <td className={styles.why}>{row.why}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+
   const pointTable = list ? (
     <table className={styles.table} data-region="export-table">
       <colgroup>
         <col className={styles.colPlace} />
         <col />
-        {plain ? null : <col className={styles.colProvince} />}
+        <col className={styles.colProvince} />
         <col className={styles.colScore} />
       </colgroup>
       <thead>
@@ -155,8 +225,8 @@ export function ExportSheet(props: ExportSheetProps) {
           <th className={styles.num} scope="col">
             {TERMS.rank.label}
           </th>
-          <th scope="col">{plain ? LAYOUT.schoolHead : method.sheet.school}</th>
-          {plain ? null : <th scope="col">{LAYOUT.byProvince}</th>}
+          <th scope="col">{method?.sheet.school}</th>
+          <th scope="col">{LAYOUT.byProvince}</th>
           <th className={styles.num} scope="col">
             {scoreHead}
           </th>
@@ -165,7 +235,7 @@ export function ExportSheet(props: ExportSheetProps) {
       <tbody>
         {list.point.length === 0 ? (
           <tr>
-            <td colSpan={plain ? 3 : 4} className={styles.quiet}>
+            <td colSpan={4} className={styles.quiet}>
               {method ? method.sheet.noneTop(n) : LAYOUT.emptyData}
             </td>
           </tr>
@@ -173,13 +243,10 @@ export function ExportSheet(props: ExportSheetProps) {
           list.point.map((row) => (
             <tr key={row.key}>
               <td className={`${styles.num} ${styles.place}`}>
-                {row.place === null ? "" : plain ? copy.ordinal(row.place) : String(row.place)}
+                {row.place === null ? "" : String(row.place)}
               </td>
-              <td className={styles.name}>
-                {nameOf(row)}
-                {plain && row.province ? <span className={styles.quiet}>{` · ${row.province}`}</span> : null}
-              </td>
-              {plain ? null : <td className={styles.quiet}>{row.province ?? ""}</td>}
+              <td className={styles.name}>{nameOf(row)}</td>
+              <td className={styles.quiet}>{row.province ?? ""}</td>
               <td className={styles.num}>{scoreOf(row)}</td>
             </tr>
           ))
@@ -200,10 +267,10 @@ export function ExportSheet(props: ExportSheetProps) {
         <thead>
           <tr>
             <th className={styles.num} scope="col">
-              {plain ? TERMS.rank_range.label : method.sheet.rangeH}
+              {method?.sheet.rangeH}
             </th>
-            <th scope="col">{plain ? LAYOUT.schoolHead : method.sheet.school}</th>
-            <th scope="col">{plain ? TERMS.air_quality.label : method.sheet.missingH}</th>
+            <th scope="col">{method?.sheet.school}</th>
+            <th scope="col">{method?.sheet.missingH}</th>
             <th className={styles.num} scope="col">
               {scoreHead}
             </th>
@@ -214,7 +281,7 @@ export function ExportSheet(props: ExportSheetProps) {
             <tr key={row.key}>
               <td className={`${styles.num} ${styles.range}`}>{rangeText(row)}</td>
               <td className={styles.name}>{nameOf(row)}</td>
-              <td className={styles.quiet}>{plain ? STRINGS.noReading : TERMS.air_quality.label}</td>
+              <td className={styles.quiet}>{TERMS.air_quality.label}</td>
               <td className={styles.num}>{scoreOf(row)}</td>
             </tr>
           ))}
@@ -281,9 +348,7 @@ export function ExportSheet(props: ExportSheetProps) {
         <dd>{copy.urgencyNote(rule)}</dd>
         {shared}
       </dl>
-      {plain ? (
-        <p className={styles.note}>{LAYOUT.fingerprints(fingerprints.length)}</p>
-      ) : (
+      {plain ? null : (
         <ul className={styles.hashes}>
           {fingerprints.map((line) => (
             <li key={line.key} title={`${line.key} ${line.value}`}>
@@ -296,8 +361,53 @@ export function ExportSheet(props: ExportSheetProps) {
     </section>
   );
 
+  const researchSection = (
+    <section className={styles.sec} data-region="research">
+      <p className={base.eyebrow}>{LAYOUT.forResearchers}</p>
+      <p className={styles.note}>
+        {LAYOUT.researchNote(n)}
+        {searched ? ` ${LAYOUT.researchNotByName}` : ""}
+      </p>
+      <div className={styles.researchRow}>
+        <button
+          type="button"
+          className={styles.quietButton}
+          disabled={research === "loading"}
+          onClick={() => void downloadResearch()}
+        >
+          {research === "loading" ? LAYOUT.loadingResearch : LAYOUT.researchFile}
+        </button>
+        {research === "failed" ? (
+          <span role="alert" className={styles.researchFailed}>
+            {LAYOUT.researchFailed}{" "}
+            <button type="button" className={base.linkButton} onClick={() => void downloadResearch()}>
+              {LAYOUT.retry}
+            </button>
+          </span>
+        ) : null}
+      </div>
+    </section>
+  );
+
   let body: ReactNode;
-  if (read.isPending)
+  if (plain)
+    body = (
+      <>
+        <section className={styles.sec}>
+          <p className={base.eyebrow}>{LAYOUT.orderedTab}</p>
+          {rows.length > 0 ? listTable : null}
+          {rows.length > PREVIEW ? (
+            <p className={styles.note} data-region="export-more">
+              {LAYOUT.listMore(rows.length - PREVIEW)}
+            </p>
+          ) : null}
+        </section>
+        {researchSection}
+        {record}
+        <p className={styles.close}>{STRINGS.caveat}</p>
+      </>
+    );
+  else if (read.isPending)
     body = (
       <p className={base.state} role="status">
         {LAYOUT.loadingTopList}
@@ -312,25 +422,6 @@ export function ExportSheet(props: ExportSheetProps) {
         </button>
       </div>
     );
-  else if (plain)
-    body = (
-      <>
-        <section className={styles.sec}>
-          <p className={base.eyebrow}>{TERMS.shortlist_size.label}</p>
-          {lengths}
-          {pointTable}
-        </section>
-        {rangeTable ? (
-          <section className={styles.sec}>
-            <p className={base.eyebrow}>{TERMS.rank_range.label}</p>
-            {rangeTable}
-            <p className={styles.note}>{copy.scope(rule).listOrder}</p>
-          </section>
-        ) : null}
-        {record}
-        <p className={styles.close}>{STRINGS.caveat}</p>
-      </>
-    );
   else
     body = (
       <>
@@ -341,18 +432,26 @@ export function ExportSheet(props: ExportSheetProps) {
             <dd>{lengths}</dd>
             <dt>{TERMS.filters.label}</dt>
             <dd data-region="export-filters">
-              {props.filters.prov === null && props.filters.loc === null ? (
+              {props.filters.prov === null && props.filters.loc === null && !searched ? (
                 method.sheet.filtersOff
               ) : (
                 <>
                   {props.filters.prov !== null ? (
                     <span className={styles.filter}>{method.filter.chipProvince(props.filters.prov)}</span>
                   ) : null}
+                  {props.filters.dist !== null ? (
+                    <span className={styles.filter}>{method.filter.chipDistrict(props.filters.dist)}</span>
+                  ) : null}
                   {props.filters.loc !== null ? (
                     // The file cannot follow this filter, so it shows here marked as not applied, and the sentence
                     // below says so; it is never shown as "None".
                     <span className={styles.filter} data-filter-not-applied="">
                       {method.filter.chipLocality(props.filters.loc)}
+                    </span>
+                  ) : null}
+                  {searched ? (
+                    <span className={styles.filter} data-filter-not-applied="">
+                      {method.filter.chipName(props.filters.q!.trim().replace(/\s+/g, " "))}
                     </span>
                   ) : null}
                 </>
@@ -364,6 +463,7 @@ export function ExportSheet(props: ExportSheetProps) {
               {LAYOUT.fileNotByRemoteness}
             </p>
           ) : null}
+          {searched ? <p className={styles.note}>{LAYOUT.researchNotByName}</p> : null}
           {pointTable}
         </section>
         <section className={styles.sec}>
@@ -400,7 +500,7 @@ export function ExportSheet(props: ExportSheetProps) {
         >
           <div className={styles.scroll}>
             <div className={styles.top}>
-              <SheetTabs copy={copy} pack={props.pack} onTab={props.onTab} />
+              <SheetTabs copy={copy} plain={plain} pack={props.pack} onTab={props.onTab} />
               <Dialog.Close asChild>
                 <button
                   ref={closeButton}
@@ -417,7 +517,7 @@ export function ExportSheet(props: ExportSheetProps) {
               {props.pack
                 ? pack.title
                 : plain
-                  ? LAYOUT.listTitle(n, copy.rulePlainName(rule))
+                  ? TERMS.export.label
                   : method.segments
                       .sheetTitle(n, copy.ruleShortName(rule))
                       .map((part, index) =>
@@ -428,11 +528,16 @@ export function ExportSheet(props: ExportSheetProps) {
               {props.pack
                 ? pack.lede
                 : plain
-                  ? `${TERMS.shortlist.line} ${TERMS.shortlist.help}`
+                  ? `${LAYOUT.listLede(rows.length)}${rows.length > 0 ? ` ${LAYOUT.listFirstLine}` : ""}`
                   : `${method.sheet.lede(n, copy.ruleName(rule), hasRanges)}${
                       props.comparedWith ? method.sheet.ledeCompare(copy.ruleName(props.comparedWith)) : ""
                     }`}
             </Dialog.Description>
+            {plain && !props.pack && props.list.status ? (
+              <p className={styles.note} data-region="export-find">
+                {props.list.status}
+              </p>
+            ) : null}
             {props.pack ? pack.body : body}
           </div>
           <div className={styles.foot}>
@@ -443,16 +548,33 @@ export function ExportSheet(props: ExportSheetProps) {
                 <button
                   type="button"
                   className={styles.quietButton}
-                  disabled={!file}
+                  disabled={!plain && !file}
                   onClick={() => void copyRecord()}
                 >
                   {LAYOUT.copyRecord}
                 </button>
-                {plain ? null : <span className={styles.hint}>{TERMS.manifest.line}</span>}
+                {plain ? (
+                  <button type="button" className={styles.quietButton} onClick={() => window.print()}>
+                    {LAYOUT.printList}
+                  </button>
+                ) : (
+                  <span className={styles.hint}>{TERMS.manifest.line}</span>
+                )}
                 <span className={styles.spacer} />
-                <button type="button" className={styles.primary} disabled={!file} onClick={download}>
-                  {TERMS.export.label}
-                </button>
+                {plain ? (
+                  <button
+                    type="button"
+                    className={styles.primary}
+                    disabled={rows.length === 0}
+                    onClick={downloadList}
+                  >
+                    {TERMS.export.label}
+                  </button>
+                ) : (
+                  <button type="button" className={styles.primary} disabled={!file} onClick={download}>
+                    {LAYOUT.researchFile}
+                  </button>
+                )}
               </>
             )}
           </div>

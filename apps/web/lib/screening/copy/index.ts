@@ -18,7 +18,15 @@ export { bindCopy, type BoundRecords, type CopyResponses } from "./bind";
 export { copyFor, type BoundCopy, type CopyData } from "./bound";
 export { countsFrom, groupsSentence, urgencyDefinition, type Reads } from "./counts";
 export { buildIdeas, IDEAS } from "./ideas";
-export { cleanName, displayName, formatApprox, formatCount, formatPercent, ordinal } from "./format";
+export {
+  cleanName,
+  displayName,
+  formatApprox,
+  formatCount,
+  formatDay,
+  formatPercent,
+  ordinal,
+} from "./format";
 export {
   comparisonSegments,
   comparisonSentence,

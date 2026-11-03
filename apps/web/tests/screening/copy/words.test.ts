@@ -105,7 +105,7 @@ describe("the words that join values", () => {
     expect(LAYOUT.removeView("J")).toBe("Remove the saved view J");
     expect(LAYOUT.tooltipMissing("power source blank")).toBe("Missing: power source blank");
     expect(LAYOUT.afterDownloadList).toBe(
-      "Downloaded the top list. The method record is in the first lines of the file."
+      "Downloaded the research file. The method record is in the first lines of the file."
     );
   });
 });

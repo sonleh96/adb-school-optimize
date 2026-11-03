@@ -128,6 +128,33 @@ export const LAYOUT = Object.freeze({
   listTitle: (n: number, name: string) => `Top list: the first ${n} under ${name}`,
   // The plain download's name: the list's length and the rule's plain label, with no rule letters.
   topListFileName: (n: number, ruleLabel: string) => `rise-png-top-${n}-${slug(ruleLabel)}.csv`,
+  // The plain download: the list on screen, by the day it is made and, when the screen shows one province or
+  // district, by that too.
+  listFileName: (ruleLabel: string, day: string, where: string | null) =>
+    `rise-png-list-${where ? `${slug(where)}-` : ""}${slug(ruleLabel)}-${day}.csv`,
+  // What the plain download holds, the rows its sheet shows of them, and the line every copy of the list starts with:
+  // the file and the printout alike.
+  listLede: (n: number) =>
+    n === 0
+      ? "No school is on screen, so there is nothing to download. Clear the search to see every school."
+      : n === 1
+        ? "A spreadsheet of the one school on screen, with the main reason it is where it is in the list."
+        : `A spreadsheet of the ${formatCount(n)} schools on screen, in order, with the main reason for each.`,
+  listFirstLine: "Its first line names the method, the date and the data version.",
+  listMore: (n: number) => `And ${formatCount(n)} more in the file.`,
+  listMade: (name: string, label: string, day: string, version: string) =>
+    `Schools to look at first under ${name} (${label}), made on ${day} from data version ${version}.`,
+  rankHead: "Rank",
+  printList: "Print the list",
+  // The research team's file, the API's own: the plain sheet's second choice and the method sheet's download.
+  researchFile: "Download the research file",
+  forResearchers: "For researchers",
+  researchNote: (k: number) =>
+    `The research team's file of the first ${k} schools under this method, with every input, score and source fingerprint, so anyone can rebuild the list.`,
+  researchNotByName: "It follows the province and district, but not the name search.",
+  researchFailed: "The research file did not download.",
+  loadingResearch: "Getting the research file",
+  afterDownloadPlain: "Downloaded the list. Its first line names the method, the date and the data version.",
   // In the export sheet, when a remoteness filter is on screen: the API cannot cut the file by remoteness.
   fileNotByRemoteness:
     "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here.",
@@ -209,7 +236,7 @@ export const LAYOUT = Object.freeze({
     return `Part of this view could not be reopened: ${joinList(found.map((w) => w.missing))} ${plural(found.length, "is", "are")} no longer in the data, so the screen shows ${joinList(found.map((w) => w.instead))} instead${placement === "upper" ? ", and the order it saved for the schools that show a range still applies" : ""}.`;
   },
   removeView: (name: string) => textOf(removeViewSegments(name)),
-  afterDownloadList: "Downloaded the top list. The method record is in the first lines of the file.",
+  afterDownloadList: "Downloaded the research file. The method record is in the first lines of the file.",
   afterDownloadPack:
     "Downloaded the saved views for meetings. The method record is in the first lines of the file.",
   copyNotDone: "That did not copy. Select the text and copy it by hand.",

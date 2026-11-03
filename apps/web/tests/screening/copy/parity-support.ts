@@ -87,6 +87,17 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [["rule"], "lower"],
   ],
   "LAYOUT.partAdds": [["Remoteness"], ["Classrooms not of permanent materials"]],
+  "LAYOUT.listFileName": [
+    ["Combined factors, without urgency", "2026-11-03", null],
+    ["Combined factors, without urgency", "2026-11-03", "Upper Valley"],
+    ['Équipe / mix (S0): "a" b', "2026-01-09", "Écôle Hill"],
+  ],
+  "LAYOUT.listLede": [[0], [1], [2], [1284]],
+  "LAYOUT.listMore": [[1], [114]],
+  "LAYOUT.listMade": [
+    ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
+  ],
+  "LAYOUT.researchNote": [[20], [10]],
   "LAYOUT.findShowing": [
     [9, 47, "list", { province: "Highlands", district: null, name: null }],
     [1, 47, "list", { province: "Highlands", district: "Upper Valley", name: null }],

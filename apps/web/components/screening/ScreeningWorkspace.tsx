@@ -24,9 +24,11 @@ import { PRIMARY_RULE, SENSITIVITY_RULE } from "@/lib/screening/rule-pair";
 import { type MapSchool, bandsOf, toMapSchools } from "@/lib/screening/marks";
 import type { SchoolKey } from "@/lib/screening/types";
 import { layoutOf, mapPadding } from "@/lib/screening/workspace/layout";
+import { type PlainList, listHead, plainRows } from "@/lib/screening/workspace/plain-list";
 import type { ListView, QueueGrouping } from "@/lib/screening/workspace/state";
 
 import { FindPanel, type FindPatch, FindStatus, FindToggle } from "./Find";
+import { PrintView } from "./PrintView";
 import { ActionsMenu, GuidanceLayer, HelpMenu } from "./guide/GuidanceLayer";
 import { GuidanceProvider, RailBoot, useGuidanceFrame } from "./guide/GuidanceProvider";
 import type { GuideData } from "./guide/types";
@@ -328,6 +330,29 @@ function Workspace() {
         : NO_PAINT,
     [found, rows, filters]
   );
+  // What the find control holds, in the words its sentence uses.
+  const findWords = {
+    province: state.prov === null ? null : copy.cleanName(state.prov),
+    district: state.dist === null ? null : copy.cleanName(state.dist),
+    name: state.q === null || state.q.trim() === "" ? null : state.q.trim().replace(/\s+/g, " "),
+  };
+  const listStatus =
+    found && shown ? copy.LAYOUT.findShowing(listed.length, ordered.length, "list", findWords) : null;
+
+  // The list on screen as the plain download and the printout write it, filter and all.
+  const plainListRows = useMemo(
+    () => (shown ? plainRows(listed, schools, shown.copy, shown.rule) : []),
+    [shown, listed, schools]
+  );
+  const plainList = useMemo(
+    (): PlainList => ({
+      rows: plainListRows,
+      version: shown?.response.run.input_version ?? "",
+      status: listStatus,
+      where: findWords.district ?? findWords.province,
+    }),
+    [plainListRows, shown, listStatus, findWords.district, findWords.province]
+  );
 
   // One selection serves the list, the map and the card. A school the current rows do not hold is no selection.
   const selectedKey = reconcileSelection(state.school, rows);
@@ -488,6 +513,7 @@ function Workspace() {
     onPointerHover: setPointerHover,
     onRule: changeRule,
     onNotify: notify,
+    plainList,
   });
   // The records to verify on screen: the ones the filters leave, the method details' included.
   const queued = method.queueRows
@@ -495,6 +521,58 @@ function Workspace() {
     : found
       ? incomplete.filter((row) => admits(row, filters))
       : incomplete;
+  // The printout: the tab on screen, whole and filtered, under the lines that say what it is. It waits until the list
+  // has painted, so it never delays the first school.
+  const printReady = useAfterPaint(ready);
+  const queueStatus =
+    found && shown ? copy.LAYOUT.findShowing(queued.length, incomplete.length, "queue", findWords) : null;
+  const printQueue = state.view === "queue";
+  const print = useMemo(() => {
+    if (!shown || !printReady) return null;
+    const P = shown.copy;
+    const now = new Date();
+    if (!printQueue)
+      return {
+        kind: "list" as const,
+        title: `${P.LAYOUT.productName}: ${P.LAYOUT.productSub}`,
+        lines: listHead(P, shown.rule, plainList, now),
+        columns: [
+          P.LAYOUT.rankHead,
+          P.LAYOUT.schoolHead,
+          P.LAYOUT.byProvince,
+          P.LAYOUT.district,
+          P.LAYOUT.whyKey,
+        ],
+        rows: plainList.rows.map((r) => ({
+          key: r.key,
+          cells: [r.rank, r.school, r.province, r.district, r.why],
+        })),
+      };
+    const head = listHead(P, shown.rule, { version: plainList.version, status: queueStatus }, now);
+    return {
+      kind: "queue" as const,
+      title: `${P.LAYOUT.productName}: ${P.termsFor(shown.rule).queue.label}`,
+      lines: [...head.slice(0, -1), P.STRINGS.queueGroups, ...head.slice(-1)],
+      columns: [P.LAYOUT.schoolHead, P.LAYOUT.byProvince, P.LAYOUT.district, P.LAYOUT.whatMissing],
+      rows: queued.flatMap((row) => {
+        const school = schools.get(row.school.school_key);
+        if (!school) return [];
+        const place = (value: string | null) => (value?.trim() ? P.cleanName(value) : "");
+        return [
+          {
+            key: row.school.school_key,
+            cells: [
+              P.distinctName(school),
+              place(school.province),
+              place(school.district),
+              P.missingLabels(school).join("; "),
+            ],
+          },
+        ];
+      }),
+    };
+  }, [shown, printReady, printQueue, plainList, queueStatus, queued, schools]);
+
   // The card steps through the list on screen, in its order.
   const onScreen =
     state.view !== "queue"
@@ -579,11 +657,6 @@ function Workspace() {
     changeFind({ prov: null, dist: null, q: null });
     // The status line and its Clear leave the page, so focus goes to the button.
     requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus());
-  };
-  const findWords = {
-    province: state.prov === null ? null : copy.cleanName(state.prov),
-    district: state.dist === null ? null : copy.cleanName(state.dist),
-    name: state.q === null || state.q.trim() === "" ? null : state.q.trim().replace(/\s+/g, " "),
   };
   const findToggle = (
     <FindToggle copy={copy} open={findOpen} active={found && !findOpen} onToggle={toggleFind} />
@@ -1025,6 +1098,7 @@ function Workspace() {
       <p className={styles.toast} role="status" aria-live="polite" data-on={toast ? "" : undefined}>
         {toast?.message}
       </p>
+      {print ? <PrintView {...print} /> : null}
     </div>
   );
 }

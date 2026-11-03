@@ -243,3 +243,12 @@ body {
   background: #f2f0ea;
   color: #15181d;
 }
+
+/* A printout is as long as what it prints, on white paper. */
+@media print {
+  html,
+  body {
+    height: auto;
+    background: #fff;
+  }
+}

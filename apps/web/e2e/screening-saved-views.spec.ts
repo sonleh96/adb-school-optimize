@@ -17,7 +17,7 @@
  *     a rule's record, or is not named in plain words                                           -> "the sheet's saved views tab ..."
  * 10. The plain tab shows method words; the method tab loses the formula and the fingerprints   -> "the sheet's saved ..."
  *                                                                                                  and "with the method details ..."
- * 11. A guide step lands on the saved views tab, or the next "Download the top list" opens on it -> "a guide step ..."
+ * 11. A guide step lands on the saved views tab, or the next "Download the list" opens on it -> "a guide step ..."
  * 12. The narrow layout scrolls sideways, or hides the views or the step's controls             -> "in the narrow layout ..."
  * 13. Restore the starting views drops a saved view without asking, asks when nothing of the person's would be
  *     lost, or leaves the focus nowhere                                                          -> "restoring the starting views ..."
@@ -400,11 +400,11 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
     page.getByRole("status").filter({ hasText: "Downloaded the saved views for meetings." })
   ).toBeVisible();
 
-  // Closing the sheet closes the tab: Download the top list opens on the top list.
+  // Closing the sheet closes the tab: Download the list opens on the list.
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toHaveCount(0);
-  await page.getByRole("button", { name: "Download the top list" }).click();
-  await expect(sheet(page).getByRole("button", { name: "Top list", exact: true })).toHaveAttribute(
+  await page.getByRole("button", { name: "Download the list" }).click();
+  await expect(sheet(page).getByRole("button", { name: "The list", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true"
   );

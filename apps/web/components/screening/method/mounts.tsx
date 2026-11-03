@@ -17,6 +17,7 @@ import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
 import type { ListedRow, SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
 import type { Band } from "@/lib/screening/workspace/bands";
 import type { Layout } from "@/lib/screening/workspace/layout";
+import type { PlainList } from "@/lib/screening/workspace/plain-list";
 import type { WorkspaceState } from "@/lib/screening/workspace/state";
 import type { WorkspaceStore } from "@/lib/screening/workspace/store";
 
@@ -96,6 +97,8 @@ export interface MountInput {
   onRule: (rule: CopyRuleId) => void;
   /** Says something briefly in the workspace's status line (a download, a copied record). */
   onNotify: (message: string) => void;
+  /** The list on screen, as the plain download and the printout write it. */
+  plainList: PlainList;
 }
 
 export interface Mounts {
@@ -269,7 +272,8 @@ export function useMethodMounts(input: MountInput): Mounts {
         rule={rule}
         comparedWith={comparing && on ? a : null}
         n={state.n}
-        filters={{ prov: state.prov, loc: state.loc }}
+        filters={{ prov: state.prov, dist: state.dist, q: state.q, loc: state.loc }}
+        list={input.plainList}
         schools={input.schools}
         layer={input.layer}
         instant={input.keyboard}

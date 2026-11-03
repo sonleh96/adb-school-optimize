@@ -728,7 +728,7 @@ test.describe("the narrow layout", () => {
       "aria-pressed",
       "true"
     );
-    await menu.getByRole("button", { name: "Download the top list" }).click();
+    await menu.getByRole("button", { name: "Download the list" }).click();
     const sheet = page.locator("[data-region=export-sheet]");
     await expect(sheet).toBeVisible();
     // The sheet's list arrives before it closes: an Escape mid-read would cancel the request the test watches.

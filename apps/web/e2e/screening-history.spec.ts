@@ -72,7 +72,7 @@ test("Back closes the card instead of leaving the tool, and the card's address i
 test("Back closes the export sheet instead of leaving the tool", async ({ page }) => {
   await openFromElsewhere(page);
   await page.locator("[data-region=actions-menu]:visible").click();
-  await page.locator("#screening-menu").getByRole("button", { name: "Download the top list" }).click();
+  await page.locator("#screening-menu").getByRole("button", { name: "Download the list" }).click();
   await expect(sheet(page)).toBeVisible();
 
   await back(page);

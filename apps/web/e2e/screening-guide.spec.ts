@@ -637,7 +637,7 @@ test.describe("in the narrow layout", () => {
     await expect(page.getByTestId("screening-map")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth === window.innerWidth)).toBe(true);
     await page.getByTestId("guide-compact").getByRole("button", { name: "Next", exact: true }).click();
-    // Guide 1 step 4 points at Download the top list, which the narrow layout keeps in its menu: the ring is round
+    // Guide 1 step 4 points at Download the list, which the narrow layout keeps in its menu: the ring is round
     // the menu's button.
     await expect.poll(() => railState(page)).toEqual({ kind: "step", guide: "q1", step: 4 });
     await ringed(page);

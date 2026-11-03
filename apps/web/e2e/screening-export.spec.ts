@@ -1,8 +1,13 @@
 /**
- * Download the top list. Failure modes and the test for each:
- *  1. The sheet shows a list other than the file's, or the download is not the file previewed (the method record
- *     missing, rewritten or re-encoded)                                                       -> "the sheet previews..."
- *  2. The length does not change the list or the link                                         -> "the length..."
+ * Download the list. Failure modes and the test for each:
+ *  1. The plain download is not the list on screen: other columns than rank, school, province, district and Why, a
+ *     Why other than the screen's, a school missing, or no line naming the method, the date and the data version
+ *                                                                                      -> "the plain sheet downloads..."
+ *  1a. The plain download ignores the find control's filter                              -> "the plain download follows..."
+ *  1b. The research file is gone, or is not the API's file byte for byte, or ignores the province on screen
+ *                                                                                      -> "the research file..."
+ *  1c. A failed research file leaves the sheet with no way on, or stops the plain download -> "a failed research file..."
+ *  2. The method sheet's length does not change the list or the link                    -> "the length..."
  *  3. Copy the method record copies something other than the file's record                    -> "Copy the method record..."
  *  4. Escape closes the card behind the sheet, or the sheet traps the screen after closing    -> "Escape closes..."
  *  5. The plain sheet shows method words (an id, a formula, a fingerprint); the method sheet loses them
@@ -21,7 +26,20 @@ import path from "node:path";
 
 import type { Page } from "@playwright/test";
 
-import { expect, openWorkspace, orderedRow, test, useMockDataset, waitForMap } from "./screening-helpers";
+import { csvRows } from "../lib/screening/method/top-csv";
+
+import {
+  MAIN_RULE,
+  ORDERED,
+  ORDERED_COUNT,
+  expect,
+  openWorkspace,
+  orderedRow,
+  rowsOf,
+  test,
+  useMockDataset,
+  waitForMap,
+} from "./screening-helpers";
 
 test.use({ viewport: { width: 1600, height: 1000 } });
 test.describe.configure({ timeout: 60_000 });
@@ -36,10 +54,28 @@ const listed = (name: string) => {
 
 const sheet = (page: Page) => page.getByRole("dialog");
 const openSheet = async (page: Page) => {
-  await page.getByRole("button", { name: "Download the top list" }).click();
+  await page.getByRole("button", { name: "Download the list" }).click();
   await expect(sheet(page)).toBeVisible();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
 };
+/** The day as the copy writes it, worked out here rather than by the code under test. */
+const today = () =>
+  new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+const isoToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+/** The plain download, read as its cells: the lines about the list, the column heads, then one line per school. */
+const downloadedList = async (page: Page) => {
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    sheet(page).getByRole("button", { name: "Download the list" }).click(),
+  ]);
+  const text = readFileSync((await download.path())!, "utf8");
+  return { name: download.suggestedFilename(), text, rows: csvRows(text) };
+};
+const CAVEAT =
+  "This tool suggests which schools to look at first. It does not show a school's real condition or safety, whether repairs would help, or how to spend money.";
 const search = (page: Page) => new URL(page.url()).search;
 /** A link that opens with the sheet: the sheet is modal, so the page behind it is waited for by its map. */
 const openWithSheet = async (page: Page, link: string) => {
@@ -52,40 +88,115 @@ const SOURCE_VALUE =
   'The revised research paper "Comparing school inspection screening approaches under incomplete evidence in Papua New Guinea", which makes the rule without urgency its main rule.';
 const SOURCE_LINE = `Source: ${SOURCE_VALUE}`;
 
-test("the sheet previews the API's file and downloads that file byte for byte", async ({ page }) => {
+test("the plain sheet downloads the list on screen as a spreadsheet a director can read", async ({
+  page,
+}) => {
   await openWorkspace(page);
+  // The rows and their Why lines as the screen shows them, to hold the file to.
+  const onScreen = await page.locator(`${ORDERED} button[data-school-key]`).evaluateAll((buttons) =>
+    buttons.map((b) => ({
+      place: b.querySelector("[data-place]")!.textContent!,
+      name: b.querySelector("span[class*=name]")!.textContent!,
+      why: b.querySelector("[data-region=row-why]")!.textContent!.replace(/^Why /, ""),
+    }))
+  );
   await openSheet(page);
-  await expect(sheet(page).getByRole("heading")).toHaveText("Top list: the first 20 under the main method");
-  const counts = listed("exports/top_additive_no_u_20.csv");
-  const table = sheet(page).locator("[data-region=export-table] tbody tr");
-  await expect(table).toHaveCount(counts.point);
-  await expect(table.first()).toHaveText("1stSample School 08 · South Province0.708");
-  await expect(sheet(page).locator("table").nth(1).locator("tbody tr")).toHaveCount(counts.range);
-  await expect(sheet(page).locator("[data-region=method-record]")).toContainText("Method record");
+  await expect(sheet(page).getByRole("heading")).toHaveText("Download the list");
+  await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(10);
+  await expect(sheet(page).locator("[data-region=export-more]")).toHaveText(
+    `And ${ORDERED_COUNT - 10} more in the file.`
+  );
   expect(search(page)).toBe("?panel=export");
 
-  const [download] = await Promise.all([
-    page.waitForEvent("download"),
-    sheet(page).getByRole("button", { name: "Download the top list" }).click(),
+  const got = await downloadedList(page);
+  expect(got.name).toBe(`rise-png-list-combined-factors-without-urgency-${isoToday()}.csv`);
+  expect(got.text.charCodeAt(0)).toBe(0xfeff);
+  expect(got.rows[0]).toEqual([
+    `Schools to look at first under the main method (Combined factors, without urgency), made on ${today()} from data version synthetic-fixture-v1.`,
   ]);
-  // The plain sheet names the file in plain words; the bytes are still the API's file.
-  expect(download.suggestedFilename()).toBe("rise-png-top-20-combined-factors-without-urgency.csv");
-  const saved = readFileSync((await download.path())!);
-  expect(saved.equals(file("exports/top_additive_no_u_20.csv"))).toBe(true);
-  await expect(page.getByRole("status").filter({ hasText: "Downloaded the top list" })).toHaveText(
-    "Downloaded the top list. The method record is in the first lines of the file."
+  expect(got.rows[1]).toEqual([CAVEAT]);
+  expect(got.rows[2]).toEqual(["Rank", "School", "Province", "District", "Why"]);
+  const body = got.rows.slice(3).filter((r) => r.length > 1);
+  expect(body).toHaveLength(ORDERED_COUNT);
+  // The screen sets "to" and "of" in a rank apart, so the two are compared without their spaces.
+  const bare = (text: string) => text.replace(/\s+/g, "");
+  expect(body.map((r) => [bare(r[0]), r[1], r[4]])).toEqual(
+    onScreen.map((s) => [bare(s.place), s.name, s.why])
+  );
+  expect(body[0]).toEqual(["1st", "Sample School 08", "South Province", "South One", onScreen[0].why]);
+  await expect(page.getByRole("status").filter({ hasText: "Downloaded the list" })).toHaveText(
+    "Downloaded the list. Its first line names the method, the date and the data version."
   );
 });
 
-test("the length changes the list, the file and the link", async ({ page }) => {
+test("the plain download follows the province, district and name on screen", async ({ page }) => {
+  const southOne = rowsOf(MAIN_RULE).filter(
+    (r) =>
+      r.cohort !== "verification_queue" &&
+      (r.school as unknown as { district: string }).district === "South One"
+  );
+  await openWithSheet(page, "?prov=South+Province&dist=South+One&panel=export");
+  const status = `${southOne.length} of the ${ORDERED_COUNT} schools in the list are in South One, South Province.`;
+  await expect(sheet(page).locator("[data-region=export-find]")).toHaveText(status);
+  const got = await downloadedList(page);
+  expect(got.name).toBe(`rise-png-list-south-one-combined-factors-without-urgency-${isoToday()}.csv`);
+  expect(got.rows[1]).toEqual([status]);
+  const body = got.rows.slice(4).filter((r) => r.length > 1);
+  expect(body.map((r) => r[1]).sort()).toEqual(southOne.map((r) => r.school.source_school_name).sort());
+  expect(body.every((r) => r[2] === "South Province" && r[3] === "South One")).toBe(true);
+});
+
+test("the research file is the API's own, byte for byte, for the province on screen", async ({ page }) => {
   await openWithSheet(page, "?panel=export");
+  const research = sheet(page).locator("[data-region=research]");
+  await expect(research).toContainText("The research team's file of the first 20 schools");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    research.getByRole("button", { name: "Download the research file" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_no_u.csv");
+  expect(readFileSync((await download.path())!).equals(file("exports/top_additive_no_u_20.csv"))).toBe(true);
+  await expect(page.getByRole("status").filter({ hasText: "Downloaded the research file" })).toHaveText(
+    "Downloaded the research file. The method record is in the first lines of the file."
+  );
+
+  await openWithSheet(page, "?prov=South+Province&panel=export");
+  const [south] = await Promise.all([
+    page.waitForEvent("download"),
+    sheet(page).getByRole("button", { name: "Download the research file" }).click(),
+  ]);
+  expect(readFileSync((await south.path())!).equals(file("exports/top_additive_no_u_20_south.csv"))).toBe(
+    true
+  );
+});
+
+test("a failed research file says so and offers Retry, and the list still downloads", async ({
+  page,
+  context,
+  problems,
+}) => {
+  await useMockDataset(context, "default", { exports: 503 });
+  await openWithSheet(page, "?panel=export");
+  await sheet(page).getByRole("button", { name: "Download the research file" }).click();
+  const failure = sheet(page).locator("[data-region=research]").getByRole("alert");
+  await expect(failure).toHaveText("The research file did not download. Retry");
+  await expect(failure.getByRole("button", { name: "Retry" })).toBeVisible();
+  const got = await downloadedList(page);
+  expect(got.rows.slice(3).filter((r) => r.length > 1)).toHaveLength(ORDERED_COUNT);
+  // The read was refused on purpose, and tried once more; those refusals are the only problems.
+  expect(problems.every((p) => p.includes("exports/top.csv") || p.includes("503"))).toBe(true);
+  problems.length = 0;
+});
+
+test("the method sheet's length changes the list, the file and the link", async ({ page }) => {
+  await openWithSheet(page, "?analyst=1&panel=export");
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(
     listed("exports/top_additive_no_u_20.csv").point
   );
   await sheet(page).getByRole("button", { name: "10", exact: true }).click();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(10);
-  await expect(sheet(page).getByRole("heading")).toHaveText("Top list: the first 10 under the main method");
-  expect(search(page)).toBe("?panel=export&n=10");
+  await expect(sheet(page).getByRole("heading")).toHaveText("First 10, Combined, no urgency");
+  expect(search(page)).toBe("?analyst=1&panel=export&n=10");
 });
 
 test("Copy the method record in the method sheet copies the file's own record", async ({ page, context }) => {
@@ -108,7 +219,7 @@ test("Escape closes the sheet first, then the card behind it", async ({ page }) 
   await page.keyboard.press("Escape");
   await expect(sheet(page)).toHaveCount(0);
   await expect(page.locator("[data-slot=school-card]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download the top list" })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Download the list" })).toBeFocused();
   expect(search(page)).not.toContain("panel");
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-slot=school-card]")).toHaveCount(0);
@@ -121,9 +232,6 @@ test("the plain sheet keeps method words out, and the method sheet keeps the for
   const plain = await sheet(page).innerText();
   for (const word of ["additive_no_u", "additive_u", "sha256", "×", "Formula", "S0 = "])
     expect(plain, `plain sheet shows "${word}"`).not.toContain(word);
-  await expect(sheet(page)).toContainText(
-    "2 source files. The downloaded file names each one with its fingerprint."
-  );
 
   await page.goto("/screening?panel=export&analyst=1");
   await waitForMap(page);
@@ -149,8 +257,8 @@ test("the tables keep the sheet's width with the longest names, and numbers stay
       const width = element.clientWidth;
       const tables = [...element.querySelectorAll("table")].map((t) => t.getBoundingClientRect().width);
       const cells = [...element.querySelectorAll("td")].filter((td) => td.scrollWidth > td.clientWidth + 1);
-      // A number on one line has one line box, however tall its row grows beside a long name.
-      const wrapped = [...element.querySelectorAll("td:last-child")].filter((td) => {
+      // A number on one line has one line box, however tall its row grows beside a long name or a Why line.
+      const wrapped = [...element.querySelectorAll("td[class*=num]")].filter((td) => {
         if (!td.textContent) return false;
         const range = document.createRange();
         range.selectNodeContents(td);
@@ -172,7 +280,7 @@ test("with no schools the button waits, and with one school the sheet lists it",
   await useMockDataset(context, "empty");
   await page.goto("/screening");
   await expect(page.locator("[data-empty]")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Download the top list" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Download the list" })).toBeDisabled();
   await expect(page.getByRole("switch", { name: "Show method details" })).toBeDisabled();
   // The empty store answers 404, as the API does; those answers were expected.
   expect(problems.every((p) => p.includes("404"))).toBe(true);
@@ -184,14 +292,18 @@ test("with no schools the button waits, and with one school the sheet lists it",
   await expect(sheet(page).locator("[data-region=export-table] tbody tr")).toHaveCount(1);
 });
 
-test("a failed read says so in the sheet and offers Retry", async ({ page, context, problems }) => {
+test("a failed read of the method sheet's file says so and offers Retry", async ({
+  page,
+  context,
+  problems,
+}) => {
   await useMockDataset(context, "default", { exports: 503 });
-  await openWithSheet(page, "?panel=export");
+  await openWithSheet(page, "?analyst=1&panel=export");
   await expect(sheet(page).getByRole("alert")).toContainText(
     "Some of the information did not load, so there is nothing to show until you try again."
   );
   await expect(sheet(page).getByRole("button", { name: "Retry" })).toBeVisible();
-  await expect(sheet(page).getByRole("button", { name: "Download the top list" })).toBeDisabled();
+  await expect(sheet(page).getByRole("button", { name: "Download the research file" })).toBeDisabled();
   // The read was refused on purpose, and tried once more; those refusals are the only problems.
   expect(problems.length).toBeGreaterThan(0);
   expect(
@@ -200,7 +312,7 @@ test("a failed read says so in the sheet and offers Retry", async ({ page, conte
   problems.length = 0;
 });
 
-test("while the file loads the sheet says so, and the plain table heads its school column", async ({
+test("while the method sheet's file loads the sheet says so, and its table heads its school column", async ({
   page,
 }) => {
   let release: () => void = () => {};
@@ -209,7 +321,7 @@ test("while the file loads the sheet says so, and the plain table heads its scho
     await held;
     await route.continue();
   });
-  await openWithSheet(page, "?panel=export");
+  await openWithSheet(page, "?analyst=1&panel=export");
   await expect(sheet(page).getByRole("status")).toHaveText("Loading the top list");
   release();
   await expect(sheet(page).locator("[data-region=export-table] tbody tr").first()).toBeVisible();
@@ -283,7 +395,7 @@ test("the plain sheet copies its record in plain words, and the method sheet kee
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("rule_id: additive_no_u");
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    sheet(page).getByRole("button", { name: "Download the top list" }).click(),
+    sheet(page).getByRole("button", { name: "Download the research file" }).click(),
   ]);
   expect(download.suggestedFilename()).toBe("rise_png_screening_top20_additive_no_u.csv");
 });
@@ -296,7 +408,7 @@ test("a failed load of the sheet's code says so and loads it again on Retry", as
   await openWorkspace(page);
   // Every script from now on fails, as on a dropped connection, so the sheet's code cannot load.
   await page.route("**/_next/static/chunks/**", (route) => route.abort());
-  await page.getByRole("button", { name: "Download the top list" }).click();
+  await page.getByRole("button", { name: "Download the list" }).click();
   const failure = page.getByRole("alert").filter({ hasText: "Some of the information did not load" });
   await expect(failure).toBeVisible();
   await page.unroute("**/_next/static/chunks/**");

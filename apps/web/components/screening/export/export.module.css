@@ -191,6 +191,32 @@
 .colScoreRange {
   width: 128px;
 }
+/* The plain list: its rank, which may be a range in words, then the school, then the Why line, which takes the room. */
+.colWhy {
+  width: 46%;
+}
+.rank {
+  padding-right: 12px !important;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.why {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+.researchRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 12px 0 0;
+}
+.researchFailed {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
 .num {
   text-align: right !important;
   white-space: nowrap;

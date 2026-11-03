@@ -763,6 +763,81 @@
 .findStatus {
   color: var(--ink);
 }
+
+/* ---------- the printout (PrintView): the list on screen, whole, under what it is; never the controls or the map ---------- */
+.print {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  .root {
+    position: static;
+    overflow: visible;
+    background: #fff;
+  }
+  .root > :not(.print) {
+    display: none !important;
+  }
+  .print {
+    display: block;
+    color: #000;
+    font: 400 10pt/1.35 var(--sans);
+  }
+  .printTitle {
+    margin: 0 0 6pt;
+    font: 600 14pt/1.25 var(--sans);
+  }
+  .printLine {
+    margin: 0 0 3pt;
+    font-size: 9.5pt;
+    color: #222;
+  }
+  .printTable {
+    width: 100%;
+    margin-top: 10pt;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  /* A school's name keeps to a line or two; the Why line, or what to verify, takes the rest of the page. */
+  .printTable[data-kind="list"] th:nth-child(1) {
+    width: 11%;
+  }
+  .printTable[data-kind="list"] th:nth-child(2) {
+    width: 24%;
+  }
+  .printTable[data-kind="list"] th:nth-child(3),
+  .printTable[data-kind="list"] th:nth-child(4) {
+    width: 14%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(1) {
+    width: 30%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(2),
+  .printTable[data-kind="queue"] th:nth-child(3) {
+    width: 17%;
+  }
+  /* The column heads come again at the top of every page. */
+  .printTable thead {
+    display: table-header-group;
+  }
+  .printTable th {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 1pt solid #000;
+    text-align: left;
+    font: 600 8.5pt/1.2 var(--sans);
+  }
+  .printTable td {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 0.5pt solid #bbb;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .printTable tr {
+    break-inside: avoid;
+  }
+}
 .findStatus > [role="status"] {
   overflow-wrap: anywhere;
 }
