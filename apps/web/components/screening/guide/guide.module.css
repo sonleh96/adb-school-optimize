@@ -6,10 +6,14 @@
 /* ---------- shared pieces ---------- */
 .eyebrow {
   margin: 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.08em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
+}
+/* "Start here" takes the accent, as Darkhorse's labels take their gold. */
+.rail .eyebrow {
+  color: var(--navy);
 }
 .label {
   display: block;
@@ -199,8 +203,8 @@
 }
 .counter {
   margin: 8px 0 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.06em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-2);
 }

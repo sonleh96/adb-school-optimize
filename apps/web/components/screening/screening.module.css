@@ -67,10 +67,11 @@
   cursor: default;
 }
 
+/* A small label over what it names: tracked capitals in the interface face, as Darkhorse sets theirs. */
 .eyebrow {
   margin: 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.08em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -287,7 +288,7 @@
   grid-column: 2;
   margin: 0;
   font: 600 12px/14px var(--sans);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-label);
 }
 .mastSub {
   grid-column: 2;
@@ -658,8 +659,8 @@
 .exampleKey {
   display: inline-block;
   margin-right: 8px;
-  font: 500 10.5px/18px var(--mono);
-  letter-spacing: 0.06em;
+  font: 600 10.5px/18px var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -1111,9 +1112,13 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
+/* "Why" as a small navy label before the reason. Only its look changes: the page still holds the word as written. */
 .rowWhyKey {
-  margin-right: 2px;
+  margin-right: 5px;
+  font-size: 10.5px;
   font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
   color: var(--navy);
 }
 .rowChips {
@@ -1188,8 +1193,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   padding: 14px 20px 6px;
   border-bottom: 1px solid var(--hair-2);
   background: var(--panel);
-  font: 500 10px/12px var(--mono);
-  letter-spacing: 0.06em;
+  font: 600 10.5px/12px var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
   overflow-wrap: anywhere;

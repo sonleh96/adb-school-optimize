@@ -60,8 +60,8 @@
 .rule,
 .groupHead {
   margin: 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.08em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
 }
 .eyebrow {
