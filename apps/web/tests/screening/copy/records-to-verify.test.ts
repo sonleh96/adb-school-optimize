@@ -6,12 +6,14 @@
  *  2. The groups are counted from a constant, from another rule's list, or do not add up to the records on the tab.
  *  3. A school that gives 0 classrooms is told, on its own, that information about it is missing.
  *  4. A term's words call the records to verify incomplete records, though some are complete and give 0 classrooms.
+ *  5. The tab names these schools one way and the map key and the guide another, so a reader does not connect them.
  * The datasets are the API's own saved responses: the default one, and the one with a record for each reason the
  * engine can hold a school for.
  */
 import { describe, expect, it } from "vitest";
 
 import * as copy from "@/lib/screening/copy";
+import { GUIDE } from "@/lib/screening/copy/later";
 import { parseWith } from "@/lib/screening/schema";
 import { inputsResponse, resultsResponse } from "@/lib/screening/types";
 
@@ -28,9 +30,8 @@ const bound = (dataset: Dataset, rule: copy.CopyRuleId) => {
 };
 
 describe("the records to verify", () => {
-  it("are named as records to verify, not as missing information (1)", () => {
+  it("are not called missing information (1)", () => {
     const { copy: P } = bound("", "additive_no_u");
-    expect(P.LAYOUT.incompleteTab).toBe("Records to verify");
     for (const text of [
       P.LAYOUT.incompleteTab,
       P.LAYOUT.legendIncomplete,
@@ -41,6 +42,17 @@ describe("the records to verify", () => {
       P.STRINGS.queueIntro,
     ])
       expect(text, text).not.toMatch(/missing information|information (about them|about it) is missing/i);
+  });
+
+  it("are named on their tab as the map key and the guide name them, and the lead says why (5)", () => {
+    const { copy: P } = bound("", "additive_no_u");
+    const step = GUIDE.tasks.find((task) => task.id === "q4")!;
+    expect(P.LAYOUT.incompleteTab).toBe(P.LAYOUT.keyRing);
+    expect(P.termsFor("additive_no_u").queue.label).toBe(`${P.LAYOUT.keyRing} (${P.counts.queue})`);
+    expect(step.title.toLowerCase()).toContain(P.LAYOUT.keyRing.toLowerCase());
+    expect(step.steps[0].onScreen).toContain(`"${P.LAYOUT.incompleteTab}" tab`);
+    // Inside the tab, the lead says they are records to verify before they can be put in order.
+    expect(P.IDEAS.queue.short).toMatch(/not in the list yet because their records need verifying first\./);
   });
 
   it("say how many have a detail missing and how many give 0 classrooms, from the list on screen (2)", () => {

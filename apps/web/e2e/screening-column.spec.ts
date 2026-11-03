@@ -77,20 +77,20 @@ test("a pasted link reproduces the screen, and the URL follows every change", as
   await expect(page.locator("#screening-scope-detail")).toHaveText(SCOPE_DETAIL);
   // The run's own counts: one school fewer can be put in order with urgency.
   await expect(tab(page, /The list/)).toHaveText("The list(21)");
-  await expect(tab(page, /Records to verify/)).toHaveText("Records to verify(4)");
+  await expect(tab(page, /Not in the list yet/)).toHaveText("Not in the list yet(4)");
 
   await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
   await expect(changed(page)).toHaveCount(0);
   expect(search(page)).toBe("?rule=additive_u&scope=1&guide=start");
 
-  await tab(page, /Records to verify/).click();
+  await tab(page, /Not in the list yet/).click();
   await page.getByRole("button", { name: "Show less" }).waitFor({ state: "detached" });
   expect(search(page)).toBe("?rule=additive_u&view=queue&scope=1&guide=start");
 
   // The same link, opened again, is the same screen. The rule area is not part of the address: it opens closed.
   await page.reload();
   await waitForMap(page);
-  await expect(tab(page, /Records to verify/)).toHaveAttribute("aria-selected", "true");
+  await expect(tab(page, /Not in the list yet/)).toHaveAttribute("aria-selected", "true");
   await expect(ruleChange(page)).toHaveText("Change how the list is ordered");
   await openRules(page);
   await expect(mainRule(page, RULE.urgency)).toHaveAttribute("aria-pressed", "true");

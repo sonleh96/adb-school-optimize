@@ -245,7 +245,7 @@ test("the arrow keys move between the tabs and show the one they reach, with one
 }) => {
   await openWorkspace(page);
   const list = tab(page, /The list/);
-  const queue = tab(page, /Records to verify/);
+  const queue = tab(page, /Not in the list yet/);
   await expect(list).toHaveAttribute("tabindex", "0");
   await expect(queue).toHaveAttribute("tabindex", "-1");
 

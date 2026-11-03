@@ -97,7 +97,7 @@ export const GUIDE = Object.freeze({
     urgency: Object.freeze({ name: "With and without the urgency rating" }),
     range: Object.freeze({ name: "A school with a range of ranks" }),
     queue: Object.freeze({
-      name: "Records to verify",
+      name: "Not in the list yet",
       onScreen: (incompleteTab: string) => `The "${incompleteTab}" tab, grouped by what to verify`,
     }),
   }),
@@ -213,7 +213,7 @@ export const GUIDE = Object.freeze({
                 : count === 0
                   ? "Every school is in the list"
                   : `${count} schools are not in the list yet`,
-            onScreen: "The Records to verify tab and its list",
+            onScreen: 'The "Not in the list yet" tab and its list',
           },
           {
             key: "group",

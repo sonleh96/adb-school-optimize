@@ -89,9 +89,9 @@ test("a printout holds only the schools the filter leaves, and says so", async (
 test("on the records to verify, a printout holds the records to verify", async ({ page }) => {
   const queued = rowsOf(MAIN_RULE).filter((r) => r.cohort === "verification_queue");
   await openWorkspace(page);
-  await tab(page, /Records to verify/).click();
+  await tab(page, /Not in the list yet/).click();
   await page.emulateMedia({ media: "print" });
-  await expect(printout(page).locator("h2")).toHaveText(`RISE-PNG: Records to verify (${queued.length})`);
+  await expect(printout(page).locator("h2")).toHaveText(`RISE-PNG: Not in the list yet (${queued.length})`);
   await expect(printout(page).locator("th")).toHaveText(["School", "Province", "District", "What to verify"]);
   await expect(printed(page)).toHaveCount(queued.length);
   await expect(printout(page).locator("p").nth(1)).toHaveText(

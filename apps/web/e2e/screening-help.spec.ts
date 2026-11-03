@@ -94,8 +94,8 @@ test("help mode marks the key concepts, a mark explains instead of acting, and l
   expect(await marks(page).count()).toBeLessThanOrEqual(40);
   await expect(page.getByTestId("help-bar")).toBeVisible();
 
-  // The Records to verify tab explains itself instead of switching the list.
-  await page.getByRole("tab", { name: /Records to verify/ }).click();
+  // The Not in the list yet tab explains itself instead of switching the list.
+  await page.getByRole("tab", { name: /Not in the list yet/ }).click();
   await expect(card(page)).toBeVisible();
   await expect(card(page).getByRole("heading")).toBeFocused();
   await expect(page.getByRole("tab", { name: /The list/ })).toHaveAttribute("aria-selected", "true");

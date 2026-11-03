@@ -76,10 +76,10 @@ describe("the guide rail's status lines", () => {
       "Top of the list under the main method",
       "With and without the urgency rating",
       "A school with a range of ranks",
-      "Records to verify",
+      "Not in the list yet",
     ]);
     expect(v.queue.onScreen(LAYOUT.incompleteTab)).toBe(
-      'The "Records to verify" tab, grouped by what to verify'
+      'The "Not in the list yet" tab, grouped by what to verify'
     );
     // A name a user may save is at most 60 characters, and the seeds fit.
     for (const n of Object.values(v).map((x) => x.name)) expect(n.length).toBeLessThanOrEqual(60);

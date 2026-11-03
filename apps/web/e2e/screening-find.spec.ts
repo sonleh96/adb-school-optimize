@@ -153,7 +153,7 @@ test("the records to verify follow the same filter", async ({ page }) => {
     (r) => (r.school as unknown as { province: string }).province === "North Province"
   );
   await openWorkspace(page, "?prov=North+Province");
-  await tab(page, /Records to verify/).click();
+  await tab(page, /Not in the list yet/).click();
   await expect(page.locator("[data-region=queue-list] button[data-school-key]")).toHaveCount(north.length);
   await expect(status(page)).toHaveText(
     `${north.length} of the ${queued.length} records to verify are in North Province.`

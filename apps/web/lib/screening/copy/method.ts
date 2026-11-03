@@ -324,10 +324,10 @@ export function buildMethod(ctx: MethodContext = {}) {
       viewsH: "Saved views, in order",
       stop: "Saved view",
       shows: "Shows",
-      // What a saved view opens on: the list in order, or the incomplete records and how they are grouped.
+      // What a saved view opens on: the list in order, or the records to verify and how they are grouped.
       showsRanked: "Schools in order",
       showsQueue: (grouping: "province" | "evidence") =>
-        `Records to verify, grouped by ${grouping === "evidence" ? "what to verify" : "province"}`,
+        `Not in the list yet, grouped by ${grouping === "evidence" ? "what to verify" : "province"}`,
       showsMethod: "method details on",
       showsCompare: (a: string, b: string) => `Comparing ${a} with ${b}`,
       comparedWith: (s: string) => `compared with ${s}`,

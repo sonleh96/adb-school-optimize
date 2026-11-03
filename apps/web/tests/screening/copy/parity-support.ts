@@ -221,7 +221,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [5, 6],
     [5, 5],
   ],
-  "GUIDE.seedViews.queue.onScreen": [["Incomplete records"]],
+  "GUIDE.seedViews.queue.onScreen": [["Not in the list yet"]],
   "HELP.liveOn": [[25], [1]],
   "GUIDE.stepOf": [[1, 3]],
   "GUIDE.stepCounter": [[2, 5, 1, 3]],

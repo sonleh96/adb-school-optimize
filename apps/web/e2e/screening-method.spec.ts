@@ -510,7 +510,7 @@ test("the incomplete records filter by what is missing, count each choice and re
 
   await openWorkspace(page, "?analyst=1&view=queue");
   const chips = page.getByRole("group", { name: "Show only schools missing this detail" });
-  const rows = page.locator("ol[aria-label='Records to verify'] button[data-school-key]");
+  const rows = page.locator("ol[aria-label='Not in the list yet'] button[data-school-key]");
   await expect(chips.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
   await expect(rows).toHaveCount(queued.length);
   await expect(page.locator("[class*=missLabel]")).toHaveText("Missing detail");

@@ -276,7 +276,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
     },
     queue: {
       technical: `Verification queue${schoolsSuffix(c, "queue")}`,
-      label: `Records to verify${countSuffix(c, "queue")}`,
+      label: `Not in the list yet${countSuffix(c, "queue")}`,
       line: "Schools whose records need verifying before they can be put in order: a detail school need uses is missing, or a recorded value needs checking.",
       help: "Each one shows what to verify, and whether a detail is blank or recorded as a value the calculation cannot use, such as 0 classrooms. A recorded 0 is not treated as a mistake or as blank; it needs checking. Not being in the list yet does not mean a school's need is low. They are listed by province, district and school name. This is not an order of priority.",
       where: "Queue tab, queue map marks, school panel for these schools",

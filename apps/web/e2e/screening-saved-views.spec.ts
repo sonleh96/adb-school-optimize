@@ -63,7 +63,7 @@ const SEEDS = [
   "Top of the list under the main method",
   "With and without the urgency rating",
   "A school with a range of ranks",
-  "Records to verify",
+  "Not in the list yet",
 ];
 /** The range school the seed chooses by role: the best possible place, then the worst. */
 const RANGE_KEY = rowsOf("additive_no_u")
@@ -360,7 +360,7 @@ test("the sheet's saved views tab lists the views, copies their links and downlo
   const items = sheet(page).locator("[data-region=pack-table] li");
   await expect(items).toHaveCount(4);
   await expect(items.nth(1)).toContainText("Combined factors, without urgency");
-  await expect(items.nth(3)).toContainText("Records to verify");
+  await expect(items.nth(3)).toContainText("Not in the list yet");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
   await expect(record).toContainText("Rules the saved views use");
@@ -424,7 +424,7 @@ test("with the method details on, the tab shows each rule's formula and the file
   await expect(shows.nth(0)).toHaveText("Schools in order");
   await expect(shows.nth(1)).toHaveText("Schools in order · compared with Combined");
   await expect(shows.nth(2)).toHaveText(/^Schools in order · /);
-  await expect(shows.nth(3)).toHaveText("Records to verify, grouped by what to verify");
+  await expect(shows.nth(3)).toHaveText("Not in the list yet, grouped by what to verify");
   await expect(table.locator("tbody tr").nth(1)).toContainText("compared with");
   const record = sheet(page).locator("[data-region=pack-record]");
   await expect(record).toHaveAttribute("aria-busy", "false");
