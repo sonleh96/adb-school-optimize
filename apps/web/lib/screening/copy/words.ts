@@ -205,6 +205,8 @@ export const LAYOUT = Object.freeze({
   groupMany: (n: number) => `${n} ${plural(n, "kind", "kinds")} of detail missing`,
   // Loading the schools, and loading the map under them.
   loading: "Loading the schools",
+  // Under that line once loading has taken a few seconds: a slow connection, not a broken page.
+  stillLoading: "Still loading. On a slow connection this can take up to a minute.",
   // A comparison of two rules, and the top-list file the export sheet reads.
   loadingComparison: "Loading the comparison",
   loadingTopList: "Loading the top list",
@@ -273,17 +275,24 @@ export const LAYOUT = Object.freeze({
   // The dark numbered circles on the map.
   keyNumbers: "Numbered: ranks 1 to 10",
   // An empty or failed load: one sentence and Retry.
-  emptyData: "No schools came back, so there is nothing to show until you try again.",
+  emptyData: "No school data has been loaded yet, so there is no list to show.",
+  staleRun:
+    "The saved results are out of date with this version of the tool, so there is no list to show until the team that runs it loads the data again.",
   loadFailed: "Some of the information did not load, so there is nothing to show until you try again.",
   retry: "Retry",
   // The heading of the school column in the export table.
   schoolHead: "School",
   retrying: "Trying again",
+  // The empty store and a stale run: asking again does not fix either until the data is loaded again, so the button
+  // checks and promises nothing.
+  checkAgain: "Check again",
+  checkingAgain: "Checking again",
   availableAfterLoad: "Available once the schools are on screen.",
   // The map's keyboard route, a background that did not load, a list that did not refresh, and an ended session.
   mapKeyboard: "To choose a school with the keyboard, use the list or the records to verify.",
   basemapUnavailable: "The map's background did not load. The schools and the list still work.",
   refreshFailed: "The list did not refresh, so this is the last one that loaded.",
+  refreshStale: "The results for this rule are out of date, so this is the last list that loaded.",
   sessionEnded: "Your session has ended.",
   signIn: "Sign in again",
   signOut: "Sign out",

@@ -185,6 +185,20 @@ function useFootHeight(foot: React.RefObject<HTMLElement | null>, deps: readonly
   return height;
 }
 
+/** How long the first load runs before the screen says it is still loading. */
+const SLOW_LOAD_MS = 5000;
+
+/** True once `active` has held for `ms`; false whenever it does not hold. */
+function useSlow(active: boolean, ms: number): boolean {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(() => setSlow(true), ms);
+    return () => clearTimeout(timer);
+  }, [active, ms]);
+  return active && slow;
+}
+
 /**
  * Whether the last action came from the keyboard. Keyboard actions never animate: the column, the card and the map
  * move at once after a key, and with motion after a click.
@@ -292,6 +306,19 @@ function Workspace() {
   // its masthead and one loading line, so nothing on screen moves when the rule area, tabs and rows arrive together.
   const ready = view.kind === "ready" && shown !== null && !data.empty && data.statementReady;
   const firstLoad = !ready && !data.empty && view.kind !== "failed";
+  // A load that takes more than a few seconds says so, in the same status line, so a slow connection does not read
+  // as a page that has stopped.
+  const slowLoad = useSlow(firstLoad, SLOW_LOAD_MS);
+  const loadingLine = (
+    <p className={styles.state} role="status">
+      {copy.LAYOUT.loading}
+      {slowLoad ? (
+        <span className={styles.stillLoading} data-region="still-loading">
+          {copy.LAYOUT.stillLoading}
+        </span>
+      ) : null}
+    </p>
+  );
   const keyboard = useKeyboardLast(root);
 
   // The map's script is fetched once the list (or its failure) has been painted.
@@ -861,9 +888,7 @@ function Workspace() {
           <div data-slot="start-slot" />
 
           {firstLoad ? (
-            <p className={styles.state} role="status">
-              {copy.LAYOUT.loading}
-            </p>
+            loadingLine
           ) : method.compareColumn ? (
             method.compareColumn
           ) : (
@@ -915,16 +940,16 @@ function Workspace() {
                     retry={data.retry}
                   />
                 ) : !ready || !shown ? (
-                  <p className={styles.state} role="status">
-                    {copy.LAYOUT.loading}
-                  </p>
+                  loadingLine
                 ) : (
                   <>
                     {view.kind === "ready" && view.refreshFailed ? (
                       <p className={styles.refreshFailed} role="status" data-testid="refresh-failed">
-                        {shown.copy.LAYOUT.refreshFailed}{" "}
+                        {view.refreshFailed === "stale"
+                          ? shown.copy.LAYOUT.refreshStale
+                          : shown.copy.LAYOUT.refreshFailed}{" "}
                         <button type="button" className={styles.linkButton} onClick={data.retry}>
-                          {copy.LAYOUT.retry}
+                          {view.refreshFailed === "stale" ? copy.LAYOUT.checkAgain : copy.LAYOUT.retry}
                         </button>
                       </p>
                     ) : null}
@@ -1130,6 +1155,9 @@ function FullPanelState({
       </div>
     );
   }
+  // No data loaded yet, and results an earlier engine stored: neither is fixed by asking again until someone loads
+  // the data again, so each says what is wrong and its button checks without promising.
+  const waiting = failure === null || failure === "stale";
   return (
     <div
       className={styles.fullState}
@@ -1137,9 +1165,15 @@ function FullPanelState({
       data-failure={failure ?? undefined}
       data-empty={failure ? undefined : ""}
     >
-      <p>{failure ? LAYOUT.loadFailed : LAYOUT.emptyData}</p>
+      <p>{failure === "stale" ? LAYOUT.staleRun : failure ? LAYOUT.loadFailed : LAYOUT.emptyData}</p>
       <button type="button" className={styles.retryButton} onClick={retry} disabled={retrying}>
-        {retrying ? LAYOUT.retrying : LAYOUT.retry}
+        {waiting
+          ? retrying
+            ? LAYOUT.checkingAgain
+            : LAYOUT.checkAgain
+          : retrying
+            ? LAYOUT.retrying
+            : LAYOUT.retry}
       </button>
     </div>
   );

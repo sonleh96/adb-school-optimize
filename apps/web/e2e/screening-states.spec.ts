@@ -11,6 +11,10 @@
  *  4. The basemap's style fails and the page breaks or stops panning to a selection -> "without the basemap..."
  *  5. A failed request for the expected default rule's list shows an error while the rules still load
  *     -> "a failed speculative list..." (the rules name another default: the list loads; the same default: it fails)
+ *  6. A load that takes long shows the same loading line for a minute, so a slow connection reads as a stopped page
+ *     -> "a load that runs past a few seconds..."
+ *  7. Results an earlier engine stored (409) read as any failure, and the screen promises that trying again fixes
+ *     them                                                        -> "a stale run says..."
  */
 import type { Page } from "@playwright/test";
 
@@ -117,6 +121,44 @@ test("a slow first load shows that it is loading, with no counts, then the count
   await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
   await expect(tab(page, /The list/)).toHaveText(`The list(${ORDERED_COUNT})`);
   await waitForMap(page);
+});
+
+test("a load that runs past a few seconds says it is still loading, then shows the list", async ({
+  page,
+}) => {
+  await page.route(RESULTS(MAIN_RULE), async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 7000));
+    await route.continue();
+  });
+  await page.goto("/screening");
+  const status = page.getByRole("status").filter({ hasText: LAYOUT.loading });
+  await expect(status).toBeVisible();
+  // Not at once: a fast connection never sees it.
+  await expect(status.locator("[data-region=still-loading]")).toHaveCount(0);
+  await expect(status).toContainText(LAYOUT.stillLoading, { timeout: 7000 });
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT, { timeout: 15_000 });
+  await expect(page.locator("[data-region=still-loading]")).toHaveCount(0);
+});
+
+test("a stale run says what is wrong and that the data must be loaded again, and promises nothing", async ({
+  page,
+  problems,
+}) => {
+  await page.route(RESULTS(MAIN_RULE), (route) =>
+    route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: '{"error":{"code":"stale_run","message":"Load the input version again."}}',
+    })
+  );
+  await page.goto("/screening");
+  const alert = page.locator("[data-failure]");
+  await expect(alert).toHaveAttribute("data-failure", "stale");
+  await expect(alert).toContainText(LAYOUT.staleRun);
+  await expect(alert).not.toContainText(/try again/i);
+  await expect(alert.getByRole("button", { name: LAYOUT.checkAgain })).toBeVisible();
+  expect(problems.some((p) => p.startsWith("409:"))).toBe(true);
+  problems.length = 0;
 });
 
 test("the map's scripts are not fetched until the list has loaded, so they never compete with it", async ({

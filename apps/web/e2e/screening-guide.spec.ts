@@ -604,7 +604,7 @@ test("Page Down and Page Up stay with How this works and the glossary while eith
 test("with no schools the guides cannot be started", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");
   await page.goto("/screening");
-  await expect(page.getByText("No schools came back")).toBeVisible();
+  await expect(page.getByText("No school data has been loaded yet")).toBeVisible();
   await expect(rail(page).locator("button[data-guide]")).toHaveCount(0);
   await rail(page).getByRole("button", { name: "Explore on my own" }).click();
   await expect(await helpItem(page, "Guides")).toBeDisabled();

@@ -36,17 +36,26 @@ async function open(page: Page, search = "") {
 
 test.describe("an empty store and a failed list", () => {
   const cases = [
-    { name: "an empty store", dataset: "empty", fail: {}, state: "[data-empty]", words: LAYOUT.emptyData },
+    // Asking again cannot fill an empty store, so its sentence promises nothing and its button only checks.
+    {
+      name: "an empty store",
+      dataset: "empty",
+      fail: {},
+      state: "[data-empty]",
+      words: LAYOUT.emptyData,
+      button: LAYOUT.checkAgain,
+    },
     {
       name: "a failing list",
       dataset: "default",
       fail: { results: 503 },
       state: "[role=alert][data-failure=server]",
       words: LAYOUT.loadFailed,
+      button: LAYOUT.retry,
     },
   ] as const;
-  for (const { name, dataset, fail, state, words } of cases) {
-    test(`${name} shows one sentence with Retry and no counts, and the map still reports ready`, async ({
+  for (const { name, dataset, fail, state, words, button } of cases) {
+    test(`${name} shows one sentence with a way on and no counts, and the map still reports ready`, async ({
       page,
       context,
       problems,
@@ -55,7 +64,8 @@ test.describe("an empty store and a failed list", () => {
       await page.goto("/screening");
       const panel = page.locator(state);
       await expect(panel).toContainText(words);
-      await expect(panel.getByRole("button", { name: LAYOUT.retry })).toBeVisible();
+      if (dataset === "empty") await expect(panel).not.toContainText(/try again/i);
+      await expect(panel.getByRole("button", { name: button })).toBeVisible();
       await expect(tab(page, /The list/)).toHaveText("The list");
       await expect(page.locator(ORDERED)).toHaveCount(0);
 

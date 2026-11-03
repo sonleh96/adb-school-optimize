@@ -1151,6 +1151,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-3);
   font-size: 13px;
 }
+/* Under the loading line once the load has taken a few seconds. */
+.stillLoading {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
 .refreshFailed {
   margin: 0;
   padding: 9px 20px;

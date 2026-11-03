@@ -388,7 +388,7 @@ test("tied rows say who they are level with, with names set apart, and the tie r
   );
 });
 
-test("no schools at all shows one sentence and Retry, with every action off", async ({
+test("no schools at all shows one sentence and Check again, with every action off", async ({
   page,
   context,
   problems,
@@ -396,8 +396,8 @@ test("no schools at all shows one sentence and Retry, with every action off", as
   await useMockDataset(context, "empty");
   await page.goto("/screening");
   const state = page.locator("[data-empty]");
-  await expect(state).toContainText("No schools came back, so there is nothing to show until you try again.");
-  await expect(state.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(state).toContainText("No school data has been loaded yet, so there is no list to show.");
+  await expect(state.getByRole("button", { name: "Check again" })).toBeVisible();
   await expect(page.locator("[role=alert][data-failure]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Copy link" })).toBeDisabled();
   await expect(tab(page, /The list/)).toBeDisabled();
