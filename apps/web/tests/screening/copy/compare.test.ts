@@ -257,7 +257,7 @@ describe("a comparison the response does not hold", () => {
 });
 
 const LEAD =
-  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.";
+  "Which list should I use? This one, the research paper's main method. The urgency rating is left out because where it came from has not been traced, which says nothing about real hazards.";
 
 describe("which list to use", () => {
   /** The largest top-list size the two rules share in full, found from the overlaps. */
@@ -288,7 +288,7 @@ describe("which list to use", () => {
       }
       expect(P.defaultListStatement().length).toBeLessThanOrEqual(300);
       expect(P.defaultListStatementLong()).toBe(
-        `This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check. Among the 84 schools with one rank under both methods, ${
+        `This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because where it came from has not been traced; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check. Among the 84 schools with one rank under both methods, ${
           overlaps[1] === 20
             ? `the same 20 schools make the top 20 under both methods${K && K > 20 ? `, and the same ${K} make the top ${K}` : ""}.`
             : `${overlaps[1]} of the top 20 schools are the same under both methods.`
@@ -307,7 +307,7 @@ describe("which list to use", () => {
   it("gives the plain lead alone when there is no recorded comparison", () => {
     expect(copyFor({}).defaultListStatement()).toBe(LEAD);
     expect(copyFor({}).defaultListStatementLong()).toBe(
-      "This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check."
+      "This list uses the research paper's main method, the combined-factors rule without urgency (S0). It leaves out the urgency rating, because where it came from has not been traced; that says nothing about whether schools face real hazards. The earlier paper's method, the combined-factors rule with urgency (S), which adds the urgency rating back, is kept beside it as a check."
     );
     expect(copyFor({}).urgencyReassurance()).toBe(
       "No recorded comparison exists for the combined-factors rules with and without urgency."
@@ -351,7 +351,7 @@ describe("which list to use", () => {
     });
     const L = await P.later();
     expect(L.FIRST_QUESTIONS.find((q) => q.key === "trust")?.answer).toBe(
-      `${text} The research paper's main method leaves it out because no one could trace where it came from, so the screen opens on that method.`
+      `${text} The research paper's main method leaves it out because where it came from has not been traced, so the screen opens on that method.`
     );
     expect(
       L.HOW_IT_WORKS.flatMap((s) => s.sentences).some((t) =>

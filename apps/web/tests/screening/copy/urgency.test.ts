@@ -41,7 +41,7 @@ describe("with only a list that leaves urgency out", () => {
     // The stored scalar is on its own scale; the engine's component (0.21 for this school) is not loaded.
     expect(s08.components).not.toHaveProperty("U");
     expect(copy.inputSentence(s08, "urgency")).toBe(
-      "Its urgency rating is recorded. No one could trace where that value comes from."
+      "Its urgency rating is recorded. Where that value comes from has not been traced."
     );
     expect(copy.missingValueKind(s08, "urgency")).toBe("recorded");
     expect(copy.missingValueNote(s08, "urgency")).toBe("Recorded in the source.");

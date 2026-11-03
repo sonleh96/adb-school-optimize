@@ -232,7 +232,7 @@ export const GUIDE = Object.freeze({
       {
         id: "q5",
         title: "What changes with the earlier method",
-        sub: "The earlier method also counted an urgency rating whose source could not be traced.",
+        sub: "The earlier method also counted an urgency rating whose source has not been traced.",
         steps: [
           {
             key: "agree",

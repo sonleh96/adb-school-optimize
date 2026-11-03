@@ -324,7 +324,7 @@ describe("the link to the earlier method, and the guide that says the same", () 
 
   it("calls the other method the earlier method in the guide's title, line and steps", () => {
     expect(q5.title).toMatch(/earlier method/);
-    expect(q5.sub).toMatch(/urgency rating whose source could not be traced/);
+    expect(q5.sub).toMatch(/urgency rating whose source has not been traced/);
     expect(words().join(" ")).not.toMatch(/earlier paper/);
   });
 });

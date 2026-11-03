@@ -796,7 +796,7 @@ describe("one input at a time", () => {
       raw: { ...school({ id: "c" }).raw, ...raw },
     });
     expect(say(school({ id: "c" }), "urgency")).toBe(
-      "Its urgency rating is 0.21 on a 0 to 1 scale. No one could trace where that value comes from."
+      "Its urgency rating is 0.21 on a 0 to 1 scale. Where that value comes from has not been traced."
     );
     expect(say(s({ Q_raw: 1234 }), "air")).toBe(
       "Its air-quality index, a measure of air pollution assigned to its location, reaches 1,234 on its worst 1 day in 20."
