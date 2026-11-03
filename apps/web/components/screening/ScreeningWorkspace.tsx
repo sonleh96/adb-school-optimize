@@ -320,6 +320,7 @@ function Workspace() {
     [ordered, filters]
   );
   const [findOpen, setFindOpen] = useState(false);
+  const [findFocus, setFindFocus] = useState(false);
   const findPaint = useMemo(
     (): MarkPaint =>
       found
@@ -640,14 +641,9 @@ function Workspace() {
   };
   const toggleFind = () => {
     const opening = !findOpen;
+    // Opening from the button hands the keyboard to the panel's first field as the panel appears.
+    setFindFocus(opening);
     setFindOpen(opening);
-    // Opening hands the keyboard to the panel's first field; the panel is drawn by then.
-    if (opening)
-      requestAnimationFrame(() =>
-        root.current
-          ?.querySelector<HTMLElement>("[data-region=find-panel] select")
-          ?.focus({ preventScroll: true })
-      );
   };
   const closeFind = () => {
     setFindOpen(false);
@@ -659,13 +655,21 @@ function Workspace() {
     requestAnimationFrame(() => root.current?.querySelector<HTMLElement>("[data-region=find]")?.focus());
   };
   const findToggle = (
-    <FindToggle copy={copy} open={findOpen} active={found && !findOpen} onToggle={toggleFind} />
+    <FindToggle
+      copy={copy}
+      open={findOpen}
+      active={found && !findOpen}
+      onToggle={toggleFind}
+      onClose={closeFind}
+    />
   );
   const findPanel = findOpen ? (
     <FindPanel
       copy={copy}
       options={options}
       value={{ prov: state.prov, dist: state.dist, q: state.q }}
+      focusFirst={findFocus}
+      onFocused={() => setFindFocus(false)}
       onChange={changeFind}
       onClose={closeFind}
     />

@@ -7,7 +7,7 @@
  * downloads and the printout all carry it. A filter hides rows and fades marks; it never renumbers a rank.
  */
 import { Search } from "lucide-react";
-import { useId } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 
 import type { BoundCopy } from "@/lib/screening/copy";
 import type { FilterOptions } from "@/lib/screening/filters";
@@ -125,17 +125,22 @@ export function FindFields({
   );
 }
 
-/** The compact button on the line above the list. A dot says a filter is on while the panel is closed. */
+/**
+ * The compact button on the line above the list. A dot says a filter is on while the panel is closed. Escape on the
+ * button closes an open panel, as it does inside it.
+ */
 export function FindToggle({
   copy,
   open,
   active,
   onToggle,
+  onClose,
 }: {
   copy: BoundCopy;
   open: boolean;
   active: boolean;
   onToggle: () => void;
+  onClose: () => void;
 }) {
   return (
     <button
@@ -148,6 +153,11 @@ export function FindToggle({
       aria-expanded={open}
       aria-controls={open ? FIND_PANEL_ID : undefined}
       onClick={onToggle}
+      onKeyDown={(event) => {
+        if (event.key !== "Escape" || !open) return;
+        event.stopPropagation();
+        onClose();
+      }}
     >
       <Search size={13} aria-hidden />
       {copy.LAYOUT.find}
@@ -155,22 +165,37 @@ export function FindToggle({
   );
 }
 
-/** The panel the button opens, under its line. Escape closes it and hands focus back to the button. */
+/**
+ * The panel the button opens, under its line. Opened from the button, it takes the keyboard into its first field as
+ * it appears (`focusFirst`, which `onFocused` then clears); the same panel shown again on the other tab leaves focus
+ * where it is. Escape closes it and hands focus back to the button.
+ */
 export function FindPanel({
   copy,
   options,
   value,
+  focusFirst,
+  onFocused,
   onChange,
   onClose,
 }: {
   copy: BoundCopy;
   options: FilterOptions;
   value: FindValue;
+  focusFirst: boolean;
+  onFocused: () => void;
   onChange: (patch: FindPatch) => void;
   onClose: () => void;
 }) {
+  const panel = useRef<HTMLFieldSetElement>(null);
+  useLayoutEffect(() => {
+    if (!focusFirst) return;
+    panel.current?.querySelector<HTMLElement>("select")?.focus({ preventScroll: true });
+    onFocused();
+  }, [focusFirst, onFocused]);
   return (
     <fieldset
+      ref={panel}
       id={FIND_PANEL_ID}
       className={styles.findPanel}
       data-region="find-panel"
