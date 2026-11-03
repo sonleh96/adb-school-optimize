@@ -67,10 +67,11 @@
   cursor: default;
 }
 
+/* A small label over what it names: tracked capitals in the interface face, as Darkhorse sets theirs. */
 .eyebrow {
   margin: 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.08em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -287,7 +288,7 @@
   grid-column: 2;
   margin: 0;
   font: 600 12px/14px var(--sans);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-label);
 }
 .mastSub {
   grid-column: 2;
@@ -658,8 +659,8 @@
 .exampleKey {
   display: inline-block;
   margin-right: 8px;
-  font: 500 10.5px/18px var(--mono);
-  letter-spacing: 0.06em;
+  font: 600 10.5px/18px var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -1037,11 +1038,12 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   outline-offset: -2px;
 }
 
+/* Figures are bold and set tight, a size up from the names beside them. */
 .place {
   text-align: right;
-  font: 500 16px/19px var(--sans);
+  font: 600 17px/19px var(--sans);
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--track-title);
   color: var(--ink);
 }
 .ord {
@@ -1049,11 +1051,11 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   top: -0.42em;
   margin-left: 0.5px;
   font-size: 0.62em;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 0;
   vertical-align: baseline;
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 .placeRange {
   display: grid;
@@ -1067,7 +1069,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 .placeTo {
   margin: 0 0.3em;
-  font: italic 400 13px/14px var(--serif);
+  font: 500 11px/14px var(--sans);
+  letter-spacing: 0.02em;
   color: var(--ink-3);
 }
 .placeRange .placeTo {
@@ -1084,7 +1087,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .name {
   font-size: 14px;
   line-height: 19px;
-  font-weight: 500;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 /* The separator and the province (or district) are one unbreakable piece, so "·" never ends a line (R6). */
@@ -1111,9 +1114,13 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
+/* "Why" as a small navy label before the reason. Only its look changes: the page still holds the word as written. */
 .rowWhyKey {
-  margin-right: 2px;
+  margin-right: 5px;
+  font-size: 10.5px;
   font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
   color: var(--navy);
 }
 .rowChips {
@@ -1188,8 +1195,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   padding: 14px 20px 6px;
   border-bottom: 1px solid var(--hair-2);
   background: var(--panel);
-  font: 500 10px/12px var(--mono);
-  letter-spacing: 0.06em;
+  font: 600 10.5px/12px var(--sans);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
   overflow-wrap: anywhere;
@@ -1727,8 +1734,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 /* A name wraps at any character, so even an unbroken 59-character token stays inside the card (R1). */
 .cardName {
   margin: 0;
-  font: 500 24px/28px var(--serif);
-  letter-spacing: -0.008em;
+  font: 600 22px/27px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }
@@ -1762,22 +1769,24 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   grid-template-columns: minmax(0, 1fr);
   row-gap: 8px;
 }
+/* The school's place, the card's one big number: bold and tight, its ending small and navy. */
 .heroFigure {
-  font: 400 58px/48px var(--serif);
-  letter-spacing: -0.03em;
+  font: 600 52px/46px var(--sans);
+  letter-spacing: var(--track-figure);
   font-variant-numeric: lining-nums proportional-nums;
   white-space: nowrap;
 }
 .heroFigure .ord {
-  font-size: 0.36em;
-  top: -1em;
+  font-size: 0.32em;
+  top: -1.3em;
   margin-left: 1px;
+  color: var(--navy);
 }
 .heroFigure .placeTo {
   position: relative;
   top: -0.5em;
   margin: 0 0.35em;
-  font: italic 400 0.42em/1 var(--serif);
+  font: 500 0.36em/1 var(--sans);
   letter-spacing: 0;
 }
 .hero[data-form="range"] .heroFigure {
@@ -1791,7 +1800,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .hero[data-form="word"] .heroFigure {
   font-size: 28px;
   line-height: 32px;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--track-title);
   white-space: normal;
   text-wrap: balance;
 }
@@ -1805,7 +1814,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 .heroLabel b {
   display: block;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink);
 }
 .heroLabel span {
@@ -2385,6 +2394,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .narrowHeadTitle {
     margin: 0;
     font: 600 15px/20px var(--sans);
+    letter-spacing: var(--track-title);
     color: var(--ink);
   }
   .cardCaveat {

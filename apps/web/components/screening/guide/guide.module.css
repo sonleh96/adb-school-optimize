@@ -6,10 +6,14 @@
 /* ---------- shared pieces ---------- */
 .eyebrow {
   margin: 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.08em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-3);
+}
+/* "Start here" takes the accent, as Darkhorse's labels take their gold. */
+.rail .eyebrow {
+  color: var(--navy);
 }
 .label {
   display: block;
@@ -76,9 +80,11 @@
     background: #0d3888;
   }
 }
+/* Unavailable (Back on a guide's first step), the button greys but its word stays readable: 5:1 on the grey. */
 .rail .quiet:disabled {
-  opacity: 0.4;
+  background: var(--hair-2);
   cursor: default;
+  color: var(--ink-3);
 }
 .rail .primary kbd {
   padding: 1px 4px;
@@ -199,8 +205,8 @@
 }
 .counter {
   margin: 8px 0 0;
-  font: 500 10.5px/14px var(--mono);
-  letter-spacing: 0.06em;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
   text-transform: uppercase;
   color: var(--ink-2);
 }
@@ -224,8 +230,8 @@
 /* the start: what do you want to find out */
 .startTitle {
   margin: 4px 0 10px;
-  font: 500 30px/34px var(--serif);
-  letter-spacing: -0.016em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
 }
 /* The compact Start here: one line, and the control that unfolds the guides under it, beside the line where the
@@ -352,7 +358,7 @@
   min-width: 0;
 }
 .taskTitle {
-  font: 500 14px/19px var(--sans);
+  font: 600 14px/19px var(--sans);
   color: var(--ink);
   overflow-wrap: anywhere;
   transition: color 150ms ease;
@@ -391,7 +397,7 @@
   color: var(--navy);
 }
 .howTitle {
-  font: italic 400 17px/22px var(--serif);
+  font: 600 14px/20px var(--sans);
 }
 .rail .howLink .taskSub {
   grid-column: 1;
@@ -424,8 +430,8 @@
 /* a step */
 .stepTitle {
   margin: 4px 0 14px;
-  font: 500 26px/30px var(--serif);
-  letter-spacing: -0.012em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
 }

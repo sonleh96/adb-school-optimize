@@ -265,8 +265,8 @@
 }
 .blockFigure {
   margin-top: 6px;
-  font: 400 34px/36px var(--serif);
-  letter-spacing: -0.02em;
+  font: 600 32px/36px var(--sans);
+  letter-spacing: var(--track-figure);
   color: var(--navy-2);
 }
 .blockFigure[data-kind="point"] {

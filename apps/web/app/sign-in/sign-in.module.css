@@ -22,6 +22,8 @@
   --r-control: 8px;
   --serif: var(--font-screening-serif), Georgia, serif;
   --sans: var(--font-screening-sans), system-ui, sans-serif;
+  --track-label: 0.13em;
+  --track-title: -0.02em;
 
   display: grid;
   min-height: 100dvh;
@@ -71,7 +73,7 @@
 .name {
   margin: 0;
   font: 600 12px/14px var(--sans);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--track-label);
 }
 .sub {
   margin: 0;
@@ -82,8 +84,8 @@
 
 .title {
   margin: 28px 0 0;
-  font: 400 28px/32px var(--serif);
-  letter-spacing: -0.01em;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
   text-wrap: balance;
 }
 .lead {
