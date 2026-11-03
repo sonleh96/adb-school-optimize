@@ -110,19 +110,20 @@
   gap: 8px 14px;
   margin: 12px 0 14px;
 }
+/* The workspace's switch: a grey track, the chosen side white with a navy ring. */
 .seg {
   display: inline-flex;
   padding: 2px;
-  border: 1px solid var(--hair);
   border-radius: var(--r-control);
   gap: 2px;
+  background: var(--track);
 }
 .seg button {
   min-width: 40px;
   height: 30px;
   padding: 0 10px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
   background: none;
   cursor: pointer;
   font: 500 13px/1 var(--sans);
@@ -136,8 +137,10 @@
   transform: scale(0.97);
 }
 .seg button[aria-pressed="true"] {
-  background: var(--navy);
-  color: #fff;
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  font-weight: 600;
 }
 .sizeNote {
   flex: 1 1 200px;
@@ -436,5 +439,5 @@
   color: var(--ink-2);
 }
 .seg.seg button[aria-pressed="true"] {
-  color: #fff;
+  color: var(--navy);
 }
