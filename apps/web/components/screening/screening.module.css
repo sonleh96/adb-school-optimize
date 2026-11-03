@@ -1767,22 +1767,24 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   grid-template-columns: minmax(0, 1fr);
   row-gap: 8px;
 }
+/* The school's place, the card's one big number: bold and tight, its ending small and navy. */
 .heroFigure {
-  font: 400 58px/48px var(--serif);
-  letter-spacing: -0.03em;
+  font: 600 52px/46px var(--sans);
+  letter-spacing: var(--track-figure);
   font-variant-numeric: lining-nums proportional-nums;
   white-space: nowrap;
 }
 .heroFigure .ord {
-  font-size: 0.36em;
-  top: -1em;
+  font-size: 0.32em;
+  top: -1.3em;
   margin-left: 1px;
+  color: var(--navy);
 }
 .heroFigure .placeTo {
   position: relative;
   top: -0.5em;
   margin: 0 0.35em;
-  font: italic 400 0.42em/1 var(--serif);
+  font: 500 0.36em/1 var(--sans);
   letter-spacing: 0;
 }
 .hero[data-form="range"] .heroFigure {
@@ -1796,7 +1798,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .hero[data-form="word"] .heroFigure {
   font-size: 28px;
   line-height: 32px;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--track-title);
   white-space: normal;
   text-wrap: balance;
 }
