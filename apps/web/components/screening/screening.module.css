@@ -217,6 +217,14 @@
   height: 34px;
   box-shadow: var(--shadow);
 }
+/* The zoom buttons as one floating control, edged and lifted like the panels. The map's own stylesheet loads with the
+   map's script, after this one, so these rules outrank its `.maplibregl-ctrl-group:not(:empty)`. */
+.map :global(.maplibregl-ctrl-group.maplibregl-ctrl-group:not(:empty)) {
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
+  box-shadow: var(--shadow);
+}
 .root[data-mapbar] .map :global(.maplibregl-ctrl-top-left) {
   top: calc(var(--bar-top, var(--gap)) + 52px);
 }
@@ -1451,19 +1459,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
+/* The colour steps as separate, rounded swatches, as Darkhorse's keys set theirs. */
 .miniSwatches {
   display: inline-flex;
-  gap: 1px;
+  gap: 2px;
 }
 .miniSwatches i {
-  width: 12px;
-  height: 6px;
-}
-.miniSwatches i:first-child {
-  border-radius: 2px 0 0 2px;
-}
-.miniSwatches i:last-child {
-  border-radius: 0 2px 2px 0;
+  width: 13px;
+  height: 7px;
+  border-radius: 1.5px;
 }
 .keysShort {
   display: flex;
@@ -1535,12 +1539,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .ramp i {
   display: block;
   height: 8px;
-}
-.ramp li:first-child i {
-  border-radius: 2px 0 0 2px;
-}
-.ramp li:last-child i {
-  border-radius: 0 2px 2px 0;
+  border-radius: 2px;
 }
 .ramp span {
   font-size: 11px;
@@ -2586,7 +2585,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   }
   .legend {
     padding: 7px 10px 8px;
-    box-shadow: 0 1px 2px rgba(21, 24, 29, 0.08);
+    box-shadow: 0 1px 2px rgba(10, 20, 40, 0.08);
   }
   .legendTitle {
     font-size: 12.5px;
