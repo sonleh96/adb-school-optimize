@@ -24,7 +24,7 @@ export type Pop = "layers" | "filter" | "pickA" | "pickB" | "rules";
 export type Pane = "list" | "map";
 /** The map layers the method details can hide. */
 export type MapLayer = "ranked" | "numerals" | "range" | "queue" | "provinces" | "districts";
-export const MAP_LAYERS: readonly MapLayer[] = [
+const MAP_LAYERS: readonly MapLayer[] = [
   "ranked",
   "numerals",
   "range",

@@ -2,9 +2,9 @@
  * The reasons the engine holds a school back for (`GateFailure` in the scoring package), as the copy words them.
  * A need part is named by the part that cannot be used; the others are named by the reason itself.
  */
-import type { GateKey, NeedField, OtherGate } from "./model";
+import type { NeedField, OtherGate } from "./model";
 
-export const NEED_GATES: readonly NeedField[] = [
+const NEED_GATES: readonly NeedField[] = [
   "permanent_classroom_deficit",
   "teacher_housing_deficit",
   "facility_presence_deficit",
@@ -22,4 +22,3 @@ export const OTHER_GATES: readonly OtherGate[] = [
 
 export const isNeedGate = (g: string): g is NeedField => (NEED_GATES as readonly string[]).includes(g);
 export const isOtherGate = (g: string): g is OtherGate => (OTHER_GATES as readonly string[]).includes(g);
-export const isGateKey = (g: string): g is GateKey => isNeedGate(g) || isOtherGate(g);

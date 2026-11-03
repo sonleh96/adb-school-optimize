@@ -38,7 +38,7 @@ export const NEED_FIELDS: Readonly<Record<NeedKey, NeedField>> = {
   services: "service_deficit",
   locality: "locality_disadvantage",
 };
-export const NEED_KEYS = Object.keys(NEED_FIELDS) as NeedKey[];
+const NEED_KEYS = Object.keys(NEED_FIELDS) as NeedKey[];
 export const isNeedKey = (key: string): key is NeedKey => (NEED_KEYS as readonly string[]).includes(key);
 export const ORDER: readonly InputKey[] = [
   ...NEED_KEYS,

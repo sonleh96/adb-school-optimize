@@ -7,7 +7,7 @@ import { BREAKPOINTS } from "../workspace/layout";
 
 import { GUIDE_IDS, MEMORY_KEY } from "./machine";
 
-export const WIDE_RAIL_FROM = 1500;
+const WIDE_RAIL_FROM = 1500;
 
 export function railWidth(width: number, open: boolean, presenting: boolean): number {
   if (!open || width < BREAKPOINTS.compact) return 0;

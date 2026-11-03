@@ -197,8 +197,6 @@ export const LAYOUT = Object.freeze({
   productName: "RISE-PNG",
   productSub: "Which secondary schools to look at first",
   logoAria: "ADB logo",
-  /** The letters in the logo. */
-  logoMark: "ADB",
   mapAria: "Map of secondary schools in Papua New Guinea",
   workspaceAria: "Screening workspace",
   tabsAria: "List",

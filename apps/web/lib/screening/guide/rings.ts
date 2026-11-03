@@ -24,7 +24,7 @@ export interface Piece {
 }
 
 /** Space between a ring and what it rings. */
-export const PAD = { x: 8, y: 6 } as const;
+const PAD = { x: 8, y: 6 } as const;
 /** How far inside its panel's edge a ring stays. */
 const INSET = 4;
 /** Less than this much of an element showing in its panel does not count as showing. */

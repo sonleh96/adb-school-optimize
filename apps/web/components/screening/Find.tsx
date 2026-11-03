@@ -23,7 +23,7 @@ export interface FindValue {
 export type FindPatch = { prov?: string | null; dist?: string | null; q?: string | null };
 
 /** The id of the plain screen's panel, which the button controls. */
-export const FIND_PANEL_ID = "screening-find";
+const FIND_PANEL_ID = "screening-find";
 
 /**
  * A district with no province chosen yet is offered under its province, and choosing it chooses both, so the value
