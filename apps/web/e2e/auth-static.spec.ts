@@ -73,11 +73,11 @@ test.afterAll(() => {
   server = null;
 });
 
-test("with sign-in required, the manifest and the icon are public and the sign-in page logs nothing", async ({
+test("with sign-in required, the manifest, the icon and robots.txt are public and the sign-in page logs nothing", async ({
   page,
   request,
 }) => {
-  for (const file of ["/manifest.webmanifest", "/icon.svg"]) {
+  for (const file of ["/manifest.webmanifest", "/icon.svg", "/robots.txt"]) {
     const response = await request.get(`${ORIGIN}${file}`, { maxRedirects: 0 });
     expect(response.status(), file).toBe(200);
   }

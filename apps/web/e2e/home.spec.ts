@@ -17,6 +17,8 @@
  *                                                                          -> "printed..."
  *  9. Made while its API could not be reached, the page shows a hole, a stray number or a broken sentence where the
  *     counts go                                                            -> "made while its API..."
+ * 10. Search engines index the tool's many view addresses, or are kept off the homepage
+ *                                                                          -> "robots.txt..."
  */
 import { HOME, phraseText } from "../lib/home/copy";
 import { contrastRatio } from "../lib/screening/contrast";
@@ -177,4 +179,17 @@ test("made while its API could not be reached, the page says the same things wit
   await expect(rows).toHaveText(HOME.hero.noFigures.map((row) => `${row.term} ${row.text}`));
   for (const row of await rows.allTextContents()) expect(row).not.toMatch(/\d/);
   await expect(page.locator("body")).not.toContainText(/undefined|NaN|\bnull\b/);
+});
+
+// Failure mode: search engines are given no rules, so the tool's many view addresses get indexed, or the homepage
+// itself is shut out.
+test("robots.txt lets search engines read the homepage and keeps the tool's views out", async ({
+  request,
+}) => {
+  const response = await request.get("/robots.txt");
+  expect(response.status()).toBe(200);
+  const rules = await response.text();
+  expect(rules).toMatch(/^Allow: \/$/m);
+  for (const path of ["/screening", "/sign-in", "/auth/", "/api/"])
+    expect(rules).toContain(`Disallow: ${path}`);
 });

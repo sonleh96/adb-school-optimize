@@ -5,8 +5,9 @@ import { getAuthConfig, isAllowedEmail, safeNextPath, shouldEnforceAuth } from "
 import { toolAddressFor } from "@/lib/home/toolLink";
 import { SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE } from "@/lib/signInOff";
 
-// The homepage explains the project to anyone, so it stays public when sign-in is required; the tool does not.
-const PUBLIC_PATHS = new Set(["/", "/sign-in", "/auth/callback", "/healthz"]);
+// The homepage explains the project to anyone, so it stays public when sign-in is required; the tool does not. A
+// search engine reads robots.txt before anything else, so it is public too.
+const PUBLIC_PATHS = new Set(["/", "/robots.txt", "/sign-in", "/auth/callback", "/healthz"]);
 
 export async function proxy(request: NextRequest) {
   // An old link to the tool at `/` goes on to the tool with its query, which then asks for sign-in if it must.
