@@ -9,6 +9,10 @@ Failure modes, each with its test:
    -> test_random_origin_preflight_is_rejected
 3. The email allowlist stops being enforced once the old routes that tested it are gone
    -> test_allowlist_admits_its_domain_and_refuses_others
+3b. Sign-in is on but no allowlist is set, so any signed-in account gets through, or sign-in has no Supabase project
+   to check tokens against -> test_sign_in_without_an_allowlist_refuses_to_start,
+   test_sign_in_without_supabase_url_refuses_to_start
+3c. With sign-in off, the database still demands SUPABASE_URL -> test_without_sign_in_the_database_needs_no_supabase_url
 4. A removed Need/Priority route answers again because a router is mounted back by accident
    -> test_removed_routes_are_not_served
 """
@@ -146,3 +150,46 @@ def test_allowlist_admits_its_domain_and_refuses_others(api, monkeypatch):
 )
 def test_removed_routes_are_not_served(client, path):
     assert client.get(path).status_code == 404
+
+
+def _start(monkeypatch, **env):
+    """The app with exactly these sign-in settings, and none from the environment the tests run in."""
+    for name in ("AUTH_REQUIRED", "SUPABASE_URL", "AUTH_ALLOWED_EMAILS", "AUTH_ALLOWED_EMAIL_DOMAINS"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    get_settings.cache_clear()
+    return TestClient(app)
+
+
+@pytest.mark.parametrize("blank", [None, "", " , "])
+def test_sign_in_without_an_allowlist_refuses_to_start(monkeypatch, blank):
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+    env = {"AUTH_REQUIRED": "true", "SUPABASE_URL": "https://example.supabase.co"}
+    if blank is not None:
+        env |= {"AUTH_ALLOWED_EMAILS": blank, "AUTH_ALLOWED_EMAIL_DOMAINS": blank}
+    client = _start(monkeypatch, **env)
+    try:
+        with pytest.raises(ValueError, match="AUTH_ALLOWED_EMAILS or AUTH_ALLOWED_EMAIL_DOMAINS"), client:
+            pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_sign_in_without_supabase_url_refuses_to_start(monkeypatch):
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+    client = _start(monkeypatch, AUTH_REQUIRED="true", AUTH_ALLOWED_EMAIL_DOMAINS="adb.org")
+    try:
+        with pytest.raises(ValueError, match="SUPABASE_URL"), client:
+            pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_without_sign_in_the_database_needs_no_supabase_url(database_url, monkeypatch):
+    try:
+        with _start(monkeypatch, DATABASE_URL=database_url) as api:
+            response = api.get("/api/v1/screening/rules")
+        assert response.status_code != 500, response.text
+    finally:
+        get_settings.cache_clear()

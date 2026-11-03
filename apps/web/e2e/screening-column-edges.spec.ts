@@ -63,6 +63,29 @@ async function holdList(page: Page, rule: string) {
   return release;
 }
 
+test("a link with a rule the tool does not know opens the main method's list and drops the rule from the address", async ({
+  page,
+}) => {
+  // A link cut short in a message. The rules arrive last, as on a slow first visit, so nothing yet says the rule is
+  // unknown except the rule itself.
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/v1/screening/results")) asked.push(new URL(request.url()).search);
+  });
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/v1\/screening\/rules$/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.goto("/screening?rule=additive_");
+  await expect.poll(() => asked.length).toBeGreaterThan(0);
+  release();
+  await expect(page.locator(`${ORDERED} button`)).toHaveCount(ORDERED_COUNT);
+  await expect.poll(() => search(page)).toBe("");
+  expect(asked.every((query) => query === `?rule=${MAIN_RULE}`)).toBe(true);
+});
+
 test("a URL that says nothing but defaults and junk is tidied, keeping the keys other layers own", async ({
   page,
 }) => {

@@ -409,6 +409,14 @@ test("a step that follows the selection retitles for the school chosen and keeps
 });
 
 test("when the screen moves on from a step the rail says so, and puts it back", async ({ page }) => {
+  // The other rule's list is still loading when the step puts its own rule back, so the page cancels that read, as
+  // it does whenever a reader switches rules faster than a list loads. A cancelled read is no failure of the page.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/api\/v1\/screening\/results\?rule=benchmark$/, async (route) => {
+    await held;
+    await route.continue().catch(() => undefined);
+  });
   await ready(page, "?guide=q1&gstep=2");
   await ringed(page);
   await page.evaluate(() => window.__screeningWorkspace!.setState({ rule: "benchmark" }));
@@ -416,6 +424,7 @@ test("when the screen moves on from a step the rail says so, and puts it back", 
   await page.getByRole("button", { name: "Show this step again" }).click();
   await expect.poll(async () => (await workspace(page)).rule).toBe("additive_no_u");
   await expect(page.getByTestId("guide-drift")).toHaveCount(0);
+  release();
   // Every key a step sets counts: opening the scope detail moves the screen on too.
   await page.evaluate(() => window.__screeningWorkspace!.setState({ scope: true }));
   await expect(page.getByTestId("guide-drift")).toBeVisible();
