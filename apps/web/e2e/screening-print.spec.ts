@@ -7,6 +7,10 @@
  *                                                                                    -> "a printout holds every school..."
  *  4. The controls, the tabs and the map print over the list                          -> "a printout holds every school..."
  *  5. Printing the records to verify prints the ordered list instead                  -> "on the records to verify..."
+ *  6. The records' printout opens with the list's line, "Schools to look at first", as if they were an order of
+ *     priority                                                       -> "on the records to verify...", "with a province..."
+ *  7. With a province on, the paper's two groups follow the province's line, so their counts read as the province's
+ *                                                                                    -> "with a province..."
  */
 import { readFileSync } from "node:fs";
 
@@ -86,15 +90,40 @@ test("a printout holds only the schools the filter leaves, and says so", async (
     expect(province).toBe("South Province");
 });
 
+const queued = rowsOf(MAIN_RULE).filter((r) => r.cohort === "verification_queue");
+const QUEUE_MADE = `Schools not in the list yet under the main method (Combined factors, without urgency), made on ${today()} from data version synthetic-fixture-v1.`;
+const QUEUE_LEAD = `${queued.length} schools are not in the list yet because their records need verifying first. Each one shows what to verify. That says nothing about need.`;
+const GROUPS = "2 have a detail missing. 1 needs checking for another reason, which its entry names.";
+const QUEUE_ORDER = "Listed by province, district and school name. This is not an order of priority.";
+
 test("on the records to verify, a printout holds the records to verify", async ({ page }) => {
-  const queued = rowsOf(MAIN_RULE).filter((r) => r.cohort === "verification_queue");
   await openWorkspace(page);
   await tab(page, /Not in the list yet/).click();
   await page.emulateMedia({ media: "print" });
-  await expect(printout(page).locator("h2")).toHaveText(`RISE-PNG: Not in the list yet (${queued.length})`);
+  await expect(printout(page).locator("h2")).toHaveText("RISE-PNG: Not in the list yet");
   await expect(printout(page).locator("th")).toHaveText(["School", "Province", "District", "What to verify"]);
   await expect(printed(page)).toHaveCount(queued.length);
-  await expect(printout(page).locator("p").nth(1)).toHaveText(
-    "2 have a detail missing. 1 needs checking for another reason, which its entry names."
+  await expect(printout(page).locator("p")).toHaveText([QUEUE_MADE, QUEUE_LEAD, GROUPS, QUEUE_ORDER, CAVEAT]);
+});
+
+test("with a province on, the records' printout says what it is, and the groups keep to the count they are of", async ({
+  page,
+}) => {
+  const north = queued.filter(
+    (r) => (r.school as unknown as { province: string }).province === "North Province"
   );
+  expect(north.length).toBeGreaterThan(0);
+  expect(north.length).toBeLessThan(queued.length);
+  await openWorkspace(page, "?prov=North+Province&view=queue");
+  await page.emulateMedia({ media: "print" });
+  await expect(printed(page)).toHaveCount(north.length);
+  // What it is, then the province's share, then all of them and the paper's groups of all of them, together.
+  await expect(printout(page).locator("p")).toHaveText([
+    QUEUE_MADE,
+    `${north.length} of the ${queued.length} records to verify are in North Province.`,
+    QUEUE_LEAD,
+    GROUPS,
+    QUEUE_ORDER,
+    CAVEAT,
+  ]);
 });
