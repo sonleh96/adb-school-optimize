@@ -14,7 +14,7 @@ export const WATER_COLOUR = "#dde3e8";
  */
 export const RAMP_HEX = ["#002569", "#24519f", "#3063b4", "#3d74ca", "#447dd5"] as const;
 /** The rings of the range mark and of the incomplete record, and the fill inside them. */
-export const RANGE_RING_HEX = "#4a4f57";
+export const RANGE_RING_HEX = "#3d4759";
 export const INCOMPLETE_RING_HEX = "#6e6b63";
 export const MARK_PAPER_HEX = "#fbfaf7";
 export const RAMP_RADIUS = [8, 6.5, 5.5, 4.5, 4] as const;
