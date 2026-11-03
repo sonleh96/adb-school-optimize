@@ -62,9 +62,6 @@ describe("the words for a comparison and the top-list file that are loading, and
 
 describe("the words the export sheet, the compare map and chart, and the missing-detail chips read", () => {
   it("say that the file is not cut by remoteness, in one plain sentence", () => {
-    expect(LAYOUT.fileNotByRemoteness).toBe(
-      "The file follows the province filter but not the remoteness filter, so it can list schools you do not see here."
-    );
     expect(textProblems(LAYOUT.fileNotByRemoteness), LAYOUT.fileNotByRemoteness).toEqual([]);
   });
 

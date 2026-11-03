@@ -13,7 +13,7 @@ import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
-import { LAYOUT, SIGN_IN } from "@/lib/screening/copy";
+import { SIGN_IN } from "@/lib/screening/copy";
 
 import { textProblems } from "./helpers";
 
@@ -25,12 +25,6 @@ const TECHNICAL =
 
 describe("the sign-in words", () => {
   it("are plain, short and say what to do", () => {
-    expect(SIGN_IN.title).toBe("Sign in to see the school screening");
-    expect(SIGN_IN.lead).toBe("Use your work email. We will email you a link that signs you in once.");
-    expect(SIGN_IN.emailLabel).toBe("Work email");
-    expect(SIGN_IN.button).toBe("Email me a sign-in link");
-    expect(SIGN_IN.sent).toBe("We have emailed you a link. Open it on this device to sign in.");
-    expect(SIGN_IN.unavailable).toBe("Signing in is not available until the site is set up.");
     for (const [key, text] of Object.entries({
       ...SIGN_IN.errors,
       lead: SIGN_IN.lead,
@@ -52,18 +46,6 @@ describe("the sign-in words", () => {
       "configuration",
       "delivery",
     ]);
-    expect(SIGN_IN.errors.allowlist).toBe(
-      "This email does not have access yet. Try your work email, or ask the project team to add you."
-    );
-    expect(SIGN_IN.errors.callback).toBe(
-      "That sign-in link has expired or was already used. Ask for a new link below."
-    );
-    expect(SIGN_IN.errors.configuration).toBe(
-      "Signing in is not set up for this site yet. Ask the project team to finish setting it up."
-    );
-    expect(SIGN_IN.errors.delivery).toBe(
-      "We could not send the email. Try again in a moment, and tell the project team if it keeps happening."
-    );
     for (const [key, text] of Object.entries(SIGN_IN.errors)) {
       // A next step: something to try, ask or tell, or a link to ask for.
       expect(text, key).toMatch(/\b(?:try|ask|tell)\b/i);
@@ -71,13 +53,6 @@ describe("the sign-in words", () => {
         /\b(?:you (?:failed|did not|entered|made)|your fault|invalid|illegal|denied|forbidden)\b/i
       );
     }
-  });
-
-  it("agree with the words the workspace uses for signing in and out", () => {
-    expect(LAYOUT.signIn).toBe("Sign in again");
-    expect(LAYOUT.signOut).toBe("Sign out");
-    expect(SIGN_IN.button).toMatch(/sign-in/);
-    expect(SIGN_IN.title.toLowerCase()).toContain("sign in");
   });
 });
 

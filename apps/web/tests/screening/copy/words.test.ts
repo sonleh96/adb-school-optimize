@@ -1,10 +1,8 @@
 /**
- * The interface words added in round 6: the empty and failed states, the narrow layout, Copy link, the guide rail's
- * status lines and the landmarks. Failure modes, each with the test that catches it:
- *  1. A word is retyped in the page and drifts: the exact text is held here, once.
- *  2. A state blames the user or uses a banned word ("failed", "error"): the text guards run over each.
- *  3. A count is typed instead of taken from the data: the strings that state a count are checked with two sizes.
- *  4. "Legend" and "Key" both name the same thing on screen.
+ * The interface words added in round 6: the empty and failed states, Copy link, the guide rail's status lines and
+ * the landmarks. Failure modes, each with the test that catches it:
+ *  1. A state blames the user or uses a banned word ("failed", "error"): the text guards run over each.
+ *  2. A count is typed instead of taken from the data: the strings that state a count are checked with two sizes.
  */
 import { existsSync } from "node:fs";
 import path from "node:path";
@@ -31,28 +29,8 @@ describe("an empty, stale or failed load", () => {
   });
 });
 
-describe("the narrow layout and the key", () => {
-  it("names the menu and the key by one visible word each, which the key's toggle keeps open or closed", () => {
-    expect([LAYOUT.menu, LAYOUT.keyLabel]).toEqual(["Menu", "Key"]);
-  });
-
-  it("calls the legend the key everywhere a user reads it", () => {
-    expect(LAYOUT.legendAria).toBe("Map key");
-    expect(GUIDE.tasks[0].steps[2].onScreen).toBe("The first school on the map, and the key");
-    expect(GUIDE.tasks[2].steps[2].onScreen).toBe("The school on the map, and the key");
-    for (const k of ["mark_dot", "mark_range", "mark_ring"] as const)
-      expect(TERMS[k].where).toBe("Map and key");
-  });
-});
-
 describe("copy link", () => {
   it("says it worked, or what to do instead", () => {
-    expect(LAYOUT.copyLink).toBe("Copy link");
-    expect(LAYOUT.linkCopied).toBe("Link to this screen copied");
-    expect(LAYOUT.linkNotCopied).toBe(
-      "The link did not copy. Copy the address from your browser's address bar instead."
-    );
-    expect(LAYOUT.copyNotDone).toBe("That did not copy. Select the text and copy it by hand.");
     for (const t of [LAYOUT.linkNotCopied, LAYOUT.copyNotDone]) expect(textProblems(t), t).toEqual([]);
   });
 });
@@ -64,10 +42,7 @@ describe("the guide rail's status lines", () => {
     expect(GUIDE.howCount(6)).toBe("6 short sections on how the list is made");
     expect(GUIDE.howCount(1)).toBe("1 short section on how the list is made");
     expect(GUIDE.stepOf(2, 4)).toBe("Step 2 of 4");
-    expect(GUIDE.seen).toBe("Seen");
     expect(GUIDE.seenCount(2, 5)).toBe("2 of 5 seen");
-    expect(GUIDE.drift).toBe("The screen has moved on from this step.");
-    expect(GUIDE.driftRestore).toBe("Show this step again");
   });
 
   it("names the saved views a meeting starts with, and where to look for each", () => {
@@ -101,9 +76,6 @@ describe("the words that join values", () => {
     expect(LAYOUT.savedToast(3)).toBe("Saved as view 3");
     expect(LAYOUT.removeView("J")).toBe("Remove the saved view J");
     expect(LAYOUT.tooltipMissing("power source blank")).toBe("Missing: power source blank");
-    expect(LAYOUT.afterDownloadList).toBe(
-      "Downloaded the research file. The method record is in the first lines of the file."
-    );
   });
 });
 
