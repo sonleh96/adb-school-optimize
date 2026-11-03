@@ -80,6 +80,8 @@ export interface MapCanvasProps {
   attribution: string;
   /** The method details' changes to the marks: layers off, schools outside the filters faint, compare colours. */
   paint?: MarkPaint;
+  /** The schools the map frames: the ones in the province or district chosen. Null or empty frames every school. */
+  focus?: readonly MapSchool[] | null;
 }
 
 declare global {
@@ -185,6 +187,10 @@ function fitFor(map: MapRef, padding: Padding): Padding {
   return fitPadding(padding, clientWidth, clientHeight);
 }
 
+/** The schools to frame: the focus when it holds a school with a place on the map, every school otherwise. */
+const framedOf = (schools: readonly MapSchool[], focus: readonly MapSchool[] | null): readonly MapSchool[] =>
+  focus && focus.length > 0 ? focus : schools;
+
 export default function MapCanvas({
   schools,
   selectedKey,
@@ -201,6 +207,7 @@ export default function MapCanvas({
   label,
   attribution,
   paint = NO_PAINT,
+  focus = null,
 }: MapCanvasProps) {
   const mapRef = useRef<MapRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -224,19 +231,20 @@ export default function MapCanvas({
   const ringLayers = useMemo(() => buildRingLayers(selected, hovered), [selected, hovered]);
   const layers = useMemo(() => [...markLayers, ...ringLayers], [markLayers, ringLayers]);
 
-  // The first view is decided once. If no school is known yet, the first schools to arrive set it.
+  // The first view is decided once. If no school is known yet, the first schools to arrive set it: the province or
+  // district a link names, or the whole country.
   const [initialView] = useState(() => {
-    const bounds = boundsOf(schools);
+    const bounds = boundsOf(framedOf(schools, focus));
     return bounds ? { bounds, fitBoundsOptions: { padding, maxZoom: 9 } } : DEFAULT_VIEW;
   });
   const [fitted, setFitted] = useState("bounds" in initialView);
   useEffect(() => {
     const map = mapRef.current;
-    const bounds = boundsOf(schools);
+    const bounds = boundsOf(framedOf(schools, focus));
     if (!map || !bounds || fitted) return;
     map.fitBounds(bounds, { padding: fitFor(map, padding), maxZoom: 9, duration: 0 });
     setFitted(true);
-  }, [schools, padding, fitted]);
+  }, [schools, focus, padding, fitted]);
 
   const still = useCallback(() => instant || prefersReducedMotion(), [instant]);
 
@@ -254,9 +262,9 @@ export default function MapCanvas({
 
   // Opening the card or the rail can restack the key, and the clear part is measured after that render, so the moves
   // below wait two frames and read the latest padding and schools.
-  const latest = useRef({ padding, still, selected, schools });
+  const latest = useRef({ padding, still, selected, schools, focus });
   useLayoutEffect(() => {
-    latest.current = { padding, still, selected, schools };
+    latest.current = { padding, still, selected, schools, focus };
   });
 
   // A refit of the country, from the moment it is due until it settles (`fitting`), and the school chosen meanwhile
@@ -286,7 +294,7 @@ export default function MapCanvas({
     let step = requestAnimationFrame(() => {
       step = requestAnimationFrame(() => {
         started = true;
-        const bounds = boundsOf(latest.current.schools);
+        const bounds = boundsOf(framedOf(latest.current.schools, latest.current.focus));
         if (!bounds) return settle();
         map.fitBounds(bounds, {
           padding: fitFor(map, latest.current.padding),

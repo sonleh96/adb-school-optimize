@@ -16,7 +16,7 @@ import {
 } from "react";
 
 import { type BoundCopy, type CopyRuleId, copyFor } from "@/lib/screening/copy";
-import { type Filters, admits, filterOptions, filtering, finding } from "@/lib/screening/filters";
+import { type Filters, NO_FILTERS, admits, filterOptions, filtering, finding } from "@/lib/screening/filters";
 import { screeningKeys, useAfterPaint } from "@/lib/screening/hooks";
 import { neighbour, reconcileSelection, splitRows, tabOf } from "@/lib/screening/list";
 import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
@@ -431,9 +431,18 @@ function Workspace() {
     [mode, docked, column, card, cardOpen, footHeight]
   );
   // Each time the clear part of the map changes shape, the map frames the country in it again: the layout, the list
-  // stepping aside, and the guide rail, which narrows the map from the left as it opens.
+  // stepping aside, and the guide rail, which narrows the map from the left as it opens. A province or district chosen
+  // frames its schools instead, and clearing it frames the country; a name typed moves nothing, so the map holds still
+  // while a reader types.
   const [frame, setFrame] = useState(0);
-  const shape = `${layout.mode}:${layout.docked}:${guidance.rail ?? 0}`;
+  const placeKey = `${state.prov ?? ""}|${state.dist ?? ""}`;
+  const shape = `${layout.mode}:${layout.docked}:${guidance.rail ?? 0}:${placeKey}`;
+  const focus = useMemo(() => {
+    if (state.prov === null) return null;
+    const place = { ...NO_FILTERS, prov: state.prov, dist: state.dist };
+    const keys = new Set(rows.filter((row) => admits(row, place)).map((row) => row.school.school_key));
+    return mapSchools.filter((school) => keys.has(school.key));
+  }, [rows, mapSchools, state.prov, state.dist]);
   const lastShape = useRef(shape);
   useEffect(() => {
     if (lastShape.current === shape) return;
@@ -813,6 +822,7 @@ function Workspace() {
           tipFor={tipFor}
           // Schools outside the filter fade, so the map shows the same schools as the list.
           paint={method.on ? method.paint : findPaint}
+          focus={focus}
           emphasis={state.view === "queue" ? "incomplete" : "all"}
           frame={frame}
           instant={keyboard}

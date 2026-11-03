@@ -11,10 +11,12 @@
  *  7. The records to verify ignore the filter                                           -> "the records to verify..."
  *  8. Escape in the panel closes the school card instead of the panel, or drops the keyboard user
  *                                                                                       -> "Escape closes the panel..."
+ *  9. A chosen province leaves its schools a small cluster on a map of the whole country, or Clear leaves the map
+ *     zoomed on a province no longer chosen                                             -> "a province frames the map..."
  */
 import type { Page } from "@playwright/test";
 
-import { MAIN_RULE, ORDERED, expect, openWorkspace, rowsOf, tab, test } from "./screening-helpers";
+import { MAIN_RULE, ORDERED, expect, markAt, openWorkspace, rowsOf, tab, test } from "./screening-helpers";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 test.describe.configure({ timeout: 60_000 });
@@ -166,4 +168,27 @@ test("Escape closes the panel and hands focus back to its button", async ({ page
   await expect(panel(page)).toHaveCount(0);
   await expect(findButton(page)).toBeFocused();
   await expect(findButton(page)).toHaveAttribute("aria-expanded", "false");
+});
+
+test("a province frames the map on its schools, and Clear frames the country again", async ({ page }) => {
+  const south = inProvince("South Province")
+    .filter((r) => r.school.latitude !== null)
+    .map((r) => r.school.school_key);
+  expect(south.length).toBeGreaterThan(1);
+  /** How far apart the province's marks sit on screen, in px: larger when the map is closer. */
+  const spread = async () => {
+    const points = await Promise.all(south.map((key) => markAt(page, key)));
+    if (points.some((p) => p === null)) return 0;
+    const xs = points.map((p) => p!.x);
+    const ys = points.map((p) => p!.y);
+    return Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+  };
+  await openWorkspace(page);
+  const country = await spread();
+  expect(country).toBeGreaterThan(0);
+  await findButton(page).click();
+  await province(page).selectOption("South Province");
+  await expect.poll(spread, { timeout: 10_000 }).toBeGreaterThan(country * 1.5);
+  await page.locator("[data-region=find-status]").getByRole("button", { name: "Clear" }).click();
+  await expect.poll(spread, { timeout: 10_000 }).toBeLessThan(country * 1.2);
 });
