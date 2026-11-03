@@ -5,8 +5,8 @@
  *  2. The place bands (R12): a long list has no band for its later places (the map stopped drawing at 720 schools),
  *     a short list repeats or reorders bands, one school gets a band other than "1st", a place past the last cut has
  *     no band.
- *  3. "Why it sits here": reasons numbered out of reading order, a need part counted twice or missing from the need
- *     box, or a reason cut in the wrong place when the copy's sentence changes.
+ *  3. "Why it sits here": a bigger reason numbered after a smaller one, a need part counted twice or missing from the
+ *     need box, or a reason cut in the wrong place when the copy's sentence changes.
  */
 import { describe, expect, it } from "vitest";
 
@@ -86,7 +86,7 @@ describe("whyBlocks", () => {
     { key: "facilities", sentence: "It has no facilities." },
   ];
 
-  it("numbers the reasons in reading order and puts the need parts in one box, numbered parts first", () => {
+  it("numbers the reasons by size wherever they sit, and puts the need parts in one box, numbered parts first", () => {
     expect(whyBlocks(text, drivers, NEED)).toEqual({
       // Everything before the first reason is the lead, as the design sets it.
       lead: "Three things add most to its score under the rule. Two are parts of its school need, the measure built from five parts of its own record.",
@@ -94,15 +94,16 @@ describe("whyBlocks", () => {
         {
           kind: "need",
           parts: [
-            { key: "classrooms", n: 1, sentence: "None of its classrooms is permanent." },
-            { key: "facilities", n: 2, sentence: "It has no facilities." },
+            { key: "classrooms", n: 2, sentence: "None of its classrooms is permanent." },
+            { key: "facilities", n: 3, sentence: "It has no facilities." },
             { key: "housing", n: null, sentence: null },
             { key: "services", n: null, sentence: null },
             { key: "locality", n: null, sentence: null },
           ],
         },
         { kind: "text", text: "The other is not part of its school need." },
-        { kind: "reason", key: "area", n: 3, sentence: "Its district is remote." },
+        // District context adds most, so it is 1 although it is read last.
+        { kind: "reason", key: "area", n: 1, sentence: "Its district is remote." },
       ],
     });
   });

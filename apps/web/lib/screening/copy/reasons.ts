@@ -379,25 +379,38 @@ export function reasonSentence(school: CopySchool, ruleId: CopyRuleId, ruleNames
   const parts = [
     `${capitalise(SMALL[n])} ${plural(n, "thing adds", "things add")} most to its score under ${r.name}.`,
   ];
-  if (need.length) {
-    let intro: string;
-    if (other.length === 0)
-      intro =
-        need.length === 2
-          ? "Both are parts of its school need, the measure built from five parts of its own record."
-          : `All ${SMALL[need.length]} are parts of its school need, the measure built from five parts of its own record.`;
-    else
-      intro = `${capitalise(SMALL[need.length])} ${plural(need.length, "is a part", "are parts")} of its school need, the measure built from five parts of its own record.`;
-    parts.push(intro, ...need.map((d) => d.sentence));
-  }
-  if (other.length) {
-    if (need.length)
-      parts.push(
-        other.length === 1
-          ? "The other is not part of its school need."
-          : `The other ${SMALL[other.length]} are not part of its school need.`
-      );
-    parts.push(...other.map((d) => d.sentence));
+  const measure = "the measure built from five parts of its own record";
+  // The group that holds the largest reason comes first, so the reasons read largest first wherever the groups allow.
+  if (need.length && other.length && !isNeedKey(drivers[0].key)) {
+    parts.push(
+      `${capitalise(SMALL[other.length])} ${plural(other.length, "is", "are")} not part of its school need.`,
+      ...other.map((d) => d.sentence),
+      need.length === 1
+        ? `The other is a part of its school need, ${measure}.`
+        : `The other ${SMALL[need.length]} are parts of its school need, ${measure}.`,
+      ...need.map((d) => d.sentence)
+    );
+  } else {
+    if (need.length) {
+      let intro: string;
+      if (other.length === 0)
+        intro =
+          need.length === 2
+            ? `Both are parts of its school need, ${measure}.`
+            : `All ${SMALL[need.length]} are parts of its school need, ${measure}.`;
+      else
+        intro = `${capitalise(SMALL[need.length])} ${plural(need.length, "is a part", "are parts")} of its school need, ${measure}.`;
+      parts.push(intro, ...need.map((d) => d.sentence));
+    }
+    if (other.length) {
+      if (need.length)
+        parts.push(
+          other.length === 1
+            ? "The other is not part of its school need."
+            : `The other ${SMALL[other.length]} are not part of its school need.`
+        );
+      parts.push(...other.map((d) => d.sentence));
+    }
   }
   if (ruleId === "bottleneck_u" || ruleId === "bottleneck_no_u") {
     const which =

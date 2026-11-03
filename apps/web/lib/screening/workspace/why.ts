@@ -2,6 +2,7 @@
  * "Why it sits here" laid out: the copy's reason sentence split around the sentences of the inputs that add most, so
  * each reason gets a number and a box, and the reasons that are parts of school need sit inside one school need box
  * with its other parts listed after them. The words are the copy's; this only finds where each reason sits in them.
+ * A reason's number is its size among the reasons, 1 for the largest, wherever the copy's grouping puts it.
  */
 export interface DriverLike<K extends string = string> {
   readonly key: K;
@@ -10,7 +11,7 @@ export interface DriverLike<K extends string = string> {
 
 export type WhyBlock<K extends string> =
   | { readonly kind: "text"; readonly text: string }
-  /** The school need box: the numbered parts first, in reading order, then the other parts, unnumbered. */
+  /** The school need box: the numbered parts first, by number, then the other parts, unnumbered. */
   | {
       readonly kind: "need";
       readonly parts: readonly { key: K; n: number | null; sentence: string | null }[];
@@ -43,8 +44,9 @@ function pieces<K extends string>(text: string, drivers: readonly DriverLike<K>[
 }
 
 /**
- * `needKeys` are the five parts of school need, in the order the box lists them. A reason text that does not
- * contain every driver's sentence word for word is shown whole, as one paragraph, rather than cut wrongly.
+ * `drivers` are the reasons largest first, as the copy picks them, and `needKeys` the five parts of school need, in
+ * the order the box lists them. A reason text that does not contain every driver's sentence word for word is shown
+ * whole, as one paragraph, rather than cut wrongly.
  */
 export function whyBlocks<K extends string>(
   text: string,
@@ -55,7 +57,7 @@ export function whyBlocks<K extends string>(
   if (!split) return { lead: text, blocks: [] };
   const lead = split[0]?.kind === "text" ? (split.shift() as { text: string }).text : "";
   const blocks: WhyBlock<K>[] = [];
-  let n = 0;
+  const sizeOf = (driver: DriverLike<K>) => drivers.indexOf(driver) + 1;
   for (let i = 0; i < split.length;) {
     const piece = split[i];
     if (piece.kind === "text") {
@@ -68,10 +70,11 @@ export function whyBlocks<K extends string>(
       while (i < split.length) {
         const next = split[i];
         if (next.kind !== "driver" || !needKeys.includes(next.driver.key)) break;
-        named.set(next.driver.key, { n: (n += 1), sentence: next.driver.sentence });
+        named.set(next.driver.key, { n: sizeOf(next.driver), sentence: next.driver.sentence });
         i += 1;
       }
-      const order = [...named.keys(), ...needKeys.filter((key) => !named.has(key))];
+      const numbered = [...named.keys()].sort((a, b) => named.get(a)!.n - named.get(b)!.n);
+      const order = [...numbered, ...needKeys.filter((key) => !named.has(key))];
       blocks.push({
         kind: "need",
         parts: order.map((key) => ({
@@ -82,7 +85,12 @@ export function whyBlocks<K extends string>(
       });
       continue;
     }
-    blocks.push({ kind: "reason", key: piece.driver.key, n: (n += 1), sentence: piece.driver.sentence });
+    blocks.push({
+      kind: "reason",
+      key: piece.driver.key,
+      n: sizeOf(piece.driver),
+      sentence: piece.driver.sentence,
+    });
     i += 1;
   }
   return { lead, blocks };
