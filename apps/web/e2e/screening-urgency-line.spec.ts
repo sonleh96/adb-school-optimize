@@ -1,35 +1,35 @@
 /**
- * Why urgency is left out, beside its link. Failure modes and the test for each:
- *  1. The reason sits behind "Change how the list is ordered", so a first-time reader meets the link to the earlier
- *     method without it                                                  -> "the first screen says why..."
- *  2. The line stays once the rule area is open, where the full statement says it again, or shows under another rule,
- *     where the link it explains is not there                            -> "the first screen says why..."
+ * The urgency question waits behind Change. First-time readers named the link to the earlier method, and the note
+ * under it, as the most confusing thing on the first screen. Failure modes and the test for each:
+ *  1. The first screen still shows the link to the earlier method, or says anything about urgency
+ *                                                                      -> "the first screen leaves the urgency..."
+ *  2. Change opens without saying why the main method leaves urgency out, or without the link beside that reason
+ *                                                                      -> "the first screen leaves the urgency..."
+ *  3. The link beside the statement no longer opens the comparison     -> "the first screen leaves the urgency..."
  */
-import { MAIN_RULE, expect, openRules, openWorkspace, test } from "./screening-helpers";
+import { expect, openRules, openWorkspace, test } from "./screening-helpers";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-const WHY = "Nobody could trace how that rating was made, so the main method leaves it out.";
-
-test("the first screen says why the main method leaves urgency out, right under its link", async ({
+test("the first screen leaves the urgency question to Change, whose statement says why and links to the comparison", async ({
   page,
 }) => {
   await openWorkspace(page);
-  const link = page.locator("[data-region=see-with-urgency]");
-  const why = page.locator("[data-region=urgency-why]");
-  await expect(why).toHaveText(WHY);
-  const a = (await link.boundingBox())!;
-  const b = (await why.boundingBox())!;
-  expect(b.y).toBeGreaterThanOrEqual(a.y + a.height - 1);
-  expect(b.y - (a.y + a.height)).toBeLessThan(12);
+  const area = page.locator("[data-region=rule-identity]");
+  await expect(area.getByRole("button", { name: "Change how the list is ordered" })).toBeVisible();
+  await expect(page.locator("[data-region=see-with-urgency]")).toHaveCount(0);
+  expect(await area.innerText()).not.toMatch(/urgency|trace/i);
 
-  // The open rule area's statement says the same at length, so the line goes with the link.
   await openRules(page);
-  await expect(why).toHaveCount(0);
-
-  // Under another rule the link is "Back to the paper's main rule", and the line does not follow it.
-  await page.goto(`/screening?rule=additive_u`);
-  await expect(page.getByRole("button", { name: "Back to the paper's main rule" })).toBeVisible();
-  await expect(why).toHaveCount(0);
-  expect(MAIN_RULE).toBe("additive_no_u");
+  const statement = page.locator("[data-region=list-statement]");
+  await expect(statement).toContainText(
+    "The urgency rating is left out because no one could trace where it came from"
+  );
+  const link = statement.getByRole("button", {
+    name: "Compare with the earlier method, which also counts an urgency rating",
+  });
+  await expect(link).toBeVisible();
+  await link.click();
+  await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
+  expect(new URL(page.url()).search).toBe("?compare=additive_u");
 });

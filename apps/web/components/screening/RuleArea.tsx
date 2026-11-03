@@ -60,9 +60,9 @@ interface RuleAreaProps {
 }
 
 /**
- * The rule area. A first-time reader sees one plain line saying how the list is ordered, Change, and the question most
- * people ask of the rule, what the urgency value changes, as a link. Change opens the switch of the main rule and the
- * urgency sensitivity, Other rules and the full statement. The analyst letters stay in the method details.
+ * The rule area. A first-time reader sees one plain line saying how the list is ordered, and Change. Change opens the
+ * switch of the main rule and the urgency sensitivity, Other rules, and the statement that says why the urgency
+ * rating is left out, with the link that compares the two. The analyst letters stay in the method details.
  */
 export function RuleArea(props: RuleAreaProps) {
   const {
@@ -146,14 +146,11 @@ export function RuleArea(props: RuleAreaProps) {
             {LAYOUT.orderControl}
             <ChevronDown size={13} aria-hidden data-open={open || undefined} />
           </button>
-          {open || comparing || !line ? null : line === PRIMARY_RULE ? seeWithUrgency : back}
+          {/* Under another rule, the way back. The main rule's link to the urgency comparison waits behind Change,
+              beside the statement that says why the rating is left out: first-time readers found it the most
+              confusing thing on the first screen. */}
+          {open || comparing || !line || line === PRIMARY_RULE ? null : back}
         </div>
-        {/* Why the main method leaves urgency out, under its link: before this, it waited behind Change. */}
-        {!open && !comparing && line === PRIMARY_RULE ? (
-          <p className={styles.urgencyWhy} data-region="urgency-why">
-            {LAYOUT.urgencyWhy}
-          </p>
-        ) : null}
       </div>
       {open ? (
         <div id="screening-rule-choices" className={styles.ruleChoices}>

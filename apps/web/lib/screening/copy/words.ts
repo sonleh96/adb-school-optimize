@@ -65,11 +65,9 @@ export const LAYOUT = Object.freeze({
   rulePair: "How the list is ordered",
   howBack: "Back to the map",
   showMe: "Show me on the screen",
-  // From the screen opened on the main rule, which leaves urgency out: the link to the comparison with the rule that
-  // puts the urgency rating back.
+  // Under Change, after the statement that says why the main rule leaves urgency out: the link to the comparison with
+  // the rule that puts the urgency rating back.
   seeWithUrgency: "Compare with the earlier method, which also counts an urgency rating",
-  // Beside that link on the first screen: why the main method leaves the rating out, in one plain line.
-  urgencyWhy: "Nobody could trace how that rating was made, so the main method leaves it out.",
   backToCirculated: (label: string) => `Back to ${label.charAt(0).toLowerCase()}${label.slice(1)}`,
   backToMainRule: "Back to the paper's main rule",
   whatChanged: "What changed",

@@ -179,7 +179,6 @@ describe("every fixed string follows the writing rules", () => {
       "sessionEnded",
       "findShowing",
       "findNoneHint",
-      "urgencyWhy",
       "listLede",
       "listFirstLine",
       "listMore",

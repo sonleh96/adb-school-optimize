@@ -5,8 +5,8 @@
  *  2. The statement and What changed show together, or What changed compares the wrong rules, or the way back does
  *     not return to the default screen                                               -> "the statement..."
  * 10. The first view asks a reader to choose a rule: the switch, the statement or the analyst letters show before
- *     Change, the urgency comparison is more than one click away, or the address keeps the open area
- *                                                                                    -> "the rule area starts..."
+ *     Change, or the address keeps the open area. The urgency comparison waits behind Change too
+ *     (screening-urgency-line.spec.ts)                                               -> "the rule area starts..."
  *  3. Other rules hides a rule, stays open after a choice, traps Escape, animates a keyboard open, or the rule line
  *     does not name the rule chosen                                                  -> "Other rules..."
  *  4. Counts in the tabs or the scope line are not the run's own                       -> "a pasted link...", "the scope line..."
@@ -151,9 +151,7 @@ test("the statement shows under the main rule only, never beside What changed, a
   await expect(statement(page)).toBeVisible();
 });
 
-test("the rule area starts as one plain line, keeps the urgency comparison one click away, and opens with Change", async ({
-  page,
-}) => {
+test("the rule area starts as one plain line, and opens with Change", async ({ page }) => {
   await openWorkspace(page);
   const area = page.locator("[data-region=rule-identity]");
   // Closed: one plain line and the control that opens the choices; no switch, no statement, no analyst letters.
@@ -171,12 +169,6 @@ test("the rule area starts as one plain line, keeps the urgency comparison one c
   await expect(area.locator("[data-region=rule-shares]")).toHaveCount(0);
   expect(await area.innerText()).not.toMatch(/\bS0?\b/);
   expect(await area.innerText()).not.toMatch(/%/);
-
-  // What the urgency rating changes is one click away, and answers on the main rule's list.
-  await area.locator("[data-region=see-with-urgency]").click();
-  await expect(changed(page).locator("[data-region=changed-lead]")).toHaveText(REASSURANCE);
-  expect(search(page)).toBe("?compare=additive_u");
-  await changed(page).getByRole("button", { name: "Hide this comparison" }).click();
 
   // The control opens the switch, the other ways and the statement, and closes them again; the address never keeps
   // either.

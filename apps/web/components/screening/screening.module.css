@@ -300,14 +300,6 @@
   gap: 6px 14px;
   margin-top: 8px;
 }
-/* Under the urgency link, set as a note on it: why the main method leaves the rating out. */
-.urgencyWhy {
-  margin: 3px 0 0;
-  font-size: 12.5px;
-  line-height: 17px;
-  color: var(--ink-3);
-  text-wrap: pretty;
-}
 .ruleNowText {
   margin: 0;
   font-size: 13px;
@@ -2523,6 +2515,27 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   }
   .statement {
     margin-top: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  /* The blocks above the list are set closer too, so on a 1440 by 900 laptop at 200 percent zoom (720 by 450) the
+     first school and its reason still show on a first visit, with Start here open. */
+  .root[data-pane] {
+    --switch-h: 38px;
+  }
+  .root[data-pane] .paneSwitch {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .narrowHead {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .tab {
+    padding-top: 7px;
+    padding-bottom: 6px;
+  }
+  .listHead {
     padding-top: 6px;
     padding-bottom: 6px;
   }

@@ -923,6 +923,14 @@
     font-size: 19px;
     line-height: 23px;
   }
+  /* Start here in the list sits closer too, so the first school still shows under it. */
+  .rail[data-inflow] .railHead {
+    padding-top: 8px;
+    padding-bottom: 4px;
+  }
+  .rail[data-inflow] .railBody {
+    padding-bottom: 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
