@@ -111,7 +111,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.findShowing": [
     [9, 47, "list", { province: "Highlands", district: null, name: null }],
     [1, 47, "list", { province: "Highlands", district: "Upper Valley", name: null }],
-    [0, 13, "queue", { province: "Highlands", district: null, name: "pori" }],
+    [0, 13, "queue", { province: "Highlands", district: null, name: "alder" }],
     [2, 2, "queue", { province: null, district: null, name: "high school" }],
     [1, 1, "list", { province: "Highlands", district: null, name: null }],
     [3, 47, "list", { province: null, district: null, name: null }],
@@ -181,7 +181,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.layers.items.numerals": [[10], [3]],
   "METHOD.filter.chipProvince": [["Highlands"]],
   "METHOD.filter.chipDistrict": [["Upper Valley"]],
-  "METHOD.filter.chipName": [["pori"]],
+  "METHOD.filter.chipName": [["alder"]],
   "METHOD.filter.chipLocality": [["Remote"]],
   "METHOD.segments.sheetTitle": [
     [20, "Combined"],

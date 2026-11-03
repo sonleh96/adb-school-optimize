@@ -136,7 +136,7 @@ describe("every fixed string follows the writing rules", () => {
       viewPartMissing: [["rule", "school", "hover"], "upper"],
       linkPartMissing: [["prov", "dist"]],
       partAdds: ["Remoteness"],
-      findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "pori" }],
+      findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "alder" }],
       listLede: [31, true],
       listMore: [21],
       listMade: [
