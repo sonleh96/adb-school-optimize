@@ -25,7 +25,7 @@
   flex-direction: column;
   pointer-events: auto;
   background: var(--panel);
-  border-left: 1px solid var(--hair);
+  border-left: 1px solid var(--edge);
   box-shadow: -24px 0 48px -24px rgba(21, 24, 29, 0.25);
   transition: transform 240ms var(--ease-drawer);
 }
@@ -60,7 +60,7 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: none;
   cursor: pointer;
   color: var(--ink-2);
@@ -112,7 +112,7 @@
   display: inline-flex;
   padding: 2px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   gap: 2px;
 }
 .seg button {
@@ -342,7 +342,7 @@
 .primary {
   height: 36px;
   padding: 0 16px;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   cursor: pointer;
   white-space: nowrap;
   font: 500 13px/1 var(--sans);

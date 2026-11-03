@@ -3,18 +3,23 @@
  * components/screening/screening.module.css (`.root`); the fonts come from app/fonts.ts through the layout.
  */
 .page {
-  --paper: #f2f0ea;
-  --panel: #fdfcfa;
-  --ink: #15181d;
-  --ink-2: #4a4f57;
-  --ink-3: #6b7078;
-  --hair: rgba(21, 24, 29, 0.12);
-  --hair-2: rgba(21, 24, 29, 0.07);
-  --navy: #0a2e73;
-  --navy-wash: rgba(10, 46, 115, 0.055);
+  --paper: #f3f1ec;
+  --panel: #fff;
+  --ink: #111a2c;
+  --ink-2: #3d4759;
+  --ink-3: #586274;
+  --hair: rgba(17, 26, 44, 0.12);
+  --hair-2: rgba(17, 26, 44, 0.075);
+  --navy: #002569;
+  --navy-wash: color-mix(in srgb, var(--navy) 6%, transparent);
   --alert: #8f1d14;
   --alert-wash: rgba(143, 29, 20, 0.07);
-  --shadow: 0 1px 2px rgba(21, 24, 29, 0.05), 0 12px 32px -16px rgba(21, 24, 29, 0.2);
+  --edge: color-mix(in srgb, var(--navy) 10%, transparent);
+  --field-edge: rgba(17, 26, 44, 0.48);
+  --shadow: 0 1px 2px rgba(10, 20, 40, 0.06), 0 18px 40px -24px rgba(10, 20, 40, 0.34);
+  --r-panel: 14px;
+  --r-box: 10px;
+  --r-control: 8px;
   --serif: var(--font-screening-serif), Georgia, serif;
   --sans: var(--font-screening-sans), system-ui, sans-serif;
 
@@ -31,8 +36,8 @@
 .card {
   width: min(100%, 400px);
   padding: 24px 32px 32px;
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -80,7 +85,7 @@
 .note {
   margin: 18px 0 0;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
 }
 .sent {
   background: var(--navy-wash);
@@ -103,15 +108,15 @@
 .form input {
   height: 40px;
   padding: 0 12px;
-  border: 1px solid rgba(21, 24, 29, 0.28);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: #fff;
   font: inherit;
   color: var(--ink);
 }
+/* Unavailable, the box keeps its edge, so it still reads as the place for an email, and greys inside. */
 .form input:disabled {
-  border-color: var(--hair);
-  background: transparent;
+  background: var(--hair-2);
 }
 .form input:focus-visible,
 .form button:focus-visible {
@@ -122,7 +127,7 @@
   height: 40px;
   margin-top: 8px;
   border: 1px solid var(--navy);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--navy);
   cursor: pointer;
   font: 500 13.5px/1 var(--sans);
@@ -132,11 +137,12 @@
 .form button:not(:disabled):active {
   transform: scale(0.98);
 }
+/* Unavailable, the button greys but its words stay readable: 8:1 on the grey. */
 .form button:disabled {
   border-color: var(--hair);
   background: var(--hair-2);
   cursor: default;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .hint {

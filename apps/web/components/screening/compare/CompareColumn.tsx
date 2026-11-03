@@ -115,10 +115,10 @@ function RangeGlyph({ best, worst, k, count }: { best: number; worst: number; k:
   return (
     <svg viewBox={`0 0 ${w} 14`} width={w} height="14" aria-hidden className={styles.glyph}>
       <line x1="2" x2={w - 2} y1="7" y2="7" stroke="rgba(21,24,29,.16)" />
-      <rect x="2" y="2" width={Math.max(0, kx - 2)} height="10" fill="#0a2e73" fillOpacity="0.06" />
+      <rect x="2" y="2" width={Math.max(0, kx - 2)} height="10" fill="#002569" fillOpacity="0.06" />
       <line x1={kx} x2={kx} y1="1" y2="13" stroke="rgba(21,24,29,.35)" />
       {best === worst ? (
-        <rect x={x(best) - 1.25} y="2" width="2.5" height="10" rx="1" fill="#4a4f57" />
+        <rect x={x(best) - 1.25} y="2" width="2.5" height="10" rx="1" fill="#3d4759" />
       ) : (
         <rect
           x={x(best) - 1}

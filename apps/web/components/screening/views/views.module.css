@@ -62,7 +62,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--navy-wash);
   box-shadow: -12px 0 0 0 var(--navy-wash);
   opacity: 0;
@@ -112,7 +112,7 @@
   height: 28px;
   margin-top: 5px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: none;
   cursor: pointer;
   color: var(--ink-3);
@@ -142,8 +142,8 @@
   min-width: 0;
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   font: 400 13.5px/1 var(--sans);
   color: var(--ink);
@@ -193,7 +193,7 @@
   max-width: calc(100% - 44px);
   padding: 2px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   gap: 2px;
 }
 .tabs button {

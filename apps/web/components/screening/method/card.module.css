@@ -25,7 +25,7 @@
 .callout {
   margin: 0 16px 16px;
   padding: 12px 14px 14px;
-  border-radius: 8px;
+  border-radius: var(--r-box);
   background: var(--navy-wash);
   box-shadow: inset 3px 0 0 var(--navy);
 }
@@ -223,7 +223,7 @@
 .flag {
   margin: 0 0 10px;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: rgba(21, 24, 29, 0.04);
   font-size: 12.5px;
   line-height: 17px;

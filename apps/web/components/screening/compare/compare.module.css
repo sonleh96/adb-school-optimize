@@ -25,7 +25,7 @@
   height: 100%;
   padding: 10px 12px 12px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -80,7 +80,7 @@
   width: 36px;
   height: 36px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   color: var(--ink-2);
@@ -215,7 +215,7 @@
   display: inline-flex;
   padding: 2px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   gap: 2px;
 }
 .kSeg button {
@@ -243,7 +243,7 @@
   overflow: visible;
 }
 .zone {
-  fill: rgba(10, 46, 115, 0.035);
+  fill: color-mix(in srgb, var(--navy) 3.5%, transparent);
 }
 .axis {
   stroke: rgba(21, 24, 29, 0.25);

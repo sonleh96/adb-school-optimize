@@ -43,7 +43,7 @@ function Strip({
       {range ? (
         <rect x={x0} y="2.5" width={width} height="9" rx="1" className={styles.stripRange} />
       ) : (
-        <rect x={width === 2 ? x0 - 1 : x0} y="3.5" width={width} height="7" rx="1" fill="#4a4f57" />
+        <rect x={width === 2 ? x0 - 1 : x0} y="3.5" width={width} height="7" rx="1" fill="#3d4759" />
       )}
     </svg>
   );

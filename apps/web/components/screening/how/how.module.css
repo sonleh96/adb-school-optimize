@@ -43,7 +43,7 @@
   font: 500 14px/20px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
 }
 @media (hover: hover) and (pointer: fine) {
@@ -153,7 +153,7 @@
 .foot {
   margin-top: 36px;
   padding: 14px 16px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: rgba(21, 24, 29, 0.045);
   font-size: 13px;
   line-height: 19px;

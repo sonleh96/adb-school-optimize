@@ -26,7 +26,7 @@
   height: 28px;
   padding: 0 10px 0 8px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   cursor: pointer;
   white-space: nowrap;
@@ -47,7 +47,7 @@
 @media (hover: hover) and (pointer: fine) {
   .compareToggle:not(:disabled):hover,
   .backButton:hover {
-    border-color: rgba(10, 46, 115, 0.45);
+    border-color: color-mix(in srgb, var(--navy) 45%, transparent);
     background: var(--navy-wash);
   }
 }
@@ -108,7 +108,7 @@
   align-items: center;
   padding: 9px 12px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -213,7 +213,7 @@
   gap: 6px;
   max-width: 100%;
   padding: 3px 8px;
-  border: 1px solid rgba(10, 46, 115, 0.3);
+  border: 1px solid var(--navy-line);
   border-radius: 4px;
   background: var(--navy-wash);
   cursor: pointer;
@@ -256,7 +256,7 @@
   color: var(--ink-2);
 }
 .missChips.missChips > button[aria-pressed="true"] {
-  border-color: rgba(10, 46, 115, 0.3);
+  border-color: var(--navy-line);
   background: var(--navy-wash);
   color: var(--navy);
 }
@@ -278,7 +278,7 @@
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: none;
   cursor: pointer;
   color: var(--ink-2);
@@ -402,8 +402,8 @@
 .field select {
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   font: 400 13px/1 var(--sans);
   color: var(--ink);
@@ -415,8 +415,8 @@
   margin: 10px 6px 4px;
   padding: 0 8px;
   height: 30px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   color: var(--ink-3);
 }
 .search input {
@@ -452,7 +452,7 @@
   column-gap: 10px;
   align-items: center;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   cursor: pointer;
   font-size: 13px;
   line-height: 17px;

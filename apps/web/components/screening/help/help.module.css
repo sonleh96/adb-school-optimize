@@ -9,7 +9,7 @@
   text-decoration-line: underline;
   text-decoration-style: dotted;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: rgba(10, 46, 115, 0.55);
+  text-decoration-color: color-mix(in srgb, var(--navy) 55%, transparent);
   text-underline-offset: 3px;
   border-radius: 3px;
   transition:
@@ -28,11 +28,11 @@
 }
 .helpOn :global([data-xp][data-xp-block]) {
   text-decoration: none;
-  box-shadow: -8px 0 0 -6px rgba(10, 46, 115, 0.55);
+  box-shadow: -8px 0 0 -6px color-mix(in srgb, var(--navy) 55%, transparent);
 }
 .helpOn :global([data-region="rule-switch"] [data-xp]) {
   text-decoration: none;
-  outline: 1px dashed rgba(10, 46, 115, 0.5);
+  outline: 1px dashed color-mix(in srgb, var(--navy) 50%, transparent);
   outline-offset: -2px;
 }
 .helpOn :global([data-region="rule-switch"] [data-xp][aria-pressed="true"]) {
@@ -76,7 +76,7 @@
   font: 500 12.5px/16px var(--sans);
   color: var(--navy);
   text-decoration: underline;
-  text-decoration-color: rgba(10, 46, 115, 0.3);
+  text-decoration-color: var(--navy-line);
   text-underline-offset: 3px;
 }
 :is(.card, .drawer) .quietLink {
@@ -147,7 +147,7 @@
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 5px 5px 5px 12px;
-  border-radius: 8px;
+  border-radius: var(--r-box);
   background: var(--ink);
   color: #fff;
   font-size: 13px;
@@ -206,7 +206,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   padding: 12px 18px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--edge);
   border-top: 3px solid var(--navy);
   border-radius: 4px;
   background: var(--panel);
@@ -364,8 +364,8 @@
   width: 400px;
   overflow: hidden;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow);
   transition:
     opacity 200ms var(--ease-out),
@@ -393,8 +393,8 @@
   height: 32px;
   margin: 12px 20px 2px;
   padding: 0 10px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
   color: var(--ink-3);
 }
 .search:focus-within {
@@ -484,8 +484,8 @@
   position: fixed;
   z-index: 9;
   pointer-events: none;
-  border: 2px solid var(--navy, #0a2e73);
-  border-radius: 6px;
+  border: 2px solid var(--navy, #002569);
+  border-radius: var(--r-box);
 }
 
 /* ---------- narrow: the help card is a sheet from the bottom edge, the glossary a full-height sheet ---------- */
