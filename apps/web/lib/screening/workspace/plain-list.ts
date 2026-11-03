@@ -55,11 +55,18 @@ export function plainRows(
 }
 
 /**
+ * A cell a spreadsheet could read as a formula, as the API's own file guards it (`looks_like_formula` in
+ * services/api/app/screening_export.py): it starts with a tab or a carriage return, or its first character after any
+ * whitespace is =, +, - or @. Python's whitespace also holds the separators U+001C to U+001F and U+0085.
+ */
+const FORMULA = /^(?:[\t\r]|[\s\x1c-\x1f\x85]*[=+\-@])/;
+
+/**
  * One CSV cell (RFC 4180): quoted when it holds a comma, a quote or a line break. A cell a spreadsheet would read as a
- * formula (it starts with =, +, - or @) is kept as text by a leading apostrophe.
+ * formula is kept as text by a leading apostrophe, whatever cleaned the text before it.
  */
 function cell(text: string): string {
-  const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  const safe = FORMULA.test(text) ? `'${text}` : text;
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
