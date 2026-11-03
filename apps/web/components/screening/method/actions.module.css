@@ -8,8 +8,8 @@
   gap: 10px;
   height: 34px;
   padding: 0 12px 0 14px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   box-shadow: var(--shadow);
   cursor: pointer;
@@ -74,7 +74,7 @@
   height: 34px;
   padding: 0 14px;
   border: 1px solid color-mix(in srgb, var(--navy) 45%, transparent);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   box-shadow: var(--shadow);
   cursor: pointer;
@@ -115,7 +115,7 @@
   place-items: center;
   pointer-events: auto;
   background: var(--panel);
-  border-left: 1px solid var(--hair);
+  border-left: 1px solid var(--edge);
 }
 
 /* The workspace sets every button's colour to inherit; this one keeps its own. */

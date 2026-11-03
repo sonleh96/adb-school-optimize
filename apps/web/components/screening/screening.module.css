@@ -152,7 +152,7 @@
   left: 8px;
   z-index: 60;
   padding: 9px 14px;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--navy);
   color: #fff;
   font: 500 13px/1 var(--sans);
@@ -226,8 +226,8 @@
   line-height: 16px;
   color: var(--ink-2);
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
 }
 .mapLoading {
   display: grid;
@@ -237,9 +237,9 @@
 
 .panel {
   background: var(--panel);
-  border: 1px solid var(--hair);
+  border: 1px solid var(--edge);
   box-shadow: var(--shadow);
-  border-radius: 8px;
+  border-radius: var(--r-panel);
 }
 
 /* ---------- the column: masthead, rule, tabs, list ---------- */
@@ -334,7 +334,7 @@
   flex: none;
   padding: 2px 8px 3px 10px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   font: 500 12.5px/17px var(--sans);
@@ -388,7 +388,7 @@
   grid-template-columns: 1fr 1fr;
   margin-top: 8px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   padding: 3px;
   gap: 3px;
 }
@@ -440,7 +440,7 @@
 .statement {
   margin: 8px 0 0;
   padding: 7px 10px 8px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: var(--navy-wash);
   font-size: 13px;
   line-height: 18px;
@@ -472,8 +472,8 @@
   display: flex;
   pointer-events: auto;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow-pop);
   transform-origin: top left;
   transition:
@@ -515,7 +515,7 @@
   width: 100%;
   padding: 8px 8px 9px 6px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   text-align: left;
   cursor: pointer;
@@ -716,7 +716,7 @@
   margin: -5px 0;
   padding: 0 10px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   font: 500 12.5px/1 var(--sans);
@@ -936,7 +936,7 @@
   gap: 2px;
   padding: 2px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
 }
 .segmented button {
   padding: 1px 10px;
@@ -1245,8 +1245,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .retryButton {
   height: 34px;
   padding: 0 14px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   box-shadow: var(--shadow);
   white-space: nowrap;
@@ -1673,7 +1673,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   cursor: pointer;
   color: var(--ink-2);
@@ -1803,7 +1803,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .why {
   margin: 0 16px 16px;
   padding: 12px 14px 14px;
-  border-radius: 8px;
+  border-radius: var(--r-box);
   background: var(--navy-wash);
   box-shadow: inset 3px 0 0 var(--navy);
 }
@@ -1834,7 +1834,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   margin-top: 10px;
   padding: 9px 12px 4px;
   border: 1px solid color-mix(in srgb, var(--navy) 14%, transparent);
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: var(--panel);
 }
 .needHead {
@@ -1894,7 +1894,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   margin-top: 8px;
   padding: 8px 12px;
   border: 1px solid color-mix(in srgb, var(--navy) 14%, transparent);
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: var(--panel);
   font-size: 13px;
   line-height: 18px;
@@ -2112,7 +2112,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .cardLoading {
   height: 220px;
   margin: 0 16px 16px;
-  border-radius: 8px;
+  border-radius: var(--r-box);
   background: var(--navy-wash);
 }
 .cardFailed {
@@ -2134,8 +2134,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   max-width: 280px;
   padding: 9px 11px 10px;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow);
   transition: opacity 120ms ease;
 }
@@ -2211,7 +2211,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   max-width: min(420px, calc(100% - 32px));
   margin: 0;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: var(--ink);
   color: #fff;
   font-size: 12.5px;
@@ -2632,7 +2632,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   height: 32px;
   padding: 0 10px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   font: 500 13px/1 var(--sans);

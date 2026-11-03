@@ -45,7 +45,7 @@
   gap: 10px;
   height: 40px;
   padding: 0 14px;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   cursor: pointer;
   font: 500 14px/1 var(--sans);
   white-space: nowrap;
@@ -152,7 +152,7 @@
   margin: -4px -6px -4px 0;
   padding: 3px 6px 4px 8px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   cursor: pointer;
   font: 500 12.5px/17px var(--sans);
@@ -255,7 +255,7 @@
   margin: 0;
   padding: 4px 10px 5px;
   border: 1px solid var(--hair);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   font: 500 13px/17px var(--sans);
@@ -316,7 +316,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--navy-wash);
   box-shadow:
     -12px 0 0 0 var(--navy-wash),
@@ -468,7 +468,7 @@
 .drift {
   margin: 14px 0 0;
   padding: 9px 11px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: rgba(21, 24, 29, 0.05);
   font-size: 12.5px;
   line-height: 18px;
@@ -582,8 +582,8 @@
   height: 44px;
   padding: 0 6px;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow);
 }
 :global([data-card-docked]) .mapbar {
@@ -600,7 +600,7 @@
   height: 32px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   cursor: pointer;
   font: 500 13px/1 var(--sans);
@@ -698,8 +698,8 @@
   gap: 6px;
   height: 32px;
   padding: 0 10px;
-  border: 1px solid var(--hair);
-  border-radius: 6px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
   background: var(--panel);
   cursor: pointer;
   font: 500 13px/1 var(--sans);
@@ -721,8 +721,8 @@
   min-width: 220px;
   padding: 6px;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow-pop);
   transform-origin: top right;
   transition:
@@ -744,7 +744,7 @@
   height: 36px;
   padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: transparent;
   box-shadow: none;
   text-align: left;
@@ -879,8 +879,8 @@
     margin: 8px 8px 8px 48px;
     padding: 6px 6px 6px 12px;
     background: var(--panel);
-    border: 1px solid var(--hair);
-    border-radius: 8px;
+    border: 1px solid var(--edge);
+    border-radius: var(--r-box);
     box-shadow: var(--shadow);
   }
   .mapBarStep .quiet,

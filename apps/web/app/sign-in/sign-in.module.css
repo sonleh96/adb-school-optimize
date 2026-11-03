@@ -36,8 +36,8 @@
 .card {
   width: min(100%, 400px);
   padding: 24px 32px 32px;
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -85,7 +85,7 @@
 .note {
   margin: 18px 0 0;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
 }
 .sent {
   background: var(--navy-wash);
@@ -127,7 +127,7 @@
   height: 40px;
   margin-top: 8px;
   border: 1px solid var(--navy);
-  border-radius: 6px;
+  border-radius: var(--r-control);
   background: var(--navy);
   cursor: pointer;
   font: 500 13.5px/1 var(--sans);

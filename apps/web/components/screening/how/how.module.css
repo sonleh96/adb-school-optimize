@@ -153,7 +153,7 @@
 .foot {
   margin-top: 36px;
   padding: 14px 16px;
-  border-radius: 6px;
+  border-radius: var(--r-box);
   background: rgba(21, 24, 29, 0.045);
   font-size: 13px;
   line-height: 19px;

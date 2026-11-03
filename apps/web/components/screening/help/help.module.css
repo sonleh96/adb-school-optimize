@@ -147,7 +147,7 @@
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 5px 5px 5px 12px;
-  border-radius: 8px;
+  border-radius: var(--r-box);
   background: var(--ink);
   color: #fff;
   font-size: 13px;
@@ -206,7 +206,7 @@
   overflow-y: auto;
   scrollbar-width: thin;
   padding: 12px 18px;
-  border: 1px solid var(--hair);
+  border: 1px solid var(--edge);
   border-top: 3px solid var(--navy);
   border-radius: 4px;
   background: var(--panel);
@@ -364,8 +364,8 @@
   width: 400px;
   overflow: hidden;
   background: var(--panel);
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
   box-shadow: var(--shadow);
   transition:
     opacity 200ms var(--ease-out),
@@ -485,7 +485,7 @@
   z-index: 9;
   pointer-events: none;
   border: 2px solid var(--navy, #002569);
-  border-radius: 6px;
+  border-radius: var(--r-box);
 }
 
 /* ---------- narrow: the help card is a sheet from the bottom edge, the glossary a full-height sheet ---------- */
