@@ -13,6 +13,11 @@
  *                                                                                       -> "Escape closes the panel..."
  *  9. A chosen province leaves its schools a small cluster on a map of the whole country, or Clear leaves the map
  *     zoomed on a province no longer chosen                                             -> "a province frames the map..."
+ * 10. A choice leaves the fields open, so on a phone they push the list down; or folding them loses the line that
+ *     says what is chosen, the button that opens them again, or the keyboard's place    -> "a choice folds..."
+ * 11. Moving through a list with the arrow keys folds it at the first key, before the reader reaches the province
+ *     they want, or Enter does not fold it                                              -> "the arrow keys..."
+ * 12. Typing a name folds the fields mid-word, or Enter leaves them open                -> "a choice folds..."
  */
 import type { Page } from "@playwright/test";
 
@@ -71,12 +76,15 @@ test("the district list follows the province, and a new province starts with all
   await openWorkspace(page);
   await findButton(page).click();
   await province(page).selectOption("North Province");
+  await findButton(page).click();
   await expect(district(page).locator("option")).toHaveText(["All districts", "North One", "North Two"]);
   await district(page).selectOption("North Two");
   expect(search(page)).toBe("?prov=North+Province&dist=North+Two");
   await expect(status(page)).toHaveText(/ are in North Two, North Province\.$/);
 
+  await findButton(page).click();
   await province(page).selectOption("South Province");
+  await findButton(page).click();
   await expect(district(page)).toHaveValue("");
   await expect(district(page).locator("option")).toHaveText(["All districts", "South One", "South Two"]);
   expect(search(page)).toBe("?prov=South+Province");
@@ -87,6 +95,7 @@ test("a district chosen first chooses its province too", async ({ page }) => {
   await findButton(page).click();
   await expect(district(page).locator("optgroup")).toHaveCount(3);
   await district(page).selectOption({ label: "South One" });
+  await findButton(page).click();
   await expect(province(page)).toHaveValue("South Province");
   await expect(district(page)).toHaveValue("South One");
   expect(search(page)).toBe("?prov=South+Province&dist=South+One");
@@ -109,6 +118,7 @@ test("when nothing matches, the screen says so in words, and Clear shows every s
   await openWorkspace(page);
   await findButton(page).click();
   await province(page).selectOption("East Province");
+  await findButton(page).click();
   await schoolName(page).fill("Sample School 08");
   await expect(shownRows(page)).toHaveCount(0);
   await expect(status(page)).toHaveText(
@@ -191,4 +201,45 @@ test("a province frames the map on its schools, and Clear frames the country aga
   await expect.poll(spread, { timeout: 10_000 }).toBeGreaterThan(country * 1.5);
   await page.locator("[data-region=find-status]").getByRole("button", { name: "Clear" }).click();
   await expect.poll(spread, { timeout: 10_000 }).toBeLessThan(country * 1.2);
+});
+
+test("a choice folds the fields away, and the line that says what is chosen and Find stay", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await findButton(page).click();
+  await province(page).selectOption("South Province");
+  await expect(panel(page)).toHaveCount(0);
+  await expect(status(page)).toHaveText(/ are in South Province\.$/);
+  await expect(findButton(page)).toBeFocused();
+  await expect(findButton(page)).toHaveAttribute("data-active", "true");
+
+  // Find opens them again as they were left. Typing a name narrows the list and keeps them open; Enter folds them.
+  await findButton(page).click();
+  await expect(province(page)).toHaveValue("South Province");
+  await schoolName(page).fill("sample");
+  await expect(panel(page)).toBeVisible();
+  await schoolName(page).press("Enter");
+  await expect(panel(page)).toHaveCount(0);
+  await expect(findButton(page)).toBeFocused();
+  expect(search(page)).toBe("?prov=South+Province&q=sample");
+});
+
+test("the arrow keys move through a list without folding it, and Enter folds it", async ({ page }) => {
+  await openWorkspace(page);
+  await findButton(page).click();
+  await expect(province(page)).toBeFocused();
+  // On Windows and Linux an arrow key changes a closed list's value at once: the key, then the change. macOS opens
+  // the list instead, so the two come one after the other here, the same on every system.
+  for (const name of ["East Province", "North Province"]) {
+    await province(page).dispatchEvent("keydown", { key: "ArrowDown" });
+    await province(page).selectOption(name);
+    await expect(panel(page)).toBeVisible();
+  }
+  await expect(shownRows(page)).toHaveCount(inProvince("North Province").length);
+
+  await province(page).press("Enter");
+  await expect(panel(page)).toHaveCount(0);
+  await expect(findButton(page)).toBeFocused();
+  expect(search(page)).toBe("?prov=North+Province");
 });

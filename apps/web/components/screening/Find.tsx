@@ -7,7 +7,7 @@
  * downloads and the printout all carry it. A filter hides rows and fades marks; it never renumbers a rank.
  */
 import { Search } from "lucide-react";
-import { useId, useLayoutEffect, useRef } from "react";
+import { type KeyboardEvent, useId, useLayoutEffect, useRef } from "react";
 
 import type { BoundCopy } from "@/lib/screening/copy";
 import type { FilterOptions } from "@/lib/screening/filters";
@@ -41,22 +41,47 @@ function pairOf(value: string): [string, string] | null {
   }
 }
 
-/** The three fields, for the plain screen's panel and the method details' filter. */
+/**
+ * The three fields, for the plain screen's panel and the method details' filter. `onChosen` hears that a choice is
+ * made: a province or district picked with the pointer or a finger, or Enter in any field. A list moved through with
+ * the arrow keys changes at each key on some systems, so a key's change is not a choice until Enter.
+ */
 export function FindFields({
   copy,
   options,
   value,
   onChange,
+  onChosen,
 }: {
   copy: BoundCopy;
   options: FilterOptions;
   value: FindValue;
   onChange: (patch: FindPatch) => void;
+  onChosen?: () => void;
 }) {
   const ids = useId();
   const { LAYOUT } = copy;
   const shown = (text: string) => copy.cleanName(text);
   const districts = value.prov !== null ? (options.places.get(value.prov) ?? []) : null;
+  // The last thing that moved a list: a key, or the pointer.
+  const byKey = useRef(false);
+  const chosen = (picked: string) => {
+    if (picked !== "" && !byKey.current) onChosen?.();
+  };
+  const listEvents = {
+    onPointerDown: () => {
+      byKey.current = false;
+    },
+    onKeyDown: (event: KeyboardEvent<HTMLSelectElement>) => {
+      if (event.key !== "Enter") {
+        byKey.current = true;
+        return;
+      }
+      if (event.currentTarget.value === "" || !onChosen) return;
+      event.preventDefault();
+      onChosen();
+    },
+  };
   return (
     <>
       <label className={styles.findField} htmlFor={`${ids}-prov`}>
@@ -64,8 +89,12 @@ export function FindFields({
         <select
           id={`${ids}-prov`}
           value={value.prov ?? ""}
+          {...listEvents}
           // A new province starts with all its districts.
-          onChange={(event) => onChange({ prov: event.target.value || null, dist: null })}
+          onChange={(event) => {
+            onChange({ prov: event.target.value || null, dist: null });
+            chosen(event.target.value);
+          }}
         >
           <option value="">{LAYOUT.allProvinces}</option>
           {options.provinces.map((province) => (
@@ -80,11 +109,16 @@ export function FindFields({
         <select
           id={`${ids}-dist`}
           value={districts ? (value.dist ?? "") : ""}
+          {...listEvents}
           onChange={(event) => {
-            const chosen = event.target.value;
-            if (districts) return onChange({ dist: chosen || null });
-            const pair = pairOf(chosen);
-            if (pair) onChange({ prov: pair[0], dist: pair[1] });
+            const picked = event.target.value;
+            if (districts) onChange({ dist: picked || null });
+            else {
+              const pair = pairOf(picked);
+              if (!pair) return;
+              onChange({ prov: pair[0], dist: pair[1] });
+            }
+            chosen(picked);
           }}
         >
           <option value="">{LAYOUT.allDistricts}</option>
@@ -119,6 +153,13 @@ export function FindFields({
           spellCheck={false}
           enterKeyHint="search"
           onChange={(event) => onChange({ q: event.target.value })}
+          // Typing narrows the list as it goes; Enter, or a phone's Search key, says the name is done.
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+            if (event.currentTarget.value.trim() === "" || !onChosen) return;
+            event.preventDefault();
+            onChosen();
+          }}
         />
       </label>
     </>
@@ -168,7 +209,7 @@ export function FindToggle({
 /**
  * The panel the button opens, under its line. Opened from the button, it takes the keyboard into its first field as
  * it appears (`focusFirst`, which `onFocused` then clears); the same panel shown again on the other tab leaves focus
- * where it is. Escape closes it and hands focus back to the button.
+ * where it is. Escape, or a choice (see `FindFields`), closes it and hands focus back to the button.
  */
 export function FindPanel({
   copy,
@@ -209,7 +250,9 @@ export function FindPanel({
       }}
     >
       <legend className={styles.findLegend}>{copy.LAYOUT.findAria}</legend>
-      <FindFields copy={copy} options={options} value={value} onChange={onChange} />
+      {/* A choice folds the fields away, so the list is not pushed down on a phone: the line that says what is
+          chosen, with Clear, and the button that opens them again stay. */}
+      <FindFields copy={copy} options={options} value={value} onChange={onChange} onChosen={onClose} />
     </fieldset>
   );
 }
