@@ -19,6 +19,7 @@ import {
   searchWithLayers,
   stateFromSearch,
 } from "./machine";
+import { type BrowserHistory, keepWorkspaceEntry } from "../workspace/store";
 
 export interface LayerSnapshot {
   readonly state: LayerState;
@@ -41,9 +42,14 @@ export interface LayerStore {
   /** Read the URL and the memory once, before the first paint, and keep the URL in step from then on. */
   attach(
     location: Pick<Location, "search" | "pathname" | "hash">,
-    history: Pick<History, "replaceState">,
+    history: Pick<BrowserHistory, "state" | "replaceState">,
     storage: Pick<Storage, "getItem" | "setItem"> | null
   ): void;
+  /**
+   * Write the layers' keys into the URL again after Back or Forward. The layers stay where they are, and the entry
+   * the browser moved to may hold an older step's keys.
+   */
+  rewriteUrl(): void;
 }
 
 const sameCatalog = (a: Catalog | null, b: Catalog) =>
@@ -60,9 +66,22 @@ export function createLayerStore(): LayerStore {
   const listeners = new Set<() => void>();
   let env: {
     location: Pick<Location, "search" | "pathname" | "hash">;
-    history: Pick<History, "replaceState">;
+    history: Pick<BrowserHistory, "state" | "replaceState">;
     storage: Pick<Storage, "getItem" | "setItem"> | null;
   } | null = null;
+
+  /** The layers' keys into the URL, if it says anything else, keeping the workspace's part of the history entry. */
+  function writeUrl(state: LayerState, memory: Memory) {
+    if (!env) return;
+    const { location, history } = env;
+    const search = searchWithLayers(location.search, state, memory);
+    if (search !== location.search)
+      history.replaceState(
+        keepWorkspaceEntry(history.state),
+        "",
+        `${location.pathname}${search}${location.hash}`
+      );
+  }
 
   function commit(next: LayerSnapshot) {
     if (
@@ -76,12 +95,9 @@ export function createLayerStore(): LayerStore {
     const previous = snap;
     snap = next;
     if (env) {
-      const { location, history, storage } = env;
-      if (next.state !== previous.state || next.memory.seen !== previous.memory.seen) {
-        const search = searchWithLayers(location.search, next.state, next.memory);
-        if (search !== location.search)
-          history.replaceState(null, "", `${location.pathname}${search}${location.hash}`);
-      }
+      const { storage } = env;
+      if (next.state !== previous.state || next.memory.seen !== previous.memory.seen)
+        writeUrl(next.state, next.memory);
       if (next.memory !== previous.memory && storage) {
         try {
           storage.setItem(MEMORY_KEY, JSON.stringify(next.memory));
@@ -112,6 +128,7 @@ export function createLayerStore(): LayerStore {
       if (snap.views && snap.views.join(" ") === views.join(" ")) return;
       commit({ ...snap, views, state: revalidateViews(snap.state, views) });
     },
+    rewriteUrl: () => writeUrl(snap.state, snap.memory),
     attach(location, history, storage) {
       if (env) return;
       env = { location, history, storage };

@@ -120,10 +120,19 @@ describe("the store", () => {
   const browser = (search: string) => {
     const location = { search, pathname: "/screening", hash: "" };
     const writes: string[] = [];
+    // These tests open nothing that covers the list, so the store only ever rewrites the one entry.
     const history = {
-      replaceState: (_data: unknown, _unused: string, next: string | URL | null | undefined) => {
+      state: null as unknown,
+      replaceState: (data: unknown, _unused: string, next: string | URL | null | undefined) => {
+        history.state = data;
         writes.push(String(next));
         location.search = String(next).replace(/^\/screening/, "");
+      },
+      pushState: () => {
+        throw new Error("no entry is pushed here");
+      },
+      back: () => {
+        throw new Error("no entry is left here");
       },
     };
     return { location, history, writes };

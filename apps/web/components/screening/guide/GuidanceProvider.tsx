@@ -67,12 +67,14 @@ export function GuidanceProvider({ children }: { children: ReactNode }) {
       storage = null;
     }
     store.attach(window.location, window.history, storage);
+    // Back and Forward can bring back an entry written at an earlier step; the guides stay where they are.
+    window.addEventListener("popstate", store.rewriteUrl);
     // The store now decides the rail's width; the boot script's guess has done its job.
     document.documentElement.style.removeProperty("--boot-rail");
-    if (!TEST_HOOKS) return;
-    window.__screeningGuide = { snapshot: store.snapshot, dispatch: store.dispatch };
+    if (TEST_HOOKS) window.__screeningGuide = { snapshot: store.snapshot, dispatch: store.dispatch };
     return () => {
-      delete window.__screeningGuide;
+      window.removeEventListener("popstate", store.rewriteUrl);
+      if (TEST_HOOKS) delete window.__screeningGuide;
     };
   }, [store]);
 
