@@ -300,6 +300,31 @@ describe("an additive API change", () => {
     expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
   });
 
+  // The versions' load times only date the line beside the caveat, so no shape of them may block the page.
+  it.each([
+    ["missing", (body: Record<string, unknown>) => delete body.input_versions],
+    ["holding a bad entry", (body: { input_versions: unknown[] }) => body.input_versions.push(7)],
+    [
+      "with a date that is no date",
+      (body: { input_versions: Array<Record<string, unknown>> }) => {
+        body.input_versions[0].created_at = "not a date";
+      },
+    ],
+  ])("still reads the rules with the data versions %s, and reads no load time", (_shape, change) => {
+    const body = copy(readFixture("rules.json")) as never;
+    (change as (b: never) => void)(body);
+    forgetWarnings();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const parsed = parseWith(rulesResponse, body, "Screening rules");
+      expect(parsed.rules.length).toBeGreaterThan(0);
+      expect(parsed.input_versions).toBeUndefined();
+    } finally {
+      warn.mockRestore();
+      forgetWarnings();
+    }
+  });
+
   it("reads the revised paper's roles and provenance, and tolerates a rule that carries neither", () => {
     const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
     body.rules[0].policy_role = "urgency_sensitivity";

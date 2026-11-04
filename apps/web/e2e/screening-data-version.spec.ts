@@ -85,6 +85,20 @@ test.describe("at 1440 by 900", () => {
   });
 });
 
+test("rules that name no data versions still load the list, without the version line", async ({ page }) => {
+  await page.route(/\/api\/v1\/screening\/rules(\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.json();
+    delete body.input_versions;
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/screening");
+  await waitForMap(page);
+  await expect(page.locator("ol[aria-label='The list'] button").first()).toBeVisible();
+  await expect(page.locator("[data-region=caveat]")).toBeVisible();
+  await expect(page.locator("[data-region=data-version]")).toHaveCount(0);
+});
+
 for (const size of [
   { width: 390, height: 844 },
   { width: 360, height: 740 },

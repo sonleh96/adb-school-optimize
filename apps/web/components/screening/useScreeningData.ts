@@ -178,7 +178,7 @@ export function useScreeningData(): ScreeningData {
       compare: pairCompare,
       ruleNames,
     });
-    const version = rules.data?.input_versions.find((v) => v.input_version === data.run.input_version);
+    const version = rules.data?.input_versions?.find((v) => v.input_version === data.run.input_version);
     return {
       rule: shownId,
       response: data,
