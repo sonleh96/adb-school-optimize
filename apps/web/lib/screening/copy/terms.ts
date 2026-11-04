@@ -139,6 +139,13 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       help: "The category describes how remote the school's location is, not disability access. Highly accessible counts 0, accessible 0.2, moderately accessible 0.45, remote 0.7, very remote 0.9 and extremely remote 1.0.",
       where: "School need breakdown, reason sentences, filters",
     },
+    part_standing: {
+      technical: "Standing of a recorded need part within the rule's list",
+      label: "Compared with the list",
+      line: "How the school's record for this part compares with the other schools in the list.",
+      help: "It counts the schools the method puts in order, those with one rank and those with a range. The line names the largest of three groups: schools with more, schools with fewer, and schools with exactly the same, which count as neither more nor fewer. A share is rounded down to whole tenths, so 85 in 100 reads as 8 in 10. With fewer than 20 other schools in the list, the line gives the count instead. Power and water, and remoteness, are compared on the research team's scale. The line describes the record, not the school's real condition.",
+      where: "Under each part of school need on the school card",
+    },
     area_context: {
       technical: "Area context, A",
       label: "District context",
