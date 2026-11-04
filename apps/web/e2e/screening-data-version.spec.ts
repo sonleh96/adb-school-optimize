@@ -24,7 +24,7 @@ const runDay = new Date(RESULTS.run.created_at).toLocaleDateString("en-GB", {
   month: "long",
   year: "numeric",
 });
-const LINE = `Data version ${RESULTS.run.input_version}, loaded on ${runDay}.`;
+const LINE = `Data version ${RESULTS.run.input_version}, loaded ${runDay}.`;
 /** The version a line names: the word after "data version", without the comma or full stop that may end it. */
 const versionIn = (text: string) => /data version (\S+?)(?=[,.]?(?:\s|$))/i.exec(text)?.[1];
 

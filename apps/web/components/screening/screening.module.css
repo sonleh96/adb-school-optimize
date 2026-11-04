@@ -1439,7 +1439,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
    shows both instead (the narrow layout). */
 .dataVersion {
   margin: 2px 0 0;
-  font-size: 12px;
+  font-size: 11.5px; /* One line at 360 px wide, whatever the month */
   line-height: 16px;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
