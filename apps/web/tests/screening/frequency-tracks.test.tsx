@@ -143,6 +143,7 @@ describe("the band around the line", () => {
 
   it("is one standard error either side under the circulated test", async () => {
     const drawn = await everyDrawing("additive_u");
+    expect(drawn.length).toBeGreaterThan(0);
     for (const d of drawn) {
       expect(d.band!.lo).toBeCloseTo(0.8 - 0.005656854249492379, 12);
       expect(d.band!.hi).toBeCloseTo(0.8 + 0.005656854249492379, 12);
