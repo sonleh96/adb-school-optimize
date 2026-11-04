@@ -578,6 +578,113 @@ def test_the_provenance_states_the_margin_each_rule_is_judged_by(api, loaded_wit
     assert "less than two standard errors above the threshold" in revised["threshold_adjacent_rule"]
 
 
+# ---------------------------------------------------------------------------------------------
+# The frequencies behind the flag, one per setting, so a reader sees how close a school is to the line.
+# ---------------------------------------------------------------------------------------------
+
+
+def stored_frequencies(connection, input_version: str, rule_id: str) -> dict[str, list[dict]]:
+    """The stored rows of one set, by school, in the order of the set's setting positions."""
+    rows = connection.execute(
+        "select f.source_school_name, f.setting_id, f.lower_top20_frequency "
+        "from screening_persistence_frequencies f join screening_persistence_settings s "
+        "using (input_version, rule_id, setting_id) "
+        "where f.input_version = %s and f.rule_id = %s order by f.source_school_name, s.setting_position",
+        (input_version, rule_id),
+    ).fetchall()
+    found: dict[str, list[dict]] = {}
+    for name, setting_id, frequency in rows:
+        found.setdefault(name, []).append({"setting_id": setting_id, "frequency": frequency})
+    return found
+
+
+@pytest.mark.parametrize("rule_id", PERSISTENCE_RULES)
+def test_each_entry_serves_the_stored_frequencies_in_the_sets_setting_order(
+    api, connection, loaded, rule_id
+):  # API42
+    stored = stored_frequencies(connection, loaded.input_version, rule_id)
+    body = fetch(api, f"{API}/results", rule=rule_id)
+    order = [s["setting_id"] for s in body["persistence"]["settings"]]
+
+    # The precondition: the settings are not in text order, so serving them sorted by id would fail.
+    assert order != sorted(order) and len(stored) == len(EXPERIMENT_ROWS)
+    served = {
+        r["school"]["source_school_name"]: r["top20_frequencies"]
+        for r in body["rows"]
+        if r["top20_frequencies"] is not None
+    }
+    assert served == stored
+    for frequencies in served.values():
+        assert [f["setting_id"] for f in frequencies] == order
+    for name, frequencies in stored.items():
+        by_key = fetch(api, f"{API}/schools/by-key/{quote(school_key(loaded.input_version, name), safe='')}")
+        by_link = fetch(api, f"{API}/schools/{loaded.school_ids[name]}")["schools"]
+        for detail in (by_key, *by_link):
+            entry = next(e for e in detail["rules"] if e["rule"]["rule_id"] == rule_id)
+            assert entry["top20_frequencies"] == frequencies, name
+
+
+def test_only_the_two_rules_carry_the_frequencies_and_a_school_outside_the_experiment_has_null(
+    api, loaded
+):  # API42, API34
+    outside = AWK[0]
+    assert outside not in EXPERIMENT_ROWS and outside not in EXPERIMENT_ROWS_NO_U
+
+    for rule_id in RULES:
+        rows = {
+            r["school"]["source_school_name"]: r for r in fetch(api, f"{API}/results", rule=rule_id)["rows"]
+        }
+        if rule_id in PERSISTENCE_RULES:
+            assert rows[outside]["top20_frequencies"] is None, rule_id
+            assert rows[AWK[7]]["top20_frequencies"], rule_id
+        else:
+            assert all("top20_frequencies" not in r for r in rows.values()), rule_id
+    for name in (outside, AWK[7]):
+        detail = fetch(api, f"{API}/schools/by-key/{quote(school_key(loaded.input_version, name), safe='')}")
+        carrying = {e["rule"]["rule_id"] for e in detail["rules"] if "top20_frequencies" in e}
+        assert sorted(carrying) == sorted(PERSISTENCE_RULES), name
+        assert "top20_frequencies" not in json.dumps(detail["inputs"]) + json.dumps(detail["school"])
+    assert "top20_frequencies" not in json.dumps(fetch(api, f"{API}/compare", a=CIRCULATED, b=REVISED))
+
+
+def test_a_version_without_the_numbers_has_null_frequencies_never_zeros(
+    api, loaded_without_persistence
+):  # API42
+    for rule_id in PERSISTENCE_RULES:
+        rows = fetch(api, f"{API}/results", rule=rule_id)["rows"]
+        assert rows and {json.dumps(r["top20_frequencies"]) for r in rows} == {"null"}, rule_id
+
+
+@pytest.mark.parametrize("dataset", ["loaded", "loaded_with_margins"])
+def test_the_flag_and_the_lowest_frequency_follow_the_frequencies_served_beside_them(
+    api, request, dataset
+):  # API42, API33, API36
+    request.getfixturevalue(dataset)
+    checked = 0
+    for rule_id in PERSISTENCE_RULES:
+        body = fetch(api, f"{API}/results", rule=rule_id)
+        threshold = body["persistence"]["threshold"]
+        for row in body["rows"]:
+            frequencies = row["top20_frequencies"]
+            if frequencies is None:
+                assert (row["persistent_candidate"], row["lowest_top20_frequency"]) == (None, None)
+                continue
+            values = [f["frequency"] for f in frequencies]
+            assert row["persistent_candidate"] is all(v >= threshold for v in values)
+            assert row["lowest_top20_frequency"] == min(values)
+            checked += 1
+    assert checked >= 2 * len(EXPERIMENT_ROWS)
+
+
+def test_the_frequencies_say_they_are_shares_of_draws_not_probabilities(api):  # API42
+    schemas = api.app.openapi()["components"]["schemas"]
+    caveat = "A frequency is a share of draws under declared scenarios, not a probability that a school needs help."
+
+    for model in ("ListedRowWithPersistenceOut", "SchoolRuleResultWithPersistenceOut"):
+        assert caveat in schemas[model]["properties"]["top20_frequencies"]["description"], model
+    assert caveat in schemas["PersistenceFrequencyOut"]["properties"]["frequency"]["description"]
+
+
 def test_a_version_without_the_numbers_has_null_flags_and_no_provenance(
     api, loaded_without_persistence
 ):  # API33, API35

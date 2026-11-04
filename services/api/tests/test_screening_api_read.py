@@ -501,6 +501,7 @@ def test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_in
                 "persistent_candidate",
                 "lowest_top20_frequency",
                 "threshold_adjacent",
+                "top20_frequencies",
             )
         }
         assert entry["run"] == listing["run"]

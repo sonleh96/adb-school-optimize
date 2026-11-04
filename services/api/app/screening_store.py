@@ -296,6 +296,14 @@ class Persistence:
         found = self.frequencies.get(source_school_name)
         return None if found is None else min(found)
 
+    def setting_frequencies(self, source_school_name: str) -> tuple[tuple[str, float], ...] | None:
+        """Each setting's id with the school's frequency, in the order of ``set.settings``. None when the school was not
+        in the experiment."""
+        found = self.frequencies.get(source_school_name)
+        if found is None:
+            return None
+        return tuple(zip((s.setting_id for s in self.set.settings), found, strict=True))
+
     def is_threshold_adjacent(self, source_school_name: str) -> bool | None:
         """Persistent, and within the rule's band above the threshold. None when the school was not in the experiment."""
         found = self.frequencies.get(source_school_name)
