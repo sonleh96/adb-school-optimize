@@ -34,16 +34,20 @@ export interface FrequencyTracks {
 
 const percentAt = (fraction: number, digits: number): number => Number((fraction * 100).toFixed(digits));
 const written = (v: number): string => `${v}%`;
+// A percent to `digits` decimals, halves rounded up: 0.8105 is 81.1, where toFixed alone gives 81.0 from 81.04999...
+const fixedPercent = (fraction: number, digits: number): string =>
+  (Math.round(fraction * 10 ** (digits + 2) * (1 + Number.EPSILON)) / 10 ** digits).toFixed(digits);
 
 /**
  * A share as a percent, whole where that is true to it and to one or two decimals where rounding would carry it to
- * the other side of `line`: 0.7999 against 0.8 is "79.99%", never "80%".
+ * the other side of `line`: 0.7999 against 0.8 is "79.99%", never "80%". Within `near` of the line it keeps at least
+ * one decimal, so a school just above the line does not read as sitting on it: 0.8014 is "80.1%".
  */
-export function percentBeside(fraction: number, line: number): string {
+export function percentBeside(fraction: number, line: number, near = 0): string {
   const above = fraction >= line;
-  for (const digits of [0, 1, 2]) {
-    const v = percentAt(fraction, digits);
-    if (v >= percentAt(line, 4) === above) return written(v);
+  for (const digits of Math.abs(fraction - line) < near ? [1, 2] : [0, 1, 2]) {
+    const fixed = fixedPercent(fraction, digits);
+    if (Number(fixed) >= percentAt(line, 4) === above) return `${fixed}%`;
   }
   return written(percentAt(fraction, 4));
 }
@@ -69,7 +73,7 @@ export function frequencyTracks(
       index,
       frequency: found.frequency,
       reaches,
-      percent: percentBeside(found.frequency, threshold),
+      percent: percentBeside(found.frequency, threshold, test.band),
     });
   }
   // The flag says persistent exactly when every setting reaches the line. A drawing that says otherwise would

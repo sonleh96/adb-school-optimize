@@ -102,7 +102,9 @@ describe.each(TESTED)("under %s", (rule) => {
         const stated = /(\d+(?:\.\d+)?)% of runs/.exec(r.words);
         expect(stated, r.words).not.toBeNull();
         const digits = stated![1].split(".")[1]?.length ?? 0;
-        expect(Math.abs(Number(stated![1]) - r.mark * 100), r.words).toBeLessThanOrEqual(0.5 * 10 ** -digits);
+        expect(Math.abs(Number(stated![1]) - r.mark * 100), r.words).toBeLessThanOrEqual(
+          0.5 * 10 ** -digits + 1e-9
+        );
       }
     }
   });
@@ -135,10 +137,11 @@ describe("the band around the line", () => {
     }
     const below = inside.find((m) => m.mark === 0.79)!;
     expect(below.mark).toBeLessThan(below.line);
-    expect(below.words).toMatch(/^.*79% of runs, below the 80% line$/);
+    // Inside the band, a value keeps a decimal, so a school just off the line does not read as on it.
+    expect(below.words).toMatch(/\b79\.0% of runs, below the 80% line$/);
     const above = inside.find((m) => m.mark === 0.8105)!;
     expect(above.mark).toBeGreaterThanOrEqual(above.line);
-    expect(above.words).toMatch(/81% of runs, reaches the 80% line$/);
+    expect(above.words).toMatch(/\b81\.1% of runs, reaches the 80% line$/);
   });
 
   it("is one standard error either side under the circulated test", async () => {
@@ -153,16 +156,26 @@ describe("the band around the line", () => {
 
 describe("the words beside each mark", () => {
   it("words each value on the side of the line its mark is on", async () => {
-    // The circulated fixtures hold 0.7999, which rounds to 80% whole, and exactly 0.8, which reaches the line.
+    // The circulated fixtures hold 0.7999, which rounds to 80% whole, and exactly 0.8, which reaches the line. Both are
+    // inside the band, so they keep a decimal.
     const drawn = await everyDrawing("additive_u");
     const words = drawn.flatMap((d) => d.rows.map((r) => r.words));
     expect(words.some((w) => w.endsWith("79.99% of runs, below the 80% line"))).toBe(true);
-    expect(words.some((w) => w.endsWith("80% of runs, reaches the 80% line"))).toBe(true);
+    expect(words.some((w) => w.endsWith("80.0% of runs, reaches the 80% line"))).toBe(true);
     expect(percentBeside(0.7999, 0.8)).toBe("79.99%");
     expect(percentBeside(0.79996, 0.8)).toBe("79.996%");
     expect(percentBeside(0.8, 0.8)).toBe("80%");
     expect(percentBeside(0.818, 0.8)).toBe("82%");
     expect(percentBeside(0.7692, 0.8)).toBe("77%");
+    // Within the band (here the circulated test's, one standard error), a decimal stays: the preview data's two
+    // near-line schools under S are 0.8014 and 0.8034, which whole would both read as the line itself.
+    const se = 0.005656854249492379;
+    expect(percentBeside(0.8014, 0.8, se)).toBe("80.1%");
+    expect(percentBeside(0.8034, 0.8, se)).toBe("80.3%");
+    expect(percentBeside(0.8, 0.8, se)).toBe("80.0%");
+    expect(percentBeside(0.7999, 0.8, se)).toBe("79.99%");
+    expect(percentBeside(0.8105, 0.8, 2 * se)).toBe("81.1%");
+    expect(percentBeside(0.818, 0.8, se)).toBe("82%");
   });
 
   it("names each setting in plain words with its concentrations", async () => {
