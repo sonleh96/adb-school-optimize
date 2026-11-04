@@ -91,9 +91,10 @@ function persistentMethod(ruleId: PersistenceRule, test?: PersistenceTest): stri
     : `Persistent candidate: certain top-20 membership in ${how} of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.`;
 }
 
-// The three settings of the paper's test in plain words, from the one where the shares changed most (the lowest
-// concentrations) to the one where they changed least. Settings in another number or order are named by position.
-const SPREAD = ["Shares changed a lot", "Shares changed moderately", "Shares changed a little"] as const;
+// The three settings of the paper's test in plain words, from the one where the factors' weights changed most (the
+// lowest concentrations) to the one where they changed least. Settings in another number or order are named by
+// position. "Weights", because in the same figure a share is always a share of runs.
+const SPREAD = ["Weights changed a lot", "Weights changed moderately", "Weights changed a little"] as const;
 type Concentrations = { readonly topLevel: number; readonly schoolNeed: number };
 function settingName(settings: readonly Concentrations[], i: number): string {
   const s = settings[i];

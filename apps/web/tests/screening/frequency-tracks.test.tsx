@@ -244,10 +244,15 @@ describe("the words beside each mark", () => {
     const drawing = frequencyTracks(test, school!.persistence!.additive_no_u)!;
     const { container } = render(<FrequencyTracks method={method} rule="S0" test={test} drawing={drawing} />);
     expect([...container.querySelectorAll("li")].map((li) => li.firstElementChild!.textContent)).toEqual([
-      "Shares changed a lot (20/15)",
-      "Shares changed moderately (40/35)",
-      "Shares changed a little (100/80)",
+      "Weights changed a lot (20/15)",
+      "Weights changed moderately (40/35)",
+      "Weights changed a little (100/80)",
     ]);
+    // In this figure a share is always a share of runs, never the factors' weights.
+    const text = container.textContent ?? "";
+    const shares = [...text.matchAll(/\bshares?\b(.{0,24})/gi)];
+    expect(shares.length).toBeGreaterThan(0);
+    for (const [found, after] of shares) expect(after, found).toMatch(/^ of (random-weight )?runs/);
   });
 });
 
