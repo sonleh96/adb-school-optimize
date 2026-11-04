@@ -36,6 +36,6 @@ Remove attachments, such as pasted images, and widget state in Jupyter, because 
 
 ## Product scope
 
-The workspace opens at `/`.
-It shows a ranked list of schools under seven rules, with the reason for each school's place, and a map synced to the list.
+The homepage at `/` explains the project, and the workspace opens at `/screening`.
+The workspace shows a ranked list of schools under seven rules, with the reason for each school's place, and a map synced to the list.
 The API also serves rule comparisons and CSV and XLSX exports of the shortlist and of the schools that need a record check.

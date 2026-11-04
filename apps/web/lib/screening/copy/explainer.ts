@@ -110,7 +110,7 @@ export function buildHow(
           "The largest-factor rules take 60% of a combined-factors rule's score and add 40% of the school's largest input: school need or district context, or also the urgency rating in the rule with urgency.",
           "The conventional benchmark (B) gives school need 55%, district context 20%, urgency 15% and walking reach 10%.",
           "When two schools are exactly level, the school name decides, in alphabetical order.",
-          "The shares were set before anyone looked at which schools came out on top, and the rules without urgency keep them in proportion.",
+          "The shares are policy choices, not estimates of what an inspection would gain, and the rules without urgency keep them in proportion.",
           "The paper also changed the shares at random, many times over, and noted which schools stayed in the top 20 each time. That test was run separately for the main rule and for the rule with urgency, and each result is shown only under its own rule.",
           "No rule sets a threshold for safety or funding, and none has been shown to find true need more accurately than another.",
         ],
@@ -190,7 +190,7 @@ export function howExample(data: ComparisonData, c: CountBag, byRule?: CountsByR
 // live names the function that gives the answer for the current rule and school.
 // The trust answer matches urgencyReassurance() on the recorded comparison; check.mjs holds them equal.
 export const TRUST_TAIL =
-  "The research paper's main method leaves it out because no one could trace where it came from, so the screen opens on that method.";
+  "The research paper's main method leaves it out because where it came from has not been traced, so the screen opens on that method.";
 export function buildQuestions(
   ideas: Pick<typeof IDEAS, "ranges" | "queue"> = IDEAS,
   trust: string | null = null

@@ -14,6 +14,8 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { createServer } from "node:net";
 import path from "node:path";
 
+import { HOME } from "../lib/home/copy";
+
 import { expect, test } from "./screening-helpers";
 
 test.describe.configure({ mode: "serial", timeout: 90_000 });
@@ -71,11 +73,11 @@ test.afterAll(() => {
   server = null;
 });
 
-test("with sign-in required, the manifest and the icon are public and the sign-in page logs nothing", async ({
+test("with sign-in required, the manifest, the icon and robots.txt are public and the sign-in page logs nothing", async ({
   page,
   request,
 }) => {
-  for (const file of ["/manifest.webmanifest", "/icon.svg"]) {
+  for (const file of ["/manifest.webmanifest", "/icon.svg", "/robots.txt"]) {
     const response = await request.get(`${ORIGIN}${file}`, { maxRedirects: 0 });
     expect(response.status(), file).toBe(200);
   }
@@ -97,7 +99,7 @@ test("with sign-in required, the manifest and the icon are public and the sign-i
 test("with sign-in required, nothing says sign-in is off, and a cookie that did is cleared", async ({
   request,
 }) => {
-  for (const path of ["/screening", "/sign-in", "/api/v1/screening/rules"]) {
+  for (const path of ["/", "/screening", "/sign-in", "/api/v1/screening/rules"]) {
     const fresh = await request.get(`${ORIGIN}${path}`, { maxRedirects: 0 });
     expect(
       fresh.headersArray().filter((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in/.test(h.value))
@@ -110,6 +112,50 @@ test("with sign-in required, nothing says sign-in is off, and a cookie that did 
       .headersArray()
       .find((h) => /^set-cookie$/i.test(h.name) && /rise-sign-in=/.test(h.value));
     expect(cleared?.value, path).toMatch(/rise-sign-in=;.*(Max-Age=0|Expires=Thu, 01 Jan 1970)/i);
+  }
+});
+
+// Failure modes: the homepage, which explains the project to anyone, sends a signed-out person to sign in; or making
+// it public opens the tool too, so an old link to the tool at `/` skips sign-in.
+test("with sign-in required, the homepage is public, and an old link to the tool still meets sign-in", async ({
+  request,
+}) => {
+  const home = await request.get(`${ORIGIN}/`, { maxRedirects: 0 });
+  expect(home.status()).toBe(200);
+  expect(await home.text()).toContain(HOME.method.title);
+
+  const old = await request.get(`${ORIGIN}/?rule=additive_u`, { maxRedirects: 0 });
+  expect(old.status()).toBe(307);
+  const tool = new URL(old.headers()["location"], ORIGIN);
+  expect(`${tool.pathname}${tool.search}`).toBe("/screening?rule=additive_u");
+
+  const signIn = await request.get(tool.href, { maxRedirects: 0 });
+  expect(signIn.status()).toBe(307);
+  const to = new URL(signIn.headers()["location"], ORIGIN);
+  expect(to.pathname).toBe("/sign-in");
+  expect(to.searchParams.get("next")).toBe("/screening?rule=additive_u");
+});
+
+// Failure mode: the homepage is public but its pictures are not, so a signed-out reader sees broken pictures: the
+// proxy sends each picture, or each of its resized copies, to the sign-in page. A <source> offers a phone's copies.
+test("with sign-in required, every picture the homepage offers is public", async ({ page, request }) => {
+  await page.goto(`${ORIGIN}/`);
+  const addresses = await page
+    .locator("img, source")
+    .evaluateAll((elements: Element[]) => [
+      ...new Set(
+        elements.flatMap((el) => [
+          el.getAttribute("src") ?? "",
+          ...(el.getAttribute("srcset") ?? "").split(",").map((entry) => entry.trim().split(" ")[0]),
+        ])
+      ),
+    ]);
+  const pictures = addresses.filter((address) => address && !address.startsWith("data:"));
+  expect(pictures.length).toBeGreaterThan(8);
+  for (const address of pictures) {
+    const response = await request.get(new URL(address, ORIGIN).href, { maxRedirects: 0 });
+    expect(response.status(), address).toBe(200);
+    expect(response.headers()["content-type"], address).toMatch(/^image\//);
   }
 });
 

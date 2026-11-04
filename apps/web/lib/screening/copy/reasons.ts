@@ -234,8 +234,8 @@ export function inputSentence(school: CopySchool, key: InputKey): string {
         return gateSentence(otherCause(school, "urgency_unknown"));
       // A school whose urgency is known but whose figure is not loaded says only that it is recorded.
       if (school.components.U === undefined)
-        return "Its urgency rating is recorded. No one could trace where that value comes from.";
-      return `Its urgency rating is ${required(school.components.U, "urgency rating").toFixed(2)} on a 0 to 1 scale. No one could trace where that value comes from.`;
+        return "Its urgency rating is recorded. Where that value comes from has not been traced.";
+      return `Its urgency rating is ${required(school.components.U, "urgency rating").toFixed(2)} on a 0 to 1 scale. Where that value comes from has not been traced.`;
     case "reach": {
       if (school.cohort === "queue" && school.components.R === null)
         return gateSentence(otherCause(school, "unresolved_reach"));

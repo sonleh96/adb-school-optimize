@@ -395,7 +395,7 @@ describe("the term map", () => {
 
   it("keeps the urgency definition in one position", () => {
     expect(P.TERMS.urgency.line).toBe(P.STRINGS.urgencyDefinition);
-    for (const phrase of ["described as hazard-related", "could not be traced", "not known"]) {
+    for (const phrase of ["described as hazard-related", "has not been traced", "not known"]) {
       expect(P.STRINGS.urgencyDefinition).toContain(phrase);
     }
   });

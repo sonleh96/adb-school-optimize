@@ -23,7 +23,7 @@ test("the first screen leaves the urgency question to Change, whose statement sa
   await openRules(page);
   const statement = page.locator("[data-region=list-statement]");
   await expect(statement).toContainText(
-    "The urgency rating is left out because no one could trace where it came from"
+    "The urgency rating is left out because where it came from has not been traced"
   );
   const link = statement.getByRole("button", {
     name: "Compare with the earlier method, which also counts an urgency rating",

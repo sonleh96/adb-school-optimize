@@ -55,7 +55,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
       "Adds up several factors for each school, each with a fixed share, to give its score. " +
       "School need, built from five parts of the school's own record, counts for 60%, district context for 15%, and urgency, walking reach, air quality, emissions and land cover for 5% each. " +
       "A high value in one input can make up for a low value in another. " +
-      "This was the main rule in the circulated paper. The revised paper keeps it as a sensitivity check that puts the urgency rating back, because no one could trace where that value comes from.",
+      "This was the main rule in the circulated paper. The revised paper keeps it as a sensitivity check that puts the urgency rating back, because where that value comes from is not known.",
   },
   additive_no_u: {
     symbol: "S0",
@@ -75,7 +75,7 @@ const RULES: Record<CopyRuleId, RuleInfo> = {
     usesUrgency: false,
     readsReadings: true,
     explanation:
-      "The main rule of the revised paper. It leaves the urgency rating out because no one could trace where it comes from; that says nothing about whether schools face real hazards. " +
+      "The main rule of the revised paper. It leaves the urgency rating out because where it comes from is not known; that says nothing about whether schools face real hazards. " +
       "The other factors keep their shares in proportion: school need, built from five parts of the school's own record, about 63%, district context about 16%, and walking reach, air quality, emissions and land cover about 5% each. " +
       "A high value in one input can make up for a low value in another.",
   },

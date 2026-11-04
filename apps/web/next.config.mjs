@@ -4,6 +4,11 @@ assertNoTestSeams(process.env);
 
 const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
 
+/** The server the app's `/api/v1` routes go to, or "" when they go nowhere (a build with no API to proxy to). */
+const API_ORIGIN = (
+  process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
+).replace(/\/$/, "");
+
 const originOf = (value) => {
   try {
     return value ? new URL(value).origin : null;
@@ -53,24 +58,28 @@ const SECURITY_HEADERS = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // `next dev` would otherwise write its own AGENTS.md into the app's folder on every start.
+  agentRules: false,
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // The homepage reads its counts on the server, from the same API the rewrite below proxies to (lib/home/counts.ts).
+  env: { SCREENING_API_ORIGIN: API_ORIGIN },
+  // The homepage's pictures (public/images): AVIF where the browser takes it, else WebP. The screenshots hold small
+  // text, which 75 blurs, so they ask for 85; the satellite background asks for 75.
+  images: {
+    formats: ["image/avif", "image/webp"],
+    qualities: [75, 85],
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
-  // The app is the screening workspace. A redirect from the config keeps the query string, so a link with the
-  // workspace's URL state in it opens the same view, and the page's boot script reads the final address.
-  async redirects() {
-    return [{ source: "/", destination: "/screening", permanent: false }];
-  },
+  // `/` is the homepage. An old link to the tool at `/`, with the workspace's state in its query, goes on to
+  // /screening from the proxy (lib/home/toolLink.ts), which keeps the query.
   async rewrites() {
-    const target = (
-      process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
-    ).replace(/\/$/, "");
-    if (!target) return [];
+    if (!API_ORIGIN) return [];
     return [
       {
         source: "/api/v1/:path*",
-        destination: `${target}/api/v1/:path*`,
+        destination: `${API_ORIGIN}/api/v1/:path*`,
       },
     ];
   },

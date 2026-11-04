@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
 
-import { QueryProvider } from "@/components/QueryProvider";
+import { SITE } from "@/lib/home/copy";
 
 import "./globals.css";
 
@@ -10,8 +10,7 @@ export const metadata: Metadata = {
     default: "RISE-PNG Dashboard",
     template: "%s | RISE-PNG",
   },
-  description:
-    "Decision-support dashboard for prioritizing secondary school investments in Papua New Guinea.",
+  description: SITE.description,
 };
 
 export default function RootLayout({
@@ -21,9 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>
-        <QueryProvider>{children}</QueryProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

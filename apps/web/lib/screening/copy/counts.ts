@@ -207,7 +207,7 @@ export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
 // The urgency definition; with counts it says how many schools have 0.
 export function urgencyDefinition(c: CountBag | undefined): string {
   const head =
-    "The urgency rating is a number that came with the original school data, described as hazard-related. How it was made could not be traced, so what it measures is not known";
+    "The urgency rating is a number that came with the original school data, described as hazard-related. How it was made has not been traced, so what it measures is not known";
   if (!known(c, "urgencyZero") || !known(c, "all") || c.all === 0) return `${head}.`;
   let who: string;
   if (c.urgencyZero === 0) who = "no school has 0";

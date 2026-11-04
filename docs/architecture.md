@@ -17,8 +17,9 @@ flowchart LR
     L --> D
 ```
 
-- `apps/web` is the screening workspace.
-  `/` redirects to `/screening` and keeps the query string.
+- `apps/web` is the homepage and the screening workspace.
+  `/` is the homepage, a static page that reads its counts from the API when it is built and at most once an hour after.
+  An old link to the workspace at `/` goes on to `/screening` with its query string.
   The map uses deck.gl on MapLibre.
   Browser calls go to the same origin under `/api/v1/` and Next forwards them to the API.
 - `services/api` serves the stored runs under `/api/v1/screening`: rules, input versions, ranked results, school detail, rule comparison and CSV and XLSX exports.

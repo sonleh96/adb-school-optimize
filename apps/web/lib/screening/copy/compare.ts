@@ -187,7 +187,7 @@ export function urgencyReassurance(data: ComparisonData): string {
 // with the rule that puts it back. data: { pairwise }.
 export function defaultListStatement(data: Pick<ComparisonData, "pairwise">): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
-  const lead = `Which list should I use? This one, the research paper's main method. The urgency rating is left out because no one could trace where it came from, which says nothing about real hazards.`;
+  const lead = `Which list should I use? This one, the research paper's main method. The urgency rating is left out because where it came from has not been traced, which says nothing about real hazards.`;
   if (!row) return lead;
   const n = pairSize(row);
   const among = `among ${pairPhrase(row)}`;
@@ -206,7 +206,7 @@ export function defaultListStatementLong(
 ): string {
   const row = findPair(data.pairwise, "additive_no_u", "additive_u");
   const left =
-    "It leaves out the urgency rating, because no one could trace where it came from; that says nothing about whether schools face real hazards.";
+    "It leaves out the urgency rating, because where it came from has not been traced; that says nothing about whether schools face real hazards.";
   const lead =
     ruleNames === "plain"
       ? `This list uses the research paper's main method. ${left} The earlier method, which also counts the urgency rating, is kept beside it as a check.`

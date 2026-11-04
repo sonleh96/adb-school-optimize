@@ -1,8 +1,9 @@
 # Web app
 
 The Next.js frontend, hosted on Vercel.
-The app is the screening workspace.
-`/` redirects to `/screening` and keeps the query string, so a link that carries a view opens that view.
+`/` is the homepage, which explains the project and stays public when sign-in is required.
+`/screening` is the screening workspace.
+A link to `/` whose query carries a view, from before the homepage, goes on to `/screening` with its query, so it opens that view.
 `/sign-in` and `/auth/*` handle Supabase magic-link sign-in, and `/healthz` answers health checks.
 
 The frontend calls the FastAPI service for all data and scoring.
@@ -28,6 +29,6 @@ npm run dev
 - `npm run lint`, `npm run typecheck`, `npm run format:check` and `npm test` run without a browser.
 - `npm run test:e2e` builds against the mock API in `scripts/mock-api.mjs` and runs the Playwright tests.
   `CI_APP_PORT` and `CI_MOCK_API_PORT` choose the ports, so two checkouts can run side by side.
-- `npm run bundle:check`, after `npm run build`, fails when the script `/screening` loads up front goes over 230 KiB gzip, or when that script holds MapLibre or deck.gl.
+- `npm run bundle:check`, after `npm run build`, fails when the script `/screening` loads up front goes over 230 KiB gzip, when the homepage's goes over 138 KiB, or when either holds MapLibre or deck.gl.
 - `npm run analyze` writes the Turbopack bundle analysis to `.next/diagnostics/analyze`.
-- `npm run lighthouse` runs desktop Lighthouse on `/screening` and `/sign-in`.
+- `npm run lighthouse` runs desktop Lighthouse on `/`, `/screening` and `/sign-in`.
