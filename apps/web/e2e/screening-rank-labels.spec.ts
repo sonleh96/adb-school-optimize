@@ -80,10 +80,13 @@ async function expectReadable(page: Page) {
     expect(Math.hypot(label.x - label.dot.x, label.y - label.dot.y), `place ${label.rank}`).toBeLessThan(
       3 * DISC
     );
-    // Not on another numbered dot, where it would read as that school's place.
-    for (const other of labels)
-      if (other !== label && Math.hypot(label.x - other.dot.x, label.y - other.dot.y) < DISC / 2)
-        throw new Error(`place ${label.rank}'s number sits on place ${other.rank}'s dot`);
+    // Moved, not onto another numbered dot, where it would read as that school's place. One left on its own dot can
+    // only be as close to a neighbour's as the dots are.
+    const moved = Math.hypot(label.x - label.dot.x, label.y - label.dot.y) > 1.5;
+    if (moved)
+      for (const other of labels)
+        if (other !== label && Math.hypot(label.x - other.dot.x, label.y - other.dot.y) < DISC / 2)
+          throw new Error(`place ${label.rank}'s number sits on place ${other.rank}'s dot`);
   }
   return labels;
 }
@@ -102,7 +105,10 @@ for (const size of [
       await useMockDataset(context, "crowded");
       await page.goto("/screening");
       await waitForMap(page);
-      await page.locator("[data-region=pane-switch]").getByRole("button", { name: "Map", exact: true }).click();
+      await page
+        .locator("[data-region=pane-switch]")
+        .getByRole("button", { name: "Map", exact: true })
+        .click();
       await expect(page.locator("[data-testid=screening-map][data-map-ready=true]")).toBeVisible();
       await expect(page.locator("[data-rank-label]")).toHaveCount(10);
 

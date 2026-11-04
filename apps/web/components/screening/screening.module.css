@@ -2253,7 +2253,32 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     sans-serif;
   font-variant-numeric: tabular-nums;
 }
-.rankLabel span[data-stale="true"] {
+.rankLabel span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+/* A number moved off its crowded dot takes the dot's navy disc with it (RAMP_HEX[0] is the logo's navy), ringed in
+   the marks' paper so it stands apart from the dots it sits beside, and a leader back to its own dot. */
+.rankLabel span[data-moved] {
+  background: var(--navy);
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+  forced-color-adjust: none;
+}
+.rankLeader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: var(--navy);
+  transform-origin: 0 50%;
+  forced-color-adjust: none;
+}
+.rankLabel [data-stale="true"] {
   opacity: 0.4;
 }
 .attribution {
