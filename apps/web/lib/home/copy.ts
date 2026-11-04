@@ -99,7 +99,7 @@ export const HOME = Object.freeze({
   method: {
     eyebrow: "How the list is made",
     title: "School need counts most.",
-    lead: "Each school gets a score from a few parts. Each part has a fixed weight, which is how much it counts. The research team chose the weights and states them openly. They are policy choices, not estimates of what an inspection would gain.",
+    lead: "Each school gets a score from a few parts, and its rank is where that score puts it in the list. Each part has a fixed weight, which is how much it counts. The research team chose the weights and states them openly. They are policy choices, not estimates of what an inspection would gain.",
     weightsTitle: "How much each part counts",
     weights: [
       {
@@ -124,12 +124,12 @@ export const HOME = Object.freeze({
     notesTitle: "Three things to know",
     notes: [
       {
-        title: "Missing figures show as ranges.",
-        body: "A school without an air-quality figure shows its highest and lowest possible rank. The tool does not guess the figure.",
+        title: "A missing figure shows as a range of ranks.",
+        body: "A school without an air-quality figure shows the highest and lowest rank it could take, because the tool does not guess the missing figure.",
       },
       {
-        title: "The urgency rating is left out.",
-        body: `It came with the original school data, but how it was made has not been traced. To see the list with it, choose ${LAYOUT.orderControl} in the tool.`,
+        title: "The main list leaves out the urgency rating.",
+        body: `The rating came with the original school data, but how it was made has not been traced. Under "${LAYOUT.orderControl}", the tool can compare the list with the earlier method, which counts it.`,
       },
       {
         title: "The weights were tested.",
@@ -208,7 +208,11 @@ export function figuresFor(counts: HomeCounts): readonly Figure[] | null {
     {
       key: "toVerify",
       value: formatCount(toVerify),
-      label: plural(toVerify, "needs its record verified first", "need their records verified first"),
+      label: plural(
+        toVerify,
+        "not in the list yet, because its record needs verifying first",
+        "not in the list yet, because their records need verifying first"
+      ),
     },
   ];
 }

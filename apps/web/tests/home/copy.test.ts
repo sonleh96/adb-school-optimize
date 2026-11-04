@@ -70,12 +70,12 @@ describe("the homepage's words", () => {
     expect(read(known(1, 1, 1))).toEqual([
       "1 secondary school record",
       "1 can be put in order now",
-      "1 needs its record verified first",
+      "1 not in the list yet, because its record needs verifying first",
     ]);
     expect(read(known(1284, 1100, 184))).toEqual([
       "1,284 secondary school records",
       "1,100 can be put in order now",
-      "184 need their records verified first",
+      "184 not in the list yet, because their records need verifying first",
     ]);
     expect(figuresFor(UNKNOWN_COUNTS)).toBeNull();
     // Without counts the card keeps its three rows, in words: no number, and nothing that points at one.
