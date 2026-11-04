@@ -103,6 +103,7 @@ export {
   type FactorKey,
 } from "./rules";
 export { SIGN_IN } from "./sign-in";
+export { partStanding } from "./standing";
 export { buildScope, buildStrings, STRINGS } from "./strings";
 export { buildTerms, term, TERMS, type TermKey } from "./terms";
 export { HELP, KEYS, LAYOUT, removeViewSegments, savedViewSegments } from "./words";

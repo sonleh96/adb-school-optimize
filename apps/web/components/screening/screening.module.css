@@ -1920,7 +1920,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 }
 .needParts li {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 48px 48px;
+  grid-template-columns: 18px minmax(0, 1fr) 48px;
   column-gap: 8px;
   align-items: center;
   padding: 6px 0;
@@ -1938,15 +1938,23 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .needParts li[data-on] .needLabel {
   font-weight: 500;
 }
-.needValue {
-  text-align: right;
-  white-space: nowrap;
-}
 .needSentence {
   grid-column: 2 / -1;
   margin-top: 2px;
   color: var(--ink);
   text-wrap: pretty;
+}
+/* How the part's record compares with the list: the last line of each part, a step quieter than the reason above it,
+   and as quiet as the part itself in a part that is not one of the reasons. */
+.needStanding {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 17px;
+  text-wrap: pretty;
+}
+.needParts li[data-on] .needStanding {
+  color: var(--ink-2);
 }
 /* The reasons' numbers in small ringed circles, like the guides' numbers in Start here. A part that is not one of the
    reasons keeps an empty slot, never an empty ring that would read as a radio button. */

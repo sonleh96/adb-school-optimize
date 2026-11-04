@@ -22,6 +22,8 @@
  *     from Help, or a guide link no longer opens it                                    -> "Hide puts Start here away ..."
  * 14. Junk or blocked storage breaks the screen, hides Start here from a first-time reader, or stops Hide working
  *                                                                                      -> "with junk storage ...", "with blocked storage ..."
+ * 15. The school need step leaves the line under each part, which compares its record with the list, unexplained
+ *                                                                                      -> "the school need step ..."
  */
 import type { Page } from "@playwright/test";
 
@@ -387,6 +389,14 @@ test("a pasted link to a step reproduces its screen", async ({ page }) => {
   await ready(page, "?guide=q5&gstep=1");
   await expect(page.locator("[data-region=changed-lead]")).toBeVisible();
   await expect.poll(() => workspace(page)).toMatchObject({ rule: "additive_no_u", compare: "additive_u" });
+});
+
+test("the school need step says what the last line under each part is", async ({ page }) => {
+  await ready(page, "?guide=q2&gstep=2");
+  await expect(rail(page)).toContainText(
+    "Under each part, a line compares the school's record with the other schools in the list."
+  );
+  await expect(page.locator("[data-region=need-box] [data-region=need-standing]")).toHaveCount(5);
 });
 
 test("a step that follows the selection retitles for the school chosen and keeps it on the next step", async ({

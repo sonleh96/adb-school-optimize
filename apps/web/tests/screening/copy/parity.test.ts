@@ -709,6 +709,13 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
           for (const opts of [{}, { margin: 0.005656854249492379 }, { margin: 0.00001 }])
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
+          // It reads no counts, so the module's own function stands for all three ways to call it.
+          for (const k of ["classrooms", "housing", "facilities", "services", "locality"])
+            sameOutcome(
+              `${tag} ${t} partStanding(${k})`,
+              run(() => proto.partStanding(s, r, k, data.schools)),
+              run(() => (port as Api).partStanding(s, r, k, data.schools))
+            );
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));
           one(`${t} equalReasons`, (api) => api.equalReasons(api.topDrivers(s, r)));
           one(`${t} contributions`, (api) => api.contributions(s, r));

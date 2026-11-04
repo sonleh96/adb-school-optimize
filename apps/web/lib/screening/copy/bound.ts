@@ -73,6 +73,7 @@ import {
   tieNoteSegments,
 } from "./rank";
 import { contributions, equalReasons, inputSentence, reasonSentence, topDrivers } from "./reasons";
+import { partStanding } from "./standing";
 import {
   PRIMARY_RULE,
   RULE_IDS,
@@ -286,6 +287,7 @@ export function copyFor(data: CopyData = {}) {
     // Functions with no counts, passed through unchanged.
     reasonSentence: (school: CopySchool, ruleId: CopyRuleId) => reasonSentence(school, ruleId, names),
     inputSentence,
+    partStanding,
     topDrivers,
     equalReasons,
     contributions,

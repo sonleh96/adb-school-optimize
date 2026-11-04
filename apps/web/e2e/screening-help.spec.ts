@@ -14,6 +14,8 @@
  * 11. Help mode leaves the rule line and its control unmarked, or a mark there opens the choice instead of explaining
  *                                                                                     -> "help mode marks the rule line ..."
  * 12. Help's list stays open over the map once focus has left it                      -> "Help's list closes ..."
+ * 13. The line that compares a part of school need with the list goes unexplained, or every line gets a mark
+ *                                                                                     -> "help mode marks the line ..."
  */
 import type { Page } from "@playwright/test";
 
@@ -112,6 +114,28 @@ test("help mode marks the key concepts, a mark explains instead of acting, and l
   await expect(page.locator("[data-region=caveat]")).not.toHaveAttribute("tabindex", /./);
   // The school card is still open: Escape closed the help layers first.
   await expect(page.locator("[data-region=inspector]")).toBeVisible();
+});
+
+test("help mode marks the line that compares a part of school need with the list, and its card explains it", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await openFirstSchool(page);
+  await (await helpItem(page, "Explain this screen")).click();
+  await expect.poll(async () => (await layers(page)).help).toBe(true);
+  const lines = page.locator("[data-region=need-standing]");
+  await expect(lines).toHaveCount(5);
+  // One mark, on the first part's line, explains the line under every part.
+  await expect(lines.first()).toHaveAttribute("data-xp", "term:part_standing");
+  await expect(page.locator("[data-region=need-standing][data-xp]")).toHaveCount(1);
+  await lines.first().click();
+  await expect(card(page).getByRole("heading")).toHaveText("Compared with the list");
+  await expect(card(page)).toContainText(
+    "How the school's record for this part compares with the other schools in the list."
+  );
+  // Its example is another school's line for one part, named for the part.
+  await expect(card(page)).toContainText("Missing facility types");
+  await expect(card(page).locator("[data-example]")).toContainText(/in the list records? .*facility types/);
 });
 
 test("Escape closes the card, then the glossary, then help mode, and focus returns to what opened each", async ({

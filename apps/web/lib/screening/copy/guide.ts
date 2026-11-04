@@ -119,6 +119,8 @@ export const GUIDE = Object.freeze({
       : n === 1
         ? `One of the ${SMALL[all]} reasons is a part of school need, so the card numbers it inside school need, above the parts that add less.`
         : `${n === all ? `All ${SMALL[n]}` : `${capitalise(SMALL[n])} of the ${SMALL[all]}`} reasons are parts of school need, so the card numbers them inside it, above the parts that add less.`,
+  // The last line under each part of school need.
+  needCompared: "Under each part, a line compares the school's record with the other schools in the list.",
   tasks: Object.freeze(
     [
       {

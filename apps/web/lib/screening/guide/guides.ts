@@ -283,7 +283,11 @@ export function stepView(
       return {
         ...base,
         title: text(call<string>(sc.title, n > 0)),
-        body: [para(STRINGS.schoolNeedDefinition), ...(n > 0 ? [para(GUIDE.needNumbered(n, drivers))] : [])],
+        body: [
+          para(STRINGS.schoolNeedDefinition),
+          ...(n > 0 ? [para(GUIDE.needNumbered(n, drivers))] : []),
+          para(GUIDE.needCompared),
+        ],
         patch: subject ? { school: subject.id } : {},
         targets: [[region("need-box")]],
         scroll: "target",

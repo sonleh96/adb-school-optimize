@@ -33,6 +33,10 @@ export const BANNED = Object.freeze([
     pattern: /\bneediest|\bmost deprived|\bpoorest/i,
     why: "A place reflects records and fixed shares, not verified need.",
   },
+  {
+    pattern: /\b(better|worse|poorer|needier)\b|\b(more|less) (deprived|disadvantaged|in need|urgent)\b/i,
+    why: "A comparison with the list describes the record, never a school's condition or need: say fewer, more, a smaller share or the same, and say recorded.",
+  },
   { pattern: /(?<!not a )\bverdict/i, why: "Only used to say a place is not a verdict." },
   {
     pattern: /\bprobabilit|\bconfidence|\bmargin of error/i,

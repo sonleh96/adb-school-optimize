@@ -15,6 +15,7 @@ export const GLOSSARY_GROUPS = Object.freeze(
           "need_facilities",
           "need_services",
           "need_locality",
+          "part_standing",
         ],
       },
       {
