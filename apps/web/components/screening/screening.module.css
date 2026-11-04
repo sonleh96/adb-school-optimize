@@ -1621,7 +1621,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .keyMark[data-mark="dot"] {
   width: 11px;
   height: 11px;
-  background: #24519f;
+  background: #20509e; /* RAMP_HEX[2] in lib/screening/marks.ts, the ramp's middle */
   box-shadow: 0 0 0 1.5px #fbfaf7;
 }
 .keyMark[data-mark="range"] {
