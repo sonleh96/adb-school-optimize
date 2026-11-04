@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
+import { getImageProps, type ImageProps } from "next/image";
 
 import { AdbLogo } from "@/components/AdbLogo";
-import { HOME, KEEP_TOGETHER, MAIN_SHARES, figuresFor, type Phrase } from "@/lib/home/copy";
+import { LeftOutMotif, RangeMotif, RunsMotif } from "@/components/home/Motifs";
+import { HOME, KEEP_TOGETHER, MAIN_SHARES, figuresFor, type Figure, type Phrase } from "@/lib/home/copy";
 import { readHomeCounts } from "@/lib/home/counts";
 import { LAYOUT } from "@/lib/screening/copy/words";
+import orbit from "@/public/images/png-from-orbit.webp";
+import provinces from "@/public/images/png-provinces.svg";
+import toolDesktop from "@/public/images/tool-desktop.webp";
+import toolPhone from "@/public/images/tool-phone.webp";
 
 import { homeFonts } from "./fonts";
 import styles from "./home.module.css";
@@ -32,6 +38,23 @@ const SEGMENTS = (Object.entries(MAIN_SHARES) as [keyof typeof MAIN_SHARES, numb
     group: key === "N" || key === "A" ? key : "small",
   })
 );
+
+/** The alt text of a picture that only decorates: screen readers skip it, and the words beside it say everything. */
+const DECORATIVE = "";
+
+/** One drawing per note, in the notes' order: a range of ranks, the urgency rating left out, four runs in five. */
+const NOTE_MOTIFS = [RangeMotif, LeftOutMotif, RunsMotif] as const;
+
+/**
+ * A picture as a plain <img> with next/image's resized copies in its srcset. The <Image> component would bring its
+ * client script, about 5.6 KiB gzip, which the homepage's 138 KiB budget cannot spare; the page needs none of what
+ * that script does. A picture below the fold loads lazily, as <Image> would load it.
+ */
+function Picture(options: ImageProps) {
+  const { props } = getImageProps(options);
+  // eslint-disable-next-line @next/next/no-img-element -- getImageProps gives the <img> next/image would draw.
+  return <img {...props} alt={options.alt} />;
+}
 
 function PhraseText({ phrase }: { phrase: Phrase }) {
   return phrase.map((part, i) =>
@@ -82,6 +105,40 @@ function Rank({ text }: { text: string }) {
   );
 }
 
+/**
+ * What the records cover: the three counts, or the three groups in words when the counts are not known. The second
+ * and third rows hang from the first, as the paper's workflow splits every record into the schools that can be put
+ * in order and the records to verify first (lib/home/counts.ts holds the counts to that sum).
+ */
+function Figures({ figures }: { figures: readonly Figure[] | null }) {
+  return (
+    <div className={styles.figures} data-testid="home-figures">
+      <p id="home-figures-title" className={styles.cardEyebrow}>
+        {HOME.hero.figuresTitle}
+      </p>
+      <ul className={styles.figureList} aria-labelledby="home-figures-title">
+        {figures
+          ? figures.map((f, i) => (
+              <li key={f.key} className={styles.figure} data-branch={i > 0 || undefined}>
+                <span className={styles.figureValue}>{f.value}</span>{" "}
+                <span className={styles.figureLabel}>{f.label}</span>
+              </li>
+            ))
+          : HOME.hero.noFigures.map((row, i) => (
+              <li key={row.term} className={styles.figure} data-kind="words" data-branch={i > 0 || undefined}>
+                <span className={styles.figureTerm}>{row.term}</span>{" "}
+                <span className={styles.figureLabel}>{row.text}</span>
+              </li>
+            ))}
+      </ul>
+      <p className={styles.figuresNote}>{HOME.hero.figuresNote}</p>
+      <a className={styles.arrowLink} href={TOOL.queue}>
+        {HOME.hero.queueLink}
+      </a>
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const figures = figuresFor(await readHomeCounts(process.env.SCREENING_API_ORIGIN ?? ""));
   const { example } = HOME.use;
@@ -111,7 +168,7 @@ export default async function HomePage() {
       <main id="main" tabIndex={-1} className={styles.main}>
         <section className={styles.hero} aria-labelledby="home-title">
           <div className={`${styles.wrap} ${styles.heroGrid}`}>
-            <div>
+            <div className={styles.heroText}>
               <p className={styles.eyebrow}>
                 <Unbroken text={HOME.hero.eyebrow} />
               </p>
@@ -133,34 +190,35 @@ export default async function HomePage() {
                 <Unbroken text={HOME.hero.who} />
               </p>
             </div>
-            <div className={styles.figures} data-testid="home-figures">
-              <p id="home-figures-title" className={styles.cardEyebrow}>
-                {HOME.hero.figuresTitle}
-              </p>
-              <ul className={styles.figureList} aria-labelledby="home-figures-title">
-                {figures
-                  ? figures.map((f) => (
-                      <li key={f.key} className={styles.figure}>
-                        <span className={styles.figureValue}>{f.value}</span>{" "}
-                        <span className={styles.figureLabel}>{f.label}</span>
-                      </li>
-                    ))
-                  : HOME.hero.noFigures.map((row) => (
-                      <li key={row.term} className={styles.figure} data-kind="words">
-                        <span className={styles.figureTerm}>{row.term}</span>{" "}
-                        <span className={styles.figureLabel}>{row.text}</span>
-                      </li>
-                    ))}
-              </ul>
-              <p className={styles.figuresNote}>{HOME.hero.figuresNote}</p>
-              <a className={styles.arrowLink} href={TOOL.queue}>
-                {HOME.hero.queueLink}
-              </a>
+            {/* The tool in a browser window, with the counts card over the map's empty corner. */}
+            <div className={styles.stage}>
+              <figure className={styles.browser}>
+                <figcaption className={styles.browserBar}>{HOME.images.caption}</figcaption>
+                {/* The largest thing on a wide screen's first view, so it loads first. */}
+                <Picture
+                  className={styles.shot}
+                  src={toolDesktop}
+                  alt={HOME.images.tool}
+                  sizes="(min-width: 1296px) 680px, (min-width: 1024px) 53vw, 92vw"
+                  quality={85}
+                  loading="eager"
+                  fetchPriority="high"
+                />
+              </figure>
+              <Figures figures={figures} />
             </div>
           </div>
         </section>
 
         <section className={`${styles.band} ${styles.navy}`} aria-labelledby="home-scope">
+          {/* Papua New Guinea from orbit, in the band's navy, behind the words. */}
+          <Picture
+            className={styles.backdrop}
+            src={orbit}
+            alt={DECORATIVE}
+            sizes="(min-width: 768px) 72vw, 170vw"
+            quality={75}
+          />
           <div className={styles.wrap}>
             <p className={styles.eyebrow}>{HOME.scope.eyebrow}</p>
             <h2 id="home-scope" className={styles.statement}>
@@ -221,21 +279,31 @@ export default async function HomePage() {
             <div className={styles.notes}>
               <h3 className={styles.panelTitle}>{HOME.method.notesTitle}</h3>
               <ol className={styles.noteList}>
-                {HOME.method.notes.map((note, i) => (
-                  <li key={note.title} className={styles.note}>
-                    <span className={styles.noteNumber} aria-hidden="true">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <h4 className={styles.noteTitle}>{note.title}</h4>
-                    <p className={styles.noteBody}>{note.body}</p>
-                  </li>
-                ))}
+                {HOME.method.notes.map((note, i) => {
+                  const Motif = NOTE_MOTIFS[i];
+                  return (
+                    <li key={note.title} className={styles.note}>
+                      <span className={styles.noteHead}>
+                        <span className={styles.noteNumber} aria-hidden="true">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        {Motif ? <Motif className={styles.noteMotif} /> : null}
+                      </span>
+                      <h4 className={styles.noteTitle}>{note.title}</h4>
+                      <p className={styles.noteBody}>{note.body}</p>
+                    </li>
+                  );
+                })}
               </ol>
             </div>
           </div>
         </section>
 
-        <section id="use" className={`${styles.band} ${styles.white}`} aria-labelledby="home-use">
+        <section
+          id="use"
+          className={`${styles.band} ${styles.white} ${styles.useBand}`}
+          aria-labelledby="home-use"
+        >
           <div className={`${styles.wrap} ${styles.useGrid}`}>
             <div>
               <p className={styles.eyebrow}>{HOME.use.eyebrow}</p>
@@ -253,25 +321,43 @@ export default async function HomePage() {
                 ))}
               </ol>
             </div>
-            <figure className={styles.example}>
-              <div className={styles.exampleRow}>
-                <span className={styles.exampleRank}>
-                  <Rank text={example.rank} />
-                </span>
-                <span className={styles.exampleText}>
-                  <span className={styles.exampleName}>{example.name}</span>{" "}
-                  <span className={styles.exampleWhere}>· {example.where}</span>
-                  <span className={styles.exampleWhy}>
-                    <b className={styles.exampleWhyKey}>{LAYOUT.whyKey}</b> {example.why}
-                  </span>
-                </span>
+            {/* The list on a phone, rising from the band's foot, with one of its rows drawn large in front of it. */}
+            <div className={styles.useStage}>
+              <div className={styles.phone}>
+                <Picture
+                  className={styles.shot}
+                  src={toolPhone}
+                  alt={HOME.images.phone}
+                  sizes="280px"
+                  quality={85}
+                />
               </div>
-              <figcaption className={styles.exampleCaption}>{example.caption}</figcaption>
-            </figure>
+              <figure className={styles.example}>
+                <div className={styles.exampleRow}>
+                  <span className={styles.exampleRank}>
+                    <Rank text={example.rank} />
+                  </span>
+                  <span className={styles.exampleText}>
+                    <span className={styles.exampleName}>{example.name}</span>{" "}
+                    <span className={styles.exampleWhere}>· {example.where}</span>
+                    <span className={styles.exampleWhy}>
+                      <b className={styles.exampleWhyKey}>{LAYOUT.whyKey}</b> {example.why}
+                    </span>
+                  </span>
+                </div>
+                <figcaption className={styles.exampleCaption}>{example.caption}</figcaption>
+              </figure>
+            </div>
           </div>
         </section>
 
-        <section id="research" className={`${styles.band} ${styles.paper}`} aria-labelledby="home-research">
+        <section
+          id="research"
+          className={`${styles.band} ${styles.paper} ${styles.aboutBand}`}
+          aria-labelledby="home-research"
+        >
+          {/* The country and its 22 provinces, drawn faint behind the study, with no school on it. */}
+          <Picture className={styles.mapBackdrop} src={provinces} alt={DECORATIVE} />
           <div className={`${styles.wrap} ${styles.aboutGrid}`}>
             <div>
               <p className={styles.eyebrow}>{HOME.research.eyebrow}</p>
@@ -324,6 +410,15 @@ export default async function HomePage() {
             <p className={styles.footContactTitle}>{HOME.footer.contactTitle}</p>
             <People className={styles.footPeople} />
           </div>
+        </div>
+        <div className={styles.wrap}>
+          <ul className={styles.credits} aria-label={HOME.images.creditsLabel}>
+            {HOME.images.credits.map((credit) => (
+              <li key={credit.href}>
+                <a href={credit.href}>{credit.text}</a>
+              </li>
+            ))}
+          </ul>
         </div>
       </footer>
     </div>

@@ -255,15 +255,58 @@
   background: var(--paper);
 }
 .navy {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   background: var(--navy);
   color: var(--on-navy);
+}
+/*
+ * Papua New Guinea from orbit (NASA's Blue Marble, public domain), toned to the band's navy so its sea is the band
+ * and its land a lighter navy. A veil keeps the words on solid navy: whole on a phone, fading to the right on a
+ * wider screen, where the islands show past the words.
+ */
+.backdrop {
+  position: absolute;
+  right: -30%;
+  bottom: -2%;
+  z-index: -2;
+  width: 170%;
+  max-width: none;
+  height: auto;
+}
+.navy::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgba(0, 37, 105, 0.78);
+}
+@media (min-width: 768px) {
+  /* The country sits to the right of the words, its mainland level with them, the islands running off the edge. */
+  .backdrop {
+    top: 50%;
+    right: -12%;
+    bottom: auto;
+    width: 72%;
+    transform: translateY(-46%);
+  }
+  .navy::before {
+    background: linear-gradient(
+      100deg,
+      var(--navy) 0%,
+      rgba(0, 37, 105, 0.92) 40%,
+      rgba(0, 37, 105, 0.45) 72%,
+      rgba(0, 37, 105, 0.3) 100%
+    );
+  }
 }
 .navy .eyebrow,
 .navy .lead {
   color: var(--on-navy-2);
 }
 
-/* The hero: the headline, its two ways in and who the tool is for, beside a card of what the records cover. */
+/* The hero: the headline, its two ways in and who the tool is for, beside the tool and a card of what the records cover. */
 .hero {
   padding-block: clamp(40px, 6vw, 96px) var(--band-y);
 }
@@ -274,8 +317,8 @@
 }
 @media (min-width: 1024px) {
   .heroGrid {
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.85fr);
-    gap: 72px;
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+    gap: 48px;
   }
 }
 .who {
@@ -353,6 +396,46 @@
 .figure[data-kind="words"] .figureLabel {
   font-size: 15px;
 }
+/*
+ * The two groups hang from the records, as the paper's workflow splits them: a rule runs down from under the first
+ * number, and each group's row takes a branch, level with its number or its name.
+ */
+.figure[data-branch] {
+  position: relative;
+  padding-left: 28px;
+  --branch: color-mix(in srgb, var(--navy-2) 55%, var(--panel));
+  --branch-y: calc(16px + 0.5 * clamp(36px, 3.4vw, 46px));
+}
+.figure[data-kind="words"][data-branch] {
+  --branch-y: 28px;
+}
+.figure[data-branch]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 9px;
+  width: 11px;
+  height: var(--branch-y);
+  border: solid var(--branch);
+  border-width: 0 0 1.5px 1.5px;
+  border-bottom-left-radius: 6px;
+}
+.figure[data-branch]:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  left: 9px;
+  border-left: 1.5px solid var(--branch);
+}
+/* The first branch reaches up across the rule, so the two groups visibly hang from the records' row. */
+.figure:first-child + .figure[data-branch]::before,
+.figure:first-child + .figure[data-branch]::after {
+  top: -10px;
+}
+.figure:first-child + .figure[data-branch]::before {
+  height: calc(var(--branch-y) + 10px);
+}
 .figuresNote {
   margin-top: 16px;
   font-size: 15px;
@@ -391,6 +474,84 @@
   }
 }
 
+/*
+ * The hero's stage, as Darkhorse's homepages show their products: the tool in a browser window, and the counts card
+ * laid over the map's empty corner, so the list's rows stay in view. The window's title bar carries its caption.
+ * Three heroes were tried (.audit-work/build/screening-20261020/w9b/hero-variants); this one shows a first-time
+ * reader what the list looks like before they open it.
+ */
+.heroText {
+  min-width: 0;
+}
+.stage {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+.shot {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.browser {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow:
+    0 2px 6px rgba(10, 20, 40, 0.06),
+    0 44px 80px -40px rgba(0, 37, 105, 0.5);
+}
+.browserBar {
+  position: relative;
+  padding: 5px 16px 5px 60px;
+  border-bottom: 1px solid var(--hair);
+  background: #f5f6f8;
+  font-size: 12.5px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-align: center;
+}
+/* The window's three dots: one drawn, two as its shadows. */
+.browserBar::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cfd5df;
+  box-shadow:
+    13px 0 #cfd5df,
+    26px 0 #cfd5df;
+  transform: translateY(-50%);
+}
+.stage .figures {
+  grid-column: 5 / -1;
+  margin-top: -132px;
+}
+@media (max-width: 1023px) {
+  .stage .figures {
+    grid-column: 3 / -1;
+    margin-top: -72px;
+  }
+}
+/* On a phone the window shows its top, the list's first rows, and the card comes up over its foot. */
+@media (max-width: 639px) {
+  .browser .shot {
+    aspect-ratio: 2.4 / 1;
+    object-fit: cover;
+    object-position: left top;
+  }
+  .stage .figures {
+    grid-column: 1 / -1;
+    margin: -52px 10px 0;
+    padding: 26px 22px 24px;
+  }
+}
+
 /* What the list does and does not do, on the navy band: two hairline columns with a tick or a dash per line. */
 .columns {
   display: grid;
@@ -407,6 +568,8 @@
   padding: clamp(20px, 2.4vw, 26px) clamp(18px, 2.4vw, 24px);
   border: 1px solid var(--on-navy-hair);
   border-radius: var(--r-card);
+  /* Navy under the lines, so the land behind never lightens them. */
+  background: rgba(0, 37, 105, 0.82);
 }
 .columnTitle {
   font-size: 20px;
@@ -502,10 +665,13 @@
     gap: 32px;
   }
 }
-/* On a phone each weight's number sits beside its name; side by side in three columns, it sits above it. */
+/*
+ * On a phone each weight's number sits beside its name, and a name too long to fit moves under the number whole
+ * rather than breaking ("Four smaller parts"); side by side in three columns, the number sits above the name.
+ */
 .shareItem {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-content: start;
   align-items: baseline;
   column-gap: 12px;
@@ -514,8 +680,8 @@
   border-top: 3px solid var(--segment);
 }
 @media (min-width: 768px) {
-  .shareItem {
-    grid-template-columns: minmax(0, 1fr);
+  .shareItem > * {
+    flex-basis: 100%;
   }
 }
 .shareValue {
@@ -530,7 +696,7 @@
   font-weight: 600;
 }
 .shareLine {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   font-size: 15.5px;
   line-height: 1.5;
   color: var(--ink-2);
@@ -556,6 +722,28 @@
 @media (max-width: 959px) {
   .note + .note {
     margin-top: 6px;
+  }
+}
+/* Each note's number, with its drawing at the far end of the same line. */
+.noteHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+.noteMotif {
+  flex: none;
+  width: 128px;
+  height: 32px;
+}
+@media (max-width: 959px) {
+  .noteHead {
+    min-height: 26px;
+  }
+  .noteMotif {
+    width: 104px;
+    height: 26px;
   }
 }
 .noteNumber {
@@ -620,6 +808,48 @@
   border: 1px solid var(--edge);
   border-radius: var(--r-panel);
   background: var(--paper);
+}
+/*
+ * On a wide screen the list stands on a phone, rising from the band's foot and cut by it, with the example row laid
+ * across the phone's edge as the row drawn large. A narrow screen keeps the example row alone: the hero has already
+ * shown the tool, and the phone would add a screen of scrolling.
+ */
+.phone {
+  display: none;
+}
+@media (min-width: 960px) {
+  .useBand {
+    overflow: hidden;
+  }
+  .useStage {
+    position: relative;
+    align-self: stretch;
+    min-height: 400px;
+  }
+  .phone {
+    position: absolute;
+    top: 0;
+    right: 6%;
+    display: block;
+    width: 280px;
+    padding: 9px 9px 0;
+    border-radius: 40px 40px 0 0;
+    background: var(--ink);
+    box-shadow: 0 40px 80px -32px rgba(0, 37, 105, 0.5);
+  }
+  .phone .shot {
+    border-radius: 31px 31px 0 0;
+  }
+  .useStage .example {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    z-index: 1;
+    width: min(100%, 420px);
+    background: color-mix(in srgb, var(--paper) 94%, transparent);
+    box-shadow: var(--shadow);
+    transform: translateY(-50%);
+  }
 }
 /* The list's row: its rank on the left, then the name, the province and one reason, in the list's own sizes. */
 .exampleRow {
@@ -692,7 +922,34 @@
   color: var(--ink-3);
 }
 
-/* About the study: the paper in a few lines, beside where it stands on Darkhorse's near-black panel. */
+/*
+ * About the study: the paper in a few lines, beside where it stands on Darkhorse's near-black panel, over the map of
+ * the country's provinces (World Bank boundaries, CC BY 4.0), faint, as Darkhorse lays drawn shapes behind its
+ * words. The land is a light navy and the borders white, so the words over it keep their contrast.
+ */
+.aboutBand {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.mapBackdrop {
+  position: absolute;
+  right: -2%;
+  bottom: -14%;
+  z-index: -1;
+  width: min(900px, 62%);
+  height: auto;
+  opacity: 0.8;
+}
+/* A narrow screen shows the country's mainland under the contacts, at the foot of the band. */
+@media (max-width: 959px) {
+  .mapBackdrop {
+    right: -6%;
+    bottom: -8%;
+    width: 128%;
+    opacity: 0.6;
+  }
+}
 .aboutGrid {
   display: grid;
   gap: 32px;
@@ -761,7 +1018,7 @@
 
 /* The footer: the logo on a white plate, since the navy would swallow its navy square. */
 .footer {
-  padding-block: 48px 40px;
+  padding-block: clamp(36px, 5vw, 48px) clamp(28px, 4vw, 40px);
   background: var(--navy);
   color: var(--on-navy);
 }
@@ -842,6 +1099,30 @@
   }
 }
 
+/* The pictures' credits, under a hairline at the foot of the footer: small, but links a reader can follow. */
+.credits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 24px;
+  margin-top: clamp(22px, 3vw, 36px);
+  padding-top: clamp(12px, 1.5vw, 18px);
+  border-top: 1px solid var(--on-navy-hair);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.credits a {
+  color: var(--on-navy-2);
+  text-decoration: underline;
+  text-decoration-color: var(--on-navy-hair);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .credits a:hover {
+    color: var(--on-navy);
+    text-decoration-color: var(--on-navy);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   :global(html):has(.page) {
     scroll-behavior: smooth;
@@ -875,12 +1156,30 @@
     background: none;
     color: var(--ink);
   }
+  /* The pictures stay on screen; on paper the words carry everything, so the credits go with them. */
   .skip,
   .mastButton,
   .actions,
   .arrowLink,
-  .footNav {
+  .footNav,
+  .browser,
+  .backdrop,
+  .navy::before,
+  .phone,
+  .mapBackdrop,
+  .credits {
     display: none;
+  }
+  .column {
+    background: none;
+  }
+  .stage .figures,
+  .useStage .example {
+    position: static;
+    grid-column: 1 / -1;
+    width: auto;
+    margin: 0;
+    transform: none;
   }
   .band,
   .hero,
