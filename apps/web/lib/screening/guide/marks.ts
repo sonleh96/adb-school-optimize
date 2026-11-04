@@ -61,6 +61,8 @@ const MARKS: readonly MarkRule[] = [
     block: true,
   },
   { selector: '[data-region="persistent-flag"]', card: term("persistent_flag"), block: true },
+  // The line under each part of school need that compares its record with the list: the first one explains them all.
+  { selector: '[data-region="need-standing"]', card: firstOnly("part_standing"), block: true },
   // The method details: their scope line, compare mode's statement, and the two controls only they have.
   {
     selector: '[data-region="scope"] > p[data-term]',

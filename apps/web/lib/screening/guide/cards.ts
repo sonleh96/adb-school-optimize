@@ -180,6 +180,16 @@ function examplesFor(ctx: CardContext, key: string): { examples: Example[]; note
     case "need_services":
     case "need_locality":
       return { examples: about(roles.complete, (s) => copy.inputSentence(s, NEED_INPUT[key as TermKey]!)) };
+    case "part_standing": {
+      // Another school's line for one part, under the part's name, as the school card shows it.
+      const line = (s: CopySchool) => copy.partStanding(s, rule, "facilities", ctx.schools);
+      return {
+        examples: about(
+          roles.complete.filter((s) => line(s) !== null),
+          (s) => line(s) as string
+        ).map((example) => ({ ...example, label: copy.TERMS.need_facilities.label })),
+      };
+    }
     case "area_context":
     case "area_grade10":
     case "area_grade12":
