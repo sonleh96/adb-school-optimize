@@ -38,18 +38,31 @@ const written = (v: number): string => `${v}%`;
 const fixedPercent = (fraction: number, digits: number): string =>
   (Math.round(fraction * 10 ** (digits + 2) * (1 + Number.EPSILON)) / 10 ** digits).toFixed(digits);
 
+/** The band as its words print it, to one decimal of a percent. */
+const printedBand = (band: { lo: number; hi: number }) => ({
+  lo: percentAt(band.lo, 1),
+  hi: percentAt(band.hi, 1),
+});
+
 /**
- * A share as a percent, whole where that is true to it and to one or two decimals where rounding would carry it to
- * the other side of `line`: 0.7999 against 0.8 is "79.99%", never "80%". Within `near` of the line it keeps at least
- * one decimal, so a school just above the line does not read as sitting on it: 0.8014 is "80.1%".
+ * A share as a percent, with as few decimals as keep it true to where its mark is drawn:
+ * - on the frequency's side of `line`: 0.7999 against 0.8 is "79.99%", never "80%";
+ * - inside the band's printed range exactly when the mark is inside `band`: 0.7854 against a band printed
+ *   "78.9% to 81.1%" is "78.5%", never "79%";
+ * - inside the band, at least one decimal, so a school just above the line does not read as on it: 0.8014 is "80.1%".
  */
-export function percentBeside(fraction: number, line: number, near = 0): string {
+export function percentBeside(fraction: number, line: number, band?: { lo: number; hi: number }): string {
   const above = fraction >= line;
-  for (const digits of Math.abs(fraction - line) < near ? [1, 2] : [0, 1, 2]) {
+  const inBand = band !== undefined && fraction >= band.lo && fraction <= band.hi;
+  const printed = band && printedBand(band);
+  for (const digits of inBand ? [1, 2, 3, 4] : [0, 1, 2, 3, 4]) {
     const fixed = fixedPercent(fraction, digits);
-    if (Number(fixed) >= percentAt(line, 4) === above) return `${fixed}%`;
+    const v = Number(fixed);
+    const sameSide = v >= percentAt(line, 4) === above;
+    const sameBand = !printed || (v >= printed.lo && v <= printed.hi) === inBand;
+    if (sameSide && sameBand) return `${fixed}%`;
   }
-  return written(percentAt(fraction, 4));
+  return written(percentAt(fraction, 6));
 }
 
 /** The drawing of `flag`'s frequencies under `test`, or null when there is nothing it can draw truthfully. */
@@ -62,6 +75,12 @@ export function frequencyTracks(
   const { threshold, settings } = test;
   if (!(threshold > 0 && threshold <= 1) || settings.length !== frequencies.length) return null;
 
+  const half = test.band;
+  const edges =
+    half !== undefined && half > 0
+      ? { lo: Math.max(0, threshold - half), hi: Math.min(1, threshold + half) }
+      : undefined;
+
   // By id where the test names its settings, else by order, which is the order the API sends them in.
   const named = settings.every((s) => s.id !== undefined);
   const tracks: FrequencyTrack[] = [];
@@ -73,21 +92,18 @@ export function frequencyTracks(
       index,
       frequency: found.frequency,
       reaches,
-      percent: percentBeside(found.frequency, threshold, test.band),
+      percent: percentBeside(found.frequency, threshold, edges),
     });
   }
   // The flag says persistent exactly when every setting reaches the line. A drawing that says otherwise would
   // contradict the sentence above it, so it is not drawn.
   if (tracks.every((t) => t.reaches) !== flag.persistent) return null;
 
-  const half = test.band;
-  const band =
-    half !== undefined && half > 0
-      ? (() => {
-          const lo = Math.max(0, threshold - half);
-          const hi = Math.min(1, threshold + half);
-          return { lo, hi, loPercent: written(percentAt(lo, 1)), hiPercent: written(percentAt(hi, 1)) };
-        })()
-      : null;
+  const band = edges
+    ? (() => {
+        const printed = printedBand(edges);
+        return { ...edges, loPercent: written(printed.lo), hiPercent: written(printed.hi) };
+      })()
+    : null;
   return { threshold, thresholdPercent: written(percentAt(threshold, 1)), band, tracks };
 }

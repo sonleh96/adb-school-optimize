@@ -14,6 +14,11 @@
  *                                                 -> "draws nothing, without error, from ..."
  *  5. The words a screen reader hears say another share or another side of the line than the mark
  *                                                 -> covered with 1 and 3: each row's words are read off the render
+ *  6. A value just outside the band is rounded to a number inside the band's printed range ("79%" against
+ *     "78.9% to 81.1%"), or one just inside it to a number outside
+ *                                                 -> "states a number inside the printed band exactly when ..."
+ *  7. "Share" means a share of runs in the figure's words and also the factors' weights in its labels
+ *                                                 -> "names each setting in plain words with its concentrations"
  */
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -170,13 +175,64 @@ describe("the words beside each mark", () => {
     // Within the band (here the circulated test's, one standard error), a decimal stays: the preview data's two
     // near-line schools under S are 0.8014 and 0.8034, which whole would both read as the line itself.
     const se = 0.005656854249492379;
-    expect(percentBeside(0.8014, 0.8, se)).toBe("80.1%");
-    expect(percentBeside(0.8034, 0.8, se)).toBe("80.3%");
-    expect(percentBeside(0.8, 0.8, se)).toBe("80.0%");
-    expect(percentBeside(0.7999, 0.8, se)).toBe("79.99%");
-    expect(percentBeside(0.8105, 0.8, 2 * se)).toBe("81.1%");
-    expect(percentBeside(0.818, 0.8, se)).toBe("82%");
+    const band = (errors: number) => ({ lo: 0.8 - errors * se, hi: 0.8 + errors * se });
+    expect(percentBeside(0.8014, 0.8, band(1))).toBe("80.1%");
+    expect(percentBeside(0.8034, 0.8, band(1))).toBe("80.3%");
+    expect(percentBeside(0.8, 0.8, band(1))).toBe("80.0%");
+    expect(percentBeside(0.7999, 0.8, band(1))).toBe("79.99%");
+    expect(percentBeside(0.8105, 0.8, band(2))).toBe("81.1%");
+    expect(percentBeside(0.818, 0.8, band(1))).toBe("82%");
   });
+
+  /** Each value's words for a school with these frequencies, under a test with S0's or S's band. */
+  function wordsAt(frequencies: number[], errors: 1 | 2) {
+    const se = 0.005656854249492379;
+    const ids = ["concentration_20_15", "concentration_40_35", "concentration_100_80"];
+    const test = {
+      draws: 5000,
+      threshold: 0.8,
+      band: errors * se,
+      settings: ids.map((id, i) => ({ id, topLevel: [20, 40, 100][i], schoolNeed: [15, 35, 80][i] })),
+    };
+    const flag = {
+      persistent: frequencies.every((f) => f >= 0.8),
+      adjacent: false,
+      frequencies: frequencies.map((frequency, i) => ({ setting: ids[i], frequency })),
+    };
+    const drawing = frequencyTracks(test, flag)!;
+    const band = drawing.band!;
+    return {
+      printed: [band.loPercent, band.hiPercent].map((p) => Number.parseFloat(p)) as [number, number],
+      tracks: drawing.tracks.map((t) => ({
+        frequency: t.frequency,
+        inside: t.frequency >= band.lo && t.frequency <= band.hi,
+        stated: Number.parseFloat(t.percent),
+        percent: t.percent,
+      })),
+    };
+  }
+
+  it.each([
+    // S0's band, two standard errors: 0.788686 to 0.811314, printed 78.9% to 81.1%. 0.7854 is real: an S0 school's
+    // 40/35 frequency in the preview data, whose mark sits just outside the band.
+    ["S0", 2, [0.7854, 0.7886, 0.7887], ["78.5%", "78.86%", "78.9%"]],
+    ["S0", 2, [0.8113, 0.8114, 0.812], ["81.1%", "81.14%", "81.2%"]],
+    ["S0", 2, [0.7849, 0.815, 0.8149], ["78%", "82%", "81.5%"]],
+    // S's band, one standard error: 0.794343 to 0.805657, printed 79.4% to 80.6%.
+    ["S", 1, [0.7943, 0.7944, 0.7935], ["79%", "79.4%", "79%"]],
+    ["S", 1, [0.8056, 0.80566, 0.8064], ["80.6%", "81%", "81%"]],
+    ["S", 1, [0.8052, 0.8017, 0.8], ["80.5%", "80.2%", "80.0%"]],
+  ] as const)(
+    "states a number inside the printed band exactly when the mark is inside it, at %s's band edges",
+    (_, errors, frequencies, expected) => {
+      const { printed, tracks } = wordsAt([...frequencies], errors);
+      for (const t of tracks) {
+        const statedInside = t.stated >= printed[0] && t.stated <= printed[1];
+        expect(statedInside, `${t.frequency} as ${t.percent} against ${printed.join(" to ")}`).toBe(t.inside);
+      }
+      expect(tracks.map((t) => t.percent)).toEqual(expected);
+    }
+  );
 
   it("names each setting in plain words with its concentrations", async () => {
     const bound = bindCopy({ view: "additive_no_u", inputs, lists }).copy;
