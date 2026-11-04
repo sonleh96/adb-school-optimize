@@ -49,6 +49,7 @@ from ..models.screening import (
     MaximumTermOut,
     NeedPartsOut,
     PairwiseMetricsOut,
+    PersistenceFrequencyOut,
     PersistenceOut,
     PersistenceResultsResponse,
     PersistenceSettingOut,
@@ -502,11 +503,20 @@ def get_inputs(request: Request, input_version: Text | None = None):
 def _persistence_flags(persistence: store.Persistence | None, name: str) -> dict:
     """What a rule's experiment says about one school: all null when there are no numbers or the school was not in it."""
     if persistence is None:
-        return {"persistent_candidate": None, "lowest_top20_frequency": None, "threshold_adjacent": None}
+        return {
+            "persistent_candidate": None,
+            "lowest_top20_frequency": None,
+            "threshold_adjacent": None,
+            "top20_frequencies": None,
+        }
+    frequencies = persistence.setting_frequencies(name)
     return {
         "persistent_candidate": persistence.is_persistent(name),
         "lowest_top20_frequency": persistence.lowest_frequency(name),
         "threshold_adjacent": persistence.is_threshold_adjacent(name),
+        "top20_frequencies": None
+        if frequencies is None
+        else [PersistenceFrequencyOut(setting_id=s, frequency=f) for s, f in frequencies],
     }
 
 

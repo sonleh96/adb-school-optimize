@@ -34,7 +34,7 @@ from school_scoring.screening import (
 )
 
 from . import screening_store as store
-from .models.screening import PERSISTENCE_LIMITATIONS, AnchorOut, ManifestOut, WeightOut
+from .models.screening import FREQUENCY_CAVEAT, PERSISTENCE_LIMITATIONS, AnchorOut, ManifestOut, WeightOut
 from .screening_lists import Filters, TopSelection
 from .screening_queries import SchoolRow
 
@@ -259,8 +259,7 @@ def method_record(
             (
                 "persistence_test",
                 f"Lower top-20 frequency at least {number_text(persistence.threshold)} in each of "
-                f"{len(persistence.settings)} settings, {persistence.draws} draws each. "
-                "A frequency is a share of draws under declared scenarios, not a probability that a school needs help.",
+                f"{len(persistence.settings)} settings, {persistence.draws} draws each. {FREQUENCY_CAVEAT}",
             ),
             ("persistence_limitation", PERSISTENCE_LIMITATIONS[persistence.rule_id]),
         ]

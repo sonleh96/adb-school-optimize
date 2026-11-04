@@ -47,6 +47,7 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | API39 | A compared entrant or exit has the wrong scope code. | `rank_scope_code` of a top-20 entrant or exit in `/compare` is `complete_under_rule` or `eligible` instead of `common_complete_cohort`, and no test notices because the data has too few schools for the top 20 to change. |
 | API38 | The route by link is cached as immutable. | `GET /schools/{school_id}` with an input version and a package version is sent as `immutable`, so a client keeps it across a reload of `schools` that changes which schools the id links to. |
 | API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
+| API42 | A school's frequencies per setting are wrong, misplaced or read as more than they are. | A row or detail entry of `additive_u` or `additive_no_u` serves frequencies that differ from the stored rows (rounded, another rule's or another version's), in an order other than the set's settings, or under setting ids the provenance does not list; a school outside the experiment or a version without numbers gets zeros or an empty list instead of null; the field appears under any other rule or in a comparison; the flag or the lowest frequency disagrees with the frequencies served beside it; or the field's description omits that a frequency is a share of draws, not a probability. |
 
 ## Test map
 
@@ -152,3 +153,8 @@ Nothing in them is mocked: the application, its connection pool and the stored r
 | `test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors` | API36 |
 | `test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only` | API36, API34 |
 | `test_the_provenance_states_the_margin_each_rule_is_judged_by` | API36, API35 |
+| `test_each_entry_serves_the_stored_frequencies_in_the_sets_setting_order` (2 rules) | API42 |
+| `test_only_the_two_rules_carry_the_frequencies_and_a_school_outside_the_experiment_has_null` | API42, API34 |
+| `test_a_version_without_the_numbers_has_null_frequencies_never_zeros` | API42 |
+| `test_the_flag_and_the_lowest_frequency_follow_the_frequencies_served_beside_them` (2 datasets) | API42, API33, API36 |
+| `test_the_frequencies_say_they_are_shares_of_draws_not_probabilities` | API42 |

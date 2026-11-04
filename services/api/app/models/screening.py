@@ -100,6 +100,12 @@ PERSISTENCE_LIMITATIONS: dict[str, str] = {
 }
 
 
+# What a persistence frequency is and is not. The export's method record and the API's field descriptions say the same.
+FREQUENCY_CAVEAT = (
+    "A frequency is a share of draws under declared scenarios, not a probability that a school needs help."
+)
+
+
 def persistence_adjacent_rule(standard_errors: int) -> str:
     """The definition of threshold-adjacent for a set whose paper uses a band of ``standard_errors`` standard errors."""
     band = {1: "one standard error", 2: "two standard errors"}[standard_errors]
@@ -340,6 +346,18 @@ class ListedRowOut(SchoolResultOut):
     school: SchoolIdentityOut
 
 
+class PersistenceFrequencyOut(Out):
+    """A school's lower top-20 frequency under one setting of the draws."""
+
+    setting_id: str = Field(
+        description="The setting, as named in the ``settings`` of the rule's persistence provenance, which states "
+        "its concentrations."
+    )
+    frequency: float = Field(
+        description=f"The share of draws in which the school stayed in the top 20 at its lower score. {FREQUENCY_CAVEAT}"
+    )
+
+
 class PersistenceFlagsOut(Out):
     """What the experiment says about one school under the rule it was run for. All null when it was not in it."""
 
@@ -354,6 +372,12 @@ class PersistenceFlagsOut(Out):
     threshold_adjacent: bool | None = Field(
         description="True for a persistent school whose lowest frequency is within the rule's band above the "
         "threshold (see the provenance block); false for any other school of the experiment."
+    )
+    top20_frequencies: list[PersistenceFrequencyOut] | None = Field(
+        description="The school's lower top-20 frequency under each setting, in the order of the provenance's "
+        "``settings``. The flag is true when every one is at or above the threshold, so these show how close the "
+        f"school is to the line. {FREQUENCY_CAVEAT} Null, never zeros, when the school was not in the experiment or "
+        "this input version has no persistence numbers for the rule."
     )
 
 
