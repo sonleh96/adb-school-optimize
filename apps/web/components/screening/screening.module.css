@@ -2682,6 +2682,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     padding-top: 8px;
     padding-bottom: 8px;
   }
+  /* Its 18 px would push the first school's reason out of the window; the files still name the version first. */
+  .narrowHead .dataVersion {
+    display: none;
+  }
   .tab {
     padding-top: 7px;
     padding-bottom: 6px;
