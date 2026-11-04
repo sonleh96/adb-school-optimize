@@ -7,11 +7,15 @@ import type { Method } from "@/lib/screening/copy/method";
 import { type ComparedSchool, type MoveEdges, topStatus } from "@/lib/screening/method/compare";
 import { moveHex } from "@/lib/screening/method/moves";
 import { shareText } from "@/lib/screening/method/shares";
+import { frequencyTracks } from "@/lib/screening/method/tracks";
 import type { DetailResult, Rule, SchoolDetailResponse } from "@/lib/screening/types";
 
 import { PlaceText } from "../PlaceText";
 import base from "../screening.module.css";
 import styles from "./card.module.css";
+import { FrequencyTracks } from "./FrequencyTracks";
+
+const PERSISTENCE_RULES = ["additive_no_u", "additive_u"] as const;
 
 const f3 = (value: number) => value.toFixed(3);
 const lcFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1);
@@ -363,7 +367,7 @@ function Record({
   rules: readonly CopyRuleId[];
 }) {
   // Each rule the stochastic test ran for has its own flag and its own words, and shows only where it is on screen.
-  const persistent = (["additive_no_u", "additive_u"] as const).filter(
+  const persistent = PERSISTENCE_RULES.filter(
     (id) =>
       rules.includes(id) && detail.rules.some((e) => e.rule.rule_id === id && e.persistent_candidate === true)
   );
@@ -387,6 +391,21 @@ function Record({
             .map((sentence) => ` ${sentence}`)}
         </p>
       ))}
+      {/* How close the school came to the line in each setting, flagged or not, under each such rule on screen. */}
+      {PERSISTENCE_RULES.filter((id) => rules.includes(id)).map((id) => {
+        const test = copy.persistenceTest(id);
+        const drawing = frequencyTracks(test, school.persistence?.[id]);
+        return test && drawing ? (
+          <FrequencyTracks
+            key={id}
+            method={method}
+            rule={copy.ruleShortName(id)}
+            named={rules.length > 1}
+            test={test}
+            drawing={drawing}
+          />
+        ) : null;
+      })}
       <dl className={styles.cond}>
         {(Object.keys(cond) as (keyof typeof cond)[]).map((key) => {
           const value = values[key] ?? null;
