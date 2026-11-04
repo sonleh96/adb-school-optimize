@@ -10,6 +10,8 @@
  *  4. The API leaves out or changes how a rule combines its inputs, and the page breaks or the diagram draws a sum
  *     that is not one                                -> "draws nothing it cannot read from the API ..."
  *  5. The diagram's words break the writing rules    -> "words every rule's diagram within the writing rules"
+ *  6. A reader who adds up the shares listed under a total gets another number than the one stated, because each
+ *     share was rounded                              -> "states no total that the shares under it do not add up to"
  */
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -72,11 +74,15 @@ function drawnItems(list: Element | null): Drawn[] {
   if (!list) return [];
   return Array.from(list.children).map((item) => {
     const row = item.firstElementChild as HTMLElement;
-    const words = /^(.+?) ((?:about )?\d+%)/.exec(row.textContent ?? "");
+    // The row's words one by one, the bar left out: its name, then its share.
+    const words = Array.from(row.querySelectorAll("*"))
+      .filter((el) => el.childElementCount === 0 && !el.closest('[aria-hidden="true"]'))
+      .map((el) => el.textContent?.trim() ?? "")
+      .filter(Boolean);
     const bar = row.querySelector<HTMLElement>('[style*="width"]');
     return {
-      name: words?.[1] ?? "",
-      share: words?.[2] ?? "",
+      name: words[0] ?? "",
+      share: words[1] ?? "",
       width: bar ? Number.parseFloat(bar.style.width) : Number.NaN,
       parts: drawnItems(item.querySelector(":scope > ul")),
     };
@@ -95,28 +101,40 @@ const valueOf = (fraction: string) => {
   return Number(n) / Number(d);
 };
 
-/** The words a share of the whole score must read as: whole percent, with "about" when it is not exact. */
-const wordsFor = (share: number) => {
+/** A share as a percent the way a reader expects it written: whole when it is whole, else to one decimal. */
+const written = (share: number) => {
   const percent = share * 100;
   return Math.abs(percent - Math.round(percent)) < 1e-9
-    ? `${Math.round(percent)}%`
-    : `about ${Math.round(percent)}%`;
+    ? String(Math.round(percent))
+    : (Math.round(percent * 10) / 10).toFixed(1);
 };
 
 interface Expected {
   name: string;
+  /** Its share of the whole score, which its bar draws. */
   share: number;
+  /** Its share in words. */
+  words: string;
   parts: Expected[];
 }
 
-/** What the API says to draw: each weight at `scale` of the score, school need with its five equal parts. */
-const fromWeights = (raw: RawRule, scale: number): Expected[] =>
+/**
+ * What the API says to draw: each weight at `scale` of the score, worded as a share of the score at the top and as
+ * a share of the combined factors under them; school need with its five equal parts, each a fifth of it.
+ */
+const fromWeights = (raw: RawRule, scale: number, top: boolean): Expected[] =>
   raw.weights.map((w) => ({
     name: NAME[w.component],
     share: w.value * scale,
+    words: top ? `${written(w.value * scale)}%` : SCORE_TREE.ofCombined(written(w.value)),
     parts:
       w.component === "N"
-        ? NEED_PARTS.map((name) => ({ name, share: (w.value * scale) / 5, parts: [] }))
+        ? NEED_PARTS.map((name) => ({
+            name,
+            share: (w.value * scale) / 5,
+            words: SCORE_TREE.fifthOfNeed,
+            parts: [],
+          }))
         : [],
   }));
 
@@ -127,7 +145,7 @@ function expectDrawn(drawn: Drawn[], expected: Expected[], where: string) {
   ).toEqual(expected.map((e) => e.name));
   expected.forEach((e, i) => {
     expect(drawn[i].width, `${where} > ${e.name}`).toBeCloseTo(e.share * 100, 9);
-    expect(drawn[i].share, `${where} > ${e.name}`).toBe(wordsFor(e.share));
+    expect(drawn[i].share, `${where} > ${e.name}`).toBe(e.words);
     expectDrawn(drawn[i].parts, e.parts, `${where} > ${e.name}`);
   });
 }
@@ -147,10 +165,15 @@ describe("the diagram of how much each part counts", () => {
       const names = raw.maximum_components.map((c) => NAME[c].charAt(0).toLowerCase() + NAME[c].slice(1));
       const expected: Expected[] =
         raw.maximum_components.length === 0
-          ? fromWeights(raw, 1)
+          ? fromWeights(raw, 1, true)
           : [
-              { name: SCORE_TREE.combined, share: 1 - largest, parts: fromWeights(raw, 1 - largest) },
-              { name: SCORE_TREE.largest(names), share: largest, parts: [] },
+              {
+                name: SCORE_TREE.combined,
+                share: 1 - largest,
+                words: `${written(1 - largest)}%`,
+                parts: fromWeights(raw, 1 - largest, false),
+              },
+              { name: SCORE_TREE.largest(names), share: largest, words: `${written(largest)}%`, parts: [] },
             ];
       expectDrawn(items, expected, raw.rule_id);
     }
@@ -248,6 +271,43 @@ describe("the diagram of how much each part counts", () => {
         if (!kept) expect(container.innerHTML, `${label}: ${rule.rule_id}`).toBe("");
       }
     }
+  });
+
+  it("states no total that the shares under it do not add up to", () => {
+    // A share as the page states it: tenths of a percent of the score, or a share of the row it sits under, which
+    // names that row ("a fifth of school need"). Read from the words alone, as a reader adding them up would.
+    const tenths = (words: string): number | null => {
+      const match = /^(?:about )?(\d+)(?:\.(\d))?%$/.exec(words);
+      return match ? Number(match[1]) * 10 + Number(match[2] ?? 0) : null;
+    };
+    const names = (words: string, parent: string) =>
+      words.toLowerCase().endsWith(` of ${parent.toLowerCase().replace(/^the /, "")}`) ||
+      words.toLowerCase().endsWith(` of the ${parent.toLowerCase().replace(/^the /, "")}`);
+    const problems: string[] = [];
+    const check = (where: string, total: string | null, parent: string | null, parts: Drawn[]) => {
+      if (parts.length === 0) return;
+      const relative = parent !== null && parts.every((p) => names(p.share, parent));
+      const shares = parts.map((p) => tenths(p.share));
+      const stated = total === null ? null : tenths(total);
+      if (!relative && shares.some((s) => s === null))
+        problems.push(`${where}: shares that neither name their row nor give a percent of the score`);
+      else if (!relative && stated !== null && shares.reduce((t, s) => t! + s!, 0) !== stated)
+        problems.push(`${where}: ${parts.map((p) => p.share).join(" + ")} is not ${total}`);
+      for (const p of parts) check(`${where} > ${p.name}`, p.share, p.name, p.parts);
+    };
+    for (const copy of [PLAIN, LETTERED])
+      for (const id of RULE_IDS) {
+        const { figure, items } = draw(id, copy);
+        if (items.length === 0) continue;
+        // The last row states the whole score's share only when it states one.
+        const whole = /(\d+(?:\.\d)?%)$/.exec(figure!.querySelector("[data-row=whole]")?.textContent ?? "");
+        check(id, whole ? whole[1] : null, null, items);
+        // And it does state it whenever the shares above it, as written, add up to all of the score.
+        const top = items.map((item) => tenths(item.share));
+        if (top.every((t) => t !== null) && top.reduce((t, s) => t! + s!, 0) === 1000 && !whole)
+          problems.push(`${id}: the shares add up to 100%, but the last row does not say so`);
+      }
+    expect(problems).toEqual([]);
   });
 
   it("words every rule's diagram within the writing rules", () => {

@@ -79,10 +79,31 @@ function parseShare(text: string): Share | null {
   return Number.isSafeInteger(n) && Number.isSafeInteger(d) && d > 0 ? fraction(n, d) : null;
 }
 
-/** A share as a percentage of the score: the exact value, and whether it is a whole number of percent. */
-export function percentOf(share: Share): { readonly value: number; readonly whole: boolean } {
-  return { value: (100 * share.n) / share.d, whole: (100 * share.n) % share.d === 0 };
+/** A share as a percentage, exactly, for the length of its bar. */
+export const percentOf = (share: Share): number => (100 * share.n) / share.d;
+
+/** A share in tenths of a percent, as the page writes it. */
+const tenthsOf = (share: Share): number => Math.round((1000 * share.n) / share.d);
+
+/**
+ * A share as the page writes it, without the sign: a whole number of percent when it is one ("60"), else rounded to
+ * one decimal ("63.2"). Nineteenths have no exact decimal, so the written shares of a rule such as S0 can add up to a
+ * little more or less than their total; `writtenTotal` says when they do not.
+ */
+export function percentText(share: Share): string {
+  if ((100 * share.n) % share.d === 0) return String((100 * share.n) / share.d);
+  const tenths = tenthsOf(share);
+  return `${Math.floor(tenths / 10)}.${tenths % 10}`;
 }
+
+/** The total the written shares add up to, as it would be written, or null when it is not the exact total. */
+export function writtenTotal(shares: readonly Share[]): string | null {
+  const exact = shares.reduce((sum, s) => plus(sum, s), ZERO);
+  return shares.reduce((sum, s) => sum + tenthsOf(s), 0) === tenthsOf(exact) ? percentText(exact) : null;
+}
+
+/** One share as a share of another, such as a part of the combined factors as a share of them. */
+export const shareOf = (part: Share, whole: Share): Share => fraction(part.n * whole.d, part.d * whole.n);
 
 /** The rule's weights, each a known input stated once with a fraction its number agrees with; null otherwise. */
 function weightsOf(rule: Rule): { readonly input: Input; readonly share: Share }[] | null {

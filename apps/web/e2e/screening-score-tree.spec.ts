@@ -76,26 +76,34 @@ async function drawing(figure: Locator): Promise<{ items: Drawn[]; whole: Drawn 
   });
 }
 
-/** The share an item's words state, in percent, and whether they state it exactly or as "about". */
-function stated(words: string): { percent: number; exact: boolean } {
-  const match = /(about )?(\d+)%/.exec(words);
-  if (!match) throw new Error(`no share in ${JSON.stringify(words)}`);
-  return { percent: Number(match[2]), exact: !match[1] };
+/**
+ * The share an item's words state: a percent of the score, written whole or to one decimal ("63.2%"), or a share of
+ * the item it sits under, which the words name ("a fifth of school need", "63.2% of combined factors").
+ */
+function stated(words: string): { of: "score" | "parent"; share: number } {
+  const parent = /(?:(\d+(?:\.\d)?)%|a fifth) of [a-z ]+$/.exec(words);
+  if (parent) return { of: "parent", share: parent[1] === undefined ? 1 / 5 : Number(parent[1]) / 100 };
+  const score = /(\d+(?:\.\d)?)%$/.exec(words);
+  if (!score) throw new Error(`no share in ${JSON.stringify(words)}`);
+  return { of: "score", share: Number(score[1]) / 100 };
 }
 
-function expectBarsMatchWords(items: Drawn[], where: string) {
+/** Its words are to one decimal of a percent at most, so a bar may be off them by half of that, and no more. */
+const WRITTEN = 0.0005;
+
+function expectBarsMatchWords(items: Drawn[], where: string, parent: Drawn | null = null) {
   for (const item of items) {
-    const drawnPercent = (100 * item.bar) / item.scale;
-    const { percent, exact } = stated(item.words);
-    if (exact) expect(Math.abs(drawnPercent - percent), `${where}: ${item.words}`).toBeLessThan(0.5);
-    else expect(Math.round(drawnPercent), `${where}: ${item.words}`).toBe(percent);
+    const { of, share } = stated(item.words);
+    const drawn = of === "score" ? item.bar / item.scale : item.bar / parent!.bar;
+    expect(of, `${where}: ${item.words}`).toBe(parent === null ? "score" : "parent");
+    expect(Math.abs(drawn - share), `${where}: ${item.words}`).toBeLessThanOrEqual(WRITTEN + 0.0001);
     if (item.parts.length > 0) {
       // A part made of others: their bars end to end are its bar, and their words sit further in.
       const sum = item.parts.reduce((total, part) => total + part.bar, 0);
       expect(Math.abs(sum - item.bar), `${where}: the parts of ${item.words}`).toBeLessThanOrEqual(1);
       for (const part of item.parts)
         expect(part.left, `${where}: ${part.words} under ${item.words}`).toBeGreaterThan(item.left + 8);
-      expectBarsMatchWords(item.parts, where);
+      expectBarsMatchWords(item.parts, where, item);
     }
   }
 }
@@ -111,8 +119,9 @@ test("shows in How this works and the method details, as the rule on screen comb
   await openWorkspace(page, "?page=how");
   const how = diagram(howSection(page));
   await expect(how).toBeVisible();
-  await expect(how.getByRole("listitem").first()).toContainText(/School need\s*about 63%/);
-  await expect(how).toContainText(/District context\s*about 16%/);
+  await expect(how.getByRole("listitem").first()).toContainText(/^School need\s*63\.2%/);
+  await expect(how).toContainText(/Remoteness\s*a fifth of school need/);
+  await expect(how).toContainText(/District context\s*15\.8%/);
   // It draws the rule on screen: under a need-first rule, that rule's one line.
   await openWorkspace(page, "?page=how&rule=need_first_no_u");
   const howNeedFirst = diagram(howSection(page));
@@ -127,6 +136,7 @@ test("shows in How this works and the method details, as the rule on screen comb
   const top = largest.getByRole("list").first().locator(":scope > li");
   await expect(top).toHaveCount(2);
   await expect(top.nth(0)).toContainText(/^Combined factors\s*60%/);
+  await expect(top.nth(0)).toContainText(/District context\s*15\.8% of combined factors/);
   await expect(top.nth(1)).toContainText(
     /Whichever is higher for the school: school need or district context\s*40%/
   );
@@ -180,9 +190,19 @@ test("nothing in the diagram can be moved, typed in, focused or hovered for more
 });
 
 test("the nested list says what the bars draw", async ({ page }) => {
-  for (const [where, open] of [
-    ["How this works, the main method", async () => diagram(howSection(await openHow(page)))],
-    ["the method details, a largest-factor rule", () => openMethod(page, "bottleneck_no_u")],
+  // The last row states 100% only where the top shares, as written, add up to it: 60% and 40% do, while the main
+  // method's 63.2%, 15.8% and four times 5.3% come to 100.2%.
+  for (const [where, open, lastRow] of [
+    [
+      "How this works, the main method",
+      async () => diagram(howSection(await openHow(page))),
+      "All the parts together",
+    ],
+    [
+      "the method details, a largest-factor rule",
+      () => openMethod(page, "bottleneck_no_u"),
+      "All the parts together 100%",
+    ],
   ] as const) {
     const figure = await open();
     await expect(figure).toBeVisible();
@@ -192,7 +212,7 @@ test("the nested list says what the bars draw", async ({ page }) => {
     const { items, whole } = await drawing(figure);
     expectBarsMatchWords(items, where);
     // The last row is the whole score: every top bar end to end is as long as it, and it fills the scale.
-    expect(whole.words, where).toMatch(/^The whole score 100%$/);
+    expect(whole.words, where).toBe(lastRow);
     expect(Math.abs(whole.bar - whole.scale), where).toBeLessThanOrEqual(0.5);
     const top = items.reduce((total, item) => total + item.bar, 0);
     expect(Math.abs(top - whole.bar), where).toBeLessThanOrEqual(1);

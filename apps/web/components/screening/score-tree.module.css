@@ -64,33 +64,31 @@
   align-items: start;
   padding: 4px 0;
 }
+/*
+ * A part's name, then its share at the right. The name wraps beside its share while it keeps 12em of room; with
+ * less, the share moves under the name, still at the right.
+ */
 .label {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 12px;
   min-width: 0;
   padding-left: calc(var(--depth, 0) * var(--step));
-}
-.head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
   font-size: 13px;
   line-height: 18px;
 }
 .name {
+  flex: 1 1 12em;
   min-width: 0;
   color: var(--ink);
   overflow-wrap: anywhere;
 }
 .share {
   flex: none;
+  margin-left: auto;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
-}
-.note {
-  font-size: 12px;
-  line-height: 17px;
-  color: var(--ink-3);
 }
 .scale {
   display: block;
