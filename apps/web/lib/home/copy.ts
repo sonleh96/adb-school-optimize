@@ -186,7 +186,8 @@ export const HOME = Object.freeze({
   // from orbit and the province map are not the project's own, so each carries its source's credit, linked to the
   // source's page, as their licences ask; public/images/CREDITS.md holds the full terms.
   images: {
-    tool: "The list and its map in RISE-PNG on a computer.",
+    // The hero's screenshot: the whole tool on a wide screen, the list's first rows on a phone. True of both.
+    tool: "The list in RISE-PNG, with each school's main reason.",
     caption: "The tool, shown here with made-up schools.",
     phone: "The list in RISE-PNG on a phone, with made-up schools.",
     // The credits' list is named for a screen reader; on screen each line says what it credits.

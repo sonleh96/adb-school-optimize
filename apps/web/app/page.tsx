@@ -10,6 +10,7 @@ import { LAYOUT } from "@/lib/screening/copy/words";
 import orbit from "@/public/images/png-from-orbit.webp";
 import provinces from "@/public/images/png-provinces.svg";
 import toolDesktop from "@/public/images/tool-desktop.webp";
+import toolRows from "@/public/images/tool-phone-rows.webp";
 import toolPhone from "@/public/images/tool-phone.webp";
 
 import { homeFonts } from "./fonts";
@@ -55,6 +56,40 @@ function Picture(options: ImageProps) {
   const { props } = getImageProps(options);
   // eslint-disable-next-line @next/next/no-img-element -- getImageProps gives the <img> next/image would draw.
   return <img {...props} alt={options.alt} />;
+}
+
+/**
+ * The hero's screenshot, the first view's largest picture, so it loads first. A wide screen gets the whole tool.
+ * Below 768 px the whole tool would be drawn too small to read, so a phone gets the phone's own list: its first two
+ * rows with their Why lines, at the size the phone draws them, from the same test data.
+ */
+function HeroShot() {
+  const rows = getImageProps({
+    src: toolRows,
+    alt: HOME.images.tool,
+    sizes: "(max-width: 479px) 92vw, 440px",
+    quality: 85,
+  }).props;
+  const { props } = getImageProps({
+    src: toolDesktop,
+    alt: HOME.images.tool,
+    sizes: "(min-width: 1296px) 680px, (min-width: 1024px) 53vw, 92vw",
+    quality: 85,
+    loading: "eager",
+    fetchPriority: "high",
+  });
+  return (
+    <picture>
+      <source
+        media="(max-width: 767px)"
+        srcSet={rows.srcSet}
+        sizes={rows.sizes}
+        width={rows.width}
+        height={rows.height}
+      />
+      <img {...props} className={styles.shot} alt={HOME.images.tool} />
+    </picture>
+  );
 }
 
 function PhraseText({ phrase }: { phrase: Phrase }) {
@@ -197,16 +232,7 @@ export default async function HomePage() {
             <div className={styles.stage}>
               <figure className={styles.browser}>
                 <figcaption className={styles.browserBar}>{HOME.images.caption}</figcaption>
-                {/* The largest thing on a wide screen's first view, so it loads first. */}
-                <Picture
-                  className={styles.shot}
-                  src={toolDesktop}
-                  alt={HOME.images.tool}
-                  sizes="(min-width: 1296px) 680px, (min-width: 1024px) 53vw, 92vw"
-                  quality={85}
-                  loading="eager"
-                  fetchPriority="high"
-                />
+                <HeroShot />
               </figure>
               <Figures figures={figures} />
             </div>

@@ -137,16 +137,16 @@ test("with sign-in required, the homepage is public, and an old link to the tool
 });
 
 // Failure mode: the homepage is public but its pictures are not, so a signed-out reader sees broken pictures: the
-// proxy sends each picture, or each of its resized copies, to the sign-in page.
+// proxy sends each picture, or each of its resized copies, to the sign-in page. A <source> offers a phone's copies.
 test("with sign-in required, every picture the homepage offers is public", async ({ page, request }) => {
   await page.goto(`${ORIGIN}/`);
   const addresses = await page
-    .locator("img")
-    .evaluateAll((images: HTMLImageElement[]) => [
+    .locator("img, source")
+    .evaluateAll((elements: Element[]) => [
       ...new Set(
-        images.flatMap((img) => [
-          img.getAttribute("src") ?? "",
-          ...(img.getAttribute("srcset") ?? "").split(",").map((entry) => entry.trim().split(" ")[0]),
+        elements.flatMap((el) => [
+          el.getAttribute("src") ?? "",
+          ...(el.getAttribute("srcset") ?? "").split(",").map((entry) => entry.trim().split(" ")[0]),
         ])
       ),
     ]);

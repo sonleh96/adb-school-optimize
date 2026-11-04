@@ -543,16 +543,23 @@
     margin-top: -72px;
   }
 }
-/* On a phone the window shows its top, the list's first rows, and the card comes up over its foot. */
-@media (max-width: 639px) {
-  .browser .shot {
-    aspect-ratio: 2.4 / 1;
-    object-fit: cover;
-    object-position: left top;
+.browser picture {
+  display: block;
+}
+/*
+ * Below 768 px the whole tool would be drawn too small to read, so the window holds the phone's own list instead:
+ * its first two rows and their Why lines, at the size a phone draws them (page.tsx, HeroShot). The stage keeps to a
+ * phone's width, so a small tablet does not blow the rows up, and the card comes up to just under the second row.
+ * The rows picture is 780 wide and 378 high, and the second row's rule sits 288 down it, so the card overlaps the
+ * window's foot by (378 - 288) / 780 of its width, 11.54%, less 5 px of air: in proportion, at every phone width.
+ */
+@media (max-width: 767px) {
+  .stage {
+    max-width: 440px;
   }
   .stage .figures {
     grid-column: 1 / -1;
-    margin: -52px 10px 0;
+    margin: calc(5px - 11.54%) 10px 0;
     padding: 26px 22px 24px;
   }
 }

@@ -26,7 +26,8 @@ The homepage shows each outside credit in its footer, linked to the source.
 
 ## Screenshots
 
-- `tool-desktop.webp`, `tool-phone.webp`: screenshots of RISE-PNG showing the synthetic test data in `apps/web/e2e/fixtures/screening`, not real schools.
+- `tool-desktop.webp`, `tool-phone.webp`, `tool-phone-rows.webp`: screenshots of RISE-PNG showing the synthetic test data in `apps/web/e2e/fixtures/screening`, not real schools.
+  `tool-phone-rows.webp` is a crop of `tool-phone.webp`: the list's first two rows and their Why lines, which the hero shows on a phone.
   Made by the project, so the MIT licence covers them.
   The tests' basemap has no tiles, so no OpenStreetMap or CARTO data appears in them.
   The desktop shot is cropped above the map's credit line, which would name a basemap the picture does not show.

@@ -33,6 +33,8 @@
  *                                                                          -> "printed, the pictures..."
  * 17. A picture that fails to load (a dropped connection, a blocked request) leaves a broken-image frame
  *                                                                          -> "a picture that fails..."
+ * 18. A phone shows the whole tool shrunk to a third of its size, too small to read
+ *                                                                          -> "on a phone, the hero shows..."
  */
 import type { Page } from "@playwright/test";
 
@@ -260,9 +262,14 @@ for (const [width, height, shown] of [
 }
 
 // The pictures by their files' names, which the resizer keeps in its address.
-const PICTURE = { phone: /tool-phone/, map: /png-provinces/, tool: /tool-desktop/ };
+const PICTURE = {
+  phone: /tool-phone\./,
+  rows: /tool-phone-rows\./,
+  map: /png-provinces\./,
+  desktop: /tool-desktop\./,
+};
 
-test("a phone fetches the pictures it shows as the reader nears them, and never the one it hides", async ({
+test("a phone fetches the pictures it shows as the reader nears them, and never the ones it hides", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -271,14 +278,16 @@ test("a phone fetches the pictures it shows as the reader nears them, and never 
     if (request.resourceType() === "image") fetched.push(decodeURIComponent(request.url()));
   });
   await page.goto("/", { waitUntil: "networkidle" });
-  expect(fetched.some((url) => PICTURE.tool.test(url))).toBe(true);
+  // The hero's rows load with the page; the wide screen's screenshot never does.
+  expect(fetched.some((url) => PICTURE.rows.test(url))).toBe(true);
   // The map lies thousands of pixels down the page: it waits until the reader comes near it.
   expect(fetched.some((url) => PICTURE.map.test(url))).toBe(false);
 
   await scrollThrough(page);
   expect(fetched.some((url) => PICTURE.map.test(url))).toBe(true);
-  // A phone shows the example row without the phone picture, so it never fetches that picture.
+  // A phone shows the example row without the phone picture, and the rows without the whole tool.
   expect(fetched.some((url) => PICTURE.phone.test(url))).toBe(false);
+  expect(fetched.some((url) => PICTURE.desktop.test(url))).toBe(false);
 });
 
 test("the screenshots are described, and the pictures that only decorate are not announced", async ({
@@ -342,3 +351,21 @@ for (const [width, height] of [
     problems.length = 0;
   });
 }
+
+test("on a phone, the hero shows the list's first rows at close to the tool's own size", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  const shot = page.getByRole("img", { name: HOME.images.tool });
+  await expect(shot).toBeVisible();
+  // The rows were taken from the tool on a phone 390 px wide; drawn at 80% of that or more, they read as the tool.
+  expect(decodeURIComponent(await shot.evaluate((img: HTMLImageElement) => img.currentSrc))).toMatch(
+    /tool-phone-rows\./
+  );
+  expect((await shot.boundingBox())!.width).toBeGreaterThanOrEqual(0.8 * 390);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  expect(decodeURIComponent(await shot.evaluate((img: HTMLImageElement) => img.currentSrc))).toMatch(
+    /tool-desktop\./
+  );
+});
