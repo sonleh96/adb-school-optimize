@@ -75,6 +75,34 @@ describe("layOutNumbers", () => {
     }
   });
 
+  it("moves a number where it hides no other school's dot, and over one only when nothing else is near", () => {
+    const pair = [
+      { rank: 1, x: 200, y: 200 },
+      { rank: 2, x: 200, y: 204 },
+    ];
+    // Unnumbered dots on every first-ring spot but one, straight up from the 2nd: against its lean away from the 1st,
+    // which is down.
+    const ring = Array.from({ length: 16 }, (_, i) => (i * Math.PI) / 8)
+      .filter((angle) => Math.abs(angle - (3 * Math.PI) / 2) > 0.01)
+      .map((angle) => ({
+        x: 200 + Math.round(22 * Math.cos(angle)),
+        y: 204 + Math.round(22 * Math.sin(angle)),
+      }));
+    const [, second] = layOutNumbers(pair, 390, 460, ring);
+    for (const dot of ring)
+      expect(Math.hypot(200 + second.dx - dot.x, 204 + second.dy - dot.y)).toBeGreaterThanOrEqual(
+        NUMBER_DISC / 2
+      );
+
+    // With every spot within reach taken by a dot, the number still moves off the 1st's.
+    const everywhere = Array.from({ length: 60 }, (_, i) => ({
+      x: 150 + (i % 10) * 10,
+      y: 150 + Math.floor(i / 10) * 20,
+    }));
+    const [, crowded] = layOutNumbers(pair, 390, 460, everywhere);
+    expect(Math.max(Math.abs(crowded.dx), Math.abs(crowded.dy + 4))).toBeGreaterThanOrEqual(NUMBER_DISC);
+  });
+
   it("keeps a moved number on the map when its dot is at the edge", () => {
     const drawn = drawnAt(
       [

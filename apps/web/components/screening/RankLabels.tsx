@@ -40,7 +40,10 @@ export function RankLabels({ schools, stale }: { schools: readonly MapSchool[]; 
         return { rank, x, y };
       });
       const container = instance.getContainer();
-      const next = layOutNumbers(points, container.clientWidth, container.clientHeight);
+      const unnumbered = schools
+        .filter((school) => numberOnMark(school.mark) === null)
+        .map((school) => instance.project([school.lon, school.lat]));
+      const next = layOutNumbers(points, container.clientWidth, container.clientHeight, unnumbered);
       setSpots((previous) =>
         previous.length === next.length &&
         previous.every((p, i) => p.rank === next[i].rank && p.dx === next[i].dx && p.dy === next[i].dy)
@@ -55,7 +58,7 @@ export function RankLabels({ schools, stale }: { schools: readonly MapSchool[]; 
       instance.off("moveend", layOut);
       instance.off("resize", layOut);
     };
-  }, [map, labelled]);
+  }, [map, labelled, schools]);
 
   return labelled.map(({ school, rank }) => {
     const { dx, dy } = spots.find((spot) => spot.rank === rank) ?? ON_THE_DOT;
