@@ -1,0 +1,149 @@
+/*
+ * The fixed diagram of how much each part counts towards the score (ScoreTree). Every bar sits on one scale, the
+ * whole score, whatever its depth: only the words are indented. It has no control, no hover and no motion.
+ * It sits on the paper of How this works and on the white of the method details, and keeps 3:1 on both.
+ */
+.tree {
+  container: score-tree / inline-size;
+  --bar: var(--navy-2);
+  --step: 16px;
+  margin: 0;
+}
+.caption {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 10px;
+}
+.title {
+  font: 600 14px/20px var(--sans);
+  color: var(--ink);
+}
+/* Scoped under the figure, so a page's own paragraph style (How this works sets its prose larger) leaves them be. */
+.tree .lede,
+.tree .line,
+.tree .scaleNote {
+  max-width: 38em;
+  margin: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.tree .scaleNote {
+  margin-top: 10px;
+}
+
+.list,
+.list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.list ul {
+  --depth: 1;
+  position: relative;
+}
+.list ul ul {
+  --depth: 2;
+}
+/* The rule that joins a part to what it is made of, in the words' column. */
+.list ul::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 9px;
+  left: calc((var(--depth) - 1) * var(--step) + 5px);
+  border-left: 1px solid var(--hair);
+}
+
+/* Wide: the words, then the bars in a column of their own. */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44%;
+  column-gap: 16px;
+  align-items: start;
+  padding: 4px 0;
+}
+.label {
+  display: grid;
+  min-width: 0;
+  padding-left: calc(var(--depth, 0) * var(--step));
+}
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.name {
+  min-width: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.share {
+  flex: none;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.note {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.scale {
+  display: block;
+  height: 10px;
+  margin-top: 4px;
+}
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 100%;
+}
+.bar:empty,
+.segment {
+  border-radius: 0 3px 3px 0;
+  background: var(--bar);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.segment {
+  flex-basis: 0;
+}
+/* The whole score, under a hairline: every part's bar end to end, the length the other bars are shares of. */
+.whole {
+  margin-top: 6px;
+  border-top: 1px solid var(--hair);
+  padding-top: 4px;
+}
+.whole .name,
+.whole .share {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Narrow: each part's words, then its bar on a line of its own, still on the one scale. */
+@container score-tree (max-width: 479px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 3px;
+    padding: 4px 0 5px;
+  }
+  .scale {
+    height: 7px;
+    margin-top: 0;
+  }
+  .list ul::before {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .bar:empty,
+  .segment {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+}

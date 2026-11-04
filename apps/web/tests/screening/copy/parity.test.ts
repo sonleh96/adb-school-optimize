@@ -21,6 +21,7 @@ import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as later from "@/lib/screening/copy/later";
 import * as methodModule from "@/lib/screening/copy/method";
+import * as treeModule from "@/lib/screening/copy/tree";
 
 import { school, withLater } from "./helpers";
 import {
@@ -44,8 +45,8 @@ import {
 
 const suite = describe.skipIf(!ready);
 
-/** Everything the port exports, the part that loads on demand included, as the prototype exports it. */
-const everything = { ...port, ...later, ...methodModule };
+/** Everything the port exports, the parts that load on demand included, as the prototype exports it. */
+const everything = { ...port, ...later, ...methodModule, ...treeModule };
 
 let proto: Api;
 let datasets: Dataset[] = [];
@@ -84,6 +85,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "IDEAS",
       "HOW_IT_WORKS",
       "FIRST_QUESTIONS",
+      "SCORE_TREE",
       "GUIDE",
       "BANNED",
       "SIGN_IN",

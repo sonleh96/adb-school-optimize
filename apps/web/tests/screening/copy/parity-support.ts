@@ -224,6 +224,13 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [{ N: 0.333, A: 0.5 }],
     [{}],
   ],
+  "SCORE_TREE.lede": [["the main method"], ["the combined-factors rule without urgency (S0)"]],
+  "SCORE_TREE.share": [
+    [63, false],
+    [60, true],
+    [100, true],
+  ],
+  "SCORE_TREE.largest": [[["school need"]], [["school need", "district context"]], [["a", "b", "c"]]],
   "GUIDE.stepCount": [[1], [4]],
   "GUIDE.startShort": [[5], [1]],
   "GUIDE.howCount": [[1], [6]],
