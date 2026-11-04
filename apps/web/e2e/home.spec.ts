@@ -21,7 +21,19 @@
  *                                                                          -> "the study section and the footer..."
  * 11. Search engines index the tool's many view addresses, or are kept off the homepage
  *                                                                          -> "robots.txt..."
+ * 12. A picture does not load (a wrong path, a failed resize) at a wide screen or on a phone
+ *                                                                          -> "every picture..."
+ * 13. A phone downloads a picture it never shows, or one far down the page before the reader gets near it
+ *                                                                          -> "a phone fetches..."
+ * 14. A screenshot loses its description, or a picture that only decorates is announced to a screen reader
+ *                                                                          -> "the screenshots are described..."
+ * 15. An outside picture's credit, which its licence asks for, is missing or links somewhere else
+ *                                                                          -> "each outside picture's credit..."
+ * 16. Printed, a picture or the navy veil over the band's picture prints, so the band's words lose their contrast
+ *                                                                          -> "printed, the pictures..."
  */
+import type { Page } from "@playwright/test";
+
 import { HOME, phraseText } from "../lib/home/copy";
 import { contrastRatio } from "../lib/screening/contrast";
 import { GUIDE } from "../lib/screening/copy/guide";
@@ -206,4 +218,99 @@ test("robots.txt lets search engines read the homepage and keeps the tool's view
   expect(rules).toMatch(/^Allow: \/$/m);
   for (const path of ["/screening", "/sign-in", "/auth/", "/api/"])
     expect(rules).toContain(`Disallow: ${path}`);
+});
+
+/** Scrolls the page to its foot a screen at a time, so every lazy picture comes near the screen and loads. */
+async function scrollThrough(page: Page) {
+  const height = await page.evaluate(() => document.scrollingElement!.scrollHeight);
+  const step = page.viewportSize()!.height;
+  for (let y = 0; y < height; y += step) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.waitForTimeout(150);
+  }
+  await page.waitForLoadState("networkidle");
+}
+
+/** The pictures the layout shows, with whether each finished loading with pixels in it. */
+const shownPictures = (page: Page) =>
+  page
+    .locator("img")
+    .evaluateAll((images: HTMLImageElement[]) =>
+      images
+        .filter((img) => img.checkVisibility())
+        .map((img) => ({ src: img.currentSrc, loaded: img.complete && img.naturalWidth > 0 }))
+    );
+
+// One visit per size, each in a fresh browser as a reader's own would be: a browser that has just shown the wide
+// screen's larger copy of the hero picture uses it again and leaves the phone's preloaded copy unused.
+for (const [width, height, shown] of [
+  [1440, 900, 4],
+  [390, 844, 3],
+]) {
+  test(`every picture the page shows loads, ${width} px wide`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.goto("/");
+    await scrollThrough(page);
+    const pictures = await shownPictures(page);
+    expect(pictures).toHaveLength(shown);
+    for (const picture of pictures) expect(picture.loaded, picture.src).toBe(true);
+  });
+}
+
+// The pictures by their files' names, which the resizer keeps in its address.
+const PICTURE = { phone: /tool-phone/, map: /png-provinces/, tool: /tool-desktop/ };
+
+test("a phone fetches the pictures it shows as the reader nears them, and never the one it hides", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const fetched: string[] = [];
+  page.on("request", (request) => {
+    if (request.resourceType() === "image") fetched.push(decodeURIComponent(request.url()));
+  });
+  await page.goto("/", { waitUntil: "networkidle" });
+  expect(fetched.some((url) => PICTURE.tool.test(url))).toBe(true);
+  // The map lies thousands of pixels down the page: it waits until the reader comes near it.
+  expect(fetched.some((url) => PICTURE.map.test(url))).toBe(false);
+
+  await scrollThrough(page);
+  expect(fetched.some((url) => PICTURE.map.test(url))).toBe(true);
+  // A phone shows the example row without the phone picture, so it never fetches that picture.
+  expect(fetched.some((url) => PICTURE.phone.test(url))).toBe(false);
+});
+
+test("the screenshots are described, and the pictures that only decorate are not announced", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  await expect(page.getByRole("figure", { name: HOME.images.caption })).toBeVisible();
+  await expect(page.getByRole("img", { name: HOME.images.tool })).toBeVisible();
+  await expect(page.getByRole("img", { name: HOME.images.phone })).toBeVisible();
+  // The view from orbit, the province map and the notes' drawings are decoration: a screen reader meets only the
+  // two screenshots in the main content.
+  await expect(page.getByRole("main").getByRole("img")).toHaveCount(2);
+});
+
+test("each outside picture's credit is in the footer, linked to its source", async ({ page }) => {
+  await page.goto("/");
+  const credits = page.getByRole("contentinfo").getByRole("list", { name: HOME.images.creditsLabel });
+  for (const credit of HOME.images.credits) {
+    const link = credits.getByRole("link", { name: credit.text, exact: true });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", credit.href);
+  }
+});
+
+test("printed, the pictures and the band's veil are left off, and the band's words print dark", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.emulateMedia({ media: "print" });
+  for (const picture of await page.locator("img").all()) await expect(picture).toBeHidden();
+  const band = page.getByRole("region", { name: HOME.scope.title });
+  expect(await band.evaluate((el) => getComputedStyle(el, "::before").display)).toBe("none");
+  const lead = band.getByText(HOME.scope.lead);
+  const ink = await lead.evaluate((el) => getComputedStyle(el).color);
+  expect(contrastRatio(hexOf(ink), "#ffffff")).toBeGreaterThanOrEqual(4.5);
 });

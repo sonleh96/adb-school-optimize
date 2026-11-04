@@ -136,6 +136,29 @@ test("with sign-in required, the homepage is public, and an old link to the tool
   expect(to.searchParams.get("next")).toBe("/screening?rule=additive_u");
 });
 
+// Failure mode: the homepage is public but its pictures are not, so a signed-out reader sees broken pictures: the
+// proxy sends each picture, or each of its resized copies, to the sign-in page.
+test("with sign-in required, every picture the homepage offers is public", async ({ page, request }) => {
+  await page.goto(`${ORIGIN}/`);
+  const addresses = await page
+    .locator("img")
+    .evaluateAll((images: HTMLImageElement[]) => [
+      ...new Set(
+        images.flatMap((img) => [
+          img.getAttribute("src") ?? "",
+          ...(img.getAttribute("srcset") ?? "").split(",").map((entry) => entry.trim().split(" ")[0]),
+        ])
+      ),
+    ]);
+  const pictures = addresses.filter((address) => address && !address.startsWith("data:"));
+  expect(pictures.length).toBeGreaterThan(8);
+  for (const address of pictures) {
+    const response = await request.get(new URL(address, ORIGIN).href, { maxRedirects: 0 });
+    expect(response.status(), address).toBe(200);
+    expect(response.headers()["content-type"], address).toMatch(/^image\//);
+  }
+});
+
 test("with sign-in required, the workspace and the API still send a signed-out person to sign in", async ({
   request,
 }) => {
