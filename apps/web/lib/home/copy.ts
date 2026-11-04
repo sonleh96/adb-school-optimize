@@ -182,6 +182,27 @@ export const HOME = Object.freeze({
     ],
   },
 
+  // The pictures. The screenshots show the tool running on its test data, whose schools are all made up. The view
+  // from orbit and the province map are not the project's own, so each carries its source's credit, linked to the
+  // source's page, as their licences ask; public/images/CREDITS.md holds the full terms.
+  images: {
+    tool: "The list and its map in RISE-PNG on a computer.",
+    caption: "The tool, shown here with made-up schools.",
+    phone: "The list in RISE-PNG on a phone, with made-up schools.",
+    // The credits' list is named for a screen reader; on screen each line says what it credits.
+    creditsLabel: "Picture credits",
+    credits: [
+      {
+        text: "Image: NASA Blue Marble Next Generation, via Wikimedia Commons.",
+        href: "https://commons.wikimedia.org/wiki/File:Papua_New_Guinea_BMNG.png",
+      },
+      {
+        text: "Boundaries: World Bank Official Boundaries, CC BY 4.0.",
+        href: "https://datacatalog.worldbank.org/search/dataset/0038272",
+      },
+    ],
+  },
+
   footer: {
     navLabel: "More on this site",
     contactTitle: "Contact",

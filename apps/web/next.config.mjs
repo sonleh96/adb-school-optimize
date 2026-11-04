@@ -63,6 +63,12 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // The homepage reads its counts on the server, from the same API the rewrite below proxies to (lib/home/counts.ts).
   env: { SCREENING_API_ORIGIN: API_ORIGIN },
+  // The homepage's pictures (public/images): AVIF where the browser takes it, else WebP. The screenshots hold small
+  // text, which 75 blurs, so they ask for 85; the satellite background asks for 75.
+  images: {
+    formats: ["image/avif", "image/webp"],
+    qualities: [75, 85],
+  },
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },
