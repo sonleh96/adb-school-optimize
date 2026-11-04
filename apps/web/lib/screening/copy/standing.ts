@@ -110,7 +110,7 @@ function quantity(count: number, others: number): string {
         ? "both other schools in the list"
         : "every other school in the list";
   if (others < SHARE_FROM) return `${count} of the ${others} other schools in the list`;
-  return `${Math.floor((10 * count) / (others + 1))} in 10 schools in the list`;
+  return `${Math.floor((10 * count) / (others + 1))}\u00a0in\u00a010 schools in the list`;
 }
 
 /** The school is one of the schools the rule puts in order: it has a rank or a range of ranks under it. */

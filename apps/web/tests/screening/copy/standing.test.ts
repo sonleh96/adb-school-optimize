@@ -252,7 +252,7 @@ describe("comparing a part of school need with the list", () => {
       ]);
     // No-break spaces hold the share together, so a line never breaks inside "8 in 10".
     const says = (tenths: number) =>
-      `Fewer recorded facility types than ${tenths} in 10 schools in the list.`;
+      `Fewer recorded facility types than ${tenths}\u00a0in\u00a010 schools in the list.`;
     expect(share(849, 1000)).toBe(says(8));
     expect(share(850, 1000)).toBe(says(8));
     expect(share(899, 1000)).toBe(says(8));
@@ -282,7 +282,7 @@ describe("comparing a part of school need with the list", () => {
     );
     // 15 of the 21 schools in the list is 71%.
     expect(line(subject, [...many("m", 15, { types: 2 }), ...many("n", 5, { types: 0 })])).toBe(
-      "Fewer recorded facility types than 7 in 10 schools in the list."
+      "Fewer recorded facility types than 7\u00a0in\u00a010 schools in the list."
     );
   });
 
