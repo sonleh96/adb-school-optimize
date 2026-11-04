@@ -245,6 +245,37 @@ describe("comparing a part of school need with the list", () => {
     );
   });
 
+  it("puts every school with at least one teacher house per teacher in one group, as their empty bars do", () => {
+    // Two houses per teacher and one per teacher: the engine scores both as no shortfall, and both bars are empty.
+    expect(
+      line(
+        rec("s", { houses: [12, 6] }),
+        [rec("a", { houses: [6, 6] }), rec("b", { houses: [1, 4] })],
+        "housing"
+      )
+    ).toBe(
+      "1 of the 2 other schools in the list records fewer teacher houses per teacher; 1 also records at least one house per teacher."
+    );
+    expect(
+      line(
+        rec("s", { houses: [9, 6] }),
+        [rec("a", { houses: [6, 6] }), rec("b", { houses: [8, 4] })],
+        "housing"
+      )
+    ).toBe("Both other schools in the list also record at least one house per teacher.");
+    // 28 others: 20 with one house for four teachers, 8 with at least one house per teacher, in three different ways.
+    const enough = [
+      ...many("one", 3, { houses: [6, 6] }),
+      ...many("more", 3, { houses: [7, 6] }),
+      ...many("two", 2, { houses: [12, 6] }),
+    ];
+    expect(
+      line(rec("s", { houses: [9, 6] }), [...many("few", 20, { houses: [1, 4] }), ...enough], "housing")
+    ).toBe(
+      `${tenths(6)} schools in the list record fewer teacher houses per teacher; ${tenths(2)} also record at least one house per teacher.`
+    );
+  });
+
   it("scores power and water in whole points of the method's scale, so the same score is level", () => {
     // The engine adds the two sources' scores and halves them: a generator with piped water comes to
     // 0.44999999999999996 and solar panels with a tank to 0.45, one score on the scale.

@@ -5,10 +5,12 @@
  * groups"). The list is the schools the rule shown puts in order, those with one rank and those with a range. The school
  * itself and the schools not in the list yet are never counted.
  *
- * A part is compared on what the record gives: the share of classrooms built of permanent materials, teacher houses
- * per teacher, or how many of the six facility types the school has. Power and water, and remoteness, are recorded as
- * types and categories, so they are compared as the method scores them, in whole points of the research team's scale.
- * A share of two whole counts needs no such care: two equal fractions divide to the same number.
+ * A part is compared on the figure its bar shows: the share of classrooms built of permanent materials and teacher
+ * houses per teacher, each up to one as the engine counts them, or how many of the six facility types the school has.
+ * So every school with at least one house per teacher, whose bar is empty, is one group. Power and water, and
+ * remoteness, are recorded as types and categories, so they are compared as the method scores them, in whole points of
+ * the research team's scale. A share of two whole counts needs no such care: two equal fractions divide to the same
+ * number.
  *
  * Schools with exactly the same figure record neither more nor less. The line names the larger of two groups, the
  * schools that record more than this one and those that record less, then the schools that record the same when they
@@ -49,10 +51,15 @@ interface Part {
   readonly same: (own: number) => { readonly alone: Said; readonly after: Said };
 }
 
-/** A share of a whole, or null when either is not recorded or the whole is not above 0. */
-function ratio(part: number | null, whole: number | null): number | null {
+/**
+ * A share of a whole up to one, as the engine counts it, or null when either is not recorded or the whole is not above
+ * 0. All of a school's classrooms built of permanent materials is the most the share can say, as the sentence about
+ * the school's own classrooms says "all" whenever the count reaches the total; one house per teacher is the most
+ * teacher housing can say, and every school with at least one has an empty bar.
+ */
+function upToOne(part: number | null, whole: number | null): number | null {
   if (part == null || whole == null || whole <= 0) return null;
-  return part / whole;
+  return Math.min(part / whole, 1);
 }
 
 /**
@@ -73,13 +80,8 @@ function facilityTypes(condition: CopyCondition): number | null {
 }
 
 const PARTS: Readonly<Record<NeedKey, Part>> = {
-  // All of a school's classrooms built of permanent materials is the most the share can say, as the sentence about
-  // the school's own classrooms says "all" whenever the count reaches the total.
   classrooms: {
-    figure: (s) => {
-      const share = ratio(s.condition.classrooms_permanent, s.condition.classrooms_total);
-      return share === null ? null : Math.min(share, 1);
-    },
+    figure: (s) => upToOne(s.condition.classrooms_permanent, s.condition.classrooms_total),
     shorter: "more",
     more: said(
       "record a larger share of permanent classrooms",
@@ -98,17 +100,28 @@ const PARTS: Readonly<Record<NeedKey, Part>> = {
     }),
   },
   housing: {
-    figure: (s) => ratio(s.condition.teacher_houses, s.condition.teachers),
+    figure: (s) => upToOne(s.condition.teacher_houses, s.condition.teachers),
     shorter: "more",
     more: said("record more teacher houses per teacher", "records more teacher houses per teacher"),
     less: said("record fewer teacher houses per teacher", "records fewer teacher houses per teacher"),
-    same: () => ({
-      alone: said(
-        "record the same number of teacher houses per teacher",
-        "records the same number of teacher houses per teacher"
-      ),
-      after: said("record the same", "records the same"),
-    }),
+    // Schools level with one that has at least one house per teacher may record more than it, or fewer, so they are
+    // said as a group, never as "the same".
+    same: (own) => {
+      if (own === 1) {
+        const enough = said(
+          "also record at least one house per teacher",
+          "also records at least one house per teacher"
+        );
+        return { alone: enough, after: enough };
+      }
+      return {
+        alone: said(
+          "record the same number of teacher houses per teacher",
+          "records the same number of teacher houses per teacher"
+        ),
+        after: said("record the same", "records the same"),
+      };
+    },
   },
   facilities: {
     figure: (s) => facilityTypes(s.condition),
