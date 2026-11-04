@@ -6,7 +6,8 @@
  *
  * A part is compared on what the record gives: the share of classrooms built of permanent materials, teacher houses
  * per teacher, or how many of the six facility types the school has. Power and water, and remoteness, are recorded as
- * types and categories, so they are compared on the research team's scale, as the engine reads them.
+ * types and categories, so they are compared on the research team's scale, as the engine reads them, in whole points
+ * of it. A share of two whole counts needs no such care: two equal fractions divide to the same number.
  *
  * Schools with exactly the same figure are neither more nor fewer. The sentence names the largest of three groups, the
  * schools this one has more than, fewer than, or the same as, so a school level with half the list is said to be level.
@@ -41,6 +42,15 @@ function ratio(part: number | null, whole: number | null): number | null {
   if (part == null || whole == null || whole <= 0) return null;
   return part / whole;
 }
+
+/**
+ * A score on one of the research team's scales in whole points. Every score on them is a multiple of 0.05
+ * (`packages/school_scoring/school_scoring/screening/components.py`), but the engine's power and water score is a
+ * sum halved in floating point: a generator with piped water comes to 0.44999999999999996 and solar panels with a
+ * tank to 0.45. In twentieths both are 9.
+ */
+const points = (score: number | null | undefined): number | null =>
+  score == null ? null : Math.round(score * 20);
 
 /** How many of the six facility types the record has at least one of; null when any count is blank. */
 function facilityTypes(condition: CopyCondition): number | null {
@@ -79,7 +89,7 @@ const PARTS: Readonly<Record<NeedKey, Part>> = {
   },
   // The research team's scale counts a generator, a river or water brought from home highest.
   services: {
-    figure: (s) => s.need_parts?.service_deficit ?? null,
+    figure: (s) => points(s.need_parts?.service_deficit),
     bar: "higher",
     higher: (q) =>
       `Recorded power and water sources that count more on the research team's scale than those of ${q}.`,
@@ -89,7 +99,7 @@ const PARTS: Readonly<Record<NeedKey, Part>> = {
       `Recorded power and water sources that count the same on the research team's scale as those of ${q}.`,
   },
   locality: {
-    figure: (s) => s.need_parts?.locality_disadvantage ?? null,
+    figure: (s) => points(s.need_parts?.locality_disadvantage),
     bar: "higher",
     higher: (q) => `Recorded as more remote than ${q}.`,
     lower: (q) => `Recorded as less remote than ${q}.`,

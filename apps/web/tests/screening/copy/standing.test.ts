@@ -243,6 +243,22 @@ describe("comparing a part of school need with the list", () => {
     );
   });
 
+  it("scores power and water in whole points of the method's scale, so the same score is level", () => {
+    // The engine adds the two sources' scores and halves them: a generator with piped water comes to
+    // 0.44999999999999996 and solar panels with a tank to 0.45, one score on the scale.
+    const generatorPiped = (0.7 + 0.2) / 2;
+    const solarTank = (0.4 + 0.5) / 2;
+    expect(generatorPiped).not.toBe(solarTank);
+    const level =
+      "Recorded power and water sources that count the same on the research team's scale as those of the one other school in the list.";
+    expect(
+      line(rec("s", { services: generatorPiped }), [rec("a", { services: solarTank })], "services")
+    ).toBe(level);
+    expect(
+      line(rec("s", { services: solarTank }), [rec("a", { services: generatorPiped })], "services")
+    ).toBe(level);
+  });
+
   it("rounds a share down to whole tenths of the whole list, the school included, never up", () => {
     // `more` others with one facility type, the rest with none like the subject: a list of `total` schools.
     const share = (more: number, total: number) =>
