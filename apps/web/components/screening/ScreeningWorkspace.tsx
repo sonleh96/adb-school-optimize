@@ -321,12 +321,12 @@ function Workspace() {
   const keyboard = useKeyboardLast(root);
 
   const rows = useMemo(() => shown?.response.rows ?? [], [shown]);
-  // Which data the list comes from, beside the caveat: the run's data version and the day it was loaded, in the
-  // reader's time zone.
-  const run = shown?.response.run;
-  const versionLine = run
-    ? copy.LAYOUT.dataVersion(run.input_version, copy.formatDay(new Date(run.created_at)))
-    : null;
+  // Which data the list comes from, beside the caveat: the run's data version and the day that version was loaded,
+  // in the reader's time zone. It shows once the rules have named the version's day.
+  const versionLine =
+    shown && shown.loaded
+      ? copy.LAYOUT.dataVersion(shown.response.run.input_version, copy.formatDay(new Date(shown.loaded)))
+      : null;
   const { ordered, incomplete } = useMemo(() => splitRows(rows), [rows]);
   const schools = useMemo(() => new Map((shown?.schools ?? []).map((s) => [s.id, s])), [shown]);
   const bands = useMemo(() => bandsOf(rows), [rows]);

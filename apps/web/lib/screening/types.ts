@@ -66,9 +66,16 @@ const rule = obj({
 });
 export type Rule = Infer<typeof rule>;
 
+/** An ISO time the browser can read as a date. */
+const isoTime = refine(str, (value, path) =>
+  Number.isNaN(Date.parse(value)) ? failParse(path, "an ISO time", value) : value
+);
+
 export const rulesResponse = obj({
   default_rule_id: RuleId,
   rules: list(rule),
+  /** Every data version loaded, with when it was loaded; the screen names the list's beside the caveat. */
+  input_versions: list(obj({ input_version: str, created_at: isoTime })),
 });
 export type RulesResponse = Infer<typeof rulesResponse>;
 
@@ -236,16 +243,10 @@ const listedRow: Schema<ListedRow> = refine(rawListedRow, (row, path): ListedRow
 // ---------------------------------------------------------------------------------------------
 
 /** What the page names the list by. It comes from the run behind the rows, never from what was asked for. */
-const runFields = { rule_id: RuleId, input_version: str, package_version: str };
-const run = obj(runFields);
-/** An ISO time the browser can read as a date. */
-const isoTime = refine(str, (value, path) =>
-  Number.isNaN(Date.parse(value)) ? failParse(path, "an ISO time", value) : value
-);
+const run = obj({ rule_id: RuleId, input_version: str, package_version: str });
 
 export const resultsResponse = obj({
-  /** The list's run also says when it was made, which the screen shows beside the data version. */
-  run: obj({ ...runFields, created_at: isoTime }),
+  run,
   total_schools: int,
   returned_schools: int,
   manifest: obj({
