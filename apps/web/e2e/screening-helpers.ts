@@ -246,7 +246,7 @@ export const APP_ORIGIN = `http://127.0.0.1:${process.env.CI_APP_PORT ?? "3105"}
 export const MOCK_ORIGIN = `http://127.0.0.1:${process.env.CI_MOCK_API_PORT ?? "4100"}`;
 
 /** The datasets the mock API can serve; see scripts/mock-api.mjs. The default one is what a test gets unasked. */
-export type MockDataset = "default" | "worst-names" | "ties-and-ranges" | "one" | "empty";
+export type MockDataset = "default" | "worst-names" | "ties-and-ranges" | "one" | "crowded" | "empty";
 
 /**
  * Makes the mock API answer this browser context's screening requests from `dataset`, and answer the routes named in

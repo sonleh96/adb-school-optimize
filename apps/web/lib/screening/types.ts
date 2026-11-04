@@ -66,9 +66,19 @@ const rule = obj({
 });
 export type Rule = Infer<typeof rule>;
 
+/** An ISO time the browser can read as a date. */
+const isoTime = refine(str, (value, path) =>
+  Number.isNaN(Date.parse(value)) ? failParse(path, "an ISO time", value) : value
+);
+
 export const rulesResponse = obj({
   default_rule_id: RuleId,
   rules: list(rule),
+  /**
+   * Every data version loaded, with when it was loaded; the screen names the list's beside the caveat. It only dates
+   * that line, so a missing key, a bad entry or a time that is no date reads as no versions, never as a failed page.
+   */
+  input_versions: tolerant(list(obj({ input_version: str, created_at: isoTime }))),
 });
 export type RulesResponse = Infer<typeof rulesResponse>;
 

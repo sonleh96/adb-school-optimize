@@ -104,6 +104,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "LAYOUT.listMade": [
     ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
   ],
+  "LAYOUT.dataVersion": [["paper-2026-10-12", "21 October 2026"]],
   "LAYOUT.queueMade": [
     ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
   ],

@@ -321,6 +321,12 @@ function Workspace() {
   const keyboard = useKeyboardLast(root);
 
   const rows = useMemo(() => shown?.response.rows ?? [], [shown]);
+  // Which data the list comes from, beside the caveat: the run's data version and the day that version was loaded,
+  // in the reader's time zone. It shows once the rules have named the version's day.
+  const versionLine =
+    shown && shown.loaded
+      ? copy.LAYOUT.dataVersion(shown.response.run.input_version, copy.formatDay(new Date(shown.loaded)))
+      : null;
   const { ordered, incomplete } = useMemo(() => splitRows(rows), [rows]);
   const schools = useMemo(() => new Map((shown?.schools ?? []).map((s) => [s.id, s])), [shown]);
   const bands = useMemo(() => bandsOf(rows), [rows]);
@@ -796,6 +802,11 @@ function Workspace() {
       <p className={styles.caveat} data-region="caveat">
         {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
       </p>
+      {versionLine ? (
+        <p className={styles.dataVersion} data-region="data-version">
+          {versionLine}
+        </p>
+      ) : null}
     </div>
   );
 
@@ -942,6 +953,11 @@ function Workspace() {
             <p className={styles.narrowHeadCaveat} data-region="list-caveat">
               {method.on ? copy.STRINGS.caveat : copy.STRINGS.caveatPlain}
             </p>
+            {versionLine ? (
+              <p className={styles.dataVersion} data-region="data-version">
+                {versionLine}
+              </p>
+            ) : null}
           </div>
           {/* A phone's Start here, which scrolls with the list (GuidanceLayer). */}
           <div data-slot="start-slot" />

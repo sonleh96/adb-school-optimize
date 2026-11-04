@@ -61,6 +61,11 @@ export interface ShownList {
   /** The schools of the list, in the API's order, as whole records with their results under every list loaded. */
   schools: readonly CopySchool[];
   copy: BoundCopy;
+  /**
+   * When the list's data version was loaded, an ISO time from the rules' list of versions: not the run's time, which
+   * is when this list was made and moves on with every rerun of the same data. Null until the rules name it.
+   */
+  loaded: string | null;
 }
 
 /**
@@ -173,9 +178,26 @@ export function useScreeningData(): ScreeningData {
       compare: pairCompare,
       ruleNames,
     });
-    return { rule: shownId, response: data, schools: bound.schools, copy: bound.copy };
+    const version = rules.data?.input_versions?.find((v) => v.input_version === data.run.input_version);
+    return {
+      rule: shownId,
+      response: data,
+      schools: bound.schools,
+      copy: bound.copy,
+      loaded: version?.created_at ?? null,
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `others` is rebuilt each render; its members are the key.
-  }, [data, shownId, inputs.data, pairCompare, mainList.data, urgencyList.data, fromList.data, ruleNames]);
+  }, [
+    data,
+    shownId,
+    inputs.data,
+    pairCompare,
+    mainList.data,
+    urgencyList.data,
+    fromList.data,
+    ruleNames,
+    rules.data,
+  ]);
 
   const idleCopy = useMemo(() => copyFor({ ruleNames }), [ruleNames]);
 

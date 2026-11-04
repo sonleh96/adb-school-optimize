@@ -8,6 +8,10 @@
  *  6. The place numbers on the first ten dots fade into them. Those dots always take the darkest step (bands.ts cuts
  *     the first band at 10), and their 10 px numbers need 4.5:1 against it.
  *  7. A range is drawn in two inks: the map's ring in one, the key and the range strips in another.
+ *  8. Two neighbouring place bands look alike, so "Darker: earlier in the list" stops holding. Each step must be at
+ *     least 0.06 darker in OKLab lightness than the next, the floor and the method of the dataviz skill's validator
+ *     (validate_palette.js, validateOrdinal), and the steps even, so no pair of bands is nearer than the rest.
+ *  9. The key's "One rank" dot is a colour the map no longer draws.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -31,6 +35,18 @@ import {
 import { bandOf, placeBands } from "@/lib/screening/workspace/bands";
 
 import { results } from "./fixtures";
+
+/** OKLab lightness of an sRGB hex, 0 to 1, as the dataviz validator computes it (Ottosson's matrices). */
+function oklabLightness(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+}
 
 describe("contrast", () => {
   it("is 21 for black on white, 1 for equal colours, and does not depend on the order", () => {
@@ -75,6 +91,22 @@ describe("contrast", () => {
   it("keeps the ramp ordered from dark to light, so a better place is the darker mark", () => {
     const ratios = RAMP_HEX.map((hex) => contrastRatio(hex, LAND_COLOUR));
     expect([...ratios].sort((a, b) => b - a)).toEqual(ratios);
+  });
+
+  it("steps the ramp at least 0.06 in OKLab lightness between neighbours, in near-even steps", () => {
+    const lightness = RAMP_HEX.map(oklabLightness);
+    const steps = lightness.slice(1).map((l, i) => l - lightness[i]);
+    for (const step of steps) expect(step).toBeGreaterThanOrEqual(0.06);
+    expect(Math.max(...steps) - Math.min(...steps)).toBeLessThan(0.01);
+  });
+
+  it("dots the key's one-rank mark in a colour of the ramp", () => {
+    const css = readFileSync(
+      path.resolve(__dirname, "../../components/screening/screening.module.css"),
+      "utf8"
+    );
+    const dot = css.match(/\.keyMark\[data-mark="dot"\]\s*\{[^}]*background:\s*(#[0-9a-f]{6})/i)?.[1];
+    expect(RAMP_HEX).toContain(dot?.toLowerCase());
   });
 
   it.each([1, 7, 10, 11, 25, 150, 400])(

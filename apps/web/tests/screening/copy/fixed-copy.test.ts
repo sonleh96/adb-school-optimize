@@ -151,6 +151,7 @@ describe("every fixed string follows the writing rules", () => {
         "3 November 2026",
         "paper-2026-10-12",
       ],
+      dataVersion: ["paper-2026-10-12", "21 October 2026"],
       researchNote: [20],
     };
     const LAYOUT_SENTENCES = new Set([
@@ -186,6 +187,7 @@ describe("every fixed string follows the writing rules", () => {
       "listMore",
       "listMade",
       "queueMade",
+      "dataVersion",
       "researchNote",
       "researchNotByName",
       "researchFailed",

@@ -122,6 +122,28 @@ DISTRICT_70 = "District of the Upper Western Highlands and the Southern Lowlands
 NAME_LOOKS_BLANK = "\u200b"
 SPACED_PAIR = ("Spaced Name School", "Spaced  Name School")
 
+# A record so little in need that it stays below every other school.
+LITTLE_NEED = dict(
+    locality="Highly accessible",
+    permanent_classrooms=8.0,
+    teacher_houses=10.0,
+    libraries=1.0,
+    workshops=1.0,
+    practical_skills_buildings=1.0,
+    home_economics_buildings=1.0,
+    computer_labs=1.0,
+    specialized_classrooms=1.0,
+    power_source="Grid",
+    water_source="Piped",
+    secondary_students_per_1000=900.0,
+    progression_g10_corrected_pct=100.0,
+    progression_g12_corrected_pct=100.0,
+    walking_catchment_population=1e6,
+    emissions_co2e_100yr_10km_tonnes=0.0,
+    water_flooded_vegetation_fraction_500m=0.0,
+    urgency_source_scalar=0.0,
+)
+
 
 def complete_record(i: int, name: str, **overrides) -> SchoolRecord:
     """A school with every input known. ``i`` varies the values so that the schools differ."""
@@ -180,6 +202,8 @@ class Dataset:
     every_pair: bool = False
     # Top lists cut by a province, as (rule, length, province, file suffix): the export follows the screen's filter.
     filtered_top_lists: tuple[tuple[str, int, str, str], ...] = ()
+    # Where each record's school is, as (latitude, longitude) in the records' order; empty for ``position``'s spread.
+    positions: tuple[tuple[float, float], ...] = ()
 
 
 def main_records() -> tuple[SchoolRecord, ...]:
@@ -211,28 +235,7 @@ def main_records() -> tuple[SchoolRecord, ...]:
     ]
     # Last, so that adding it moves no other school's place. Its record is so little in need that even with the
     # worst possible air-quality reading it stays below every other school: its best and worst place are the same.
-    exact_range = record(
-        "Sample School 25",
-        aqi_p95_selected=None,
-        locality="Highly accessible",
-        permanent_classrooms=8.0,
-        teacher_houses=10.0,
-        libraries=1.0,
-        workshops=1.0,
-        practical_skills_buildings=1.0,
-        home_economics_buildings=1.0,
-        computer_labs=1.0,
-        specialized_classrooms=1.0,
-        power_source="Grid",
-        water_source="Piped",
-        secondary_students_per_1000=900.0,
-        progression_g10_corrected_pct=100.0,
-        progression_g12_corrected_pct=100.0,
-        walking_catchment_population=1e6,
-        emissions_co2e_100yr_10km_tonnes=0.0,
-        water_flooded_vegetation_fraction_500m=0.0,
-        urgency_source_scalar=0.0,
-    )
+    exact_range = record("Sample School 25", aqi_p95_selected=None, **LITTLE_NEED)
     return placed([*complete, *interval, *queued, exact_range])
 
 
@@ -289,6 +292,20 @@ def ties_and_ranges_records() -> tuple[SchoolRecord, ...]:
 
 def one_record() -> tuple[SchoolRecord, ...]:
     return placed([complete_record(0, "Only School")])
+
+
+# Twelve schools on a grid 0.3 degrees apart in one valley, and three far away that frame the whole country. A phone's
+# map shows the country at about 40 pixels a degree, so neighbours sit 12 pixels apart, closer than a place number is
+# wide: the first ten places are all in the valley and their numbers collide, as the real list's do in the highlands.
+CROWDED = 12
+CROWDED_POSITIONS = tuple((-5.7 - 0.3 * (i // 4), 144.6 + 0.3 * (i % 4)) for i in range(CROWDED))
+FRAME_POSITIONS = ((-2.1, 147.0), (-10.3, 150.4), (-6.0, 141.4))
+
+
+def crowded_records() -> tuple[SchoolRecord, ...]:
+    valley = [complete_record(i, f"Valley {i + 1:02d}") for i in range(CROWDED)]
+    frame = [record(f"Frame {i + 1}", **LITTLE_NEED) for i in range(len(FRAME_POSITIONS))]
+    return placed([*valley, *frame])
 
 
 def _name(row: dict) -> str:
@@ -363,6 +380,14 @@ TIES_CLAIMS = (
 ONE_CLAIMS = (("exactly one complete school", _is_one_complete_school),)
 
 
+def _has_first_ten_in_the_valley(rows: list[dict]) -> bool:
+    first = [r for r in rows if r["cohort"] == "complete" and r["point_rank"]["rank"] <= 10]
+    return len(first) == 10 and all(_name(r).startswith("Valley ") for r in first)
+
+
+CROWDED_CLAIMS = (("the first ten places all in the valley", _has_first_ten_in_the_valley),)
+
+
 def datasets() -> tuple[Dataset, ...]:
     return (
         Dataset(
@@ -423,6 +448,15 @@ def datasets() -> tuple[Dataset, ...]:
             persistence_no_u={"Only School": (1.0, 1.0, 1.0)},
             claims=ONE_CLAIMS,
         ),
+        Dataset(
+            name="crowded",
+            directory="crowded",
+            records=crowded_records(),
+            persistence={"Valley 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Valley 01": (1.0, 1.0, 1.0)},
+            claims=CROWDED_CLAIMS,
+            positions=(*CROWDED_POSITIONS, *FRAME_POSITIONS),
+        ),
         # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
         Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
     )
@@ -444,7 +478,7 @@ def add_schools(connection: psycopg.Connection, ds: Dataset) -> None:
     for i, r in enumerate(ds.records):
         if r.school_name in ds.without_coordinates:
             continue
-        lat, lon = position(i)
+        lat, lon = ds.positions[i] if ds.positions else position(i)
         connection.execute(
             "insert into schools (school_name, province, district, latitude, longitude, geom) "
             "values (%s, %s, %s, %s, %s, st_setsrid(st_makepoint(%s, %s), 4326))",

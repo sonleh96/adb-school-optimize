@@ -1435,6 +1435,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
+/* Which data the list comes from, one short line under the caveat. Hidden with the caveat where the list's head
+   shows both instead (the narrow layout). */
+.dataVersion {
+  margin: 2px 0 0;
+  font-size: 11.5px; /* One line at 360 px wide, whatever the month */
+  line-height: 16px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
 
 /* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
 .legend {
@@ -1621,7 +1630,7 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
 .keyMark[data-mark="dot"] {
   width: 11px;
   height: 11px;
-  background: #24519f;
+  background: #20509e; /* RAMP_HEX[2] in lib/screening/marks.ts, the ramp's middle */
   box-shadow: 0 0 0 1.5px #fbfaf7;
 }
 .keyMark[data-mark="range"] {
@@ -2253,7 +2262,32 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     sans-serif;
   font-variant-numeric: tabular-nums;
 }
-.rankLabel span[data-stale="true"] {
+.rankLabel span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+/* A number moved off its crowded dot takes the dot's navy disc with it (RAMP_HEX[0] is the logo's navy), ringed in
+   the marks' paper so it stands apart from the dots it sits beside, and a leader back to its own dot. */
+.rankLabel span[data-moved] {
+  background: var(--navy);
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+  forced-color-adjust: none;
+}
+.rankLeader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: var(--navy);
+  transform-origin: 0 50%;
+  forced-color-adjust: none;
+}
+.rankLabel [data-stale="true"] {
   opacity: 0.4;
 }
 .attribution {
@@ -2596,7 +2630,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     left: 8px;
     right: 8px;
   }
-  .foot .caveat {
+  .foot .caveat,
+  .foot .dataVersion {
     display: none;
   }
   .legend {
@@ -2646,6 +2681,10 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   .narrowHead {
     padding-top: 8px;
     padding-bottom: 8px;
+  }
+  /* Its 18 px would push the first school's reason out of the window; the files still name the version first. */
+  .narrowHead .dataVersion {
+    display: none;
   }
   .tab {
     padding-top: 7px;

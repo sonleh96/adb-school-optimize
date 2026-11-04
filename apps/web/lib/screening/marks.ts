@@ -11,8 +11,10 @@ export const WATER_COLOUR = "#dde3e8";
 /**
  * Dark to light, one colour and one dot radius (in pixels) per place band (see workspace/bands.ts: at most five).
  * The darkest step, which the first ten places always take, is the ADB logo's navy. The lightest is still 3:1 on land.
+ * The three between are even steps of OKLab lightness from one end to the other (0.075 each), so each band is as much
+ * darker than the next as any other: "Darker: earlier in the list" holds across the whole list.
  */
-export const RAMP_HEX = ["#002569", "#24519f", "#3063b4", "#3d74ca", "#447dd5"] as const;
+export const RAMP_HEX = ["#002569", "#0f3a83", "#20509e", "#3266b9", "#447dd5"] as const;
 /** The rings of the range mark and of the incomplete record, and the fill inside them. */
 export const RANGE_RING_HEX = "#3d4759";
 export const INCOMPLETE_RING_HEX = "#6e6b63";
