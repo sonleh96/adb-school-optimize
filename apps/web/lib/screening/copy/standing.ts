@@ -15,7 +15,8 @@
  *
  * A share is of the whole list, rounded down to whole tenths, so the sentence never claims more than the data holds:
  * 85 in 100 reads as 8 in 10. Below 20 other schools it gives the count instead. A school outside the list, or one whose
- * own figure is not recorded, gets no sentence; another school whose figure is not recorded is left out of the count.
+ * own figure is not recorded, gets no sentence. Another school whose figure is not recorded is still one of the list:
+ * it counts in the whole and in none of the three groups, so a share never reads larger than it is.
  */
 import { FACILITIES } from "./inputs";
 import type { CopyCondition, CopyRuleId, CopySchool, NeedKey } from "./model";
@@ -108,9 +109,9 @@ const PARTS: Readonly<Record<NeedKey, Part>> = {
 };
 
 /**
- * A group of `count` of the `others` with a recorded figure, in words: the count below `SHARE_FROM` other schools, and
- * from there the share of the whole list, this school included, rounded down to whole tenths. The share's three words
- * are joined by no-break spaces, so a line never breaks inside "9 in 10".
+ * A group of `count` of the `others` in the list, in words: the count below `SHARE_FROM` other schools, and from there
+ * the share of the whole list, this school included, rounded down to whole tenths. The share's three words are joined
+ * by no-break spaces, so a line never breaks inside "9 in 10".
  */
 function quantity(count: number, others: number): string {
   if (count === others)
@@ -141,16 +142,17 @@ export function partStanding(
   const own = part.figure(school);
   if (own === null || !inList(school, ruleId)) return null;
   const groups: Record<Side, number> = { higher: 0, lower: 0, same: 0 };
+  let others = 0;
   for (const other of list) {
     if (other.id === school.id || !inList(other, ruleId)) continue;
+    others += 1;
     const figure = part.figure(other);
     if (figure === null) continue;
     if (own > figure) groups.higher += 1;
     else if (own < figure) groups.lower += 1;
     else groups.same += 1;
   }
-  const others = groups.higher + groups.lower + groups.same;
-  if (others === 0) return null;
+  if (groups.higher + groups.lower + groups.same === 0) return null;
   const order: readonly Side[] =
     part.bar === "higher" ? ["higher", "lower", "same"] : ["lower", "higher", "same"];
   const side = order.reduce((best, next) => (groups[next] > groups[best] ? next : best));

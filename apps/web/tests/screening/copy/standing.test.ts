@@ -133,15 +133,21 @@ describe("comparing a part of school need with the list", () => {
     expect(line(rec("q", { types: 0 }, []), others)).toBeNull();
   });
 
-  it("leaves out another school whose figure is not recorded, instead of counting it as 0 or as level", () => {
-    // Counted as 0 types, the blank would be level with the subject: "Fewer ... than 2 of the 3".
+  it("counts a school whose figure is blank as one of the list, in no group, never as 0 or as level", () => {
+    // Counted as 0 types, the blank would be level with the subject: "As many ... as 2 of the 3". Left out of the
+    // list, it would make "1 of the 2".
     expect(
       line(rec("s", { types: 0 }), [
         rec("a", { types: 3 }),
         rec("b", { types: null }),
-        rec("c", { types: 3 }),
+        rec("c", { types: 0 }),
       ])
-    ).toBe("Fewer recorded facility types than both other schools in the list.");
+    ).toBe("Fewer recorded facility types than 1 of the 3 other schools in the list.");
+    // A share counts it too: 20 of the 25 schools in the list is 8 in 10, and with 4 blank, not every other school.
+    expect(
+      line(rec("s", { types: 0 }), [...many("m", 20, { types: 1 }), ...many("b", 4, { types: null })])
+    ).toBe("Fewer recorded facility types than 8\u00a0in\u00a010 schools in the list.");
+    // No other school has the figure: there is nothing to compare with.
     expect(line(rec("s", { types: 0 }), [rec("b", { types: null })])).toBeNull();
   });
 
