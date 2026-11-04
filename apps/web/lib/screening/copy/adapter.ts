@@ -268,6 +268,7 @@ function verifyOf(
 interface Flags {
   readonly persistent_candidate?: boolean | null;
   readonly threshold_adjacent?: boolean | null;
+  readonly top20_frequencies?: readonly { readonly setting_id: string; readonly frequency: number }[] | null;
 }
 type FlagsByRule = Partial<Record<PersistenceRule, Flags | undefined>>;
 
@@ -333,6 +334,14 @@ function buildSchool(
       persistence[id] = {
         persistent: f.persistent_candidate === true,
         adjacent: f.threshold_adjacent === true,
+        ...(f.top20_frequencies
+          ? {
+              frequencies: f.top20_frequencies.map((x) => ({
+                setting: x.setting_id,
+                frequency: x.frequency,
+              })),
+            }
+          : {}),
       };
   }
 
@@ -545,21 +554,25 @@ export function standardErrorFromResults(response: ResultsResponse): number | un
 }
 
 /**
- * How a rule's stochastic test was drawn, from its list's provenance block, for the method details' words. Nothing
- * when the list is another rule's or the block does not give all of the draws, the threshold and the settings.
+ * How a rule's stochastic test was drawn, from its list's provenance block, for the method details' words and the
+ * drawing of each school's frequencies, with the near-line band when the block gives a standard error. Nothing when the
+ * list is another rule's or the block does not give all of the draws, the threshold and the settings.
  */
 export function testFromResults(response: ResultsResponse): PersistenceTest | undefined {
   const block = response.persistence;
   if (!isPersistenceRule(viewRuleOf(response)) || !block) return undefined;
   const { draws, threshold, settings } = block;
   if (draws === undefined || threshold === undefined || !settings || settings.length === 0) return undefined;
+  const band = marginFromResults(response);
   return {
     draws,
     threshold,
     settings: settings.map((s) => ({
+      ...(s.setting_id === undefined ? {} : { id: s.setting_id }),
       topLevel: s.top_level_concentration,
       schoolNeed: s.school_need_concentration,
     })),
+    ...(band === undefined ? {} : { band }),
   };
 }
 

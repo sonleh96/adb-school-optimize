@@ -250,6 +250,9 @@ export function copyFor(data: CopyData = {}) {
       list: readonly PlacedSchool[] = schools,
       form: "card" | "row" = "card"
     ) => tieNote(school, ruleId, list, form),
+    /** How a rule's stochastic test was drawn, from its own list, for the drawing of a school's frequencies. */
+    persistenceTest: (ruleId: CopyRuleId): PersistenceTest | undefined =>
+      (data.tests as Record<string, PersistenceTest | undefined> | undefined)?.[ruleId],
     persistenceNote: (school: CopySchool, ruleId: CopyRuleId) =>
       persistenceNote(school, ruleId, {
         margin: (data.margins as Record<string, number | undefined> | undefined)?.[ruleId],

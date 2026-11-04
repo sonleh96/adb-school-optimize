@@ -178,7 +178,7 @@ describe("the line a flagged school is near", () => {
 describe("a school of the circulated list", () => {
   it("is told only the flag when it is flagged and well above the line", () => {
     const s = byName("Sample School 01");
-    expect(s?.persistence?.[S]).toEqual({ persistent: true, adjacent: false });
+    expect(s?.persistence?.[S]).toMatchObject({ persistent: true, adjacent: false });
     expect(bound.persistenceNote(s!, S)).toEqual([FLAG[S]]);
   });
 
@@ -209,9 +209,12 @@ describe("a school of the circulated list", () => {
 describe("a school of the revised rule's list", () => {
   it("is told the flag in the words of the fresh run, and near the line only where the data says so", () => {
     const s = byName("Sample School 03", S0);
-    expect(s?.persistence?.[S0]).toEqual({ persistent: true, adjacent: false });
+    expect(s?.persistence?.[S0]).toMatchObject({ persistent: true, adjacent: false });
     expect(bound.persistenceNote(s!, S0)).toEqual([FLAG[S0]]);
-    expect(byName("Sample School 06", S0)?.persistence?.[S0]).toEqual({ persistent: true, adjacent: true });
+    expect(byName("Sample School 06", S0)?.persistence?.[S0]).toMatchObject({
+      persistent: true,
+      adjacent: true,
+    });
   });
 
   it("is told it is near the line by no school when the data says none is, as the revised paper finds", () => {
@@ -268,7 +271,7 @@ describe("a school of a list that carries no flags for a rule", () => {
   it("has no flag to say for that rule, because the flag is unknown there", () => {
     const without = lists.filter((l) => l.run.rule_id !== S);
     const s = schoolsFromLists(inputs, without, S0).find((x) => x.name === "Sample School 02");
-    expect(s?.persistence).toEqual({ [S0]: { persistent: true, adjacent: false } });
+    expect(s?.persistence).toMatchObject({ [S0]: { persistent: true, adjacent: false } });
     expect(s?.persistence).not.toHaveProperty(S);
     expect(bound.persistenceNote(s!, S)).toEqual([]);
   });

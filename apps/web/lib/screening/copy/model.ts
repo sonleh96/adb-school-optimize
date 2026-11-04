@@ -25,6 +25,11 @@ export interface PersistenceFlag {
   readonly persistent: boolean;
   /** A flagged school whose lowest frequency is only just above the line. */
   readonly adjacent: boolean;
+  /**
+   * The school's share of the draws in which it stayed in the top 20, under each setting by the setting's id, from 0 to
+   * 1. Absent when the data gives none, and then the method details draw nothing.
+   */
+  readonly frequencies?: readonly { readonly setting: string; readonly frequency: number }[];
 }
 
 /** How a rule's stochastic test was drawn, from its list's provenance block. */
@@ -33,8 +38,17 @@ export interface PersistenceTest {
   readonly draws: number;
   /** The share of the draws in which a school must be certainly in the top 20, as a fraction. */
   readonly threshold: number;
-  /** The concentrations drawn at, one pair per setting. */
-  readonly settings: readonly { readonly topLevel: number; readonly schoolNeed: number }[];
+  /** The concentrations drawn at, one pair per setting, with the id a school's frequencies name it by when known. */
+  readonly settings: readonly {
+    readonly id?: string;
+    readonly topLevel: number;
+    readonly schoolNeed: number;
+  }[];
+  /**
+   * How far either side of the threshold a frequency counts as near the line, as a fraction: the standard error times
+   * the number of standard errors the rule's band spans. Absent when the data gives no standard error.
+   */
+  readonly band?: number;
 }
 
 /** The group a school falls in under the rule being shown. The API calls the last one `verification_queue`. */
