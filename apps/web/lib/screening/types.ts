@@ -63,6 +63,14 @@ const rule = obj({
   /** The rule as the paper writes it, and each input's share as a fraction and a number; method details only. */
   formula: str,
   weights: list(obj({ component: str, fraction: str, value: num })),
+  /**
+   * How the rule combines its inputs, which the diagram of each part's share draws: the input a need-first rule
+   * orders by, and the inputs and share of a largest-factor rule's extra term. Only that diagram reads them, so a
+   * change to them hides the diagram and never blanks the screen.
+   */
+  primary_sort_key: tolerant(nullable(str)),
+  maximum_components: tolerant(list(str)),
+  maximum_share: tolerant(str),
 });
 export type Rule = Infer<typeof rule>;
 
