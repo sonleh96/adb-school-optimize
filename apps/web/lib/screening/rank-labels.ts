@@ -60,8 +60,11 @@ export function layOutNumbers(
     y <= height - NUMBER_DISC / 2;
   const clearOfNumbers = (x: number, y: number) => drawn.every((d) => apart({ x, y }, d) >= CLEAR);
 
+  // A dot off the map keeps its number where it is, out of sight; one near the edge is laid out like any other.
+  const offMap = (x: number, y: number) => x < 0 || x > width || y < 0 || y > height;
+
   for (const point of ordered) {
-    if (clearOfNumbers(point.x, point.y) || !inside(point.x, point.y)) {
+    if (clearOfNumbers(point.x, point.y) || offMap(point.x, point.y)) {
       place(point, 0, 0);
       continue;
     }
