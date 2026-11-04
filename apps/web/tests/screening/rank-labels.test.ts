@@ -103,6 +103,18 @@ describe("layOutNumbers", () => {
     expect(Math.max(Math.abs(crowded.dx), Math.abs(crowded.dy + 4))).toBeGreaterThanOrEqual(NUMBER_DISC);
   });
 
+  it("moves a crowded number whose dot is closer to the map's edge than half a number", () => {
+    const drawn = drawnAt([
+      { rank: 1, x: 10, y: 100 },
+      { rank: 2, x: 4, y: 102 },
+    ]);
+    const [first, second] = drawn;
+    expect(Math.max(Math.abs(first.x - second.x), Math.abs(first.y - second.y))).toBeGreaterThanOrEqual(
+      NUMBER_DISC
+    );
+    expect(second.x).toBeGreaterThanOrEqual(NUMBER_DISC / 2);
+  });
+
   it("keeps a moved number on the map when its dot is at the edge", () => {
     const drawn = drawnAt(
       [
