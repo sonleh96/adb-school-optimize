@@ -31,6 +31,8 @@
  *                                                                          -> "each outside picture's credit..."
  * 16. Printed, a picture or the navy veil over the band's picture prints, so the band's words lose their contrast
  *                                                                          -> "printed, the pictures..."
+ * 17. A picture that fails to load (a dropped connection, a blocked request) leaves a broken-image frame
+ *                                                                          -> "a picture that fails..."
  */
 import type { Page } from "@playwright/test";
 
@@ -314,3 +316,29 @@ test("printed, the pictures and the band's veil are left off, and the band's wor
   const ink = await lead.evaluate((el) => getComputedStyle(el).color);
   expect(contrastRatio(hexOf(ink), "#ffffff")).toBeGreaterThanOrEqual(4.5);
 });
+
+for (const [width, height] of [
+  [1440, 900],
+  [390, 844],
+]) {
+  test(`a picture that fails to load leaves no broken frame, ${width} px wide`, async ({
+    page,
+    problems,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await page.route("**/*", (route) =>
+      route.request().resourceType() === "image" ? route.abort("blockedbyclient") : route.continue()
+    );
+    await page.goto("/");
+    await scrollThrough(page);
+    for (const picture of await page.locator("img").all()) await expect(picture).toBeHidden();
+    // The hero's window keeps its caption, and its screenshot's place keeps its size.
+    const frame = page.getByRole("figure", { name: HOME.images.caption });
+    await expect(frame.getByText(HOME.images.caption)).toBeVisible();
+    expect((await frame.boundingBox())!.height).toBeGreaterThan(140);
+    // Every problem the browser reports is one of the refused pictures.
+    expect(problems.length).toBeGreaterThan(0);
+    for (const problem of problems) expect(problem).toMatch(/BLOCKED_BY_CLIENT|requestfailed/);
+    problems.length = 0;
+  });
+}

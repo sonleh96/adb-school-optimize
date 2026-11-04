@@ -5,6 +5,7 @@ import { AdbLogo } from "@/components/AdbLogo";
 import { LeftOutMotif, RangeMotif, RunsMotif } from "@/components/home/Motifs";
 import { HOME, KEEP_TOGETHER, MAIN_SHARES, figuresFor, type Figure, type Phrase } from "@/lib/home/copy";
 import { readHomeCounts } from "@/lib/home/counts";
+import { HIDE_FAILED_PICTURES } from "@/lib/home/hideFailedPictures";
 import { LAYOUT } from "@/lib/screening/copy/words";
 import orbit from "@/public/images/png-from-orbit.webp";
 import provinces from "@/public/images/png-provinces.svg";
@@ -150,6 +151,8 @@ export default async function HomePage() {
 
   return (
     <div className={`${homeFonts} ${styles.page}`}>
+      {/* Before any picture, so a picture that fails is hidden rather than left as a broken frame. */}
+      <script dangerouslySetInnerHTML={{ __html: HIDE_FAILED_PICTURES }} />
       <a className={styles.skip} href="#main">
         {HOME.skip}
       </a>
