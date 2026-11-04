@@ -135,7 +135,7 @@ test("help mode marks the line that compares a part of school need with the list
   );
   // Its example is another school's line for one part, named for the part.
   await expect(card(page)).toContainText("Missing facility types");
-  await expect(card(page).locator("[data-example]")).toContainText(/recorded facility types than/);
+  await expect(card(page).locator("[data-example]")).toContainText(/in the list records? .*facility types/);
 });
 
 test("Escape closes the card, then the glossary, then help mode, and focus returns to what opened each", async ({

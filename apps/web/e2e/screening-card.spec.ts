@@ -88,10 +88,10 @@ test("a complete school's card states one rank, its reasons with the school need
   await expect(parts.nth(1)).toContainText("2Remoteness");
   await expect(parts.nth(2)).toContainText("3Teacher housing shortfall");
   await expect(parts.nth(3)).toHaveText(
-    "Missing facility typesFewer recorded facility types than 5 in 10 schools in the list."
+    "Missing facility types5 in 10 schools in the list record more facility types."
   );
   await expect(parts.nth(4)).toHaveText(
-    "Power and waterRecorded power and water sources that count the same on the research team's scale as those of 9 in 10 schools in the list."
+    "Power and waterFewer than 1 in 10 schools in the list record power and water that add less to school need; 9 in 10 score the same."
   );
   await expect(why.locator("[data-region=inspector-record]")).toHaveText(
     "All of the inputs this rule uses are recorded."
@@ -117,13 +117,18 @@ test("each part of school need keeps its bar and says how its record compares wi
   const parts = card(page).locator("[data-region=need-box] li");
   await expect(parts).toHaveCount(5);
   // Worked out by hand from the saved list of the main rule: 22 schools, so each line counts the 21 others and says a
-  // share of all 22, rounded down.
+  // share of all 22, rounded down, with the schools level with this one when they are 2 in 10 or more.
   const lines = [
-    "A smaller recorded share of permanent classrooms than 8 in 10 schools in the list.",
-    "Recorded as more remote than 8 in 10 schools in the list.",
-    "Fewer recorded teacher houses per teacher than 5 in 10 schools in the list.",
-    "Fewer recorded facility types than 5 in 10 schools in the list.",
-    "Recorded power and water sources that count the same on the research team's scale as those of 9 in 10 schools in the list.",
+    // 19 others record a larger share, 2 the same as its none of 8.
+    "8 in 10 schools in the list record a larger share of permanent classrooms.",
+    // 19 are less remote, 2 are very remote like it.
+    "8 in 10 schools in the list are recorded as less remote.",
+    // 12 record more houses per teacher than its 2 for 10 teachers, 7 fewer, 2 the same.
+    "5 in 10 schools in the list record more teacher houses per teacher.",
+    // 12 record more than its two facility types, 5 fewer, 4 the same.
+    "5 in 10 schools in the list record more facility types.",
+    // 1 scores less, 20 score the same.
+    "Fewer than 1 in 10 schools in the list record power and water that add less to school need; 9 in 10 score the same.",
   ];
   for (const [i, text] of lines.entries()) {
     const part = parts.nth(i);
@@ -166,7 +171,7 @@ test("a range school's card shows its range, names the missing figure, and label
   await expect(card(page).locator("[data-region=need-standing]")).toHaveCount(5);
   await expect(
     card(page).locator("[data-region=need-box] li", { hasText: "Missing facility types" })
-  ).toContainText("More recorded facility types than 4 in 10 schools in the list.");
+  ).toContainText("4 in 10 schools in the list record fewer facility types; 4 in 10 record the same.");
 });
 
 test("an incomplete record's card says what is missing and what the record says, part by part", async ({

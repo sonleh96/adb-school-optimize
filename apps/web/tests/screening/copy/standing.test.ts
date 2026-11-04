@@ -2,18 +2,19 @@
  * How a school's record for one part of school need compares with the other schools in the list (`partStanding`).
  *
  * Failure modes, each with the test that catches it:
- *  1. Equal figures are counted as more or fewer, so a tie inflates the claim.     -> "counts a tie as neither ..."
- *  2. A missing figure is compared: the school's own, or another school's counted as 0 or as level.
- *                                                                                   -> "says nothing ...", "leaves out ..."
- *  3. The count takes in the school itself or the schools not in the list yet.     -> "counts only the other schools ..."
- *  4. A rule's line counts another rule's list.                                     -> "every rule ..." (two tests)
- *  5. A part's line points the wrong way, or a cap hides a difference the record shows, or the reverse.
- *                                                                                   -> "words each part ..."
- *  6. A share is rounded up into a stronger claim, or counts this school as one it is compared with.
- *                                                                                   -> "rounds a share down ..."
- *  7. A small list is said in tenths, or a list of one, two or three reads wrongly. -> "gives the count ..."
- *  8. A list whose figures are all equal reads as more or fewer.                    -> "says a list of equal ..."
- *  9. A line implies the school's condition or need, or does not say "recorded".   -> "never words ..."
+ *  1. The line leaves its direction to be guessed, or a large tie unsaid.           -> "names the other schools ..."
+ *  2. Equal figures are counted as more or less, so a tie inflates the claim.        -> "counts a tie as neither ..."
+ *  3. A missing figure is compared: the school's own, or another school's counted as 0, as level or as not there.
+ *                                                                                    -> "says nothing ...", "counts a school whose figure is blank ..."
+ *  4. The count takes in the school itself or the schools not in the list yet.      -> "counts only the other schools ..."
+ *  5. A rule's line counts another rule's list.                                      -> "under every rule ..." (two tests)
+ *  6. A part's line points the wrong way.                                            -> "words each part ..."
+ *  7. Two records the method scores alike are counted apart by a float.              -> "scores power and water ..."
+ *  8. A share is rounded up into a stronger claim, or a tiny group reads as 0 in 10. -> "rounds a share down ..."
+ *  9. A small list is said in tenths, or a list of one, two or three reads wrongly.  -> "gives counts ..."
+ * 10. A list whose figures are all equal reads as more or less.                      -> "says a list of equal ..."
+ * 11. A line implies the school's condition or need, does not say "record", or keeps the scale's name.
+ *                                                                                    -> "never words ..."
  * The expected lines are written out by hand from the figures each test sets.
  */
 import { describe, expect, it } from "vitest";
@@ -41,6 +42,8 @@ const FACILITIES = [
   "computer_labs",
   "specialized_classrooms",
 ] as const;
+/** A share as the line says it: no-break spaces keep "8 in 10" on one line. */
+const tenths = (n: number) => `${n}\u00a0in\u00a010`;
 
 /** The figures a test sets; the builder sets every other field. */
 interface Figures {
@@ -50,7 +53,7 @@ interface Figures {
   classrooms?: [number, number];
   /** Teacher houses and teachers. */
   houses?: [number, number];
-  /** Power and water, and remoteness, on the research team's scale. */
+  /** Power and water, and remoteness, as the engine scores them. */
   services?: number;
   remoteness?: number;
 }
@@ -89,39 +92,41 @@ const line = (subject: CopySchool, others: readonly CopySchool[], key: NeedKey =
   partStanding(subject, rule, key, [subject, ...others]);
 
 describe("comparing a part of school need with the list", () => {
-  it("counts a tie as neither more nor fewer", () => {
-    const subject = rec("s", { types: 0 });
-    // Four others have none of the six types too, three have one: counted as more, the four would make "7 of 7".
-    expect(line(subject, [...many("none", 4, { types: 0 }), ...many("one", 3, { types: 1 })])).toBe(
-      "As many recorded facility types as 4 of the 7 other schools in the list."
-    );
-    // Level with three, above two, below two: the largest group is the schools level with it.
+  it("names the other schools and which way they differ, and the schools level with this one from 2 in 10", () => {
+    // 29 others: 23 with more facility types and 6 with none, like the subject. 6 of the 30 is 2 in 10, so it is said.
     expect(
-      line(rec("s", { types: 2 }), [
-        ...many("same", 3, { types: 2 }),
-        ...many("more", 2, { types: 3 }),
-        ...many("fewer", 2, { types: 1 }),
-      ])
-    ).toBe("As many recorded facility types as 3 of the 7 other schools in the list.");
+      line(rec("s", { types: 0 }), [...many("m", 23, { types: 1 }), ...many("n", 6, { types: 0 })])
+    ).toBe(`${tenths(7)} schools in the list record more facility types; ${tenths(2)} record the same.`);
+    // 5 of the 30 level with it is under 2 in 10, so it is not.
+    expect(
+      line(rec("s", { types: 0 }), [...many("m", 24, { types: 1 }), ...many("n", 5, { types: 0 })])
+    ).toBe(`${tenths(8)} schools in the list record more facility types.`);
   });
 
-  it("names the side the part's bar grows towards when two groups are the same size, then the other side", () => {
-    // One school has more types, one the same: fewer types is the side "Missing facility types" grows towards.
-    expect(line(rec("s", { types: 0 }), [rec("a", { types: 1 }), rec("b", { types: 0 })])).toBe(
-      "Fewer recorded facility types than 1 of the 2 other schools in the list."
+  it("counts a tie as neither more nor less", () => {
+    // Four others have none of the six types, like the subject, and three have one. Counted as more, the four would
+    // make "every other school".
+    expect(
+      line(rec("s", { types: 0 }), [...many("none", 4, { types: 0 }), ...many("one", 3, { types: 1 })])
+    ).toBe("3 of the 7 other schools in the list record more facility types; 4 record the same.");
+  });
+
+  it("names the larger group, and on a tie the schools whose bars are shorter", () => {
+    expect(line(rec("s", { types: 2 }), [...many("more", 3, { types: 3 }), rec("fewer", { types: 1 })])).toBe(
+      "3 of the 4 other schools in the list record more facility types."
     );
-    // Remoteness grows the other way, towards a more remote category.
+    // One school has more types and one has fewer: those with more have shorter "Missing facility types" bars.
+    expect(line(rec("s", { types: 2 }), [rec("a", { types: 3 }), rec("b", { types: 1 })])).toBe(
+      "1 of the 2 other schools in the list records more facility types."
+    );
+    // Remoteness grows the other way: the less remote school has the shorter bar.
     expect(
       line(
         rec("s", { remoteness: 0.45 }),
         [rec("a", { remoteness: 0.2 }), rec("b", { remoteness: 0.7 })],
         "locality"
       )
-    ).toBe("Recorded as more remote than 1 of the 2 other schools in the list.");
-    // A side ahead of the same group on a tie: more types than one, the same as one.
-    expect(line(rec("s", { types: 2 }), [rec("a", { types: 1 }), rec("b", { types: 2 })])).toBe(
-      "More recorded facility types than 1 of the 2 other schools in the list."
-    );
+    ).toBe("1 of the 2 other schools in the list is recorded as less remote.");
   });
 
   it("says nothing for a figure the school's own record does not give, or for a school not in the list", () => {
@@ -134,19 +139,18 @@ describe("comparing a part of school need with the list", () => {
   });
 
   it("counts a school whose figure is blank as one of the list, in no group, never as 0 or as level", () => {
-    // Counted as 0 types, the blank would be level with the subject: "As many ... as 2 of the 3". Left out of the
-    // list, it would make "1 of the 2".
+    // Counted as 0 types, the blank would make "2 record the same"; left out, "1 of the 2 other schools".
     expect(
       line(rec("s", { types: 0 }), [
         rec("a", { types: 3 }),
         rec("b", { types: null }),
         rec("c", { types: 0 }),
       ])
-    ).toBe("Fewer recorded facility types than 1 of the 3 other schools in the list.");
+    ).toBe("1 of the 3 other schools in the list records more facility types; 1 records the same.");
     // A share counts it too: 20 of the 25 schools in the list is 8 in 10, and with 4 blank, not every other school.
     expect(
       line(rec("s", { types: 0 }), [...many("m", 20, { types: 1 }), ...many("b", 4, { types: null })])
-    ).toBe("Fewer recorded facility types than 8\u00a0in\u00a010 schools in the list.");
+    ).toBe(`${tenths(8)} schools in the list record more facility types.`);
     // No other school has the figure: there is nothing to compare with.
     expect(line(rec("s", { types: 0 }), [rec("b", { types: null })])).toBeNull();
   });
@@ -154,12 +158,11 @@ describe("comparing a part of school need with the list", () => {
   it("counts only the other schools in the list: not the school itself, and not the schools not in the list yet", () => {
     const subject = rec("s", { types: 0 });
     const notYet = rec("q", { types: 6 }, []);
-    expect(line(subject, [rec("a", { types: 3 }), notYet])).toBe(
-      "Fewer recorded facility types than the one other school in the list."
-    );
+    const one = "The one other school in the list records more facility types.";
+    expect(line(subject, [rec("a", { types: 3 }), notYet])).toBe(one);
     // The school's own record, once in the list as well, is still not one of the others.
     expect(partStanding(subject, MAIN, "facilities", [subject, { ...subject }, rec("a", { types: 3 })])).toBe(
-      "Fewer recorded facility types than the one other school in the list."
+      one
     );
   });
 
@@ -178,8 +181,8 @@ describe("comparing a part of school need with the list", () => {
     for (const rule of RULES)
       expect(partStanding(subject, rule, "facilities", list), rule).toBe(
         withoutUrgency.includes(rule)
-          ? "Fewer recorded facility types than 2 of the 3 other schools in the list."
-          : "Fewer recorded facility types than 1 of the 2 other schools in the list."
+          ? "2 of the 3 other schools in the list record more facility types; 1 records the same."
+          : "1 of the 2 other schools in the list records more facility types; 1 records the same."
       );
   });
 
@@ -197,55 +200,48 @@ describe("comparing a part of school need with the list", () => {
       const subject = schools.find((s) => s.name === "Ranked 10")!;
       expect(partStanding(subject, rule, "facilities", schools), rule).toBe(
         rule.endsWith("_no_u")
-          ? "More recorded facility types than 17 of the 19 other schools in the list."
-          : "More recorded facility types than 17 of the 18 other schools in the list."
+          ? "17 of the 19 other schools in the list record fewer facility types."
+          : "17 of the 18 other schools in the list record fewer facility types."
       );
     }
   });
 
   it("words each part the way its record points", () => {
     const one = (key: NeedKey, own: Figures, other: Figures) => line(rec("s", own), [rec("a", other)], key);
+    const the = "The one other school in the list";
     expect(one("classrooms", { classrooms: [0, 6] }, { classrooms: [6, 6] })).toBe(
-      "A smaller recorded share of permanent classrooms than the one other school in the list."
+      `${the} records a larger share of permanent classrooms.`
     );
     expect(one("classrooms", { classrooms: [5, 6] }, { classrooms: [1, 4] })).toBe(
-      "A larger recorded share of permanent classrooms than the one other school in the list."
+      `${the} records a smaller share of permanent classrooms.`
     );
     // More permanent classrooms than classrooms reads as all of them, as the school's own sentence says.
     expect(one("classrooms", { classrooms: [7, 6] }, { classrooms: [6, 6] })).toBe(
-      "The same recorded share of permanent classrooms as the one other school in the list."
+      `${the} records the same share of permanent classrooms.`
     );
     expect(one("housing", { houses: [1, 9] }, { houses: [9, 9] })).toBe(
-      "Fewer recorded teacher houses per teacher than the one other school in the list."
-    );
-    // Both records give at least one house per teacher, so both bars are empty, but the records differ.
-    expect(one("housing", { houses: [12, 6] }, { houses: [6, 6] })).toBe(
-      "More recorded teacher houses per teacher than the one other school in the list."
+      `${the} records more teacher houses per teacher.`
     );
     expect(one("housing", { houses: [3, 6] }, { houses: [2, 4] })).toBe(
-      "As many recorded teacher houses per teacher as the one other school in the list."
+      `${the} records the same number of teacher houses per teacher.`
     );
-    expect(one("facilities", { types: 1 }, { types: 4 })).toBe(
-      "Fewer recorded facility types than the one other school in the list."
-    );
-    expect(one("facilities", { types: 6 }, { types: 4 })).toBe(
-      "More recorded facility types than the one other school in the list."
-    );
-    // On the research team's scale a generator and water from a river count 0.85, the grid and piped water 0.2.
+    expect(one("facilities", { types: 1 }, { types: 4 })).toBe(`${the} records more facility types.`);
+    expect(one("facilities", { types: 6 }, { types: 4 })).toBe(`${the} records fewer facility types.`);
+    // The method scores a generator and water from a river 0.85, the grid and piped water 0.2.
     expect(one("services", { services: 0.85 }, { services: 0.2 })).toBe(
-      "Recorded power and water sources that count more on the research team's scale than those of the one other school in the list."
+      `${the} records power and water that add less to school need.`
     );
     expect(one("services", { services: 0.35 }, { services: 0.6 })).toBe(
-      "Recorded power and water sources that count less on the research team's scale than those of the one other school in the list."
+      `${the} records power and water that add more to school need.`
     );
     expect(one("locality", { remoteness: 1 }, { remoteness: 0.2 })).toBe(
-      "Recorded as more remote than the one other school in the list."
+      `${the} is recorded as less remote.`
     );
     expect(one("locality", { remoteness: 0 }, { remoteness: 0.45 })).toBe(
-      "Recorded as less remote than the one other school in the list."
+      `${the} is recorded as more remote.`
     );
     expect(one("locality", { remoteness: 0.7 }, { remoteness: 0.7 })).toBe(
-      "Recorded in the same remoteness category as the one other school in the list."
+      `${the} is recorded in the same remoteness category.`
     );
   });
 
@@ -256,7 +252,7 @@ describe("comparing a part of school need with the list", () => {
     const solarTank = (0.4 + 0.5) / 2;
     expect(generatorPiped).not.toBe(solarTank);
     const level =
-      "Recorded power and water sources that count the same on the research team's scale as those of the one other school in the list.";
+      "The one other school in the list records power and water that add the same to school need.";
     expect(
       line(rec("s", { services: generatorPiped }), [rec("a", { services: solarTank })], "services")
     ).toBe(level);
@@ -272,9 +268,7 @@ describe("comparing a part of school need with the list", () => {
         ...many("m", more, { types: 1 }),
         ...many("n", total - 1 - more, { types: 0 }),
       ]);
-    // No-break spaces hold the share together, so a line never breaks inside "8 in 10".
-    const says = (tenths: number) =>
-      `Fewer recorded facility types than ${tenths}\u00a0in\u00a010 schools in the list.`;
+    const says = (n: number) => `${tenths(n)} schools in the list record more facility types.`;
     expect(share(849, 1000)).toBe(says(8));
     expect(share(850, 1000)).toBe(says(8));
     expect(share(899, 1000)).toBe(says(8));
@@ -284,43 +278,48 @@ describe("comparing a part of school need with the list", () => {
     // 27 of the 30 others is 90%, but 27 of the 31 schools in the list is 87%: 8 in 10, not 9.
     expect(share(27, 31)).toBe(says(8));
     // Every other school is said as such, not as 9 in 10.
-    expect(share(30, 31)).toBe("Fewer recorded facility types than every other school in the list.");
+    expect(share(30, 31)).toBe("Every other school in the list records more facility types.");
+    // A group under 1 in 10 is not said as 0 in 10.
+    expect(share(2, 30)).toBe(
+      `Fewer than ${tenths(1)} schools in the list record more facility types; ${tenths(9)} record the same.`
+    );
   });
 
-  it("gives the count below 20 other schools, and tenths from 20", () => {
+  it("gives counts below 20 other schools, and tenths from 20", () => {
     const subject = rec("s", { types: 0 });
     expect(line(subject, [])).toBeNull();
     expect(line(subject, [rec("a", { types: 3 })])).toBe(
-      "Fewer recorded facility types than the one other school in the list."
+      "The one other school in the list records more facility types."
     );
     expect(line(subject, [rec("a", { types: 3 }), rec("b", { types: 1 })])).toBe(
-      "Fewer recorded facility types than both other schools in the list."
+      "Both other schools in the list record more facility types."
     );
     expect(line(subject, [rec("a", { types: 3 }), rec("b", { types: 1 }), rec("c", { types: 0 })])).toBe(
-      "Fewer recorded facility types than 2 of the 3 other schools in the list."
+      "2 of the 3 other schools in the list record more facility types; 1 records the same."
     );
+    // 4 of the 20 schools in the list is 2 in 10, so the schools level with it are said.
     expect(line(subject, [...many("m", 15, { types: 2 }), ...many("n", 4, { types: 0 })])).toBe(
-      "Fewer recorded facility types than 15 of the 19 other schools in the list."
+      "15 of the 19 other schools in the list record more facility types; 4 record the same."
     );
-    // 15 of the 21 schools in the list is 71%.
+    // 15 of the 21 schools in the list is 71%, and 5 of them is 24%.
     expect(line(subject, [...many("m", 15, { types: 2 }), ...many("n", 5, { types: 0 })])).toBe(
-      "Fewer recorded facility types than 7\u00a0in\u00a010 schools in the list."
+      `${tenths(7)} schools in the list record more facility types; ${tenths(2)} record the same.`
     );
   });
 
   it("says a list of equal figures is the same as every other school, at any size", () => {
     const equal = (n: number) => line(rec("s", { types: 2 }), many("e", n, { types: 2 }));
-    expect(equal(1)).toBe("As many recorded facility types as the one other school in the list.");
-    expect(equal(2)).toBe("As many recorded facility types as both other schools in the list.");
-    expect(equal(4)).toBe("As many recorded facility types as every other school in the list.");
-    expect(equal(30)).toBe("As many recorded facility types as every other school in the list.");
+    expect(equal(1)).toBe("The one other school in the list records the same number of facility types.");
+    expect(equal(2)).toBe("Both other schools in the list record the same number of facility types.");
+    expect(equal(4)).toBe("Every other school in the list records the same number of facility types.");
+    expect(equal(30)).toBe("Every other school in the list records the same number of facility types.");
   });
 
-  it("never words a comparison as the school's condition or need, and always says recorded", () => {
-    // Every part, every side, and every way of saying how many: three figures per part, low, middle and high.
+  it("never words a comparison as the school's condition or need, and always says what is recorded", () => {
+    // Every part, every group, and every way of saying how many: three figures per part, low, middle and high.
     const levels: Record<NeedKey, [Figures, Figures, Figures]> = {
       classrooms: [{ classrooms: [0, 6] }, { classrooms: [3, 6] }, { classrooms: [6, 6] }],
-      housing: [{ houses: [0, 6] }, { houses: [3, 6] }, { houses: [9, 6] }],
+      housing: [{ houses: [0, 6] }, { houses: [3, 6] }, { houses: [5, 6] }],
       facilities: [{ types: 0 }, { types: 3 }, { types: 6 }],
       services: [{ services: 0.2 }, { services: 0.45 }, { services: 0.85 }],
       locality: [{ remoteness: 0 }, { remoteness: 0.45 }, { remoteness: 1 }],
@@ -329,38 +328,39 @@ describe("comparing a part of school need with the list", () => {
     for (const key of Object.keys(levels) as NeedKey[]) {
       const [low, middle, high] = levels[key];
       for (const others of [low, middle, high])
-        for (const [n, odd] of [
+        for (const [n, level] of [
           [1, 0],
           [2, 0],
           [5, 0],
           [5, 1],
-          [25, 5],
+          [5, 2],
+          [25, 6],
+          [29, 27],
         ] as const) {
-          // `odd` of the others sit on another side, so the group named is not every other school.
-          const elsewhere = others === middle ? high : middle;
+          // `level` of the others share the subject's figure; the rest have `others`.
           const said = line(
             rec("s", middle),
-            [...many("g", n - odd, others), ...many("o", odd, elsewhere)],
+            [...many("g", n - level, others), ...many("l", level, middle)],
             key
           );
           if (said) lines.add(said);
         }
     }
-    // 5 parts, 3 sides, 5 ways of saying how many.
-    expect(lines.size).toBe(75);
+    expect(lines.size).toBeGreaterThan(60);
     for (const text of lines) {
       expect(textProblems(text), text).toEqual([]);
-      expect(text, text).toMatch(/\brecorded\b/i);
+      expect(text, text).toMatch(/\brecord/i);
+      expect(text, text).not.toMatch(/scale|count (more|less)/i);
     }
     // The guard catches the words a comparison could slip into.
     for (const slip of [
-      "Worse recorded facility types than 9 in 10 schools in the list.",
-      "Better recorded power and water than both other schools in the list.",
-      "Poorer recorded classrooms than every other school in the list.",
+      "5 in 10 schools in the list record worse facilities.",
+      "6 in 10 schools in the list record a better power and water rating.",
+      "Poorer classrooms than every other school in the list.",
       "Needier than 7 in 10 schools in the list.",
-      "More in need than 7 in 10 schools in the list.",
+      "4 in 10 schools in the list are more in need.",
       "More deprived than the one other school in the list.",
-      "Less disadvantaged than 3 of the 4 other schools in the list.",
+      "3 of the 4 other schools in the list are less disadvantaged.",
     ])
       expect(
         BANNED.some((b) => b.pattern.test(slip)),

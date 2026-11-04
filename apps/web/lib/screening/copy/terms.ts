@@ -143,7 +143,7 @@ export function buildTerms(c: CountBag = {}, reads?: Reads, ruleId?: CopyRuleId)
       technical: "Standing of a recorded need part within the rule's list",
       label: "Compared with the list",
       line: "How the school's record for this part compares with the other schools in the list.",
-      help: "It counts the schools the method puts in order, those with one rank and those with a range. The line names the largest of three groups: schools with more, schools with fewer, and schools with exactly the same, which count as neither more nor fewer. A share is rounded down to whole tenths, so 85 in 100 reads as 8 in 10. With fewer than 20 other schools in the list, the line gives the count instead. Power and water, and remoteness, are compared on the research team's scale. The line describes the record, not the school's real condition.",
+      help: "It counts every school the method puts in order, those with one rank and those with a range, including any whose figure is blank. The line names the larger of two groups, the schools that record more than this one and those that record less, then the schools that record the same when they are at least 2 in 10 of the list. Shares are rounded down, so 85 in 100 reads as 8 in 10. With fewer than 20 other schools in the list, the line gives counts instead. Power and water are compared on how the method scores them. The line describes the record, not the school's real condition.",
       where: "Under each part of school need on the school card",
     },
     area_context: {

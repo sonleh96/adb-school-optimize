@@ -1,41 +1,52 @@
 /**
- * How a school's record for one part of school need compares with the other schools in the list, in one sentence,
- * as TEPI Explorer captions each input "Higher than 50% of block groups". The list is the schools the rule shown puts
- * in order, those with one rank and those with a range. The school itself and the schools not in the list yet are
- * never counted.
+ * How a school's record for one part of school need compares with the other schools in the list, in one line with the
+ * other schools as its subject, so the direction is said, never guessed: "5 in 10 schools in the list record more
+ * facility types; 4 in 10 record the same." TEPI Explorer captions each input in this spirit ("Higher than 50% of block
+ * groups"). The list is the schools the rule shown puts in order, those with one rank and those with a range. The school
+ * itself and the schools not in the list yet are never counted.
  *
  * A part is compared on what the record gives: the share of classrooms built of permanent materials, teacher houses
  * per teacher, or how many of the six facility types the school has. Power and water, and remoteness, are recorded as
- * types and categories, so they are compared on the research team's scale, as the engine reads them, in whole points
- * of it. A share of two whole counts needs no such care: two equal fractions divide to the same number.
+ * types and categories, so they are compared as the method scores them, in whole points of the research team's scale.
+ * A share of two whole counts needs no such care: two equal fractions divide to the same number.
  *
- * Schools with exactly the same figure are neither more nor fewer. The sentence names the largest of three groups, the
- * schools this one has more than, fewer than, or the same as, so a school level with half the list is said to be level.
- * When two groups are the same size, it names the side the part's bar grows towards first, then the other side.
+ * Schools with exactly the same figure record neither more nor less. The line names the larger of two groups, the
+ * schools that record more than this one and those that record less, then the schools that record the same when they
+ * are at least 2 in 10 of the list. When the two groups are the same size, it names the schools whose bars are shorter.
  *
- * A share is of the whole list, rounded down to whole tenths, so the sentence never claims more than the data holds:
- * 85 in 100 reads as 8 in 10. Below 20 other schools it gives the count instead. A school outside the list, or one whose
- * own figure is not recorded, gets no sentence. Another school whose figure is not recorded is still one of the list:
- * it counts in the whole and in none of the three groups, so a share never reads larger than it is.
+ * Every share is of the whole list, rounded down to whole tenths, so the line never claims more than the data holds:
+ * 85 in 100 reads as 8 in 10. Below 20 other schools the line gives counts instead. A school outside the list, or one
+ * whose own figure is not recorded, gets no line. Another school whose figure is not recorded is still one of the list:
+ * it counts in the whole and in no group, so a share never reads larger than it is.
  */
+import { capitalise } from "./format";
 import { FACILITIES } from "./inputs";
 import type { CopyCondition, CopyRuleId, CopySchool, NeedKey } from "./model";
 
-/** From this many other schools with a recorded figure, a group is said as a share of the list. */
-const SHARE_FROM = 20;
+/** Below this many other schools, a group is said as a count; from it, as a share of the list. */
+const COUNT_BELOW = 20;
+/** The schools level with this one are said when they are at least this many tenths of the list. */
+const SAME_FROM = 2;
 
-type Side = "higher" | "lower" | "same";
-type Phrase = (quantity: string) => string;
+/** A verb phrase for a plural subject ("5 in 10 schools ... record") and for a singular one ("every other ... records"). */
+interface Said {
+  readonly many: string;
+  readonly one: string;
+}
+const said = (many: string, one: string): Said => ({ many, one });
+
+type Group = "more" | "less" | "same";
 
 interface Part {
   /** The figure the record gives, or null when it is not recorded. */
   readonly figure: (school: CopySchool) => number | null;
-  /** The side the part's bar grows towards: a lower figure (fewer facility types) or a higher one (more remote). */
-  readonly bar: "higher" | "lower";
-  /** The sentence for a school whose figure is higher than the group's, lower, or the same. */
-  readonly higher: Phrase;
-  readonly lower: Phrase;
-  readonly same: Phrase;
+  /** The group named first when the two are the same size: the schools whose bars are shorter than this one's. */
+  readonly shorter: "more" | "less";
+  /** What the schools that record more, or less, than this one record. */
+  readonly more: Said;
+  readonly less: Said;
+  /** What the schools level with this one record, in a line of their own and after the first clause. */
+  readonly same: (own: number) => { readonly alone: Said; readonly after: Said };
 }
 
 /** A share of a whole, or null when either is not recorded or the whole is not above 0. */
@@ -69,66 +80,123 @@ const PARTS: Readonly<Record<NeedKey, Part>> = {
       const share = ratio(s.condition.classrooms_permanent, s.condition.classrooms_total);
       return share === null ? null : Math.min(share, 1);
     },
-    bar: "lower",
-    higher: (q) => `A larger recorded share of permanent classrooms than ${q}.`,
-    lower: (q) => `A smaller recorded share of permanent classrooms than ${q}.`,
-    same: (q) => `The same recorded share of permanent classrooms as ${q}.`,
+    shorter: "more",
+    more: said(
+      "record a larger share of permanent classrooms",
+      "records a larger share of permanent classrooms"
+    ),
+    less: said(
+      "record a smaller share of permanent classrooms",
+      "records a smaller share of permanent classrooms"
+    ),
+    same: () => ({
+      alone: said(
+        "record the same share of permanent classrooms",
+        "records the same share of permanent classrooms"
+      ),
+      after: said("record the same share", "records the same share"),
+    }),
   },
   housing: {
     figure: (s) => ratio(s.condition.teacher_houses, s.condition.teachers),
-    bar: "lower",
-    higher: (q) => `More recorded teacher houses per teacher than ${q}.`,
-    lower: (q) => `Fewer recorded teacher houses per teacher than ${q}.`,
-    same: (q) => `As many recorded teacher houses per teacher as ${q}.`,
+    shorter: "more",
+    more: said("record more teacher houses per teacher", "records more teacher houses per teacher"),
+    less: said("record fewer teacher houses per teacher", "records fewer teacher houses per teacher"),
+    same: () => ({
+      alone: said(
+        "record the same number of teacher houses per teacher",
+        "records the same number of teacher houses per teacher"
+      ),
+      after: said("record the same", "records the same"),
+    }),
   },
   facilities: {
     figure: (s) => facilityTypes(s.condition),
-    bar: "lower",
-    higher: (q) => `More recorded facility types than ${q}.`,
-    lower: (q) => `Fewer recorded facility types than ${q}.`,
-    same: (q) => `As many recorded facility types as ${q}.`,
+    shorter: "more",
+    more: said("record more facility types", "records more facility types"),
+    less: said("record fewer facility types", "records fewer facility types"),
+    same: () => ({
+      alone: said("record the same number of facility types", "records the same number of facility types"),
+      after: said("record the same", "records the same"),
+    }),
   },
-  // The research team's scale counts a generator, a river or water brought from home highest.
+  // The research team's scale scores a generator, a river or water brought from home highest, so they add most.
   services: {
     figure: (s) => points(s.need_parts?.service_deficit),
-    bar: "higher",
-    higher: (q) =>
-      `Recorded power and water sources that count more on the research team's scale than those of ${q}.`,
-    lower: (q) =>
-      `Recorded power and water sources that count less on the research team's scale than those of ${q}.`,
-    same: (q) =>
-      `Recorded power and water sources that count the same on the research team's scale as those of ${q}.`,
+    shorter: "less",
+    more: said(
+      "record power and water that add more to school need",
+      "records power and water that add more to school need"
+    ),
+    less: said(
+      "record power and water that add less to school need",
+      "records power and water that add less to school need"
+    ),
+    same: () => ({
+      alone: said(
+        "record power and water that add the same to school need",
+        "records power and water that add the same to school need"
+      ),
+      after: said("score the same", "scores the same"),
+    }),
   },
   locality: {
     figure: (s) => points(s.need_parts?.locality_disadvantage),
-    bar: "higher",
-    higher: (q) => `Recorded as more remote than ${q}.`,
-    lower: (q) => `Recorded as less remote than ${q}.`,
-    same: (q) => `Recorded in the same remoteness category as ${q}.`,
+    shorter: "less",
+    more: said("are recorded as more remote", "is recorded as more remote"),
+    less: said("are recorded as less remote", "is recorded as less remote"),
+    same: () => ({
+      alone: said(
+        "are recorded in the same remoteness category",
+        "is recorded in the same remoteness category"
+      ),
+      after: said("are in the same category", "is in the same category"),
+    }),
   },
 };
 
+interface Who {
+  readonly text: string;
+  readonly one: boolean;
+}
+
 /**
- * A group of `count` of the `others` in the list, in words: the count below `SHARE_FROM` other schools, and from there
- * the share of the whole list, this school included, rounded down to whole tenths. The share's three words are joined
- * by no-break spaces, so a line never breaks inside "9 in 10".
+ * A group of `count` of the `others` in the list, as the subject of a line: below `COUNT_BELOW` other schools the
+ * count itself, and from there the share of the whole list, this school included, rounded down to whole tenths. The
+ * share's three words are joined by no-break spaces, so a line never breaks inside "9 in 10".
  */
-function quantity(count: number, others: number): string {
+function group(count: number, others: number): Who {
   if (count === others)
     return others === 1
-      ? "the one other school in the list"
+      ? { text: "the one other school in the list", one: true }
       : others === 2
-        ? "both other schools in the list"
-        : "every other school in the list";
-  if (others < SHARE_FROM) return `${count} of the ${others} other schools in the list`;
-  return `${Math.floor((10 * count) / (others + 1))}\u00a0in\u00a010 schools in the list`;
+        ? { text: "both other schools in the list", one: false }
+        : { text: "every other school in the list", one: true };
+  if (others < COUNT_BELOW)
+    return { text: `${count} of the ${others} other schools in the list`, one: count === 1 };
+  const tenths = Math.floor((10 * count) / (others + 1));
+  return {
+    text:
+      tenths > 0
+        ? `${tenths}\u00a0in\u00a010 schools in the list`
+        : "fewer than 1\u00a0in\u00a010 schools in the list",
+    one: false,
+  };
 }
+
+/** The same, after the first clause of a line, where "of the list" is understood: "4 in 10", or below 20 "4". */
+function then(count: number, others: number): Who {
+  if (others < COUNT_BELOW) return { text: String(count), one: count === 1 };
+  return { text: `${Math.floor((10 * count) / (others + 1))}\u00a0in\u00a010`, one: false };
+}
+
+const clause = (who: Who, what: Said): string => `${who.text} ${who.one ? what.one : what.many}`;
 
 /** The school is one of the schools the rule puts in order: it has a rank or a range of ranks under it. */
 const inList = (school: CopySchool, ruleId: CopyRuleId): boolean => school.results?.[ruleId] != null;
 
 /**
- * One sentence on how `school`'s record for the part `key` compares with the other schools `list` holds in order under
+ * One line on how `school`'s record for the part `key` compares with the other schools `list` holds in order under
  * `ruleId`, or null when there is nothing to compare: the school is not in that list, its own figure is not recorded,
  * or no other school in the list has the figure recorded.
  */
@@ -141,20 +209,24 @@ export function partStanding(
   const part = PARTS[key];
   const own = part.figure(school);
   if (own === null || !inList(school, ruleId)) return null;
-  const groups: Record<Side, number> = { higher: 0, lower: 0, same: 0 };
+  const groups: Record<Group, number> = { more: 0, less: 0, same: 0 };
   let others = 0;
   for (const other of list) {
     if (other.id === school.id || !inList(other, ruleId)) continue;
     others += 1;
     const figure = part.figure(other);
     if (figure === null) continue;
-    if (own > figure) groups.higher += 1;
-    else if (own < figure) groups.lower += 1;
+    if (figure > own) groups.more += 1;
+    else if (figure < own) groups.less += 1;
     else groups.same += 1;
   }
-  if (groups.higher + groups.lower + groups.same === 0) return null;
-  const order: readonly Side[] =
-    part.bar === "higher" ? ["higher", "lower", "same"] : ["lower", "higher", "same"];
-  const side = order.reduce((best, next) => (groups[next] > groups[best] ? next : best));
-  return part[side](quantity(groups[side], others));
+  const same = part.same(own);
+  const side = groups.more === groups.less ? part.shorter : groups.more > groups.less ? "more" : "less";
+  // No school records more or less: the line is about the schools level with this one, when any has the figure.
+  if (groups[side] === 0)
+    return groups.same === 0 ? null : `${capitalise(clause(group(groups.same, others), same.alone))}.`;
+  const first = capitalise(clause(group(groups[side], others), part[side]));
+  const level =
+    10 * groups.same >= SAME_FROM * (others + 1) ? `; ${clause(then(groups.same, others), same.after)}` : "";
+  return `${first}${level}.`;
 }
