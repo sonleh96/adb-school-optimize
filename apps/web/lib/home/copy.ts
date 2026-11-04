@@ -133,7 +133,7 @@ export const HOME = Object.freeze({
       },
       {
         title: "The weights were tested.",
-        body: "The research team changed the weights at random, thousands of times. Some schools stayed in the top 20 at least four times in five, so their rank does not hang on one exact set of weights. Others moved in and out.",
+        body: "The research team changed the weights at random, thousands of times. Some schools stayed in the top 20 in at least 4 of every 5 runs, so whether they make the top 20 does not hang on one exact set of weights. Others moved in and out.",
       },
     ],
   },
@@ -162,7 +162,7 @@ export const HOME = Object.freeze({
     title: "A decision-support case study, not yet final.",
     sentences: [
       "The paper calls itself a documented decision-support case study in choosing schools to inspect when the evidence is incomplete.",
-      "The school records have no single collection date. The paper keeps each source's own date, such as 2025 for the emissions and land-cover maps.",
+      "The paper gives no single collection date for the school records. It keeps each source's own date, such as 2025 for the emissions and land-cover maps.",
       "The study does not claim that the records cover every school in the country.",
     ],
     status: {
