@@ -17,7 +17,9 @@
  *                                                                          -> "printed..."
  *  9. Made while its API could not be reached, the page shows a hole, a stray number or a broken sentence where the
  *     counts go                                                            -> "made while its API..."
- * 10. Search engines index the tool's many view addresses, or are kept off the homepage
+ * 10. A contact link is missing, goes to the wrong address, or hides the address behind other words
+ *                                                                          -> "the study section and the footer..."
+ * 11. Search engines index the tool's many view addresses, or are kept off the homepage
  *                                                                          -> "robots.txt..."
  */
 import { HOME, phraseText } from "../lib/home/copy";
@@ -58,7 +60,7 @@ test("How it works moves to how the list is made, and the links into the tool op
   await expect(page.locator(INCOMPLETE)).toBeVisible();
 
   await page.goto("/");
-  await page.getByRole("main").getByRole("link", { name: HOME.use.guides }).click();
+  await page.getByRole("contentinfo").getByRole("link", { name: HOME.footer.links.guides }).click();
   await expect(page.getByRole("heading", { name: GUIDE.startTitle })).toBeVisible();
 });
 
@@ -179,6 +181,18 @@ test("made while its API could not be reached, the page says the same things wit
   await expect(rows).toHaveText(HOME.hero.noFigures.map((row) => `${row.term} ${row.text}`));
   for (const row of await rows.allTextContents()) expect(row).not.toMatch(/\d/);
   await expect(page.locator("body")).not.toContainText(/undefined|NaN|\bnull\b/);
+});
+
+test("the study section and the footer each give both contacts as mail links that show the full address", async ({
+  page,
+}) => {
+  await page.goto("/");
+  for (const area of [page.getByRole("region", { name: HOME.research.title }), page.getByRole("contentinfo")])
+    for (const person of HOME.contact.people) {
+      const link = area.getByRole("link", { name: person.email, exact: true });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", `mailto:${person.email}`);
+    }
 });
 
 // Failure mode: search engines are given no rules, so the tool's many view addresses get indexed, or the homepage

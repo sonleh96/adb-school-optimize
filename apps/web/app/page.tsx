@@ -58,6 +58,19 @@ function Unbroken({ text }: { text: string }) {
   );
 }
 
+/** The people to write to, each with their full address as the link's text. */
+function People({ className }: { className: string }) {
+  return (
+    <ul className={className}>
+      {HOME.contact.people.map((person) => (
+        <li key={person.email}>
+          {person.name}, <a href={`mailto:${person.email}`}>{person.email}</a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** A rank with its ordinal set small and raised, as the list sets it. */
 function Rank({ text }: { text: string }) {
   const [, number = text, ordinal = ""] = text.match(/^(\d+)(\D*)$/) ?? [];
@@ -74,9 +87,6 @@ export default async function HomePage() {
   const { example } = HOME.use;
   const footerLinks = [
     [HOME.footer.links.open, TOOL.list],
-    [HOME.footer.links.how, "#how"],
-    [HOME.footer.links.use, "#use"],
-    [HOME.footer.links.research, "#research"],
     [HOME.footer.links.queue, TOOL.queue],
     [HOME.footer.links.guides, TOOL.guides],
   ] as const;
@@ -242,9 +252,6 @@ export default async function HomePage() {
                   </li>
                 ))}
               </ol>
-              <a className={styles.arrowLink} href={TOOL.guides}>
-                {HOME.use.guides}
-              </a>
             </div>
             <figure className={styles.example}>
               <div className={styles.exampleRow}>
@@ -277,13 +284,17 @@ export default async function HomePage() {
                 </p>
               ))}
             </div>
-            <div className={styles.status}>
-              <h3 className={styles.statusTitle}>{HOME.research.status.title}</h3>
-              {HOME.research.status.sentences.map((sentence) => (
-                <p key={sentence} className={styles.statusText}>
-                  {sentence}
-                </p>
-              ))}
+            <div>
+              <div className={styles.status}>
+                <h3 className={styles.statusTitle}>{HOME.research.status.title}</h3>
+                {HOME.research.status.sentences.map((sentence) => (
+                  <p key={sentence} className={styles.statusText}>
+                    {sentence}
+                  </p>
+                ))}
+              </div>
+              <h3 className={styles.contactTitle}>{HOME.contact.title}</h3>
+              <People className={styles.people} />
             </div>
           </div>
         </section>
@@ -309,6 +320,10 @@ export default async function HomePage() {
               ))}
             </ul>
           </nav>
+          <div className={styles.footContact}>
+            <p className={styles.footContactTitle}>{HOME.footer.contactTitle}</p>
+            <People className={styles.footPeople} />
+          </div>
         </div>
       </footer>
     </div>

@@ -60,7 +60,7 @@ export const HOME = Object.freeze({
     eyebrow: "Planning school inspections in Papua New Guinea",
     title: ["See which secondary schools to ", { accent: "look at first" }, ", and why."] as Phrase,
     lead: "Visits have to start somewhere, and school records are uneven. RISE-PNG uses the records already gathered to suggest an order to look in, and shows the reasons for each school.",
-    who: "Built for Asian Development Bank (ADB) staff, from a study by the project's research team.",
+    who: "From a study by the project's research team for the Asian Development Bank (ADB).",
     how: "How it works",
     figuresTitle: "What the records cover",
     figuresNote:
@@ -154,7 +154,6 @@ export const HOME = Object.freeze({
       where: "Example Province",
       why: "2 of its 8 classrooms are built of permanent materials.",
     },
-    guides: "Open the guides",
   },
 
   research: {
@@ -174,13 +173,20 @@ export const HOME = Object.freeze({
     },
   },
 
+  // The people to write to, as the user gave them on 4 November 2026. The only people the page names.
+  contact: {
+    title: "Questions, or a record that looks wrong?",
+    people: [
+      { name: "Son Le", email: "shle.consultant@adb.org" },
+      { name: "Yohan Iddawela", email: "yiddawela@adb.org" },
+    ],
+  },
+
   footer: {
     navLabel: "More on this site",
+    contactTitle: "Contact",
     links: {
       open: "Open the list",
-      how: "How the list is made",
-      use: "How to use it",
-      research: "About the study",
       queue: "Schools not in the list yet",
       guides: "Open the guides",
     },
