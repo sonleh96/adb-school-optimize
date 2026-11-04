@@ -1435,6 +1435,15 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
   color: var(--ink-2);
   text-wrap: pretty;
 }
+/* Which data the list comes from, one short line under the caveat. Hidden with the caveat where the list's head
+   shows both instead (the narrow layout). */
+.dataVersion {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
 
 /* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
 .legend {
@@ -2621,7 +2630,8 @@ li:has(> .row[aria-pressed="true"]) + li > .row::before {
     left: 8px;
     right: 8px;
   }
-  .foot .caveat {
+  .foot .caveat,
+  .foot .dataVersion {
     display: none;
   }
   .legend {

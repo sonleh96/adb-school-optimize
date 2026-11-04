@@ -236,10 +236,16 @@ const listedRow: Schema<ListedRow> = refine(rawListedRow, (row, path): ListedRow
 // ---------------------------------------------------------------------------------------------
 
 /** What the page names the list by. It comes from the run behind the rows, never from what was asked for. */
-const run = obj({ rule_id: RuleId, input_version: str, package_version: str });
+const runFields = { rule_id: RuleId, input_version: str, package_version: str };
+const run = obj(runFields);
+/** An ISO time the browser can read as a date. */
+const isoTime = refine(str, (value, path) =>
+  Number.isNaN(Date.parse(value)) ? failParse(path, "an ISO time", value) : value
+);
 
 export const resultsResponse = obj({
-  run,
+  /** The list's run also says when it was made, which the screen shows beside the data version. */
+  run: obj({ ...runFields, created_at: isoTime }),
   total_schools: int,
   returned_schools: int,
   manifest: obj({

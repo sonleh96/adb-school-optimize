@@ -158,6 +158,9 @@ export const LAYOUT = Object.freeze({
   listMore: (n: number) => `And ${formatCount(n)} more in the file.`,
   listMade: (name: string, label: string, day: string, version: string) =>
     `Schools to look at first under ${name} (${label}), made on ${day} from data version ${version}.`,
+  // The line beside the caveat on screen: the list's data version in the words `listMade` gives the download and the
+  // printout, so the screen and the files cannot name it differently, and the day the team loaded that data.
+  dataVersion: (version: string, loaded: string) => `Data version ${version}, loaded on ${loaded}.`,
   // The first line of the records' printout. They are no order to look in, so it never says "look at first".
   queueMade: (name: string, label: string, day: string, version: string) =>
     `Schools not in the list yet under ${name} (${label}), made on ${day} from data version ${version}.`,
