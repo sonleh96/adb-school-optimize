@@ -69,7 +69,12 @@
   bottom: 0;
   left: calc(var(--at) * 100%);
   width: calc((var(--to) - var(--at)) * 100%);
-  background: var(--navy-wash-2);
+  /* A light navy wash with a thin edge either side, so a band a few pixels wide can still be found. The mark, solid
+     navy-2, stays the strongest thing on the track. */
+  background: color-mix(in srgb, var(--navy) 16%, transparent);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--navy) 45%, transparent),
+    inset -1px 0 0 color-mix(in srgb, var(--navy) 45%, transparent);
 }
 .line {
   position: absolute;
