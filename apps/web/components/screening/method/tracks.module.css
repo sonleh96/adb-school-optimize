@@ -1,0 +1,159 @@
+/*
+ * A school's top-20 frequency in each setting of a persistence test (FrequencyTracks). Every track shares one 0 to
+ * 100% axis. A mark, the line and the band sit at `--at`, a fraction of the track, and a value's words sit under its
+ * mark, slid left by the same fraction of their own width so they never leave the track at either end. The plot is
+ * inset by the mark's radius so a mark at 0 or 100% stays inside the card. No hover, no motion.
+ */
+/* It sits in the record between the flag and the school's recorded counts, set off from the counts by a hairline. */
+.figure {
+  --mark: 10px;
+  margin: 4px 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.text,
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.note {
+  margin-top: 8px;
+  color: var(--ink-3);
+}
+
+.list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.setting {
+  display: block;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink);
+}
+
+.plot {
+  position: relative;
+  margin: 0 calc(var(--mark) / 2);
+}
+.track {
+  position: relative;
+  height: 16px;
+}
+/* The 0 to 100% track: a hairline-weight bar, one step off the white. */
+.track::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(17, 26, 44, 0.08);
+}
+.band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--at) * 100%);
+  width: calc((var(--to) - var(--at)) * 100%);
+  /* A light navy wash with a thin edge either side, so a band a few pixels wide can still be found. The mark, solid
+     navy-2, stays the strongest thing on the track. */
+  background: color-mix(in srgb, var(--navy) 16%, transparent);
+  box-shadow:
+    inset 1px 0 0 color-mix(in srgb, var(--navy) 45%, transparent),
+    inset -1px 0 0 color-mix(in srgb, var(--navy) 45%, transparent);
+}
+.line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--at) * 100% - 1px);
+  width: 2px;
+  background: var(--ink);
+}
+/* The school's mark, ringed in the surface colour so it reads where it crosses the line. */
+.mark {
+  position: absolute;
+  top: calc(50% - var(--mark) / 2);
+  left: calc(var(--at) * 100% - var(--mark) / 2);
+  width: var(--mark);
+  height: var(--mark);
+  border-radius: 50%;
+  background: var(--navy-2);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.value {
+  position: relative;
+  display: inline-block;
+  left: calc(var(--at) * 100%);
+  transform: translateX(calc(var(--at) * -100%));
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The one axis, under the last track. */
+.axis {
+  height: 16px;
+  margin-top: 6px;
+  border-top: 1px solid var(--hair);
+}
+.axis > span {
+  position: absolute;
+  top: 2px;
+  left: calc(var(--at) * 100%);
+  transform: translateX(calc(var(--at) * -100%));
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.axis > .axisLine {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (forced-colors: active) {
+  .track::before,
+  .line,
+  .mark {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .track::before {
+    background: GrayText;
+  }
+  .band {
+    forced-color-adjust: none;
+    background: transparent;
+    border-inline: 1px solid GrayText;
+  }
+  .mark {
+    background: Highlight;
+    box-shadow: 0 0 0 2px Canvas;
+  }
+}

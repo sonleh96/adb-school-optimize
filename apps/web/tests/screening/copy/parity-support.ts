@@ -174,6 +174,34 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "METHOD.insp.across": [[], [7], [3]],
   "METHOD.insp.noSplitBoth": [["the benchmark"]],
   "METHOD.insp.persistent": [["additive_no_u"], ["additive_u"]],
+  "METHOD.insp.frequencies.title": [["S0"]],
+  "METHOD.insp.frequencies.what": [[3], [1], [2]],
+  "METHOD.insp.frequencies.setting": [
+    // The paper's three settings in order, each by its plain words.
+    ...[0, 1, 2].map((i) => [
+      [
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      i,
+    ]),
+    // Out of order, or another number of settings: by position.
+    [
+      [
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      0,
+    ],
+    [[{ topLevel: 17.5, schoolNeed: 12.5 }], 0],
+  ],
+  "METHOD.insp.frequencies.runs": [["84%"], ["79.99%"]],
+  "METHOD.insp.frequencies.line": [["80%"]],
+  "METHOD.insp.frequencies.reaches": [["80%"]],
+  "METHOD.insp.frequencies.below": [["80%"]],
+  "METHOD.insp.frequencies.band": [["78.9%", "81.1%"]],
   "METHOD.insp.largestRow": [[["School need"]], [["School need", "District context"]], [[]]],
   "METHOD.insp.times": [["12/19"]],
   "METHOD.insp.partRecorded": [["Teacher housing"]],

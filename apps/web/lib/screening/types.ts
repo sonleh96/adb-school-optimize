@@ -167,6 +167,25 @@ const maximumTerm = obj({
   contribution: num,
 });
 
+/**
+ * A school's lower top-20 frequency under each setting of a rule's stochastic test, in the order of the settings of the
+ * list's provenance block: the share of the weight draws in which it stayed in the top 20, from 0 to 1. Null when the
+ * school was not in the test. It only adds the method details' drawing, so a value of another shape, or a share
+ * outside 0 to 1, reads as absent and draws nothing.
+ */
+const top20Frequencies = tolerant(
+  nullable(
+    list(
+      obj({
+        setting_id: str,
+        frequency: refine(num, (value, path) =>
+          value >= 0 && value <= 1 ? value : failParse(path, "a share from 0 to 1", value)
+        ),
+      })
+    )
+  )
+);
+
 /** What the engine produced for one school under one rule, as a listed row and a school's detail both carry it. */
 const resultParts = {
   cohort,
@@ -200,6 +219,8 @@ const rawListedRow = obj({
    * "only just above the line" can be said from data. Same presence rule as `persistent_candidate`.
    */
   threshold_adjacent: optional(nullable(bool)),
+  /** Same presence rule as `persistent_candidate`. */
+  top20_frequencies: top20Frequencies,
 });
 type RawRow = Infer<typeof rawListedRow>;
 
@@ -276,7 +297,7 @@ export const resultsResponse = obj({
    * Where the persistence flag came from, in the list of each rule the stochastic test ran for, from that rule's own
    * experiment; null when the rule has none. Only the standard error and the number of standard errors the rule's
    * band spans are read: together they are the margin inside which a school counts as only just above the line. The
-   * draws, the threshold and the settings are read for the method details' words, each on its own: one that is not
+   * draws, the threshold and the settings are read for the method details' words and the drawing of each school's frequencies, each on its own: one that is not
    * the shape the page expects reads as absent and costs only its own words. The block adds a margin or a count to a
    * sentence, so a change to it reads as absent instead of blanking the list.
    */
@@ -291,7 +312,16 @@ export const resultsResponse = obj({
          */
         draws: tolerant(int),
         threshold: tolerant(num),
-        settings: tolerant(list(obj({ top_level_concentration: num, school_need_concentration: num }))),
+        settings: tolerant(
+          list(
+            obj({
+              /** What a school's frequencies name the setting by; an older block without it is matched by order. */
+              setting_id: optional(str),
+              top_level_concentration: num,
+              school_need_concentration: num,
+            })
+          )
+        ),
       })
     )
   ),
@@ -317,6 +347,7 @@ export const schoolDetailResponse = obj({
       /** As on a listed row: only the entry of a rule the stochastic test ran for has these. */
       persistent_candidate: optional(nullable(bool)),
       threshold_adjacent: optional(nullable(bool)),
+      top20_frequencies: top20Frequencies,
     })
   ),
 });
