@@ -487,10 +487,12 @@
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
 }
+/* While a screenshot loads, or if it never does, its place shows the page's paper, not an empty white window. */
 .shot {
   display: block;
   width: 100%;
   height: auto;
+  background: var(--paper);
 }
 .browser {
   grid-column: 1 / -1;
