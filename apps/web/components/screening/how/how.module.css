@@ -150,6 +150,13 @@
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
+/* The diagram of how much each part counts, on a white card so it reads as a picture between the paragraphs. */
+.figure {
+  margin: 4px 0 20px;
+  padding: 16px 20px 18px;
+  border-radius: var(--r-box);
+  background: var(--panel);
+}
 .foot {
   margin-top: 36px;
   padding: 14px 16px;
@@ -194,6 +201,9 @@
   .main h2 {
     font-size: 21px;
     line-height: 26px;
+  }
+  .figure {
+    padding: 14px 16px 16px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

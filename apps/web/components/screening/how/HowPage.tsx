@@ -3,14 +3,17 @@
 /**
  * How this works: a full page (`page=how`) beside the rail, with its contents, the six sections in paragraphs of up
  * to three sentences, a "Show me on the screen" link that opens the guide for each section, and the plain caveat.
- * Every sentence is `HOW_IT_WORKS`, in order; the worked example's school name is set apart (R18).
+ * Every sentence is `HOW_IT_WORKS`, in order; the worked example's school name is set apart (R18). The section on
+ * how a rule turns inputs into an order opens with the diagram of how much each part counts under the rule on screen.
  */
 import { ArrowLeft } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { type Segments, textOf } from "@/lib/screening/copy";
 import type { GuideId } from "@/lib/screening/guide/machine";
+import { useScreeningRules } from "@/lib/screening/hooks";
 
+import { ScoreTree } from "../ScoreTree";
 import { Sentence } from "../Sentence";
 import { useActed, useLayerStore, useLayers } from "../guide/GuidanceProvider";
 import type { GuideData } from "../guide/types";
@@ -73,6 +76,7 @@ export default function HowPage({ data }: { data: GuideData }) {
   const [current, setCurrent] = useState<string | null>(null);
   const acted = useActed();
   const { copy } = data;
+  const shownRule = useScreeningRules().data?.rules.find((r) => r.rule_id === data.shown?.rule) ?? null;
 
   const ready = later.status === "ready";
   useEffect(() => {
@@ -168,6 +172,11 @@ export default function HowPage({ data }: { data: GuideData }) {
                   </span>
                   {section.title}
                 </h2>
+                {section.key === "rules" && shownRule ? (
+                  <div className={styles.figure}>
+                    <ScoreTree copy={copy} rule={shownRule} />
+                  </div>
+                ) : null}
                 {paragraphs(section.sentences).map((text, i) => (
                   <p key={i}>{withNames(text, later.copy.howExample)}</p>
                 ))}

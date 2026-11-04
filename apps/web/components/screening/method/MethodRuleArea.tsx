@@ -8,13 +8,15 @@ import type { Method } from "@/lib/screening/copy/method";
 import type { Rule } from "@/lib/screening/types";
 
 import { RuleSymbol } from "../RuleArea";
+import { ScoreTree } from "../ScoreTree";
 import type { RuleChoice } from "../useScreeningData";
 import base from "../screening.module.css";
 import styles from "./method.module.css";
 
 /**
- * The rule as the method details show it: its letter, label and role, its formula on demand, the two main rules as
- * tiles and the other five by name, and the way into compare mode. The plain switch and statement step aside.
+ * The rule as the method details show it: its letter, label and role, its formula on demand with the diagram of how
+ * much each part counts, the two main rules as tiles and the other five by name, and the way into compare mode. The
+ * plain switch and statement step aside.
  */
 export function MethodRuleArea({
   copy,
@@ -31,7 +33,7 @@ export function MethodRuleArea({
   copy: BoundCopy;
   method: Method;
   rules: readonly RuleChoice[];
-  /** The API's rules, for each one's formula. */
+  /** The API's rules, for each one's formula and shares. */
   detail: readonly Rule[] | null;
   requested: CopyRuleId;
   formula: boolean;
@@ -45,7 +47,8 @@ export function MethodRuleArea({
   const [othersOpen, setOthersOpen] = useState(false);
   const showOthers = othersOpen || other.some((r) => r.id === requested);
   const { TERMS, LAYOUT } = copy;
-  const text = detail?.find((r) => r.rule_id === requested)?.formula ?? null;
+  const shown = detail?.find((r) => r.rule_id === requested) ?? null;
+  const text = shown?.formula ?? null;
   const isMain = main.some((r) => r.id === requested);
 
   return (
@@ -90,10 +93,16 @@ export function MethodRuleArea({
           </p>
         </div>
       </div>
-      {formula && text ? (
-        <p className={styles.formula} id="screening-formula">
-          {text}
-        </p>
+      {formula && shown && text ? (
+        <>
+          <p className={styles.formula} id="screening-formula">
+            {text}
+          </p>
+          {/* The formula's shares, drawn: how much each part counts. */}
+          <div className={styles.tree}>
+            <ScoreTree copy={copy} rule={shown} />
+          </div>
+        </>
       ) : null}
       <div data-region="rule-switch">
         <div className={styles.tiles} role="group" aria-label={method.rule.primaryAria}>

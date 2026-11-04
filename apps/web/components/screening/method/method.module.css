@@ -95,6 +95,9 @@
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
+.tree {
+  margin-top: 14px;
+}
 .tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
