@@ -302,6 +302,8 @@ test.describe("the key at 200 percent zoom", () => {
     await page.goto("/screening");
     await waitForMap(page);
     await page.locator("[data-region=pane-switch]").getByRole("button", { name: "Map", exact: true }).click();
+    // The map's script loads only once Map is chosen; with the map now on screen, this waits until it has drawn.
+    await waitForMap(page);
     const key = page.locator("[data-slot=legend]");
     await key.getByRole("button", { name: "What the map shows" }).click();
     await expect(page.getByTestId("legend-rule")).toBeAttached();
