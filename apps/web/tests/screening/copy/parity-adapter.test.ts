@@ -129,7 +129,13 @@ afterAll(() => {
 
 /* ------------------------------------------------- design record to API response */
 
-const runOf = (rule_id: string) => ({ rule_id, input_version: "design", package_version: "design" });
+// As the API sends a run: a results run also says when it was made; a comparison's run ignores that.
+const runOf = (rule_id: string) => ({
+  rule_id,
+  input_version: "design",
+  package_version: "design",
+  created_at: "2026-10-21T09:51:40Z",
+});
 /** The engine's count fields (`_STOCK_NUMERIC`): the classrooms, teachers, teacher houses and six facilities. */
 const STOCK = [
   "classrooms_total",
