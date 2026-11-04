@@ -3,6 +3,9 @@
  * fixture datasets. Failure modes and the test for each:
  *  1. The card states a second place, or reasons out of order, or the need parts outside the need box
  *                                                                       -> "a complete school's card..."
+ *  1b. A part of school need says nothing of how its record compares with the list, drops its bar, or keeps its bare
+ *     value while the method details lose it                           -> "each part of school need...", and the
+ *                                                                          range school's card
  *  2. A range school reads as one rank, or a missing figure reads as 0 or splits its label (R9, R10)
  *                                                                       -> "a range school's card..."
  *  3. An incomplete record's card has no reasons, or prints "null"      -> "an incomplete record's card..."
@@ -84,8 +87,12 @@ test("a complete school's card states one rank, its reasons with the school need
   await expect(parts.nth(0)).toContainText("1Classrooms not of permanent materials");
   await expect(parts.nth(1)).toContainText("2Remoteness");
   await expect(parts.nth(2)).toContainText("3Teacher housing shortfall");
-  await expect(parts.nth(3)).toHaveText("Missing facility types0.667");
-  await expect(parts.nth(4)).toHaveText("Power and water0.600");
+  await expect(parts.nth(3)).toHaveText(
+    "Missing facility typesFewer recorded facility types than 5 in 10 schools in the list."
+  );
+  await expect(parts.nth(4)).toHaveText(
+    "Power and waterRecorded power and water sources that count the same on the research team's scale as those of 9 in 10 schools in the list."
+  );
   await expect(why.locator("[data-region=inspector-record]")).toHaveText(
     "All of the inputs this rule uses are recorded."
   );
@@ -100,6 +107,40 @@ test("a complete school's card states one rank, its reasons with the school need
   await expect(numbers.locator("[data-region=score-note]")).toHaveText(
     "Each input runs from 0 to 1; higher means more reason to look."
   );
+});
+
+test("each part of school need keeps its bar and says how its record compares with the list; method details keep the value", async ({
+  page,
+}) => {
+  await openWorkspace(page);
+  await orderedRow(page, "Sample School 08").click();
+  const parts = card(page).locator("[data-region=need-box] li");
+  await expect(parts).toHaveCount(5);
+  // Worked out by hand from the saved list of the main rule: 22 schools, so each line counts the 21 others and says a
+  // share of all 22, rounded down.
+  const lines = [
+    "A smaller recorded share of permanent classrooms than 8 in 10 schools in the list.",
+    "Recorded as more remote than 8 in 10 schools in the list.",
+    "Fewer recorded teacher houses per teacher than 5 in 10 schools in the list.",
+    "Fewer recorded facility types than 5 in 10 schools in the list.",
+    "Recorded power and water sources that count the same on the research team's scale as those of 9 in 10 schools in the list.",
+  ];
+  for (const [i, text] of lines.entries()) {
+    const part = parts.nth(i);
+    await expect(part.locator("[data-region=need-standing]")).toHaveText(text);
+    // The line is the part's last, under the reason when the part is one, and the bar stays beside the name.
+    await expect(part.locator(":scope > :last-child")).toHaveText(text);
+    await expect(part.locator("[class*=bar]")).toHaveCount(1);
+  }
+  // The part's value is no longer on the plain card.
+  for (const text of await parts.allInnerTexts()) expect(text).not.toMatch(/\d\.\d{3}/);
+
+  // The method details still give each part's value.
+  await page.getByRole("switch", { name: "Show method details" }).click();
+  const rows = card(page).locator("[data-region=inspector-breakdown] [data-row=part]");
+  await expect(rows.filter({ hasText: "Missing facility types" })).toContainText("0.667");
+  await expect(rows.filter({ hasText: "Power and water" })).toContainText("0.600");
+  await expect(card(page).locator("[data-region=need-standing]")).toHaveCount(0);
 });
 
 test("a range school's card shows its range, names the missing figure, and labels it on one line", async ({
@@ -121,6 +162,11 @@ test("a range school's card shows its range, names the missing figure, and label
   const box = (await label.boundingBox())!;
   expect(box.height).toBeLessThanOrEqual(18);
   await expect(card(page).locator("[data-region=inspector-record]")).toHaveCount(0);
+  // A school with a range is in the list, so its parts are compared with the list like any other's.
+  await expect(card(page).locator("[data-region=need-standing]")).toHaveCount(5);
+  await expect(
+    card(page).locator("[data-region=need-box] li", { hasText: "Missing facility types" })
+  ).toContainText("More recorded facility types than 4 in 10 schools in the list.");
 });
 
 test("an incomplete record's card says what is missing and what the record says, part by part", async ({

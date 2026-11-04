@@ -81,8 +81,8 @@ interface CardProps {
   rule: CopyRuleId;
   /** The school as the list holds it; the card opens with this while the full record loads. */
   listed: ListedSchool;
-  /** Every school of the list, for ties and twins. */
-  schools: readonly ListedSchool[];
+  /** Every school of the list as a whole record: for ties, twins, and how each part of school need compares. */
+  schools: readonly CopySchool[];
   /** Where the school sits in the list on screen, 0-based, and how many schools that list holds. */
   position: { index: number; total: number };
   /** The list has stepped aside for the card: the bar offers the way back instead of an eyebrow. */
@@ -259,7 +259,7 @@ export function SchoolCard(props: CardProps) {
               <IncompleteRecord copy={copy} rule={rule} school={record} />
             ) : (
               <>
-                <WhyItSitsHere copy={copy} rule={rule} school={record} />
+                <WhyItSitsHere copy={copy} rule={rule} school={record} schools={schools} />
                 <InNumbers copy={copy} rule={rule} school={record} />
               </>
             )}
@@ -287,7 +287,17 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
   );
 }
 
-function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRuleId; school: CopySchool }) {
+function WhyItSitsHere({
+  copy,
+  rule,
+  school,
+  schools,
+}: {
+  copy: BoundCopy;
+  rule: CopyRuleId;
+  school: CopySchool;
+  schools: readonly CopySchool[];
+}) {
   const { LAYOUT, STRINGS, TERMS } = copy;
   const drivers = copy.topDrivers(school, rule);
   const why = whyBlocks<InputKey>(copy.reasonSentence(school, rule), drivers, NEED_KEYS);
@@ -313,20 +323,28 @@ function WhyItSitsHere({ copy, rule, school }: { copy: BoundCopy; rule: CopyRule
                   <span data-term="school_need">{TERMS.school_need.label}</span>
                   <b>{needValue === null ? STRINGS.cannotWorkOut : f3(needValue)}</b>
                 </div>
+                {/* Each part keeps its bar; in place of its value, a line says how its record compares with the
+                    rest of the list. The value itself is in the method details. */}
                 <ul className={styles.needParts}>
                   {block.parts.map((part) => {
-                    const value = school.need_parts?.[NEED_FIELD[part.key as NeedKey]] ?? null;
+                    const key = part.key as NeedKey;
+                    const value = school.need_parts?.[NEED_FIELD[key]] ?? null;
+                    const standing = value === null ? null : copy.partStanding(school, rule, key, schools);
                     return (
-                      <li key={part.key} data-on={part.n !== null || undefined}>
+                      <li key={key} data-on={part.n !== null || undefined}>
                         <span className={styles.reasonN}>{part.n ?? ""}</span>
-                        <span className={styles.needLabel} data-term={TERM_OF[part.key]}>
-                          {TERMS[TERM_OF[part.key]].label}
+                        <span className={styles.needLabel} data-term={TERM_OF[key]}>
+                          {TERMS[TERM_OF[key]].label}
                         </span>
                         <Bar value={value} />
-                        <span className={styles.needValue}>
-                          {value === null ? STRINGS.notRecorded : f3(value)}
-                        </span>
                         {part.sentence ? <span className={styles.needSentence}>{part.sentence}</span> : null}
+                        {value === null ? (
+                          <span className={styles.needStanding}>{STRINGS.notRecorded}</span>
+                        ) : standing ? (
+                          <span className={styles.needStanding} data-region="need-standing">
+                            {standing}
+                          </span>
+                        ) : null}
                       </li>
                     );
                   })}
