@@ -91,6 +91,22 @@ function persistentMethod(ruleId: PersistenceRule, test?: PersistenceTest): stri
     : `Persistent candidate: certain top-20 membership in ${how} of the circulated, urgency-included experiment. The count belongs to that experiment and is not a result for the rule without urgency.`;
 }
 
+// The three settings of the paper's test in plain words, from the one where the shares changed most (the lowest
+// concentrations) to the one where they changed least. Settings in another number or order are named by position.
+const SPREAD = ["Shares changed a lot", "Shares changed moderately", "Shares changed a little"] as const;
+type Concentrations = { readonly topLevel: number; readonly schoolNeed: number };
+function settingName(settings: readonly Concentrations[], i: number): string {
+  const s = settings[i];
+  const pair = `${plainNumber(s.topLevel)}/${plainNumber(s.schoolNeed)}`;
+  const spread =
+    settings.length === SPREAD.length &&
+    settings.every(
+      (x, j) =>
+        j === 0 || (x.topLevel > settings[j - 1].topLevel && x.schoolNeed > settings[j - 1].schoolNeed)
+    );
+  return `${spread ? SPREAD[i] : `Setting ${i + 1}`} (${pair})`;
+}
+
 export function buildMethod(ctx: MethodContext = {}) {
   const c = ctx.counts || {};
   const reads = ctx.reads;
@@ -226,6 +242,23 @@ export function buildMethod(ctx: MethodContext = {}) {
       // The test behind the persistence flag, in the research team's own terms. Each rule the test ran for is its own
       // experiment, so each has its own words, and neither is read as the other's result.
       persistent: (ruleId: PersistenceRule) => persistentMethod(ruleId, ctx.tests?.[ruleId]),
+      // The drawing of a school's top-20 frequency in each setting of a rule's test. Each percent comes worded already,
+      // so that its rounding never puts it on the other side of the line from the value.
+      frequencies: Object.freeze({
+        eyebrow: "How often it stayed in the top 20",
+        title: (s: string) => `How often it stayed in the top 20 under ${s}`,
+        what: (n: number) =>
+          `The share of random-weight runs in which this school stayed in the top 20, under ${n === 1 ? "the test's one setting" : `each of ${countWord(n)} settings`}.`,
+        caveat:
+          "Each is a share of runs under declared scenarios, not a probability that the school needs help.",
+        setting: settingName,
+        runs: (percent: string) => `${percent} of runs`,
+        line: (percent: string) => `${percent} line`,
+        reaches: (percent: string) => `reaches the ${percent} line`,
+        below: (percent: string) => `below the ${percent} line`,
+        band: (lo: string, hi: string) =>
+          `The shaded band, ${lo} to ${hi}, is near the line. Another round of runs could move a school inside it to the other side.`,
+      }),
       // The row for a largest-factor rule's extra share, named by the factor or factors that attain the largest value.
       largestRow: (factors: readonly string[]) =>
         factors.length
