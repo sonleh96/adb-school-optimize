@@ -8,7 +8,8 @@
  *                         -> "shades each province by its count of the top 20, as its legend and its table say"
  *  3. The marked school's province is not outlined, another one is, or the words and the table do not say which
  *                         -> "outlines the marked school's province, whatever its shade, ..."
- *  4. A school whose province the map does not have is dropped, or drawn on a wrong shape
+ *  4. A school whose province the map does not have is dropped, or drawn on a wrong shape; or the marked school's
+ *     row among them is not tagged as marked
  *                         -> "keeps schools whose province is not on the map in words and in the table"
  *  5. On a 360 px phone the map is too small to read, the page scrolls sideways, or a key leaves the card
  *                         -> "fits a 360 px phone with the map as wide as its card"
@@ -291,6 +292,9 @@ test("keeps schools whose province is not on the map in words and in the table",
   );
   // They come after the 22 provinces of the map.
   expect(table.slice(22)).toEqual(off);
+  // The marked school's own row is tagged, as a province on the map would be, and no other row is.
+  expect(off.filter((r) => r.marked).map((r) => r.name)).toEqual([school.province]);
+  await expect(section(page).locator("table tbody tr[data-marked] th")).toContainText(EXPLORE.table.marked);
 });
 
 test("fits a 360 px phone with the map as wide as its card", async ({ page, context }) => {

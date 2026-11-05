@@ -17,6 +17,7 @@ import {
   type ShadeKey,
   type Shape,
   answerOf,
+  provinceKey,
   provinceNamed,
   shadeMap,
   shapesIn,
@@ -84,6 +85,11 @@ export function ProvinceMap({
 
   const answer = answerOf(view);
   const markedProvince = marked ? provinceNamed(view, marked.province) : null;
+  // When the marked school's record names no province on the map, its row among those kept aside is tagged instead.
+  const markedOff =
+    marked && !markedProvince
+      ? (view.offMap.find((off) => provinceKey(off.label) === provinceKey(marked.province)) ?? null)
+      : null;
   const offSchools = view.offMap.reduce((n, off) => n + off.tally.schools, 0);
   const offTop20 = view.offMap.reduce((n, off) => n + off.tally.top20, 0);
   const shown = new Set(view.provinces.map((p) => p.shade));
@@ -245,10 +251,13 @@ export function ProvinceMap({
                 );
               })}
               {view.offMap.map((off) => (
-                <tr key={off.label ?? ""} data-off-map="">
+                <tr key={off.label ?? ""} data-off-map="" data-marked={off === markedOff || undefined}>
                   <th scope="row">
                     {off.label ?? words.table.blank}
                     <span className={explore.marked}>{words.table.offMap}</span>
+                    {off === markedOff ? (
+                      <span className={explore.marked}>{EXPLORE.table.marked}</span>
+                    ) : null}
                   </th>
                   <td>{formatCount(off.tally.top20)}</td>
                 </tr>
