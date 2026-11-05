@@ -398,10 +398,14 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "DRIVERS.bars.largest": [
     [["Remoteness"], 15, 22],
     [["Remoteness", "District context"], 8, 22],
+    [["A", "B", "C"], 3, 22],
     [["A"], 1, 1],
   ],
   "DRIVERS.bars.others": [[["District context", "Walking reach", "Air quality"]], [["District context"]]],
-  "DRIVERS.bars.marked": [["Remoteness", "0.114"]],
+  "DRIVERS.bars.marked": [
+    [["Remoteness"], "0.114"],
+    [["Remoteness", "Missing facility types"], "0.126"],
+  ],
   "DRIVERS.bars.table.caption": [["the main method"]],
   "DRIVERS.gaps.line": [
     [0, 0],

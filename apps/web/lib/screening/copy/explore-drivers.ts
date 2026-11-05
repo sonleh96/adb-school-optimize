@@ -45,20 +45,26 @@ export const DRIVERS = Object.freeze({
     lede: (rule: string) =>
       `Each bar is one school's score under ${rule}, split into what each part adds to it.`,
     ranges: "A school with a range of ranks is here when its highest rank is 20th or above.",
-    /** The part that adds the most to the most scores; several parts when they do so equally often. */
-    largest: (parts: readonly string[], count: number, total: number) =>
-      parts.length === 1
-        ? `The part that adds the most to ${ofTheScores(count, total)} is ${lowerFirst(parts[0])}.`
-        : `${capitalise(joinList(parts.map(lowerFirst)))} each add the most to ${ofTheScores(count, total)}.`,
+    /**
+     * The part no other part adds more to in the most scores, a part level with another included; several parts when
+     * they do so in equally many.
+     */
+    largest: (parts: readonly string[], count: number, total: number) => {
+      const [first, ...rest] = parts.map(lowerFirst);
+      const lead = `No part adds more than ${first} to ${ofTheScores(count, total)}`;
+      return rest.length === 0 ? `${lead}.` : `${lead}, and the same is true of ${joinList(rest)}.`;
+    },
     need: "Parts of school need",
     /** The other inputs, named in the order their parts sit in each bar. */
     others: (inputs: readonly string[]) => `Other inputs, in this order: ${joinList(inputs.map(lowerFirst))}`,
     unrecorded: "Not recorded: adds anything from nothing up to its full share",
     axis: "Score",
     outside: "The marked school, outside the top 20",
-    /** The part that adds the most to the marked school's score, and what it adds, written as the table writes it. */
-    marked: (part: string, adds: string) =>
-      `The part that adds the most to its score is ${lowerFirst(part)}, ${adds}.`,
+    /** The part or parts that add the most to the marked school's score, and what each adds, as the table writes it. */
+    marked: (parts: readonly string[], adds: string) =>
+      parts.length === 1
+        ? `The part that adds the most to its score is ${lowerFirst(parts[0])}, ${adds}.`
+        : `The parts that add the most to its score are ${joinList(parts.map(lowerFirst))}, ${adds} each.`,
     table: {
       caption: (rule: string) => `What each part adds to each score under ${rule}`,
       rank: "Rank",

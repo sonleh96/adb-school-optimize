@@ -86,7 +86,7 @@ describe("the drivers section's words", () => {
       );
     }
     check("bars.others", bars.others(["District context", "Walking reach", "Air quality"]), false);
-    check("bars.marked", bars.marked(PARTS[0], "0.126"), true);
+    for (const n of [1, 2, 3]) check(`bars.marked ${n}`, bars.marked(PARTS.slice(0, n), "0.126"), true);
     for (const ties of [0, 1, 2])
       for (const close of [0, 1, 3]) check(`line ${ties} ${close}`, gaps.line(ties, close), true);
     for (const gap of [null, "0.002", "under 0.001"]) check(`edge ${gap}`, gaps.edge(gap), true);
@@ -104,11 +104,12 @@ describe("the drivers section's words", () => {
     );
     expect(DRIVERS.answer(0, 22)).toMatch(/^In none of the scores below /);
     expect(DRIVERS.answer(0, 0)).toMatch(/nothing to draw\.$/);
+    // A part level with another still has no part adding more than it, so ties are never claimed as a lead.
     expect(DRIVERS.bars.largest([PARTS[0]], 22, 22)).toBe(
-      "The part that adds the most to every one of these 22 scores is classrooms not of permanent materials."
+      "No part adds more than classrooms not of permanent materials to every one of these 22 scores."
     );
-    expect(DRIVERS.bars.largest([PARTS[0]], 15, 22)).toMatch(/ to 15 of these 22 scores is /);
-    expect(DRIVERS.bars.largest([PARTS[0]], 1, 1)).toMatch(/ to the one score here is /);
+    expect(DRIVERS.bars.largest([PARTS[0]], 15, 22)).toMatch(/ to 15 of these 22 scores\.$/);
+    expect(DRIVERS.bars.largest([PARTS[0]], 1, 1)).toMatch(/ to the one score here\.$/);
   });
 
   it("agrees the verb with its subject", () => {
@@ -123,7 +124,13 @@ describe("the drivers section's words", () => {
       "2 pairs of neighbours have the same score, and 3 more are under 0.001 apart."
     );
     expect(DRIVERS.bars.largest(PARTS.slice(0, 2), 8, 22)).toBe(
-      "Classrooms not of permanent materials and missing facility types each add the most to 8 of these 22 scores."
+      "No part adds more than classrooms not of permanent materials to 8 of these 22 scores, and the same is true of missing facility types."
+    );
+    expect(DRIVERS.bars.marked(PARTS.slice(0, 1), "0.114")).toBe(
+      "The part that adds the most to its score is classrooms not of permanent materials, 0.114."
+    );
+    expect(DRIVERS.bars.marked(PARTS.slice(0, 2), "0.126")).toBe(
+      "The parts that add the most to its score are classrooms not of permanent materials and missing facility types, 0.126 each."
     );
   });
 

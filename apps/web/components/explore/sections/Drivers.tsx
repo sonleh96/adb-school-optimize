@@ -250,9 +250,9 @@ function BarsFigure({
   const others = pieces.filter((piece) => !isNeedPart(piece));
   const anyOpen = all.some((bar) => bar.upper > bar.lower);
   const markedBar = marked === null ? undefined : all.find((bar) => bar.id === marked);
-  const markedTop = markedBar
-    ? markedBar.segments.reduce((top, s) => (s.lower > top.lower ? s : top), markedBar.segments[0])
-    : undefined;
+  // The part that adds the most to the marked school's score, or every part level at the most.
+  const markedMost = markedBar ? Math.max(0, ...markedBar.segments.map((s) => s.lower)) : 0;
+  const markedTop = markedBar ? markedBar.segments.filter((s) => s.lower === markedMost) : [];
   const tenths = { "--tenths": scale.ticks.length - 1 } as CSSProperties;
 
   return (
@@ -317,11 +317,15 @@ function BarsFigure({
           </ol>
         </div>
       ) : null}
-      {markedBar && markedTop && markedTop.lower > 0 ? (
+      {markedBar && markedMost > 0 ? (
         <p className={page.chosenLine} data-region="marked-lines">
           <span className={page.key} data-chosen="" aria-hidden="true" />
           <span>
-            <b>{nameOf(markedBar.id)}</b> {DRIVERS.bars.marked(label(markedTop.piece), f3(markedTop.lower))}
+            <b>{nameOf(markedBar.id)}</b>{" "}
+            {DRIVERS.bars.marked(
+              markedTop.map((s) => label(s.piece)),
+              f3(markedMost)
+            )}
           </span>
         </p>
       ) : null}
