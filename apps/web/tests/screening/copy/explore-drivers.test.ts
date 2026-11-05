@@ -7,12 +7,17 @@
  *     most when it does not                      -> "says every score only when every score holds"
  *  3. A verb disagrees with its subject, as in "one pair of neighbours have"
  *                                                -> "agrees the verb with its subject"
+ *  4. The section writes a word of its own, outside the copy and its guards
+ *                                                -> "the section writes no word of its own"
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { DRIVERS } from "@/lib/screening/copy/explore-drivers";
 
-import { textProblems } from "./helpers";
+import { literalsIn, textProblems } from "./helpers";
 
 const RULES = ["the main method", "the earlier method with its urgency rating"];
 const PARTS = ["Classrooms not of permanent materials", "Missing facility types", "District context"];
@@ -120,5 +125,10 @@ describe("the drivers section's words", () => {
     expect(DRIVERS.bars.largest(PARTS.slice(0, 2), 8, 22)).toBe(
       "Classrooms not of permanent materials and missing facility types each add the most to 8 of these 22 scores."
     );
+  });
+
+  it("the section writes no word of its own", () => {
+    const file = path.resolve(__dirname, "../../../components/explore/sections/Drivers.tsx");
+    expect(literalsIn(readFileSync(file, "utf8"))).toEqual([]);
   });
 });
