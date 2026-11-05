@@ -1,0 +1,382 @@
+/*
+ * Set 2 of the explore page, how stable the list is (Stability, StabilityFrequencies, StabilityBump). The cards, the
+ * words and the tables are set 1's (explore.module.css), and every colour is one of its tokens, which the page's root
+ * sets for everything inside it: the marked school takes the navy of the map ramp's darkest step, every other school
+ * its lightest. Nothing moves, and nothing shows only on hover.
+ */
+
+/* What the chart shows, under the answer: which test, and what a dot or a line is. */
+.testNote {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* The switch between the two rules' own tests: two buttons, the pressed one filled. */
+.switch {
+  margin-top: 12px;
+}
+.switchLabel {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.switchButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.switchButton {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--navy);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--navy);
+  font: 600 13.5px/1.3 var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+.switchButton[aria-pressed="true"] {
+  background: var(--navy);
+  color: #fff;
+}
+@media (hover: hover) and (pointer: fine) {
+  .switchButton[aria-pressed="false"]:hover {
+    background: color-mix(in srgb, var(--navy) 6%, transparent);
+  }
+}
+.switchButton:disabled {
+  border-color: var(--hair);
+  color: var(--ink-3);
+  cursor: default;
+}
+.switchButton:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* Why the earlier method's test cannot be pressed yet, under the switch: on its way, or failed with Retry. */
+.wait {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* The dot plot: one row per setting, each named over its dots, each column's range named once under the last. */
+.plot {
+  margin-top: 14px;
+}
+.row + .row {
+  margin-top: 10px;
+}
+.rowLabel {
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.svg {
+  display: block;
+  overflow: visible;
+}
+/* The shaded band either side of the line: a light navy wash, light enough that the dots inside it keep 3:1. */
+.band {
+  fill: color-mix(in srgb, var(--navy) 10%, transparent);
+}
+.line {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.baseline {
+  stroke: rgba(17, 26, 44, 0.32);
+  stroke-width: 1;
+}
+.dot {
+  fill: var(--mark-other);
+}
+.chosen {
+  fill: var(--mark-chosen);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+/* Each column's range under it. The columns are ranges of different widths drawn the same width, so each names its
+   own, split by a hairline from the next; a range wraps between its words inside its column on a phone. The band's
+   columns keep its wash, and the line runs on between its two columns down to its name. */
+.columns {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+}
+.columns > span {
+  padding: 4px 4px 3px;
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--ink-3);
+  text-align: center;
+  text-wrap: balance;
+  font-variant-numeric: tabular-nums;
+}
+/* On a phone a column is about 31 px wide. Its range takes the whole width, one size smaller, so "under", the widest
+   word, stays clear of the hairlines however the system draws the font. */
+@container (max-width: 399px) {
+  .columns > span {
+    padding-inline: 0;
+    font-size: 10.5px;
+  }
+}
+.columns > span + span {
+  border-left: 1px solid var(--hair);
+}
+.columns > span[data-band] {
+  background: color-mix(in srgb, var(--navy) 10%, transparent);
+}
+.columns > span[data-line] {
+  border-left: 2px solid var(--ink);
+}
+.lineName {
+  position: relative;
+  height: 16px;
+  border-top: 1px solid var(--hair);
+}
+.lineName > span {
+  position: absolute;
+  top: 0;
+  left: calc(var(--at) * 100%);
+  transform: translateX(-50%);
+  padding: 2px 4px 0;
+  font-size: 11.5px;
+  line-height: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.lineName > span::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: calc(50% - 1px);
+  width: 2px;
+  height: 3px;
+  background: var(--ink);
+}
+
+/* The marked school's share in each setting, under its name. */
+.shares {
+  margin-top: 4px;
+}
+.shares > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+.shares dt::after {
+  content: ":";
+}
+.shares dd {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The chart of ranks while the other rules' lists are on their way: about the room the chart takes, so the sections
+   below it move little when it arrives. */
+.waiting {
+  min-height: 520px;
+}
+
+/* The chart of the top 20 under each rule: the rules' names over their columns, then the ranks. */
+.bump {
+  margin-top: 14px;
+}
+.head {
+  display: grid;
+  align-items: end;
+  row-gap: 2px;
+  margin-bottom: 6px;
+  font-size: 11.5px;
+  line-height: 1.25;
+  text-align: center;
+}
+.group {
+  padding: 0 2px 3px;
+  border-bottom: 1px solid var(--hair);
+  font-weight: 600;
+  color: var(--ink);
+}
+.variant {
+  padding: 0 1px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.variant[data-anchor] {
+  color: var(--ink);
+  font-weight: 600;
+}
+.zone {
+  fill: color-mix(in srgb, var(--navy) 3.5%, transparent);
+}
+/* The main rule's column: a light wash, so the column every line starts from is found at a glance. */
+.anchor {
+  fill: color-mix(in srgb, var(--navy) 5%, transparent);
+}
+.guide {
+  stroke: var(--hair-2);
+  stroke-width: 1;
+}
+.breakLine {
+  stroke: rgba(17, 26, 44, 0.18);
+  stroke-width: 1;
+}
+.laneText {
+  font-size: 10.5px;
+  fill: var(--ink-3);
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 4px;
+}
+.tick {
+  font-size: 10.5px;
+  fill: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.bumpLine {
+  stroke: var(--mark-other);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+.lineMarked {
+  stroke: var(--mark-chosen);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.point {
+  fill: var(--mark-other);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+.pointMarked {
+  fill: var(--mark-chosen);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+/* A range is a filled bar with square ends, a row tall at least, so it reads as neither a point nor a ring; a school
+   outside a list is an open ring. */
+.range {
+  fill: var(--mark-other);
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.rangeMarked {
+  fill: var(--mark-chosen);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+.ring {
+  fill: var(--panel);
+  stroke: var(--mark-other);
+  stroke-width: 1.5;
+}
+.ringMarked {
+  fill: var(--panel);
+  stroke: var(--mark-chosen);
+  stroke-width: 2.5;
+}
+
+/* The table of the chart of ranks scrolls inside its card on a narrow screen, never the page. It positions the words
+   only a screen reader hears, so they scroll with it instead of reaching past the page's edge. */
+.scroll {
+  position: relative;
+  max-width: 100%;
+  margin-top: 8px;
+  overflow-x: auto;
+}
+.scroll:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.scroll .table {
+  margin-top: 0;
+  min-width: 420px;
+}
+.table thead th {
+  vertical-align: bottom;
+}
+.table thead th[scope="colgroup"] {
+  text-align: center;
+  border-bottom-color: var(--hair);
+}
+/* In the table of ranks, each rule's column centres its header and its cells, so a rank sits under its own rule; a
+   rank or a range stays on one line, and "Not in the list yet" wraps. */
+.scroll .table th[data-rule],
+.scroll .table td {
+  text-align: center;
+}
+.scroll .table td[data-kind="rank"],
+.scroll .table td[data-kind="range"] {
+  white-space: nowrap;
+}
+/* In a cell of the table of shares, the marked school's column is keyed as the legend keys it. */
+.cellKey {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+@media (forced-colors: active) {
+  .dot,
+  .point,
+  .bumpLine {
+    fill: GrayText;
+    stroke: GrayText;
+  }
+  .chosen,
+  .pointMarked,
+  .lineMarked {
+    fill: Highlight;
+    stroke: Highlight;
+  }
+  .range {
+    fill: GrayText;
+    stroke: Canvas;
+  }
+  .rangeMarked {
+    fill: Highlight;
+    stroke: Canvas;
+  }
+  .ring {
+    fill: Canvas;
+    stroke: GrayText;
+  }
+  .ringMarked {
+    fill: Canvas;
+    stroke: Highlight;
+  }
+  .columns > span[data-line] {
+    border-left-color: CanvasText;
+  }
+  .lineName > span::before {
+    background: CanvasText;
+  }
+  .line,
+  .baseline {
+    stroke: CanvasText;
+  }
+  .band {
+    fill: transparent;
+    stroke: GrayText;
+  }
+  .zone,
+  .anchor {
+    fill: transparent;
+  }
+  .switchButton[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+}

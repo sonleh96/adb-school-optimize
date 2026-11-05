@@ -13,6 +13,7 @@ import styles from "./explore.module.css";
 import { Drivers } from "./sections/Drivers";
 import { Province } from "./sections/Province";
 import { ProvinceMap } from "./sections/ProvinceMap";
+import { Stability } from "./sections/Stability";
 
 /** The school the address marks. This chunk only ever runs in the browser, so the address is there to read. */
 const markedInAddress = (): string | null =>
@@ -50,7 +51,8 @@ function groupsOf(
 
 /**
  * The explore page's charts, bound to the data: the school picker over every chart, then each question with its
- * charts. Set 1 asks how the schools of the list compare on each part of school need.
+ * charts. Set 1 asks how the schools of the list compare on each part of school need, and set 2 how stable the list
+ * is.
  */
 export function ExploreBody({
   rules,
@@ -157,6 +159,7 @@ export function ExploreBody({
           ))}
         </div>
       </section>
+      <Stability bound={bound} data={{ rules, results, inputs }} names={view.names} marked={school} />
       <Drivers rules={rules} results={results} copy={copy} names={view.names} marked={school?.id ?? null} />
       <Province
         rows={results.rows}
