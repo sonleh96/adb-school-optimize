@@ -20,6 +20,8 @@
  *  9. The switch shows another list than the one with urgency, loses the main list, or never recovers from a failed
  *     read                               -> "the switch shows the list with urgency ..." and
  *                                           "keeps the main list while the other loads, and recovers ..."
+ * 10. The list with urgency is read before anyone asks for it, so a reader who never presses the switch pays for it
+ *                                        -> "reads the list with urgency only when the switch asks for it"
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -496,4 +498,28 @@ test("keeps the main list while the other loads, and recovers from a failed read
   await expect(section(page).locator("[data-rule]").first()).toHaveAttribute("data-rule", "additive_u");
   await expect(section(page).getByRole("alert")).toHaveCount(0);
   await expect(section(page).locator("[aria-busy=true]")).toHaveCount(0);
+});
+
+test("reads the list with urgency only when the switch asks for it", async ({ page, context }) => {
+  await useMockDataset(context, "drivers");
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/screening/results")) asked.push(url.searchParams.get("rule")!);
+  });
+  await openDrivers(page);
+  // Straight to this question, past set 2, which reads every rule's list once it is on screen.
+  await page.locator("#explore-drivers").evaluate((heading) => heading.scrollIntoView({ block: "start" }));
+  await page.evaluate(
+    () =>
+      new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 300))))
+  );
+  await expect(page.locator("[data-region=stability]")).toHaveAttribute("data-lists", "waiting");
+  expect(asked).toEqual(["additive_no_u"]);
+
+  const radio = section(page).getByRole("radio", { name: DRIVERS.rules.urgency });
+  await expect(radio).toBeInViewport();
+  await radio.check();
+  await expect(section(page).locator("[data-rule]").first()).toHaveAttribute("data-rule", "additive_u");
+  expect(asked).toEqual(["additive_no_u", "additive_u"]);
 });
