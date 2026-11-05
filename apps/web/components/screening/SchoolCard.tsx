@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { STRIPS_SHOWN_IN, partStrip } from "@/lib/explore/strip";
 import {
   type BoundCopy,
   type CopyRuleId,
@@ -10,6 +11,7 @@ import {
   type InputKey,
   type ListedSchool,
   type MissingValueKind,
+  inList,
   schoolFromDetail,
 } from "@/lib/screening/copy";
 import { useScreeningSchool } from "@/lib/screening/hooks";
@@ -17,9 +19,11 @@ import type { SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
 import { scoreRangeOf } from "@/lib/screening/workspace/score";
 import { whyBlocks } from "@/lib/screening/workspace/why";
 
+import { PartStripFigure } from "./PartStrip";
 import { PlaceText } from "./PlaceText";
 import { Sentence } from "./Sentence";
 import styles from "./screening.module.css";
+import strips from "./strip.module.css";
 import { useOverflows } from "./useOverflows";
 
 type NeedKey = "classrooms" | "housing" | "facilities" | "services" | "locality";
@@ -222,7 +226,14 @@ export function SchoolCard(props: CardProps) {
           // The method layer states the place in its own form, so it waits for the record instead of showing the
           // plain place first and replacing it.
           record && detail.data ? (
-            methodLayer({ record, detail: detail.data })
+            <>
+              {methodLayer({ record, detail: detail.data })}
+              {STRIPS_SHOWN_IN === "method details" && inList(record, rule) ? (
+                <div className={strips.methodFoot}>
+                  <PartsCompared copy={copy} rule={rule} school={record} schools={schools} />
+                </div>
+              ) : null}
+            </>
           ) : (
             <CardPending
               failed={detail.isError || (detail.isSuccess && record === null)}
@@ -287,6 +298,45 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
   );
 }
 
+/**
+ * The method details' place for the strips, used only when `STRIPS_SHOWN_IN` moves them off the card: each part's
+ * comparison line, as the card words it, with its strip beside it.
+ */
+function PartsCompared({
+  copy,
+  rule,
+  school,
+  schools,
+}: {
+  copy: BoundCopy;
+  rule: CopyRuleId;
+  school: CopySchool;
+  schools: readonly CopySchool[];
+}) {
+  const { TERMS } = copy;
+  const rows = NEED_KEYS.flatMap((key) => {
+    const line = copy.partStanding(school, rule, key, schools);
+    return line === null ? [] : [{ key, line, strip: partStrip(key, school, schools, rule) }];
+  });
+  if (rows.length === 0) return null;
+  return (
+    <div data-region="parts-compared">
+      <span className={styles.eyebrow}>{TERMS.part_standing.label}</span>
+      <dl className={strips.compared}>
+        {rows.map(({ key, line, strip }) => (
+          <div key={key}>
+            <dt>{TERMS[TERM_OF[key]].label}</dt>
+            <dd data-region="compared-line">
+              {strip ? <PartStripFigure strip={strip} /> : null}
+              {line}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 function WhyItSitsHere({
   copy,
   rule,
@@ -324,12 +374,17 @@ function WhyItSitsHere({
                   <b>{needValue === null ? STRINGS.cannotWorkOut : f3(needValue)}</b>
                 </div>
                 {/* Each part keeps its bar; in place of its value, a line says how its record compares with the
-                    rest of the list. The value itself is in the method details. */}
+                    rest of the list, with the part's strip at its right. The value itself is in the method details. */}
                 <ul className={styles.needParts}>
                   {block.parts.map((part) => {
                     const key = part.key as NeedKey;
                     const value = school.need_parts?.[NEED_FIELD[key]] ?? null;
                     const standing = value === null ? null : copy.partStanding(school, rule, key, schools);
+                    // Only beside a line: with no line there is nothing for the strip to show.
+                    const strip =
+                      standing !== null && STRIPS_SHOWN_IN === "card"
+                        ? partStrip(key, school, schools, rule)
+                        : null;
                     return (
                       <li key={key} data-on={part.n !== null || undefined}>
                         <span className={styles.reasonN}>{part.n ?? ""}</span>
@@ -342,6 +397,7 @@ function WhyItSitsHere({
                           <span className={styles.needStanding}>{STRINGS.notRecorded}</span>
                         ) : standing ? (
                           <span className={styles.needStanding} data-region="need-standing">
+                            {strip ? <PartStripFigure strip={strip} /> : null}
                             {standing}
                           </span>
                         ) : null}

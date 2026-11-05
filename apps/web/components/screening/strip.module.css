@@ -1,0 +1,63 @@
+/*
+ * A part's strip (PartStrip.tsx): set at the right of its comparison line's first line, under the part's bar, so the
+ * line's words flow round it and the card grows by a line at most where they did not fit. Its colours are the explore
+ * charts' own, from the map's ramp, set on the marks.
+ */
+.strip {
+  float: right;
+  margin: 0 0 0 10px;
+  overflow: visible;
+}
+.baseline {
+  stroke: rgba(17, 26, 44, 0.32);
+  stroke-width: 1;
+}
+/* The school's dot keeps a ring of the panel's white, so it stands apart from the column under it. */
+.school {
+  stroke: var(--panel);
+  stroke-width: 2;
+  paint-order: stroke;
+}
+
+/* The method details' foot, after the record, set like the method card's own sections. */
+.methodFoot {
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--hair-2);
+}
+/* Each part's line with its strip, when the strips show in the method details instead of on the card. */
+.compared {
+  margin: 6px 0 0;
+}
+.compared > div {
+  display: flow-root;
+  padding: 6px 0;
+  border-top: 1px solid var(--hair-2);
+}
+.compared > div:first-child {
+  border-top: 0;
+}
+.compared dt {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.compared dd {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+@media (forced-colors: active) {
+  .column {
+    fill: GrayText;
+  }
+  .school {
+    fill: Highlight;
+    stroke: Canvas;
+  }
+  .baseline {
+    stroke: CanvasText;
+  }
+}
