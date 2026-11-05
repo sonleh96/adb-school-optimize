@@ -36,6 +36,8 @@ import styles from "./province-map.module.css";
 const BOUNDARIES = (boundaries as StaticImageData).src;
 const SHADE_ORDER: readonly ShadeKey[] = ["0", ...BINS.map((bin) => bin.key), "none"];
 const COLOURS = { "--card": CARD, "--pale-edge": PALE_EDGE, "--hatch": HATCH } as CSSProperties;
+/** The question's id, fixed like the other sections' so a link to it holds however the page's tree changes. */
+const HEADING_ID = "explore-province-map";
 
 /** The outlines of the provinces, read once from the static file, by name. */
 function useShapes() {
@@ -76,7 +78,6 @@ export function ProvinceMap({
   const ranges = useMemo(() => ranksOf(rows).reach, [rows]);
   const shapes = useShapes();
   const [open, setOpen] = useState(false);
-  const headingId = useId();
   const tableId = useId();
   // A fill names its pattern by id in a url(), where the characters useId adds would end the reference.
   const hatchId = `province-hatch-${useId().replace(/[^A-Za-z0-9_-]/g, "")}`;
@@ -92,15 +93,15 @@ export function ProvinceMap({
   const words = EXPLORE_MAP;
 
   return (
-    <section className={explore.section} aria-labelledby={headingId} data-region="province-map">
-      <h2 id={headingId} className={explore.question}>
+    <section className={explore.section} aria-labelledby={HEADING_ID} data-region="province-map">
+      <h2 id={HEADING_ID} className={explore.question}>
         {words.question}
       </h2>
       <p className={explore.sectionLede} data-region="province-map-answer">
         {words.answer(answer.holding, view.provinces.length, answer.leaders, answer.most)}
       </p>
       <p className={styles.location}>{words.location}</p>
-      <figure className={styles.card} style={COLOURS} aria-labelledby={headingId}>
+      <figure className={styles.card} style={COLOURS} aria-labelledby={HEADING_ID}>
         <div className={styles.legend} data-region="province-map-legend">
           <p className={styles.legendTitle}>{words.legend.title}</p>
           <ul className={styles.keys}>
