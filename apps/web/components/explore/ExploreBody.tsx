@@ -10,6 +10,7 @@ import type { InputsResponse, ResultsResponse, RulesResponse } from "@/lib/scree
 import { type Marked, PartChart } from "./PartChart";
 import { type PickerGroup, SchoolPicker } from "./SchoolPicker";
 import styles from "./explore.module.css";
+import { Province } from "./sections/Province";
 
 /** The school the address marks. This chunk only ever runs in the browser, so the address is there to read. */
 const markedInAddress = (): string | null =>
@@ -154,6 +155,11 @@ export function ExploreBody({
           ))}
         </div>
       </section>
+      <Province
+        rows={results.rows}
+        rule={bound.rule}
+        marked={school && { id: school.id, name: view.names.get(school.id)! }}
+      />
     </>
   );
 }

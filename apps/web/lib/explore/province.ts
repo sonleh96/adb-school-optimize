@@ -57,6 +57,10 @@ const byName = (a: ProvinceCount, b: ProvinceCount): number =>
       ? -1
       : a.province.localeCompare(b.province, "en");
 
+/** The province a row counts in, as `ProvinceCount.province` names it. */
+export const provinceOf = (row: Pick<ListedRow, "school">): string | null =>
+  cleanedOrNull(row.school.province);
+
 /** The counts of each province a list's rows give, in the order the chart shows them (`byName`). */
 export function provinceCounts(rows: readonly ListedRow[]): ProvinceCount[] {
   const counts = new Map<
@@ -64,7 +68,7 @@ export function provinceCounts(rows: readonly ListedRow[]): ProvinceCount[] {
     { inList: number; top20: number; notYet: Record<keyof NotYet, number> }
   >();
   for (const row of rows) {
-    const province = cleanedOrNull(row.school.province);
+    const province = provinceOf(row);
     let count = counts.get(province);
     if (!count) {
       count = { inList: 0, top20: 0, notYet: { missingField: 0, zeroClassrooms: 0, other: 0 } };
@@ -102,5 +106,20 @@ export function totalOf(counts: readonly ProvinceCount[]): Omit<ProvinceCount, "
       zeroClassrooms: sum((c) => c.notYet.zeroClassrooms),
       other: sum((c) => c.notYet.other),
     },
+  };
+}
+
+/**
+ * What the words under the chart say about ranks: how many schools of the list have a single rank, how many show a
+ * range, and how many of those have possible ranks that reach the top 20 (a best rank of 20 or better among every
+ * school that can be put in order, as the downloaded top list counts them).
+ */
+export function ranksOf(rows: readonly ListedRow[]): { complete: number; range: number; reach: number } {
+  const ranges = rows.filter((row) => row.cohort === "interval");
+  return {
+    complete: rows.filter((row) => row.cohort === "complete").length,
+    range: ranges.length,
+    reach: ranges.filter((row) => row.rank_bounds.scope_code === "eligible" && row.rank_bounds.best <= TOP)
+      .length,
   };
 }

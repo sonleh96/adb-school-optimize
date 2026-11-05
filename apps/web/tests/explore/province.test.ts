@@ -17,12 +17,14 @@
  *                                                  -> "read a province as the screen shows it ..."
  *  7. A reader cannot find a province: the rows are in no order a name gives
  *                                                  -> "give each province ..."
+ *  8. The words under the chart count the range schools whose possible ranks reach the top 20 wrongly: one whose best
+ *     rank is 21st, or a rank of another scope     -> "count the range schools whose possible ranks reach the top 20"
  * The expected counts come from the dataset's definition in services/api/scripts/generate_screening_fixtures.py
  * (`provinces_records`), never from a run of the code.
  */
 import { describe, expect, it } from "vitest";
 
-import { type ProvinceCount, TOP, provinceCounts, totalOf, waiting } from "@/lib/explore/province";
+import { type ProvinceCount, TOP, provinceCounts, ranksOf, totalOf, waiting } from "@/lib/explore/province";
 import { bindCopy } from "@/lib/screening/copy";
 import { parseWith } from "@/lib/screening/schema";
 import { type ListedRow, inputsResponse, resultsResponse } from "@/lib/screening/types";
@@ -86,6 +88,19 @@ describe("provinceCounts", () => {
     expect(provinceCounts([range])).toEqual([
       { province: "North Province", inList: 1, top20: 0, notYet: none },
     ]);
+  });
+
+  it("count the range schools whose possible ranks reach the top 20", () => {
+    const rows = rowsOf("provinces");
+    // Per the saved list: the two range schools' best ranks are 17th and 18th.
+    expect(ranksOf(rows)).toEqual({ complete: 24, range: 2, reach: 2 });
+    const [north, isles] = [copy(named(rows, "North Range")), copy(named(rows, "Isles Range"))];
+    if (north.cohort !== "interval" || isles.cohort !== "interval") throw new Error("range schools expected");
+    north.rank_bounds.best = TOP + 1;
+    isles.rank_bounds.scope_code = "complete_under_rule";
+    expect(ranksOf([north, isles])).toEqual({ complete: 0, range: 2, reach: 0 });
+    north.rank_bounds.best = TOP;
+    expect(ranksOf([north, isles]).reach).toBe(1);
   });
 
   it("count only a rank among the complete schools as a rank in the top 20", () => {

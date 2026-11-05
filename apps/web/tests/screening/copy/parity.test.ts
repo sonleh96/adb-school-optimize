@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as exploreModule from "@/lib/screening/copy/explore";
+import * as exploreProvinceModule from "@/lib/screening/copy/explore-province";
 import * as later from "@/lib/screening/copy/later";
 import * as methodModule from "@/lib/screening/copy/method";
 import * as treeModule from "@/lib/screening/copy/tree";
@@ -47,7 +48,14 @@ import {
 const suite = describe.skipIf(!ready);
 
 /** Everything the port exports, the parts that load on demand included, as the prototype exports it. */
-const everything = { ...port, ...later, ...methodModule, ...treeModule, ...exploreModule };
+const everything = {
+  ...port,
+  ...later,
+  ...methodModule,
+  ...treeModule,
+  ...exploreModule,
+  ...exploreProvinceModule,
+};
 
 let proto: Api;
 let datasets: Dataset[] = [];
@@ -88,6 +96,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "FIRST_QUESTIONS",
       "SCORE_TREE",
       "EXPLORE",
+      "EXPLORE_PROVINCE",
       "GUIDE",
       "BANNED",
       "SIGN_IN",
