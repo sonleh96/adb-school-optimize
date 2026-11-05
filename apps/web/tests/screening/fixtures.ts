@@ -15,6 +15,7 @@ export const DATASETS = [
   "one",
   "provinces",
   "province-map",
+  "drivers",
   "empty",
 ] as const;
 export type Dataset = (typeof DATASETS)[number];

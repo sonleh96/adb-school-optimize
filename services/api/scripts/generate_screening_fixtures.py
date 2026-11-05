@@ -32,7 +32,7 @@ import tempfile
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, replace
-from itertools import combinations
+from itertools import combinations, pairwise
 from pathlib import Path
 from urllib.parse import quote
 
@@ -357,6 +357,31 @@ def provinces_records() -> tuple[SchoolRecord, ...]:
     return (*top, *little, *ranges, *queued)
 
 
+def drivers_records() -> tuple[SchoolRecord, ...]:
+    """More than 22 schools with one place, so the explore page's top 20 has a 21st and a 22nd past it, and in the
+    top 20 the pairs its gaps must word: an exact tie, a tie that only floating point splits, a close call, and a
+    range school whose places cross the 20th."""
+    ordinary = [complete_record(i, f"Driver {i + 1:02d}") for i in range(21)]
+    # Same inputs, so the same score: a tie the name breaks.
+    level = [complete_record(16, name, teachers=12.0) for name in ("Level Alpha", "Level Bravo")]
+    # Power and water sum to the same 0.9 on the study's scale, but the engine halves 0.7 + 0.2 to 0.44999999999999996
+    # and 0.4 + 0.5 to 0.45, so the two scores differ only in the last bits of a float.
+    noise = [
+        complete_record(10, "Noise Generator", power_source="Generator", water_source="Piped"),
+        complete_record(10, "Noise Solar", power_source="Solar", water_source="Tank"),
+    ]
+    # Three more people within walking distance: a gap far under 0.001.
+    close = [
+        complete_record(12, "Close One", teachers=11.0),
+        complete_record(12, "Close Two", teachers=11.0, walking_catchment_population=1303.0),
+    ]
+    ranges = [
+        complete_record(14, "Range Air", aqi_p95_selected=None),
+        complete_record(0, "Range Edge", aqi_p95_selected=None),
+    ]
+    return placed([*ordinary, *level, *noise, *close, *ranges])
+
+
 def _name(row: dict) -> str:
     return row["school"]["source_school_name"]
 
@@ -593,6 +618,25 @@ MAP_CLAIMS = (
 )
 
 
+def _top_gaps(rows: list[dict]) -> list[float]:
+    """The score gaps between neighbouring places from the 1st to the 22nd."""
+    points = sorted(
+        (r["point_rank"]["rank"], r["scores"]["point"]) for r in rows if r["cohort"] == "complete"
+    )[:22]
+    return [a[1] - b[1] for a, b in pairwise(points)]
+
+
+DRIVERS_CLAIMS = (
+    ("at least 22 schools with one place", lambda rows: len(_top_gaps(rows)) == 21),
+    ("an exact tie in the top 20", lambda rows: 0.0 in _top_gaps(rows)[:19]),
+    (
+        "a tie that only floating point splits, in the top 20",
+        lambda rows: any(0 < g < 1e-9 for g in _top_gaps(rows)[:19]),
+    ),
+    ("a gap under 0.001 in the top 20", lambda rows: any(1e-9 < g < 1e-3 for g in _top_gaps(rows)[:19])),
+)
+
+
 def datasets() -> tuple[Dataset, ...]:
     return (
         Dataset(
@@ -680,6 +724,14 @@ def datasets() -> tuple[Dataset, ...]:
             persistence_no_u={"Map Sample 01": (1.0, 1.0, 1.0)},
             claims=MAP_CLAIMS,
             claims_rule=REVISED_RULE,
+        ),
+        Dataset(
+            name="drivers",
+            directory="drivers",
+            records=drivers_records(),
+            persistence={"Driver 17": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Driver 17": (0.95, 0.97, 1.0)},
+            claims=DRIVERS_CLAIMS,
         ),
         # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
         Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
