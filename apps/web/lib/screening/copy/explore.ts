@@ -201,9 +201,11 @@ export const EXPLORE = Object.freeze({
   caveat: "The charts show what each school's record gives, not the school's real condition.",
   skip: "Skip to the charts",
   loading: "Loading the schools.",
+  /** The list of the page's questions at its top, each a link to its section. */
+  index: "Questions on this page",
   pick: {
     label: "Mark a school",
-    hint: "Its dot shows in navy at the top of its column, in every chart.",
+    hint: "It shows in navy in every chart that holds it.",
     none: "No school marked",
     notInList: "The school in this page's address is not in the list, so no school is marked.",
   },

@@ -23,6 +23,7 @@ import * as exploreModule from "@/lib/screening/copy/explore";
 import * as driversModule from "@/lib/screening/copy/explore-drivers";
 import * as exploreProvinceModule from "@/lib/screening/copy/explore-province";
 import * as exploreMapModule from "@/lib/screening/copy/explore-province-map";
+import * as exploreStabilityModule from "@/lib/screening/copy/explore-stability";
 import * as later from "@/lib/screening/copy/later";
 import * as methodModule from "@/lib/screening/copy/method";
 import * as treeModule from "@/lib/screening/copy/tree";
@@ -59,6 +60,7 @@ const everything = {
   ...driversModule,
   ...exploreProvinceModule,
   ...exploreMapModule,
+  ...exploreStabilityModule,
 };
 
 let proto: Api;
@@ -103,6 +105,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "EXPLORE_PROVINCE",
       "EXPLORE_MAP",
       "DRIVERS",
+      "EXPLORE_STABILITY",
       "GUIDE",
       "BANNED",
       "SIGN_IN",
