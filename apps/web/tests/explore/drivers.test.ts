@@ -29,7 +29,6 @@ import {
   CLOSE_CALL,
   type Drivers,
   PAST,
-  SAME_SCORE,
   TOP,
   drawnOf,
   driversOf,
@@ -39,6 +38,7 @@ import {
   needLeads,
   scaleOf,
 } from "@/lib/explore/drivers";
+import { SAME_SCORE } from "@/lib/screening/copy/rank";
 import { placeOf } from "@/lib/screening/list";
 import { parseWith } from "@/lib/screening/schema";
 import { type ListedRow, type Rule, resultsResponse, rulesResponse } from "@/lib/screening/types";

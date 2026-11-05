@@ -484,8 +484,20 @@ export function distinctName(school: NamedSchool, schools: readonly NamedSchool[
   return `${name} (record ${school.id})`;
 }
 
+/**
+ * Two scores, or two school needs, less than this far apart are the same figure. The engine adds about a dozen numbers
+ * between 0 and 1 in floating point, so two schools whose figures are equal in exact arithmetic can come out a few units
+ * of the 16th decimal place apart: it scores power and water at 0.44999999999999996 for a generator with piped water and
+ * 0.45 for solar panels with a tank (coordination note of 4 November 2026). A billionth is millions of times that noise,
+ * and thousands of times smaller than the smallest gap the paper's records give between two neighbours. The card's tie
+ * note and the explore page's drivers section read the same tolerance.
+ */
+export const SAME_SCORE = 1e-9;
+
 // A tie note for the card or the row, or null when the school is level with no other.
-// Ties are exact, as the engine compares them: the same score, or under need-first the same school need.
+// The engine orders by the full figure, then by name (TIE_RULE). So the row marks only an exact tie, which the name
+// settles. The card also notes a figure within SAME_SCORE of its own, which rounding inside the computer split: the two
+// show the same score at different ranks, and that split, not the name, set their order.
 export function tieNoteSegments(
   school: PlacedSchool,
   ruleId: CopyRuleId,
@@ -505,14 +517,23 @@ export function tieNoteSegments(
   };
   const mine = value(school);
   if (mine == null) return null;
-  const level = schools.filter((x) => {
+  const near = schools.filter((x) => {
     const v = value(x);
-    return x.id !== school.id && x.cohort === "complete" && v != null && v === mine;
+    return x.id !== school.id && x.cohort === "complete" && v != null && Math.abs(v - mine) < SAME_SCORE;
   });
+  const exactly = near.filter((x) => value(x) === mine);
+  const level = form === "row" ? exactly : near;
   if (!level.length) return null;
   const names = nameList(level.map((x) => distinctName(x, schools)));
   const sameName = level.some((x) => displayName(x) === displayName(school));
   const nameRule = sameName ? "by the name as recorded, which differs only in spacing" : "by school name";
+  // Some of them only rounding split: that split sets their order, before any name or other input.
+  const split = level.length > exactly.length;
+  const figure = nf ? "school need" : "score";
+  if (form === "card" && split)
+    return exactly.length === 0
+      ? seg`It has the same ${figure} as ${names}, but rounding inside the computer leaves them less than a billionth apart, and that difference sets the order.`
+      : seg`It has the same ${figure} as ${names}, but rounding inside the computer leaves some of them less than a billionth apart. That difference sets the order, and ${nf ? "the other inputs decide between exactly equal school needs" : `exactly equal scores go ${nameRule}`}.`;
   if (nf) {
     const mineSecond = second(school);
     const exact = level.filter((x) => {

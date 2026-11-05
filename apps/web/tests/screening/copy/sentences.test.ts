@@ -10,6 +10,8 @@
  *  5. A missing figure reads as a value ("lists no emission sources", "reaches 0"). Every combination of the
  *     three readings missing is checked.
  *  6. Two schools level on score or on school need get no tie note, or a school that is not level gets one.
+ *  6b. Two figures that only float rounding split get no note on the card, or the card says the name set their order
+ *     when the split did; or the list's row marks them as a tie the name settles.
  *  7. Two schools whose names differ only in spacing read the same.
  *  8. An input sentence takes the wrong branch for a blank, a zero or an unlisted value. Each branch is a case.
  *  9. A missing-detail note, chip or sentence disagrees with the raw cause (blank against recorded as 0). The
@@ -463,22 +465,43 @@ describe("ties", () => {
   const all = [a, b, c, d];
 
   it("notes a school level with another on score, on the card and the row", () => {
-    expect(copy.tieNote(a, "additive_u", all, "card")).toBe(
+    expect(copy.tieNote(a, "additive_u", [a, b, d], "card")).toBe(
       "It has exactly the same score as Beta, so the order goes by school name."
     );
     expect(copy.tieNote(a, "additive_u", all, "row")).toBe("Level with Beta");
   });
 
-  it("treats scores as equal only when they are exactly equal, as the engine does", () => {
-    // Gamma is 1e-13 above Alpha. The engine orders them by score, so they are not tied.
-    expect(copy.tieNote(c, "additive_u", all)).toBeNull();
-    expect(copy.tieNote(a, "additive_u", [a, c])).toBeNull();
+  it("marks a row only for an exact tie, the one the name settles", () => {
+    // Gamma is 1e-13 above Alpha. The engine orders them by score, not by name, so the row marks no tie.
+    expect(copy.tieNote(c, "additive_u", all, "row")).toBeNull();
+    expect(copy.tieNote(a, "additive_u", [a, c], "row")).toBeNull();
     const x = school({ id: "e1", name: "Echo", score: 0.1 + 0.2 });
     const y = school({ id: "e2", name: "Foxtrot", score: 0.3 });
     expect(0.1 + 0.2 === 0.3).toBe(false);
-    expect(copy.tieNote(x, "additive_u", [x, y])).toBeNull();
+    expect(copy.tieNote(x, "additive_u", [x, y], "row")).toBeNull();
     const z = school({ id: "e3", name: "Golf", score: 0.1 + 0.2 });
     expect(copy.tieNote(x, "additive_u", [x, z], "row")).toBe("Level with Golf");
+  });
+
+  it("says on the card when float rounding split one figure, and that the split, not the name, set the order", () => {
+    const x = school({ id: "e1", name: "Echo", score: 0.1 + 0.2 });
+    const y = school({ id: "e2", name: "Foxtrot", score: 0.3 });
+    const split =
+      "but rounding inside the computer leaves them less than a billionth apart, and that difference sets the order.";
+    expect(copy.tieNote(x, "additive_u", [x, y])).toBe(`It has the same score as Foxtrot, ${split}`);
+    expect(copy.tieNote(c, "additive_u", all)).toBe(`It has the same score as Alpha and Beta, ${split}`);
+    // Alpha is exactly level with Beta and a hair below Gamma: each pair is ordered its own way.
+    expect(copy.tieNote(a, "additive_u", all)).toBe(
+      "It has the same score as Beta and Gamma, but rounding inside the computer leaves some of them less than a billionth apart. That difference sets the order, and exactly equal scores go by school name."
+    );
+    // A billionth apart or more is a real difference.
+    const w = school({ id: "e4", name: "Hotel", score: 0.3 + 2e-9 });
+    expect(copy.tieNote(y, "additive_u", [y, w])).toBeNull();
+    // Under a need-first rule, school need is read the same way.
+    const n1 = school({ id: "s1", name: "Kilo", need: 0.1 + 0.2, secondary: 0.3 });
+    const n2 = school({ id: "s2", name: "Lima", need: 0.3, secondary: 0.1 });
+    expect(copy.tieNote(n1, "need_first_u", [n1, n2])).toBe(`It has the same school need as Lima, ${split}`);
+    expect(copy.tieNote(n1, "need_first_u", [n1, n2], "row")).toBeNull();
   });
 
   it("notes nothing for a school that is level with no one, or is not complete", () => {

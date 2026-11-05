@@ -13,8 +13,12 @@
  * sum of its parts. A list whose parts do not add up to its scores gets no bars either: a bar that does not end at the
  * school's score would say something false.
  *
+ * Two figures less than `SAME_SCORE` apart are the same figure, as the card's tie note reads them: two neighbours that
+ * close are tied, two parts that close are level, and a bar's parts add up to its score within it.
+ *
  * Pure, so the section, its table and the tests read the same figures.
  */
+import { SAME_SCORE } from "@/lib/screening/copy/rank";
 import { type OrderedRow, type Place, placeOf } from "@/lib/screening/list";
 import {
   type Input,
@@ -30,15 +34,6 @@ export const TOP = 20;
 /** The gaps run this many places past the top 20, so the edge of the top 20 has neighbours on both sides. */
 export const PAST = 2;
 
-/**
- * Two scores less than this far apart are the same score. The engine adds about a dozen numbers between 0 and 1 in
- * floating point, so two schools whose figures are equal in exact arithmetic can come out a few units of the 16th
- * decimal place apart: it scores power and water at 0.44999999999999996 for a generator with piped water and 0.45 for
- * solar panels with a tank (coordination note of 4 November 2026). A billionth is millions of times that noise, and
- * thousands of times smaller than the smallest gap the paper's records give between two neighbours. The same tolerance
- * decides whether a bar's parts add up to its score.
- */
-export const SAME_SCORE = 1e-9;
 /** A gap under this is a close call: the tool writes scores to three decimal places, where the two can read the same. */
 export const CLOSE_CALL = 0.001;
 
