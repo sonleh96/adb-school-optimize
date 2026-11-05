@@ -196,6 +196,8 @@ class Dataset:
     without_coordinates: tuple[str, ...] = ()
     # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
     claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
+    # The rule whose rows the claims read.
+    claims_rule: str = CIRCULATED_RULE
     # The top lists saved as CSV, as (rule, length). The export sheet previews and downloads these.
     top_lists: tuple[tuple[str, int], ...] = ((DEFAULT_RULE, 20),)
     # Every pair of rules compared, not only the circulated rule against each other: compare mode can pick any two.
@@ -470,6 +472,127 @@ PROVINCES_CLAIMS = (
 )
 
 
+# Invented schools in 11 of the country's 22 provinces, for the explore page's province map: a school of the main
+# rule's top 20 in eight of them, at least one province in each bin of the map's legend (1, 2, 3, 4, and 5 or more),
+# three provinces whose schools are all outside the top 20 (ranked below it, showing a range, or waiting to be
+# verified), and 11 provinces with no school at all. The province names are public geography; every school, district
+# and value is invented, and the counts are chosen for the map, not taken from the study.
+MAP_COMPLETE = 26
+MAP_TOP20 = {
+    "Western": 7,
+    "Gulf": 4,
+    "East Sepik": 3,
+    "West New Britain": 2,
+    "Milne Bay": 1,
+    "Hela": 1,
+    "Enga": 1,
+    "New Ireland": 1,
+}
+# Each invented school's province, chosen from its rank under the main rule (in the comment), which the claims below
+# hold the generator to.
+MAP_PROVINCES = {
+    "Map Sample 23": "Western",  # 1
+    "Map Sample 17": "Gulf",  # 2
+    "Map Sample 22": "East Sepik",  # 3
+    "Map Sample 08": "Western",  # 4
+    "Map Sample 15": "West New Britain",  # 5
+    "Map Sample 18": "Western",  # 6
+    "Map Sample 12": "Gulf",  # 7
+    "Map Sample 16": "Milne Bay",  # 8
+    "Map Sample 13": "Western",  # 9
+    "Map Sample 25": "East Sepik",  # 10
+    "Map Sample 26": "Hela",  # 11
+    "Map Sample 24": "Western",  # 12
+    "Map Sample 03": "Gulf",  # 13
+    "Map Sample 11": "West New Britain",  # 14
+    "Map Sample 21": "Western",  # 15
+    "Map Sample 20": "East Sepik",  # 16
+    "Map Sample 07": "Enga",  # 17
+    "Map Sample 02": "Western",  # 18
+    "Map Sample 19": "Gulf",  # 19
+    "Map Sample 09": "New Ireland",  # 20
+    "Map Sample 01": "Morobe",  # 21
+    "Map Sample 10": "Morobe",  # 22
+    "Map Sample 05": "Morobe",  # 23
+    "Map Sample 06": "Western",  # 24
+    "Map Sample 14": "Gulf",  # 25
+    "Map Sample 04": "Hela",  # 26
+    "Map Range One": "Madang",
+    "Map Range Two": "Western",
+    "Map Queue One": "Manus",
+    "Map Queue Two": "Manus",
+}
+
+
+def map_records() -> tuple[SchoolRecord, ...]:
+    # The land-cover share is scaled down so that it stays a share past the 21st school; above 1 it would read as
+    # missing and the school would show a range.
+    complete = [
+        complete_record(
+            i, f"Map Sample {i + 1:02d}", water_flooded_vegetation_fraction_500m=round(0.03 * i, 2)
+        )
+        for i in range(MAP_COMPLETE)
+    ]
+    ranges = [
+        complete_record(4, "Map Range One", aqi_p95_selected=None),
+        complete_record(9, "Map Range Two", emissions_co2e_100yr_10km_tonnes=None),
+    ]
+    queued = [
+        complete_record(2, "Map Queue One", teachers=None),
+        complete_record(6, "Map Queue Two", teachers=None),
+    ]
+    return tuple(
+        replace(
+            r,
+            province=MAP_PROVINCES[r.school_name],
+            district=f"{MAP_PROVINCES[r.school_name]} Sample District",
+        )
+        for r in [*complete, *ranges, *queued]
+    )
+
+
+def _top20_by_province(rows: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in rows:
+        if r["cohort"] == "complete" and r["point_rank"]["rank"] <= 20:
+            counts[r["school"]["province"]] = counts.get(r["school"]["province"], 0) + 1
+    return counts
+
+
+def _cohorts_of(rows: list[dict], province: str) -> set[str]:
+    return {r["cohort"] for r in rows if r["school"]["province"] == province}
+
+
+def _has_every_bin(rows: list[dict]) -> bool:
+    return _top20_by_province(rows) == MAP_TOP20
+
+
+def _has_provinces_with_none_in_the_top20(rows: list[dict]) -> bool:
+    top = _top20_by_province(rows)
+    below = [r for r in rows if r["school"]["province"] == "Morobe"]
+    return (
+        "Morobe" not in top
+        and len(below) > 0
+        and all(r["cohort"] == "complete" and r["point_rank"]["rank"] > 20 for r in below)
+        and _cohorts_of(rows, "Madang") == {"interval"}
+        and _cohorts_of(rows, "Manus") == {"verification_queue"}
+    )
+
+
+def _has_a_range_reaching_the_top20(rows: list[dict]) -> bool:
+    return any(r["cohort"] == "interval" and r["rank_bounds"]["best"] <= 20 for r in rows)
+
+
+MAP_CLAIMS = (
+    ("under the main rule, a top-20 school in eight provinces, in every bin of the map", _has_every_bin),
+    (
+        "a province ranked below the top 20, one showing a range only, one waiting only",
+        _has_provinces_with_none_in_the_top20,
+    ),
+    ("a school showing a range whose best rank is inside the top 20", _has_a_range_reaching_the_top20),
+)
+
+
 def datasets() -> tuple[Dataset, ...]:
     return (
         Dataset(
@@ -548,6 +671,15 @@ def datasets() -> tuple[Dataset, ...]:
             # The schools table needs a province, so a record without one has no row there, and no coordinates.
             without_coordinates=NO_PROVINCE,
             claims=PROVINCES_CLAIMS,
+        ),
+        Dataset(
+            name="province-map",
+            directory="province-map",
+            records=map_records(),
+            persistence={"Map Sample 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Map Sample 01": (1.0, 1.0, 1.0)},
+            claims=MAP_CLAIMS,
+            claims_rule=REVISED_RULE,
         ),
         # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
         Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
@@ -699,8 +831,8 @@ def capture_top_lists(cap: Capture, ds: Dataset) -> None:
         )
 
 
-def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
-    """Every request the web tests may make for this dataset. Returns the capture and the circulated rule's rows."""
+def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, dict[str, list[dict]]]:
+    """Every request the web tests may make for this dataset. Returns the capture and each rule's rows."""
     cap = Capture(client)
     cap.get(f"{API}/rules", "rules.json")
     if not ds.records:
@@ -709,7 +841,7 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
         cap.get(f"{API}/inputs", "inputs.json", status=404)
         capture_comparisons(cap)
         capture_top_lists(cap, ds)
-        return cap, []
+        return cap, {}
     rows_by_rule = {}
     for rule_id in RULES:
         rows_by_rule[rule_id] = cap.get(f"{API}/results", f"results/{rule_id}.json", rule=rule_id)["rows"]
@@ -724,10 +856,11 @@ def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, list[dict]]:
         school_detail_file(cap, row["school"]["source_school_name"])
     capture_comparisons(cap, ds.every_pair)
     capture_top_lists(cap, ds)
-    return cap, circulated_rows
+    return cap, rows_by_rule
 
 
-def check_claims(ds: Dataset, rows: list[dict]) -> None:
+def check_claims(ds: Dataset, rows_by_rule: dict[str, list[dict]]) -> None:
+    rows = rows_by_rule.get(ds.claims_rule, [])
     broken = [claim for claim, holds in ds.claims if not holds(rows)]
     if broken:
         raise SystemExit(f"dataset {ds.name!r} no longer has: " + "; ".join(broken))
@@ -795,8 +928,8 @@ def main(argv: list[str] | None = None) -> int:
                 os.environ.pop("AUTH_REQUIRED", None)
                 get_settings.cache_clear()
                 with TestClient(app) as client:
-                    cap, rows = capture_all(client, ds)
-                check_claims(ds, rows)
+                    cap, rows_by_rule = capture_all(client, ds)
+                check_claims(ds, rows_by_rule)
                 write(args.out / ds.directory, ds, cap)
             finally:
                 admin.execute(sql.SQL("drop database if exists {} with (force)").format(sql.Identifier(name)))

@@ -8,7 +8,15 @@ import { resultsResponse } from "@/lib/screening/types";
 const ROOT = path.resolve(__dirname, "../../e2e/fixtures/screening");
 
 /** The datasets the generator saves: the default one in the folder itself, the others in a folder of their own. */
-export const DATASETS = ["", "worst-names", "ties-and-ranges", "one", "provinces", "empty"] as const;
+export const DATASETS = [
+  "",
+  "worst-names",
+  "ties-and-ranges",
+  "one",
+  "provinces",
+  "province-map",
+  "empty",
+] as const;
 export type Dataset = (typeof DATASETS)[number];
 
 export function readFixture(file: string, dataset: Dataset = ""): unknown {
