@@ -10,6 +10,7 @@ import type { InputsResponse, ResultsResponse, RulesResponse } from "@/lib/scree
 import { type Marked, PartChart } from "./PartChart";
 import { type PickerGroup, SchoolPicker } from "./SchoolPicker";
 import styles from "./explore.module.css";
+import { Drivers } from "./sections/Drivers";
 import { Province } from "./sections/Province";
 import { ProvinceMap } from "./sections/ProvinceMap";
 
@@ -156,6 +157,7 @@ export function ExploreBody({
           ))}
         </div>
       </section>
+      <Drivers rules={rules} results={results} copy={copy} names={view.names} marked={school?.id ?? null} />
       <Province
         rows={results.rows}
         rule={bound.rule}

@@ -20,6 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as exploreModule from "@/lib/screening/copy/explore";
+import * as driversModule from "@/lib/screening/copy/explore-drivers";
 import * as exploreProvinceModule from "@/lib/screening/copy/explore-province";
 import * as exploreMapModule from "@/lib/screening/copy/explore-province-map";
 import * as later from "@/lib/screening/copy/later";
@@ -55,6 +56,7 @@ const everything = {
   ...methodModule,
   ...treeModule,
   ...exploreModule,
+  ...driversModule,
   ...exploreProvinceModule,
   ...exploreMapModule,
 };
@@ -100,6 +102,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "EXPLORE",
       "EXPLORE_PROVINCE",
       "EXPLORE_MAP",
+      "DRIVERS",
       "GUIDE",
       "BANNED",
       "SIGN_IN",

@@ -10,6 +10,7 @@
  * A rule whose description does not fit that structure gets no tree: a drawing that says the shares add up to the
  * whole score must not show shares that do not.
  */
+import type { TermKey } from "./copy/terms";
 import type { Rule } from "./types";
 
 /** An exact share of the score, as a fraction in lowest terms. */
@@ -32,6 +33,27 @@ const NEED_PARTS = [
   "locality_disadvantage",
 ] as const;
 export type NeedPart = (typeof NEED_PARTS)[number];
+
+/**
+ * The glossary term of each input and each part of school need, whose label names it wherever the tool draws the
+ * parts of a score: the diagram of each part's share, and the explore page's bars of what each part adds.
+ */
+export const INPUT_TERM = {
+  N: "school_need",
+  A: "area_context",
+  U: "urgency",
+  R: "reach",
+  Q: "air_quality",
+  E: "emissions",
+  L: "land_cover",
+} as const satisfies Record<Input, TermKey>;
+export const NEED_PART_TERM = {
+  permanent_classroom_deficit: "need_classrooms",
+  teacher_housing_deficit: "need_housing",
+  facility_presence_deficit: "need_facilities",
+  service_deficit: "need_services",
+  locality_disadvantage: "need_locality",
+} as const satisfies Record<NeedPart, TermKey>;
 
 /** What one branch of the tree stands for. */
 export type Part =

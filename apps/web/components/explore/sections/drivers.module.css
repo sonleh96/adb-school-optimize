@@ -1,0 +1,428 @@
+/*
+ * What puts a school in the top 20 (Drivers.tsx): a bar per school split into what each part adds to its score, and a
+ * ladder of the gaps between neighbouring ranks. The cards, titles, notes and tables are the explore page's own
+ * (explore.module.css); this file holds the bars, the ladder, the legend and the switch. Nothing moves, and nothing
+ * shows only on hover.
+ *
+ * The five parts of school need take the five even steps of the map's navy ramp (lib/screening/marks.ts, RAMP_HEX),
+ * in an order that puts at least two steps between neighbours, so two parts side by side never look alike; the other
+ * inputs share one grey. Every mark keeps 3:1 on the white card (tests/explore/drivers-marks.test.ts).
+ */
+.figure {
+  container: drivers / inline-size;
+  --part-classrooms: #002569;
+  --part-housing: #20509e;
+  --part-facilities: #447dd5;
+  --part-services: #0f3a83;
+  --part-locality: #3266b9;
+  --part-other: #868b95;
+  /* The ring of a figure that is not recorded: the map's range ring (lib/screening/marks.ts, RANGE_RING_HEX). */
+  --part-open: #3d4759;
+  --grid: rgba(17, 26, 44, 0.09);
+  margin-top: 16px;
+}
+
+/* While the other list loads, the page's own stays on screen, dimmed, so nothing jumps. */
+.body[data-waiting] {
+  opacity: 0.45;
+}
+
+/* The choice of list, as two linked buttons over native radios: the keyboard and a screen reader see a radio group. */
+.switch {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+.switchLegend {
+  float: left;
+  margin-right: 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.options {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: #e8ecf2;
+}
+.option {
+  position: relative;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.option:has(input:checked) {
+  background: var(--panel);
+  color: var(--navy);
+  box-shadow:
+    0 1px 2px rgba(10, 20, 40, 0.12),
+    inset 0 0 0 1.5px var(--navy);
+}
+.option:has(input:focus-visible) {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* The legend, in the order the parts sit in each bar. */
+.legend {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.legendHead {
+  font-weight: 600;
+}
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.keys li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.swatch {
+  flex: none;
+  align-self: center;
+  width: 12px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--part-other);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+/* One row per school: its rank, its name, its bar and its score. Wide: one line; narrow: the bar on a line of its own. */
+.rows {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 15em) minmax(0, 1fr) 7.5em;
+  grid-template-areas: "rank name track score";
+  column-gap: 12px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.rank {
+  grid-area: rank;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.name {
+  grid-area: name;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.score {
+  grid-area: score;
+  color: var(--ink-2);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.row[data-marked] {
+  background: color-mix(in srgb, var(--navy) 7%, transparent);
+}
+.row[data-marked] .name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.row[data-marked] .name > span:first-child {
+  align-self: center;
+}
+
+/*
+ * The bar sits on the track, which is the whole scale from 0 to its largest tick: a hairline at every tenth, so a
+ * length reads against the axis under the rows. Each part is as wide as what it adds, and a 2 px gap in the card's
+ * colour, drawn inside the part, keeps two parts apart without changing where the bar ends.
+ */
+.track {
+  grid-area: track;
+  display: flex;
+  height: 12px;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--grid) 0 1px,
+    transparent 1px calc(100% / var(--tenths))
+  );
+}
+.seg {
+  flex: none;
+  height: 100%;
+  background: var(--part-other);
+  box-shadow: inset 2px 0 0 var(--panel);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.seg:first-child {
+  box-shadow: none;
+}
+.seg:last-child {
+  border-radius: 0 3px 3px 0;
+}
+.seg[data-piece="permanent_classroom_deficit"],
+.swatch[data-piece="permanent_classroom_deficit"] {
+  background: var(--part-classrooms);
+}
+.seg[data-piece="teacher_housing_deficit"],
+.swatch[data-piece="teacher_housing_deficit"] {
+  background: var(--part-housing);
+}
+.seg[data-piece="facility_presence_deficit"],
+.swatch[data-piece="facility_presence_deficit"] {
+  background: var(--part-facilities);
+}
+.seg[data-piece="service_deficit"],
+.swatch[data-piece="service_deficit"] {
+  background: var(--part-services);
+}
+.seg[data-piece="locality_disadvantage"],
+.swatch[data-piece="locality_disadvantage"] {
+  background: var(--part-locality);
+}
+/* A figure that is not recorded: hollow, as far as the most it could add. */
+.seg[data-open],
+.swatch[data-open] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--part-open);
+}
+.seg[data-open]:not(:first-child) {
+  box-shadow:
+    inset 2px 0 0 var(--panel),
+    inset 3.5px 0 0 var(--part-open),
+    inset 0 0 0 1.5px var(--part-open);
+}
+
+/* The axis under the rows, on the bars' own column. */
+.axisRow {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 15em) minmax(0, 1fr) 7.5em;
+  grid-template-areas: ". . ticks name";
+  column-gap: 12px;
+  padding: 0 6px;
+  /* The rows' size, so the columns measured in em line up with theirs. */
+  font-size: 13.5px;
+}
+.ticks {
+  grid-area: ticks;
+  position: relative;
+  height: 18px;
+  border-top: 1px solid rgba(17, 26, 44, 0.32);
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.ticks > span {
+  position: absolute;
+  top: 1px;
+  left: calc(var(--at) * 100%);
+  transform: translateX(-50%);
+}
+.ticks > span:first-child {
+  transform: none;
+}
+.ticks > span:last-child {
+  transform: translateX(-100%);
+}
+.axisName {
+  grid-area: name;
+  padding-top: 1px;
+  font-size: 12.5px;
+  line-height: 16px;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.outside {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--hair);
+}
+.outsideHead {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* The table, wider than a phone: it scrolls inside its own region, the school's name kept in view. */
+.scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.scroll:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.wide {
+  min-width: 100%;
+  width: max-content;
+}
+.wide thead th {
+  max-width: 7.5em;
+  vertical-align: bottom;
+  white-space: normal;
+}
+.wide tbody th {
+  position: sticky;
+  left: 0;
+  max-width: 12em;
+  padding-right: 12px;
+  background: var(--panel);
+  overflow-wrap: anywhere;
+}
+.wide th,
+.wide td {
+  padding-left: 8px;
+}
+.wide td:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* The ladder: one row per pair of neighbouring ranks. A tie and a close call sit on a wash, their gap in bold. */
+.ladder {
+  max-width: 46em;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: grid;
+  grid-template-columns: 8.5em minmax(0, 1fr) 7em;
+  column-gap: 12px;
+  align-items: center;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.pair {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.edgeTag {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.gapTrack {
+  display: flex;
+  align-items: center;
+  height: 12px;
+}
+.gapBar {
+  height: 10px;
+  min-width: 2px;
+  border-radius: 0 3px 3px 0;
+  background: var(--navy-2);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.equal {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--navy);
+}
+.gapValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.step[data-kind="tie"],
+.step[data-kind="close"] {
+  background: color-mix(in srgb, var(--navy) 6%, transparent);
+}
+.step[data-kind="tie"] .gapValue,
+.step[data-kind="close"] .gapValue {
+  font-weight: 600;
+  color: var(--ink);
+}
+.step[data-edge] {
+  margin-top: 6px;
+  box-shadow: inset 0 1px 0 var(--hair);
+}
+.step[data-marked] .pair {
+  font-weight: 600;
+  color: var(--ink);
+}
+.notes {
+  margin-top: 10px;
+}
+
+/* Narrow: the bar on a line of its own under the rank, the name and the score. */
+@container drivers (max-width: 719px) {
+  .row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "rank name score"
+      "track track track";
+    row-gap: 4px;
+    padding: 5px 6px;
+  }
+  .track {
+    height: 10px;
+  }
+  .axisRow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "ticks" "name";
+  }
+}
+@container drivers (max-width: 479px) {
+  .step {
+    grid-template-columns: 8.25em minmax(0, 1fr) 6em;
+    column-gap: 8px;
+  }
+}
+
+@media (forced-colors: active) {
+  .seg,
+  .swatch,
+  .gapBar {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  .seg {
+    box-shadow: inset 2px 0 0 Canvas;
+  }
+  .seg[data-open],
+  .swatch[data-open] {
+    background: Canvas;
+    box-shadow: inset 0 0 0 1.5px CanvasText;
+  }
+  .row[data-marked] {
+    outline: 2px solid Highlight;
+  }
+}
