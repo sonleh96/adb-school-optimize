@@ -15,7 +15,7 @@ const firstWord = (text: string) => text.split(/\s/)[0].toLowerCase();
 
 describe("the ways into the explore page", () => {
   it("no way to the charts starts with the word the guides' dismiss starts with", () => {
-    for (const name of [LAYOUT.explore, EXPLORE.title])
+    for (const name of [LAYOUT.explore, LAYOUT.seeAmongAll, EXPLORE.title])
       expect(firstWord(name), name).not.toBe(firstWord(GUIDE.explore));
   });
 });

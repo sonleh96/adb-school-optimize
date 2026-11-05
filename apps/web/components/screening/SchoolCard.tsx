@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChartColumn, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { STRIPS_SHOWN_IN, partStrip } from "@/lib/explore/strip";
@@ -228,9 +228,12 @@ export function SchoolCard(props: CardProps) {
           record && detail.data ? (
             <>
               {methodLayer({ record, detail: detail.data })}
-              {STRIPS_SHOWN_IN === "method details" && inList(record, rule) ? (
-                <div className={strips.methodFoot}>
-                  <PartsCompared copy={copy} rule={rule} school={record} schools={schools} />
+              {inList(record, rule) ? (
+                <div className={strips.methodFoot} data-region="method-see-all">
+                  {STRIPS_SHOWN_IN === "method details" ? (
+                    <PartsCompared copy={copy} rule={rule} school={record} schools={schools} />
+                  ) : null}
+                  <SeeAmongAll copy={copy} id={record.id} />
                 </div>
               ) : null}
             </>
@@ -299,6 +302,23 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
 }
 
 /**
+ * The way from a card to the charts of all schools, with this school marked in every chart. A plain link in the same
+ * tab: the card stays in this page's address and history, so Back returns to it.
+ */
+function SeeAmongAll({ copy, id }: { copy: BoundCopy; id: string }) {
+  return (
+    <a
+      className={`${styles.linkButton} ${strips.seeAll}`}
+      href={`/explore?${new URLSearchParams({ school: id })}`}
+      data-region="see-among-all"
+    >
+      <ChartColumn size={13} aria-hidden />
+      {copy.LAYOUT.seeAmongAll}
+    </a>
+  );
+}
+
+/**
  * The method details' place for the strips, used only when `STRIPS_SHOWN_IN` moves them off the card: each part's
  * comparison line, as the card words it, with its strip beside it.
  */
@@ -354,6 +374,10 @@ function WhyItSitsHere({
   const equal = why.blocks.length ? copy.equalReasons(drivers) : null;
   const needValue = school.components.N;
   const persistence = copy.persistenceNote(school, rule);
+  // The way to the charts of all schools is the school need box's last line, under the comparisons it widens; a card
+  // without the box has it at the section's foot.
+  const linkAfter = why.blocks.findIndex((block) => block.kind === "need");
+  const seeAll = <SeeAmongAll copy={copy} id={school.id} />;
   return (
     <section className={styles.why} data-region="inspector-why" aria-label={LAYOUT.why}>
       <span className={`${styles.eyebrow} ${styles.eyebrowNavy}`}>{LAYOUT.why}</span>
@@ -405,6 +429,11 @@ function WhyItSitsHere({
                     );
                   })}
                 </ul>
+                {index === linkAfter ? (
+                  <div className={strips.needFoot} data-region="need-foot">
+                    {seeAll}
+                  </div>
+                ) : null}
               </div>
             );
           case "reason":
@@ -438,6 +467,7 @@ function WhyItSitsHere({
           {copy.missingSentence(school, rule)}
         </p>
       )}
+      {linkAfter < 0 ? seeAll : null}
     </section>
   );
 }

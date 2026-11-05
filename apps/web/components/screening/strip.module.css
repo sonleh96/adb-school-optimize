@@ -19,10 +19,35 @@
   paint-order: stroke;
 }
 
-/* The method details' foot, after the record, set like the method card's own sections. */
+/* The way to the explore page with this school marked, a line of its own under the comparisons it widens. */
+.seeAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.seeAll svg {
+  flex: none;
+}
+
+/* In the school need box, the link is the box's last line, after the five parts: its icon in the column of the
+   parts' numbers, its words where the parts' names start. */
+.needFoot {
+  padding: 8px 0 6px 3px;
+  border-top: 1px solid var(--hair-2);
+}
+.needFoot > .seeAll {
+  gap: 10px;
+  margin-top: 0;
+}
+
+/* The method details' foot: the same link, after the record, set like the method card's own sections. */
 .methodFoot {
   padding: 14px 20px 16px;
   border-top: 1px solid var(--hair-2);
+}
+.methodFoot > .seeAll:first-child {
+  margin-top: 0;
 }
 /* Each part's line with its strip, when the strips show in the method details instead of on the card. */
 .compared {

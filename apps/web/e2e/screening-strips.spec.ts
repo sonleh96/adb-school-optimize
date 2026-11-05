@@ -1,5 +1,6 @@
 /**
- * The strips beside the school card's comparison lines. Failure modes, each with the test that catches it:
+ * The strips beside the school card's comparison lines, and the way from a card to the charts of all schools
+ * (/explore with the school marked). Failure modes, each with the test that catches it:
  *  1. A strip's dot disagrees with the line beside it: it sits in another column than the school's record gives, the
  *     columns run the other way, or they count another list than the line
  *                         -> "each strip counts the list as the records give it, with the school's dot in its own column"
@@ -8,12 +9,14 @@
  *  3. A strip shows where its line does not: under a rule or for a part with no line, on a record to verify, or in
  *     the method details while the strips belong on the card
  *                                                 -> "a strip shows only beside a line, under every rule"
- *  4. The /screening first screen changes: a strip shows before a card opens
- *                                                 -> "the first screen shows no strip"
- *  5. On a 390 px phone the strips make the card taller by more than one line of the comparison text, 17 px, in all.
- *     On a 360 px phone a strip leaves its part, or the page scrolls sideways
- *                                                 -> "on a 390 and a 360 px phone the card stays within its limit"
- *  6. A screen reader reads a strip as well as its line, or reaches it as an image
+ *  4. The link names another school than the card's, opens another tab, or Back from the charts loses the card
+ *                                                 -> "the link opens the charts with the card's school marked ..."
+ *  5. The /screening first screen changes: a strip or the link shows before a card opens
+ *                                                 -> "the first screen shows no strip and no link"
+ *  6. On a 390 px phone the card grows past its limit: the strips by more than one line of the comparison text, 17 px,
+ *     in all; the link by more than its own row, 36 px. On a 360 px phone a strip leaves its part, or the page
+ *     scrolls sideways                            -> "on a 390 and a 360 px phone the card stays within its limit"
+ *  7. A screen reader reads a strip as well as its line, or reaches it as an image
  *                                                 -> "a screen reader reads each comparison once ..."
  * The /screening first screen's pixels against the base are compared outside this suite, at eight sizes.
  */
@@ -23,6 +26,8 @@ import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 
 import { STRIPS_SHOWN_IN } from "../lib/explore/strip";
+import { EXPLORE } from "../lib/screening/copy/explore";
+import { LAYOUT } from "../lib/screening/copy/words";
 
 import {
   MAIN_RULE,
@@ -30,8 +35,10 @@ import {
   expect,
   keyOf,
   openWorkspace,
+  orderedRow,
   test,
   useMockDataset,
+  waitForMap,
 } from "./screening-helpers";
 
 test.describe.configure({ timeout: 90_000 });
@@ -141,6 +148,7 @@ function columnsOf(rule: string, dataset: MockDataset = "default") {
 
 const card = (page: Page) => page.locator("[data-slot=school-card]");
 const strips = (scope: Locator) => scope.locator("[data-region=need-strip]");
+const seeAll = (page: Page) => card(page).getByRole("link", { name: LAYOUT.seeAmongAll });
 
 /** What a strip draws: each column it draws with its count, the column of the dot, and where the dot sits. */
 async function drawn(strip: Locator) {
@@ -276,21 +284,25 @@ test("a strip shows only beside a line, under every rule", async ({ page, contex
     } else await expect(strips(card(page)), rule).toHaveCount(0);
   }
 
-  // A school whose reasons hold no part of school need has no lines, so no strip.
+  // A school whose reasons hold no part of school need has no lines, so no strip; its link closes the section.
   await openCard(page, keyOf("bottleneck_u", "Sample School 25"), "bottleneck_u");
   await expect(card(page).locator("[data-region=need-box]")).toHaveCount(0);
   await expect(strips(card(page))).toHaveCount(0);
+  await expect(card(page).locator("[data-region=inspector-why] > :last-child")).toHaveText(
+    LAYOUT.seeAmongAll
+  );
 
-  // A record to verify is not in the list: no line and no strip.
+  // A record to verify is not in the list: no line, no strip and no link.
   const queued = rowsOf(MAIN_RULE).find((r) => r.cohort === "verification_queue")!.school.school_key;
   await openCard(page, queued);
   await expect(card(page).locator("[data-region=need-standing]")).toHaveCount(0);
   await expect(strips(card(page))).toHaveCount(0);
+  await expect(seeAll(page)).toHaveCount(0);
 
   // The method details: the strips show only where STRIPS_SHOWN_IN puts them, each beside a line.
   await openCard(page, listedOf(MAIN_RULE)[0].school.school_key);
   await page.getByRole("switch", { name: "Show method details" }).click();
-  await expect(card(page).locator("[data-region=inspector-breakdown]")).toBeVisible();
+  await expect(card(page).locator("[data-region=method-see-all]")).toBeVisible();
   const compared = card(page).locator("[data-region=compared-line]");
   if (STRIPS_SHOWN_IN === "card") {
     await expect(strips(card(page))).toHaveCount(0);
@@ -308,7 +320,53 @@ test("a strip shows only beside a line, under every rule", async ({ page, contex
   await expect(strips(card(page))).toHaveCount(0);
 });
 
-test("the first screen shows no strip", async ({ page }) => {
+test("the link opens the charts with the card's school marked, in the same tab, and Back returns to the card", async ({
+  page,
+}) => {
+  const name = "Sample School 15";
+  const key = keyOf(MAIN_RULE, name);
+  const marked = async () => {
+    await expect(page).toHaveURL(new RegExp(`/explore\\?school=${key}$`));
+    await expect(page.getByLabel(EXPLORE.pick.label)).toHaveValue(key, { timeout: 30_000 });
+    await expect(page.locator(`figure[data-part] circle[data-marked][data-school-key="${key}"]`)).toHaveCount(
+      5
+    );
+  };
+  const back = async () => {
+    await page.goBack();
+    await waitForMap(page);
+    await expect(page).toHaveURL(new RegExp(`/screening\\?(.+&)?school=${key}(&|$)`));
+    await expect(card(page).getByRole("heading", { level: 2 })).toHaveText(name);
+  };
+
+  // From the plain card, opened from the list as a reader opens it.
+  await openWorkspace(page);
+  await orderedRow(page, name).click();
+  const link = seeAll(page);
+  await expect(link).toHaveAttribute("href", `/explore?school=${key}`);
+  await expect(link).not.toHaveAttribute("target", /.+/);
+  await link.click();
+  await marked();
+  await back();
+  // The card's own history still works: closing it goes back to the list it was opened from.
+  await card(page).getByTestId("close-card").click();
+  await expect(card(page)).toHaveCount(0);
+  await expect(page).not.toHaveURL(/school=/);
+
+  // From the method details, which Back keeps on.
+  await page.getByRole("switch", { name: "Show method details" }).click();
+  await orderedRow(page, name).click();
+  await card(page)
+    .locator("[data-region=method-see-all]")
+    .getByRole("link", { name: LAYOUT.seeAmongAll })
+    .click();
+  await marked();
+  await back();
+  await expect(page.getByRole("switch", { name: "Show method details" })).toBeChecked();
+  await expect(card(page).locator("[data-region=method-see-all]")).toBeVisible();
+});
+
+test("the first screen shows no strip and no link", async ({ page }) => {
   for (const size of [
     { width: 1440, height: 900 },
     { width: 390, height: 844 },
@@ -316,6 +374,7 @@ test("the first screen shows no strip", async ({ page }) => {
     await page.setViewportSize(size);
     await openWorkspace(page);
     await expect(page.locator("[data-region=need-strip]")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: LAYOUT.seeAmongAll })).toHaveCount(0);
   }
 });
 
@@ -331,11 +390,14 @@ test("on a 390 and a 360 px phone the card stays within its limit", async ({ pag
     }));
   await expect(strips(box)).toHaveCount(5);
   const full = await measure();
-  // The same card as before this change: the strips taken out of the layout.
+  // The same card as before this change: the strips, then the link's row, taken out of the layout.
   await page.addStyleTag({ content: "[data-region=need-strip] { display: none !important; }" });
+  const noStrips = await measure();
+  await page.addStyleTag({ content: "[data-region=need-foot] { display: none !important; }" });
   const before = await measure();
-  expect(full.box - before.box).toBeLessThanOrEqual(17);
-  expect(full.body - before.body).toBeLessThanOrEqual(17);
+  expect(full.box - noStrips.box).toBeLessThanOrEqual(17);
+  expect(noStrips.box - before.box).toBeLessThanOrEqual(36);
+  expect(full.body - before.body).toBeLessThanOrEqual(17 + 36);
 
   // On a 360 px phone every strip stays inside its own part, and nothing scrolls sideways.
   await page.setViewportSize({ width: 360, height: 740 });
