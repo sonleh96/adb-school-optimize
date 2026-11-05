@@ -47,7 +47,6 @@ export function Province({
       answer: WORDS.answer(
         named.length,
         named.filter((count) => count.inList > 0).length,
-        named.filter((count) => count.top20 > 0).length,
         unrecorded?.inList ?? 0
       ),
       order: WORDS.order(unrecorded !== undefined),

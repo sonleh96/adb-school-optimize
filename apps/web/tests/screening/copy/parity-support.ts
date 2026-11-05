@@ -316,14 +316,14 @@ export const FN_ARGS: Record<string, unknown[][]> = {
   "EXPLORE.unrecorded": [[1], [2], [1284]],
   // The province section: counts of provinces, schools and records on both sides of each branch.
   "EXPLORE_PROVINCE.answer": [
-    [22, 21, 10, 0],
-    [5, 4, 4, 1],
-    [3, 3, 1, 0],
-    [2, 2, 2, 0],
-    [1, 1, 1, 0],
-    [22, 21, 0, 2],
-    [2, 0, 0, 3],
-    [2, 0, 0, 0],
+    [22, 21, 0],
+    [5, 4, 1],
+    [3, 3, 0],
+    [2, 2, 0],
+    [1, 1, 0],
+    [22, 21, 2],
+    [2, 0, 3],
+    [2, 0, 0],
   ],
   "EXPLORE_PROVINCE.order": [[true], [false]],
   "EXPLORE_PROVINCE.top": [

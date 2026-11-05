@@ -151,7 +151,7 @@ test("draws every province from A to Z, the records with no province last, as it
     ...REASONS.map((row) => row.map(String)),
     [WORDS.table.total, "4", "2", "2"],
   ]);
-  await expect(section(page).locator("[data-region=province-answer]")).toHaveText(WORDS.answer(5, 4, 4, 1));
+  await expect(section(page).locator("[data-region=province-answer]")).toHaveText(WORDS.answer(5, 4, 1));
   await expect(section(page).getByText(WORDS.order(true))).toBeVisible();
 });
 
