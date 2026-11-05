@@ -1,0 +1,45 @@
+/*
+ * The list of the page's questions at its top (QuestionIndex): one link per question, in the page's order. It uses
+ * the page's tokens (explore.module.css), which its root sets for everything inside it.
+ */
+.index {
+  max-width: 46em;
+  margin-top: 20px;
+  padding: 12px 16px 14px;
+  border-left: 3px solid var(--navy);
+  background: var(--panel);
+  border-radius: 0 var(--r-control) var(--r-control) 0;
+}
+.index[hidden] {
+  display: none;
+}
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.list {
+  margin-top: 6px;
+  padding-left: 1.4em;
+  list-style: decimal;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.list li + li {
+  margin-top: 4px;
+}
+.list a {
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--navy) 35%, transparent);
+  text-underline-offset: 3px;
+}
+.list a:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.list li::marker {
+  color: var(--ink-3);
+}

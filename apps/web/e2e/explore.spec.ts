@@ -271,6 +271,11 @@ test("a keyboard reaches the picker and every chart's numbers, and a screen read
   await expect(skip).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.locator("#charts")).toBeFocused();
+  // The page's questions come first, a link each, then the picker.
+  for (const link of await page.locator("[data-region=question-index] a").all()) {
+    await page.keyboard.press("Tab");
+    await expect(link).toBeFocused();
+  }
   await page.keyboard.press("Tab");
   await expect(page.getByLabel(EXPLORE.pick.label)).toBeFocused();
 

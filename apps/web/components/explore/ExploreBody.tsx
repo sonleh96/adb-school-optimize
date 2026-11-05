@@ -8,6 +8,7 @@ import { EXPLORE } from "@/lib/screening/copy/explore";
 import type { InputsResponse, ResultsResponse, RulesResponse } from "@/lib/screening/types";
 
 import { type Marked, PartChart } from "./PartChart";
+import { QuestionIndex } from "./QuestionIndex";
 import { type PickerGroup, SchoolPicker } from "./SchoolPicker";
 import styles from "./explore.module.css";
 import { Drivers } from "./sections/Drivers";
@@ -50,9 +51,9 @@ function groupsOf(
 }
 
 /**
- * The explore page's charts, bound to the data: the school picker over every chart, then each question with its
- * charts. Set 1 asks how the schools of the list compare on each part of school need, and set 2 how stable the list
- * is.
+ * The explore page's charts, bound to the data: the list of the page's questions, the school picker over every chart,
+ * then each question with its charts. Set 1 asks how the schools of the list compare on each part of school need, and
+ * set 2 how stable the list is.
  */
 export function ExploreBody({
   rules,
@@ -122,6 +123,7 @@ export function ExploreBody({
 
   return (
     <>
+      <QuestionIndex />
       <div className={styles.controls}>
         <SchoolPicker groups={view.groups} value={school ? school.id : null} onChange={choose} />
         {marked && !school ? (
