@@ -12,13 +12,13 @@
  * Nothing in it can be pointed at, focused or moved, because the shares are fixed policy choices, not settings. The
  * bars are for sight only: the words carry every share for a screen reader, and nothing shows only on hover.
  */
-import { type BoundCopy, type TermKey, isCopyRuleId } from "@/lib/screening/copy";
+import { type BoundCopy, isCopyRuleId } from "@/lib/screening/copy";
 import { lowerFirst } from "@/lib/screening/copy/format";
 import { SCORE_TREE } from "@/lib/screening/copy/tree";
 import {
   type Branch,
-  type Input,
-  type NeedPart,
+  INPUT_TERM,
+  NEED_PART_TERM,
   type Part,
   type Share,
   WHOLE,
@@ -32,30 +32,12 @@ import type { Rule } from "@/lib/screening/types";
 
 import styles from "./score-tree.module.css";
 
-/** The glossary term of each input and each part of school need, whose label the rest of the tool uses. */
-const INPUT_TERM = {
-  N: "school_need",
-  A: "area_context",
-  U: "urgency",
-  R: "reach",
-  Q: "air_quality",
-  E: "emissions",
-  L: "land_cover",
-} as const satisfies Record<Input, TermKey>;
-const PART_TERM = {
-  permanent_classroom_deficit: "need_classrooms",
-  teacher_housing_deficit: "need_housing",
-  facility_presence_deficit: "need_facilities",
-  service_deficit: "need_services",
-  locality_disadvantage: "need_locality",
-} as const satisfies Record<NeedPart, TermKey>;
-
 function nameOf(copy: BoundCopy, part: Part): string {
   switch (part.kind) {
     case "input":
       return copy.TERMS[INPUT_TERM[part.input]].label;
     case "need-part":
-      return copy.TERMS[PART_TERM[part.part]].label;
+      return copy.TERMS[NEED_PART_TERM[part.part]].label;
     case "combined":
       return SCORE_TREE.combined;
     case "largest":
