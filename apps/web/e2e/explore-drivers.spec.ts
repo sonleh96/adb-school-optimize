@@ -225,6 +225,28 @@ test("orders and names the parts as the score diagram does, and colours each as 
     for (const s of bar.segments.filter((x) => !x.open))
       expect(s.colour, `${bar.name} ${s.piece}`).toBe(swatches[s.piece] ?? swatches[otherKey]);
   }
+  // Power and water also wears a hatch, on its key and in every bar, so it is not read as classrooms' navy.
+  const patterns = await legend
+    .locator("li[data-piece-key]")
+    .evaluateAll((items) =>
+      Object.fromEntries(
+        items.map((li) => [
+          li.getAttribute("data-piece-key"),
+          getComputedStyle(li.querySelector("span")!).backgroundImage,
+        ])
+      )
+    );
+  expect(patterns["service_deficit"]).toContain("repeating-linear-gradient");
+  expect(patterns["permanent_classroom_deficit"]).toBe("none");
+  const worn = await section(page)
+    .locator("[data-region=bars] [data-piece]:not([data-open])")
+    .evaluateAll((segs) =>
+      segs.map((s) => ({
+        piece: s.getAttribute("data-piece")!,
+        pattern: getComputedStyle(s).backgroundImage,
+      }))
+    );
+  for (const s of worn) expect(s.pattern, s.piece).toBe(patterns[s.piece] ?? patterns[otherKey]);
 });
 
 test("a range school's bar runs from its lower score to its upper, its blank figure hollow at the end", async ({
