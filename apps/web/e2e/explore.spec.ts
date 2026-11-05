@@ -8,11 +8,13 @@
  *                                        -> "a school whose record gives no figure has no dot ..."
  *  3. The marked school is not the one `?school=` names, or the address and the picker drift apart
  *                                        -> "marks the school the address names in every chart ..."
- *  4. A chart cannot be reached with a keyboard or read with a screen reader
+ *  4. The /screening first screen changes: a link to the page shows before Help is opened, or Help loses or reorders
+ *     its items                          -> "the tool's first screen shows no new link ..."
+ *  5. A chart cannot be reached with a keyboard or read with a screen reader
  *                                        -> "a keyboard reaches the picker and every chart's numbers ..."
- *  5. On a 390 or 360 px phone the page scrolls sideways, or a dot or a label leaves its card or covers another
+ *  6. On a 390 or 360 px phone the page scrolls sideways, or a dot or a label leaves its card or covers another
  *                                        -> "fits a 390 and a 360 px phone ..."
- *  6. With no data, or a read that fails, the page shows nothing a reader can act on, or never recovers
+ *  7. With no data, or a read that fails, the page shows nothing a reader can act on, or never recovers
  *                                        -> "says when there is no data, and recovers from a failed read"
  * Sign-in is checked in auth-static.spec.ts with the other pages, and the first load in scripts/check-bundle-budget.mjs.
  */
@@ -22,9 +24,9 @@ import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 
 import { EXPLORE } from "../lib/screening/copy/explore";
-import { LAYOUT } from "../lib/screening/copy/words";
+import { HELP, LAYOUT } from "../lib/screening/copy/words";
 
-import { APP_ORIGIN, type MockDataset, expect, test, useMockDataset } from "./screening-helpers";
+import { APP_ORIGIN, type MockDataset, expect, test, useMockDataset, waitForMap } from "./screening-helpers";
 
 test.describe.configure({ timeout: 60_000 });
 
@@ -224,6 +226,39 @@ test("marks the school the address names in every chart, and keeps the address a
     await expect(picker).toHaveValue("");
     await expect(page.locator("circle[data-marked]")).toHaveCount(0);
   }
+});
+
+test("the tool's first screen shows no new link; Help lists the page last, and its link opens it", async ({
+  page,
+}) => {
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto("/screening");
+    await waitForMap(page);
+    await expect(page.getByRole("link", { name: LAYOUT.explore })).toHaveCount(0);
+    await page.locator("[data-region=help-button]").filter({ visible: true }).click();
+    const menu = page.locator("#screening-help-menu");
+    const items = menu.locator(":scope > button, :scope > a");
+    await expect(items).toHaveCount(5);
+    const words = [LAYOUT.guides, HELP.explain, HELP.glossary, LAYOUT.howTitle, LAYOUT.explore];
+    for (const [i, word] of words.entries()) await expect(items.nth(i)).toContainText(word);
+    await expect(items.nth(4)).toHaveAttribute("href", "/explore");
+  }
+  await page.getByRole("link", { name: LAYOUT.explore }).click();
+  await expect(page).toHaveURL(/\/explore$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(EXPLORE.title);
+  await expect(page.locator("figure[data-part]")).toHaveCount(PARTS.length);
+
+  // Method details link to the page too, under the rules.
+  await page.goto("/screening?analyst=1");
+  await waitForMap(page);
+  await expect(page.locator("[data-region=method-explore-link]").filter({ visible: true })).toHaveAttribute(
+    "href",
+    "/explore"
+  );
 });
 
 test("a keyboard reaches the picker and every chart's numbers, and a screen reader hears each chart's words", async ({

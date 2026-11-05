@@ -55,6 +55,8 @@ export const HOME = Object.freeze({
   },
   skip: "Skip to the main content",
   open: "Open the list",
+  // Beside the list's buttons, and in the footer: the charts of every school.
+  explore: LAYOUT.explore,
 
   hero: {
     eyebrow: "Planning school inspections in Papua New Guinea",
@@ -209,6 +211,7 @@ export const HOME = Object.freeze({
     contactTitle: "Contact",
     links: {
       open: "Open the list",
+      explore: LAYOUT.explore,
       queue: "Schools not in the list yet",
       guides: "Open the guides",
     },

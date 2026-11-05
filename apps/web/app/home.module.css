@@ -455,6 +455,12 @@
   text-decoration-color: color-mix(in srgb, var(--navy) 30%, transparent);
   text-underline-offset: 4px;
 }
+/* Beside the hero's two buttons, a link with less weight than either: it sits on their centre line. */
+.actionLink {
+  align-self: center;
+  margin-top: 0;
+  margin-inline-start: 4px;
+}
 .arrowLink::after {
   content: "";
   flex: none;

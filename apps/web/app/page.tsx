@@ -25,11 +25,15 @@ export const metadata: Metadata = {
   description: HOME.meta.description,
 };
 
-/** Where the homepage's links go in the tool: the list, its "Not in the list yet" tab, and the guides' first card. */
+/**
+ * Where the homepage's links go in the tool: the list, its "Not in the list yet" tab, the guides' first card, and the
+ * explore page's charts of every school.
+ */
 const TOOL = {
   list: "/screening",
   queue: "/screening?view=queue",
   guides: "/screening?guide=start",
+  explore: "/explore",
 } as const;
 
 /** The main method's weights as the bar draws them: school need, district context, then the four smaller parts. */
@@ -180,6 +184,7 @@ export default async function HomePage() {
   const { example } = HOME.use;
   const footerLinks = [
     [HOME.footer.links.open, TOOL.list],
+    [HOME.footer.links.explore, TOOL.explore],
     [HOME.footer.links.queue, TOOL.queue],
     [HOME.footer.links.guides, TOOL.guides],
   ] as const;
@@ -222,6 +227,9 @@ export default async function HomePage() {
                 </a>
                 <a className={`${styles.button} ${styles.secondary}`} href="#how">
                   {HOME.hero.how}
+                </a>
+                <a className={`${styles.arrowLink} ${styles.actionLink}`} href={TOOL.explore}>
+                  {HOME.explore}
                 </a>
               </div>
               <p className={styles.who}>

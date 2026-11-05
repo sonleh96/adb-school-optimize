@@ -164,6 +164,13 @@
   gap: 4px 8px;
   margin-top: 10px;
 }
+/* The way to the explore page's charts, a line of its own under the rules. */
+.exploreLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
 .otherNames {
   display: inline-flex;
   flex-wrap: wrap;
