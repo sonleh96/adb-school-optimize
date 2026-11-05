@@ -308,6 +308,53 @@ def crowded_records() -> tuple[SchoolRecord, ...]:
     return placed([*valley, *frame])
 
 
+# The explore page's province chart: a province name longer than any real one, a province with no school in the list,
+# records with no province at all (so no schools row, which needs one), and a record to verify for each way the chart
+# counts a reason, the record with both a missing count and 0 classrooms among them.
+PROVINCE_42 = "Autonomous Region of the Far Eastern Isles"
+NO_PROVINCE = ("Nowhere Top 01", "Nowhere Missing")
+
+
+def provinces_records() -> tuple[SchoolRecord, ...]:
+    """Twenty-four complete schools, two range schools and eight records to verify, in five provinces and none.
+
+    Four complete schools are so little in need that they rank 21st to 24th under every rule, so the top 20 is the
+    other twenty: 8 in North, 4 in South, 5 in East, 2 in the long-named province and 1 with no province.
+    """
+
+    def at(r: SchoolRecord, province: str | None) -> SchoolRecord:
+        return replace(r, province=province, district=None if province is None else f"{province} District")
+
+    north, south, east, west = "North Province", "South Province", "East Province", "West Province"
+    top = [
+        *[at(complete_record(i, f"North Top {i + 1:02d}"), north) for i in range(8)],
+        *[at(complete_record(8 + i, f"South Top {i + 1:02d}"), south) for i in range(4)],
+        *[at(complete_record(12 + i, f"East Top {i + 1:02d}"), east) for i in range(5)],
+        *[at(complete_record(17 + i, f"Isles Top {i + 1:02d}"), PROVINCE_42) for i in range(2)],
+        at(complete_record(19, NO_PROVINCE[0]), None),
+    ]
+    little = [
+        at(record(f"{name} Little {i + 1:02d}", **LITTLE_NEED), province)
+        for name, province in (("South", south), ("Isles", PROVINCE_42))
+        for i in range(2)
+    ]
+    ranges = [
+        at(complete_record(3, "North Range", aqi_p95_selected=None), north),
+        at(complete_record(5, "Isles Range", aqi_p95_selected=None), PROVINCE_42),
+    ]
+    queued = [
+        at(complete_record(2, "North Missing", teachers=None), north),
+        at(complete_record(4, "South Zero Classrooms", total_classrooms=0.0), south),
+        at(complete_record(6, "East Missing And Zero", teachers=None, total_classrooms=0.0), east),
+        at(complete_record(7, "East Zero Teachers", teachers=0.0), east),
+        at(complete_record(9, "Isles Zero Classrooms", total_classrooms=0.0), PROVINCE_42),
+        at(complete_record(1, "West Missing", libraries=None), west),
+        at(complete_record(5, "West Reach", walking_catchment_population=None), west),
+        at(complete_record(8, NO_PROVINCE[1], power_source=None), None),
+    ]
+    return (*top, *little, *ranges, *queued)
+
+
 def _name(row: dict) -> str:
     return row["school"]["source_school_name"]
 
@@ -364,6 +411,35 @@ def _is_one_complete_school(rows: list[dict]) -> bool:
     return len(rows) == 1 and rows[0]["cohort"] == "complete"
 
 
+def _has_top_20_without_the_little_need_schools(rows: list[dict]) -> bool:
+    complete = [r for r in rows if r["cohort"] == "complete"]
+    top = [_name(r) for r in complete if r["point_rank"]["rank"] <= 20]
+    return len(complete) == 24 and len(top) == 20 and not any(" Little " in name for name in top)
+
+
+def _has_each_reason_the_province_chart_counts(rows: list[dict]) -> bool:
+    queued = {_name(r): set(r["gate_failures"]) for r in rows if r["cohort"] == "verification_queue"}
+    return queued == {
+        "North Missing": {"missing_stock_field"},
+        "South Zero Classrooms": {"nonpositive_denominator"},
+        "East Missing And Zero": {"missing_stock_field", "nonpositive_denominator"},
+        "East Zero Teachers": {"nonpositive_denominator"},
+        "Isles Zero Classrooms": {"nonpositive_denominator"},
+        "West Missing": {"missing_stock_field"},
+        "West Reach": {"unresolved_reach"},
+        "Nowhere Missing": {"missing_stock_field"},
+    }
+
+
+def _has_records_with_no_province(rows: list[dict]) -> bool:
+    return {_name(r) for r in rows if r["school"]["province"] is None} == set(NO_PROVINCE)
+
+
+def _has_province_with_no_school_in_the_list(rows: list[dict]) -> bool:
+    west = [r for r in rows if r["school"]["province"] == "West Province"]
+    return len(west) == 2 and all(r["cohort"] == "verification_queue" for r in west)
+
+
 WORST_NAMES_CLAIMS = (
     ("a 72-character name with diacritics", _has_72_character_name_with_diacritics),
     ("a 59-character name with no break opportunity", _has_59_character_name_with_no_break),
@@ -386,6 +462,12 @@ def _has_first_ten_in_the_valley(rows: list[dict]) -> bool:
 
 
 CROWDED_CLAIMS = (("the first ten places all in the valley", _has_first_ten_in_the_valley),)
+PROVINCES_CLAIMS = (
+    ("a top 20 without the four little-need schools", _has_top_20_without_the_little_need_schools),
+    ("each record to verify with the reasons its name gives", _has_each_reason_the_province_chart_counts),
+    ("records with no province, one in the list and one not", _has_records_with_no_province),
+    ("a province with no school in the list", _has_province_with_no_school_in_the_list),
+)
 
 
 def datasets() -> tuple[Dataset, ...]:
@@ -456,6 +538,16 @@ def datasets() -> tuple[Dataset, ...]:
             persistence_no_u={"Valley 01": (1.0, 1.0, 1.0)},
             claims=CROWDED_CLAIMS,
             positions=(*CROWDED_POSITIONS, *FRAME_POSITIONS),
+        ),
+        Dataset(
+            name="provinces",
+            directory="provinces",
+            records=provinces_records(),
+            persistence={"North Top 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"North Top 01": (1.0, 1.0, 1.0)},
+            # The schools table needs a province, so a record without one has no row there, and no coordinates.
+            without_coordinates=NO_PROVINCE,
+            claims=PROVINCES_CLAIMS,
         ),
         # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
         Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
