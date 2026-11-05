@@ -274,6 +274,20 @@
   font-weight: 600;
   color: var(--ink-2);
 }
+/* The marked school outside the top 20 whose parts cannot be drawn: its rank and a sentence, where its bar would be. */
+.undrawn {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 3px 6px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.undrawn b {
+  font-weight: 600;
+  color: var(--ink);
+}
 
 /* The table, wider than a phone: it scrolls inside its own region, the school's name kept in view. */
 .scroll {

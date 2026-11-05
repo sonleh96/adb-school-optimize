@@ -60,6 +60,8 @@ export const DRIVERS = Object.freeze({
     unrecorded: "Not recorded: adds anything from nothing up to its full share",
     axis: "Score",
     outside: "The marked school, outside the top 20",
+    /** After the marked school's name, when its parts do not add up to its score. */
+    outsideUndrawn: "Its parts are not drawn, because the list does not show how they add up to its score.",
     /** The part or parts that add the most to the marked school's score, and what each adds, as the table writes it. */
     marked: (parts: readonly string[], adds: string) =>
       parts.length === 1

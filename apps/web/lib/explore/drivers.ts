@@ -79,6 +79,16 @@ export interface Gap {
   readonly kind: GapKind;
 }
 
+/**
+ * The marked school outside the top 20, with its bar. The bar is null when its parts do not add up to its score: then
+ * only its bar is left out, and the top 20 are still drawn.
+ */
+export interface Outside {
+  readonly id: string;
+  readonly place: Place;
+  readonly bar: Bar | null;
+}
+
 export type Drivers =
   /** The rule's score is its parts added up: the bars of the top 20, and the gaps to the 22nd place. */
   | {
@@ -87,8 +97,8 @@ export type Drivers =
       readonly pieces: readonly Piece[];
       /** The schools with a place in the top 20 and those whose range of places reaches it, in the list's order. */
       readonly bars: readonly Bar[];
-      /** The marked school's bar when it is in the list but not in the top 20, or null. */
-      readonly outside: Bar | null;
+      /** The marked school when it is in the list but not in the top 20, or null. */
+      readonly outside: Outside | null;
       /** Each pair of neighbouring places from the 1st to the 22nd, among the schools with one place. */
       readonly gaps: readonly Gap[];
     }
@@ -171,10 +181,12 @@ export function driversOf(rule: Rule, rows: readonly ListedRow[], marked: string
 
   const ordered = rows.filter(isOrdered);
   const bars = ordered.filter(inTop).map((row) => barOf(row, pieces));
+  if (bars.some((bar) => bar === null)) return { kind: "unreadable" };
   const outsideRow =
     marked === null ? undefined : ordered.find((r) => r.school.school_key === marked && !inTop(r));
-  const outside = outsideRow ? barOf(outsideRow, pieces) : null;
-  if (bars.some((bar) => bar === null) || (outsideRow && !outside)) return { kind: "unreadable" };
+  const outside = outsideRow
+    ? { id: outsideRow.school.school_key, place: placeOf(outsideRow), bar: barOf(outsideRow, pieces) }
+    : null;
   return { kind: "parts", pieces, bars: bars as Bar[], outside, gaps: gapsOf(ordered) };
 }
 
