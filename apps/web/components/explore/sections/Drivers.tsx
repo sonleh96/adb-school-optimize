@@ -10,6 +10,7 @@ import {
   driversOf,
   edgeOf,
   isNeedPart,
+  largestOf,
   largestParts,
   needLeads,
   scaleOf,
@@ -251,8 +252,8 @@ function BarsFigure({
   const anyOpen = all.some((bar) => bar.upper > bar.lower);
   const markedBar = marked === null ? undefined : all.find((bar) => bar.id === marked);
   // The part that adds the most to the marked school's score, or every part level at the most.
-  const markedMost = markedBar ? Math.max(0, ...markedBar.segments.map((s) => s.lower)) : 0;
-  const markedTop = markedBar ? markedBar.segments.filter((s) => s.lower === markedMost) : [];
+  const markedTop = markedBar ? largestOf(markedBar) : [];
+  const markedMost = Math.max(0, ...markedTop.map((s) => s.lower));
   const tenths = { "--tenths": scale.ticks.length - 1 } as CSSProperties;
 
   return (

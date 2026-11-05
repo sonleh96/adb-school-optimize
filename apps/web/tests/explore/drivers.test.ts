@@ -21,6 +21,9 @@
  *                                            "names every part that adds the most equally often"
  *  9. The scale cuts a bar short, or adds a tenth that float rounding invents
  *                                         -> "the scale reaches the largest score ..."
+ * 10. Two parts that only float rounding split read as one larger than the other, so the sentence and the marked
+ *     school's line name one of them and a count is off by one
+ *                                         -> "counts two parts that only float rounding split as level at the top"
  */
 import { describe, expect, it } from "vitest";
 
@@ -34,6 +37,7 @@ import {
   driversOf,
   edgeOf,
   gapKind,
+  largestOf,
   largestParts,
   needLeads,
   scaleOf,
@@ -326,6 +330,33 @@ describe("the counts the sentences say", () => {
         ["A", "Q"]
       )
     ).toBeNull();
+  });
+
+  it("counts two parts that only float rounding split as level at the top", () => {
+    const pieces = ["permanent_classroom_deficit", "teacher_housing_deficit", "A"] as const;
+    // 0.1 + 0.2 is 0.30000000000000004, the same figure as 0.3 left a hair apart by float rounding.
+    expect(0.1 + 0.2).not.toBe(0.3);
+    const split = bar([
+      ["permanent_classroom_deficit", 0.3],
+      ["teacher_housing_deficit", 0.1 + 0.2],
+      ["A", 0.1],
+    ]);
+    expect(largestOf(split).map((s) => s.piece)).toEqual([
+      "permanent_classroom_deficit",
+      "teacher_housing_deficit",
+    ]);
+    expect(largestParts([split], pieces)).toEqual({
+      pieces: ["permanent_classroom_deficit", "teacher_housing_deficit"],
+      count: 1,
+    });
+    // A real difference still decides, however small beside the scores.
+    const apart = bar([
+      ["permanent_classroom_deficit", 0.3],
+      ["teacher_housing_deficit", 0.3 + 1e-6],
+      ["A", 0.1],
+    ]);
+    expect(largestOf(apart).map((s) => s.piece)).toEqual(["teacher_housing_deficit"]);
+    expect(largestOf(bar([["A", 0]]))).toEqual([]);
   });
 
   it("the scale reaches the largest score, rounded up to a tenth, and no further than float noise", () => {

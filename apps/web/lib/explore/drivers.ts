@@ -226,6 +226,15 @@ export function needLeads(bars: readonly Bar[]): number {
 }
 
 /**
+ * The recorded parts that add the most to one bar's score, in the diagram's order: every part within `SAME_SCORE` of
+ * the largest, so two parts that only float rounding split are level. Empty when no part adds anything.
+ */
+export function largestOf(bar: Bar): readonly Segment[] {
+  const top = Math.max(0, ...bar.segments.map((s) => s.lower));
+  return top <= 0 ? [] : bar.segments.filter((s) => top - s.lower < SAME_SCORE);
+}
+
+/**
  * The part that is the largest recorded part of the most bars, with how many; several parts when they share the
  * count, in the diagram's order. A bar whose largest part ties counts for each. Null when no bar has a part above 0.
  */
@@ -234,11 +243,7 @@ export function largestParts(
   pieces: readonly Piece[]
 ): { readonly pieces: readonly Piece[]; readonly count: number } | null {
   const counts = new Map<Piece, number>();
-  for (const bar of bars) {
-    const top = Math.max(0, ...bar.segments.map((s) => s.lower));
-    if (top <= 0) continue;
-    for (const s of bar.segments) if (s.lower === top) counts.set(s.piece, (counts.get(s.piece) ?? 0) + 1);
-  }
+  for (const bar of bars) for (const s of largestOf(bar)) counts.set(s.piece, (counts.get(s.piece) ?? 0) + 1);
   const count = Math.max(0, ...counts.values());
   return count === 0 ? null : { pieces: pieces.filter((p) => counts.get(p) === count), count };
 }
