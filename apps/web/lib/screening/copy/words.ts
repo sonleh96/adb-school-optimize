@@ -198,6 +198,8 @@ export const LAYOUT = Object.freeze({
   meetingScript: "Meeting script",
   // Round 6: product, landmarks and states.
   howTitle: "How this works",
+  // The explore page's name, and the link to it from Help, method details and the homepage.
+  explore: "Explore all schools",
   productName: "RISE-PNG",
   productSub: "Which secondary schools to look at first",
   logoAria: "ADB logo",

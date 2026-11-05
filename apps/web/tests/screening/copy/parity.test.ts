@@ -19,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
+import * as exploreModule from "@/lib/screening/copy/explore";
 import * as later from "@/lib/screening/copy/later";
 import * as methodModule from "@/lib/screening/copy/method";
 import * as treeModule from "@/lib/screening/copy/tree";
@@ -46,7 +47,7 @@ import {
 const suite = describe.skipIf(!ready);
 
 /** Everything the port exports, the parts that load on demand included, as the prototype exports it. */
-const everything = { ...port, ...later, ...methodModule, ...treeModule };
+const everything = { ...port, ...later, ...methodModule, ...treeModule, ...exploreModule };
 
 let proto: Api;
 let datasets: Dataset[] = [];
@@ -86,6 +87,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "HOW_IT_WORKS",
       "FIRST_QUESTIONS",
       "SCORE_TREE",
+      "EXPLORE",
       "GUIDE",
       "BANNED",
       "SIGN_IN",
@@ -712,12 +714,24 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
             one(`${t} persistenceNote ${JSON.stringify(opts)}`, (api) => api.persistenceNote(near, r, opts));
           one(`${t} reasonSentence`, (api) => api.reasonSentence(s, r));
           // It reads no counts, so the module's own function stands for all three ways to call it.
-          for (const k of ["classrooms", "housing", "facilities", "services", "locality"])
+          for (const k of ["classrooms", "housing", "facilities", "services", "locality"]) {
             sameOutcome(
               `${tag} ${t} partStanding(${k})`,
               run(() => proto.partStanding(s, r, k, data.schools)),
               run(() => (port as Api).partStanding(s, r, k, data.schools))
             );
+            // The figure the explore page places the school by, which the line compares.
+            sameOutcome(
+              `${tag} ${t} partFigure(${k})`,
+              run(() => proto.partFigure(s, k)),
+              run(() => (port as Api).partFigure(s, k))
+            );
+          }
+          sameOutcome(
+            `${tag} ${t} inList`,
+            run(() => proto.inList(s, r)),
+            run(() => (port as Api).inList(s, r))
+          );
           one(`${t} topDrivers`, (api) => api.topDrivers(s, r));
           one(`${t} equalReasons`, (api) => api.equalReasons(api.topDrivers(s, r)));
           one(`${t} contributions`, (api) => api.contributions(s, r));

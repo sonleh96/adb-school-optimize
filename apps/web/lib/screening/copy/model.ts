@@ -86,6 +86,24 @@ export type FacilityField =
   | "specialized_classrooms";
 
 export type NeedParts = Readonly<Record<NeedField, number | null>>;
+
+/**
+ * One column of the explore page's chart of a part of school need: the records it holds. A share is of permanent
+ * classrooms or of teacher houses per teacher; a score is in whole points of the research team's scale (twentieths).
+ */
+export type PartStep =
+  /** A share of exactly none: no permanent classrooms, or no teacher houses. */
+  | { readonly kind: "none" }
+  /** A share above none and under the whole, by quarters: above 0 and under 1/4, then from 1/4, from 1/2 and from 3/4. */
+  | { readonly kind: "quarter"; readonly quarter: 0 | 1 | 2 | 3 }
+  /** The whole share: only permanent classrooms, or at least one teacher house per teacher. */
+  | { readonly kind: "whole" }
+  /** How many of the six facility types the record has. */
+  | { readonly kind: "count"; readonly count: number }
+  /** Power and water as the method scores them. */
+  | { readonly kind: "points"; readonly points: number }
+  /** One of the six remoteness categories, by its place on the scale. */
+  | { readonly kind: "category"; readonly index: number };
 export type AreaParts = Readonly<Record<AreaField, number | null>>;
 
 /** The school's recorded counts and sources, as the record gave them. */
