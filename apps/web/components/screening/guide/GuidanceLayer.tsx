@@ -9,7 +9,7 @@
  * Which guides the data can teach is decided here, from the loaded data (R13), so the Guides button can say how
  * many a returning user has seen without loading the guides.
  */
-import { BookOpen, BookText, CircleHelp, ListChecks, Menu as MenuIcon } from "lucide-react";
+import { BookOpen, BookText, ChartColumn, CircleHelp, ListChecks, Menu as MenuIcon } from "lucide-react";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -486,7 +486,8 @@ function PopMenu({
 /**
  * Help: the one way to every kind of help, in a fixed place, the top right of the list panel (the top bar in the
  * narrow layout). Guides opens or hides Start here, which a first visit opens on its own; Explain this screen, the
- * glossary and How this works follow. "?" and "g" still open help mode and the glossary from the keyboard.
+ * glossary and How this works follow, then the link to the explore page's charts of every school. "?" and "g" still
+ * open help mode and the glossary from the keyboard.
  */
 export function HelpMenu({ copy, ready }: { copy: BoundCopy; ready: boolean }) {
   const store = useLayerStore();
@@ -546,6 +547,10 @@ export function HelpMenu({ copy, ready }: { copy: BoundCopy; ready: boolean }) {
             <BookText size={14} aria-hidden />
             {LAYOUT.howTitle}
           </button>
+          <a href="/explore" data-region="explore-link">
+            <ChartColumn size={14} aria-hidden />
+            {LAYOUT.explore}
+          </a>
         </>
       )}
     </PopMenu>

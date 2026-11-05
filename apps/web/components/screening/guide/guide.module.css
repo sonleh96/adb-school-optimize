@@ -758,6 +758,7 @@
   }
 }
 .menuWrap .menu > button,
+.menuWrap .menu > a,
 .menuWrap .menu > form > button {
   display: flex;
   align-items: center;
@@ -783,6 +784,7 @@
 }
 @media (hover: hover) and (pointer: fine) {
   .menuWrap .menu > button:not(:disabled):hover,
+  .menuWrap .menu > a:hover,
   .menuWrap .menu > form > button:hover {
     background: rgba(21, 24, 29, 0.05);
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight } from "lucide-react";
+import { ArrowLeftRight, ChartColumn } from "lucide-react";
 import { useState } from "react";
 
 import type { BoundCopy, CopyRuleId } from "@/lib/screening/copy";
@@ -15,8 +15,8 @@ import styles from "./method.module.css";
 
 /**
  * The rule as the method details show it: its letter, label and role, its formula on demand with the diagram of how
- * much each part counts, the two main rules as tiles and the other five by name, and the way into compare mode. The
- * plain switch and statement step aside.
+ * much each part counts, the two main rules as tiles and the other five by name, the way into compare mode, and a link
+ * to the explore page's charts of every school. The plain switch and statement step aside.
  */
 export function MethodRuleArea({
   copy,
@@ -156,6 +156,14 @@ export function MethodRuleArea({
           </div>
         ) : null}
       </div>
+      <a
+        className={`${base.linkButton} ${styles.exploreLink}`}
+        href="/explore"
+        data-region="method-explore-link"
+      >
+        <ChartColumn size={13} aria-hidden />
+        {LAYOUT.explore}
+      </a>
     </section>
   );
 }

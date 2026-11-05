@@ -3,7 +3,12 @@
     "collect": {
       "startServerCommand": "node scripts/launch-ci-app.mjs",
       "startServerReadyPattern": "CI_APP_READY",
-      "url": ["http://127.0.0.1:3105/", "http://127.0.0.1:3105/screening", "http://127.0.0.1:3105/sign-in"],
+      "url": [
+        "http://127.0.0.1:3105/",
+        "http://127.0.0.1:3105/screening",
+        "http://127.0.0.1:3105/sign-in",
+        "http://127.0.0.1:3105/explore"
+      ],
       "numberOfRuns": 3,
       "settings": {
         "preset": "desktop",
@@ -17,6 +22,13 @@
           "matchingUrlPattern": "^http://[^/]+/$",
           "assertions": {
             "categories:performance": ["error", { "minScore": 0.95 }],
+            "categories:accessibility": ["error", { "minScore": 1 }]
+          }
+        },
+        {
+          "matchingUrlPattern": "/explore$",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.9 }],
             "categories:accessibility": ["error", { "minScore": 1 }]
           }
         },

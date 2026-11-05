@@ -1,0 +1,438 @@
+/*
+ * The explore page: charts of every school in the list (components/explore). The tokens copy the workspace's
+ * (components/screening/screening.module.css), and tests/screening/tokens.test.ts holds every copy to it. The words
+ * sit in one reading column; the charts sit on white cards in a grid that is one column on a phone and two from
+ * about 960 px. Nothing moves, and nothing shows only on hover.
+ */
+.page {
+  --paper: #f3f1ec;
+  --panel: #fff;
+  --ink: #111a2c;
+  --ink-2: #3d4759;
+  --ink-3: #4f596b;
+  --hair: rgba(17, 26, 44, 0.12);
+  --hair-2: rgba(17, 26, 44, 0.075);
+  --navy: #002569;
+  --navy-2: #1c5cab;
+  --edge: color-mix(in srgb, var(--navy) 10%, transparent);
+  --field-edge: rgba(17, 26, 44, 0.48);
+  --r-panel: 14px;
+  --r-control: 8px;
+  --sans: var(--font-screening-sans), system-ui, sans-serif;
+  --track-label: 0.13em;
+  --track-title: -0.02em;
+  /* The marks: the marked school takes the even map ramp's darkest step, the logo's navy, and every other school its
+     lightest, still 4:1 on the white card (lib/screening/marks.ts, RAMP_HEX). */
+  --mark-chosen: #002569;
+  --mark-other: #447dd5;
+  --wrap: 1120px;
+
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--sans);
+}
+
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 10px 14px;
+  border-radius: var(--r-control);
+  background: var(--navy);
+  color: #fff;
+  font-weight: 600;
+  transform: translateY(-160%);
+}
+.skip:focus {
+  transform: none;
+}
+
+/* The masthead: the logo and the product's name, as the tool sets them, and the way to the list. */
+.masthead {
+  background: var(--panel);
+  border-bottom: 1px solid var(--hair);
+}
+.mastInner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 10px 20px;
+}
+.logo {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+.mastName {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mastSub {
+  color: var(--ink-3);
+  font-size: 13px;
+  line-height: 1.3;
+}
+.mastLink {
+  flex: none;
+  margin-left: auto;
+  padding: 9px 14px;
+  border: 1.5px solid var(--navy);
+  border-radius: var(--r-control);
+  color: var(--navy);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 18px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .mastLink:hover {
+    background: color-mix(in srgb, var(--navy) 6%, transparent);
+  }
+}
+@media (max-width: 599px) {
+  .mastSub {
+    display: none;
+  }
+}
+
+.main {
+  max-width: var(--wrap);
+  margin: 0 auto;
+  padding: 32px 20px 56px;
+}
+.charts:focus {
+  outline: none;
+}
+.intro {
+  max-width: 46em;
+}
+.title {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: var(--track-title);
+}
+.lede {
+  margin-top: 10px;
+  font-size: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+@media (max-width: 599px) {
+  .title {
+    font-size: 26px;
+  }
+  .lede {
+    font-size: 16px;
+  }
+}
+
+/* The page's states while the data loads, when it fails and when there is none. */
+.state {
+  margin-top: 28px;
+  color: var(--ink-2);
+}
+.retry {
+  margin-top: 8px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--navy);
+  border-radius: var(--r-control);
+  color: var(--navy);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The one control, above everything it marks: a school chosen here is marked in every chart. */
+.controls {
+  margin-top: 24px;
+  max-width: 46em;
+}
+.label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+}
+.select {
+  display: block;
+  width: min(100%, 420px);
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 15px;
+}
+.hint,
+.scope,
+.note {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.note {
+  color: var(--ink-2);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mark-other);
+}
+.key[data-chosen] {
+  width: 12px;
+  height: 12px;
+  background: var(--mark-chosen);
+}
+
+.section {
+  margin-top: 36px;
+}
+.question {
+  max-width: 40em;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: var(--track-title);
+  text-wrap: balance;
+}
+.sectionLede {
+  max-width: 46em;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+/* One part of school need: its answer, its dots, what the axis measures, then the marked school and the table. */
+.part {
+  min-width: 0;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+}
+.partTitle {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.most {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.plot {
+  container-type: inline-size;
+  margin-top: 14px;
+}
+.svg {
+  display: block;
+  overflow: visible;
+}
+.baseline {
+  stroke: rgba(17, 26, 44, 0.32);
+  stroke-width: 1;
+}
+.edgeTick {
+  stroke: rgba(17, 26, 44, 0.32);
+  stroke-width: 1;
+}
+.dot {
+  fill: var(--mark-other);
+}
+/* Behind the marked school's column: a light navy wash, not a mark, so it carries no meaning of its own. */
+.wash {
+  fill: color-mix(in srgb, var(--navy) 7%, transparent);
+}
+.chosen {
+  fill: var(--mark-chosen);
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+/* A column's label is as wide as its column and wraps inside it, so it can never reach a neighbour's; a quarter's
+   line has its label centred on it. */
+.ticks {
+  position: relative;
+  height: 32px;
+  margin-top: 4px;
+}
+.ticks > span {
+  position: absolute;
+  top: 0;
+  font-size: 11.5px;
+  line-height: 14px;
+  color: var(--ink-3);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ticks > [data-tick="step"] {
+  left: calc((var(--at) - var(--room) / 2) * 100%);
+  width: calc(var(--room) * 100%);
+  padding-inline: 2px;
+}
+.ticks > [data-tick="edge"] {
+  left: calc(var(--at) * 100%);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+/* Six remoteness categories do not fit under a phone's narrow columns: only the two ends are named there, each over
+   the next column too, and the table names them all. */
+@container (max-width: 419px) {
+  .ticks[data-kind="category"] > span:not(:first-child):not(:last-child) {
+    display: none;
+  }
+  .ticks[data-kind="category"] > span:first-child {
+    width: calc(var(--room) * 200%);
+    text-align: left;
+  }
+  .ticks[data-kind="category"] > span:last-child {
+    left: calc((var(--at) - var(--room) * 1.5) * 100%);
+    width: calc(var(--room) * 200%);
+    text-align: right;
+  }
+}
+.axis {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+.chosenLine {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.chosenLine .key {
+  margin-top: 4px;
+}
+.chosenLine b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.toggle {
+  margin-top: 10px;
+  padding: 4px 0;
+  color: var(--navy);
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--navy) 35%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.table {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+.table th,
+.table td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid var(--hair-2);
+  text-align: left;
+  vertical-align: top;
+}
+.table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.table tbody th {
+  font-weight: 400;
+}
+.table td,
+.table thead th:last-child {
+  text-align: right;
+}
+.table tr[data-marked] th {
+  font-weight: 600;
+}
+.marked {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Under the lede, before the charts: what the charts can and cannot say. */
+.caveat {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.select:focus-visible,
+.toggle:focus-visible,
+.retry:focus-visible,
+.mastLink:focus-visible,
+.skip:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+  .dot {
+    fill: GrayText;
+  }
+  .chosen {
+    fill: Highlight;
+    stroke: Canvas;
+  }
+  .baseline,
+  .edgeTick {
+    stroke: CanvasText;
+  }
+  .wash {
+    fill: transparent;
+    stroke: Highlight;
+  }
+  .key {
+    forced-color-adjust: none;
+    background: GrayText;
+  }
+  .key[data-chosen] {
+    background: Highlight;
+  }
+}

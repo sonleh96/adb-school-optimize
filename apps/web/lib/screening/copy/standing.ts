@@ -206,7 +206,15 @@ function then(count: number, others: number): Who {
 const clause = (who: Who, what: Said): string => `${who.text} ${who.one ? what.one : what.many}`;
 
 /** The school is one of the schools the rule puts in order: it has a rank or a range of ranks under it. */
-const inList = (school: CopySchool, ruleId: CopyRuleId): boolean => school.results?.[ruleId] != null;
+export const inList = (school: CopySchool, ruleId: CopyRuleId): boolean => school.results?.[ruleId] != null;
+
+/**
+ * The figure the line compares for the part `key`, or null when the record gives none: the share of permanent
+ * classrooms or of teacher houses per teacher, each up to one; how many of the six facility types the record has; and
+ * power and water, and remoteness, in whole points of the research team's scale. The explore page's charts place each
+ * school by it, so a chart and its line can never disagree.
+ */
+export const partFigure = (school: CopySchool, key: NeedKey): number | null => PARTS[key].figure(school);
 
 /**
  * One line on how `school`'s record for the part `key` compares with the other schools `list` holds in order under
