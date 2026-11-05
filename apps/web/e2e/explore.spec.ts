@@ -16,6 +16,8 @@
  *                                        -> "fits a 390 and a 360 px phone ..."
  *  7. With no data, or a read that fails, the page shows nothing a reader can act on, or never recovers
  *                                        -> "says when there is no data, and recovers from a failed read"
+ *  8. The power-and-water chart spaces only the scores the list holds evenly, with nothing saying so, so 0.2 next to
+ *     0.6 reads as a linear scale       -> "says the power-and-water columns are only the scores the list holds"
  * Sign-in is checked in auth-static.spec.ts with the other pages, and the first load in scripts/check-bundle-budget.mjs.
  */
 import { readFileSync } from "node:fs";
@@ -346,6 +348,21 @@ for (const size of [
       }
     }
   });
+
+test("says the power-and-water columns are only the scores the list holds, and no other chart says it", async ({
+  page,
+}) => {
+  await openExplore(page);
+  for (const key of PARTS) {
+    const spacing = figureOf(page, key).locator("[data-region=spacing]");
+    if (key !== "services") {
+      await expect(spacing, key).toHaveCount(0);
+      continue;
+    }
+    await expect(spacing).toBeVisible();
+    await expect(spacing).toHaveText(EXPLORE.parts.services.spacing!);
+  }
+});
 
 test("says when there is no data, and recovers from a failed read", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");

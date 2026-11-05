@@ -151,6 +151,11 @@ export function PartChart({ chart, marked }: { chart: PartColumns; marked: Marke
         </div>
       </div>
       <p className={styles.axis}>{words.axis}</p>
+      {words.spacing ? (
+        <p className={styles.axis} data-region="spacing">
+          {words.spacing}
+        </p>
+      ) : null}
       <p className={styles.axis}>{words.direction}</p>
       {chart.unrecorded.length > 0 ? (
         <p className={styles.note}>{EXPLORE.unrecorded(chart.unrecorded.length)}</p>
