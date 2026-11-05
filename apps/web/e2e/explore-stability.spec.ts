@@ -27,6 +27,8 @@
  *                                        -> "names each column's range under it ..."
  * 11. The earlier method's test is offered but cannot be pressed, with no reason, while its list loads or after it
  *     fails; or the dot plot has no Retry   -> "says in the dot plot why the earlier method's test cannot be shown ..."
+ * 12. A middle column's label is a bare number with no unit beside it, so "under 10" reads as a count of schools
+ *                                        -> "gives the middle columns' numbers their unit ..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -709,6 +711,21 @@ for (const size of [
       await expect(scale).toHaveText(W.frequencies.notToScale("80%", true));
       expect(await scale.evaluate((p) => p.previousElementSibling?.textContent)).toBe(W.frequencies.axis);
     }
+  });
+
+for (const width of [1440, 360])
+  test(`gives the middle columns' numbers their unit, on the line under them, at ${width} px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openExplore(page);
+    const labels = frequencies(page).locator("[data-region=frequency-columns] > span");
+    const bare = (await labels.allTextContents()).filter((label) => /\d/.test(label) && !label.includes("%"));
+    expect(bare.length, "the middle labels are bare numbers").toBeGreaterThan(0);
+    // The words straight after the drawing are the axis line, and they name the unit.
+    const axis = frequencies(page).locator("div:has(> [data-region=frequency-columns]) + p");
+    await expect(axis).toBeVisible();
+    expect((await axis.textContent())!.toLowerCase()).toContain("per cent");
   });
 
 test("says in the dot plot why the earlier method's test cannot be shown yet, and retries it there", async ({

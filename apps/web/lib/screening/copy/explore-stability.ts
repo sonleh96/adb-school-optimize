@@ -92,7 +92,8 @@ export const EXPLORE_STABILITY = Object.freeze({
     /** Under the switch, while the earlier method's list is on its way, and when it did not arrive. */
     urgencyLoading: "Loading the earlier method's test.",
     urgencyFailed: "The earlier method's list did not load, so its test cannot be shown.",
-    axis: "Share of runs in which the school stayed in the top 20",
+    /** Under the column labels: it gives their unit, since only the two end labels carry the per cent sign. */
+    axis: "Per cent of runs in which the school stayed in the top 20",
     /*
      * The method details' words for one school's shares (`METHOD.insp.frequencies`, which loads only with the method
      * details), the same here so the two drawings read alike; a test holds them equal.
@@ -118,9 +119,9 @@ export const EXPLORE_STABILITY = Object.freeze({
     caveat: "Each is a share of runs under declared scenarios, not a probability that the school needs help.",
     /**
      * A column's range under the chart, short enough to wrap between its words inside a phone's narrow column: "0%",
-     * "under 10", "10 to 50", "78.9 to 80", "over 81.1", "100%". The two end columns carry the per cent sign for the
-     * ranges between them, since "81.1%" is wider than a column on a 360 px phone. The table names each range in full
-     * (`bin`).
+     * "under 10", "10 to 50", "78.9 to 80", "over 81.1", "100%". Only the two end columns carry the per cent sign,
+     * since "81.1%" is wider than a column on a 360 px phone; the axis line under the labels names the unit for the
+     * ranges between them (`axis`). The table names each range in full (`bin`).
      */
     column: (bin: FrequencyBin): string => {
       const n = (at: number) => formatPercent(at).slice(0, -1);
