@@ -80,6 +80,7 @@ describe("the explore page's words", () => {
       check(`${key}.title`, words.title, false);
       check(`${key}.axis`, words.axis, false);
       check(`${key}.direction`, words.direction, true);
+      if (words.spacing) check(`${key}.spacing`, words.spacing, true);
       for (const quarter of [1, 2, 3] as const)
         if (words.edge) check(`${key}.edge`, words.edge(quarter), false);
       for (const step of STEPS[key]) {

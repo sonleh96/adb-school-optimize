@@ -21,6 +21,11 @@
  *                                            "names every part that adds the most equally often"
  *  9. The scale cuts a bar short, or adds a tenth that float rounding invents
  *                                         -> "the scale reaches the largest score ..."
+ * 10. Two parts that only float rounding split read as one larger than the other, so the sentence and the marked
+ *     school's line name one of them and a count is off by one
+ *                                         -> "counts two parts that only float rounding split as level at the top"
+ * 11. The marked school outside the top 20 has a part missing, and the whole section reads "not drawn" instead of
+ *     leaving out only that school's bar   -> "leaves out only the marked school's bar when its parts cannot be drawn"
  */
 import { describe, expect, it } from "vitest";
 
@@ -29,16 +34,17 @@ import {
   CLOSE_CALL,
   type Drivers,
   PAST,
-  SAME_SCORE,
   TOP,
   drawnOf,
   driversOf,
   edgeOf,
   gapKind,
+  largestOf,
   largestParts,
   needLeads,
   scaleOf,
 } from "@/lib/explore/drivers";
+import { SAME_SCORE } from "@/lib/screening/copy/rank";
 import { placeOf } from "@/lib/screening/list";
 import { parseWith } from "@/lib/screening/schema";
 import { type ListedRow, type Rule, resultsResponse, rulesResponse } from "@/lib/screening/types";
@@ -231,6 +237,7 @@ describe("driversOf", () => {
     const far = rows.find((r) => r.cohort === "complete" && r.point_rank.rank === 24)!.school.school_key;
     const marked = partsOf(driversOf(rule, rows, far));
     expect(marked.outside?.id).toBe(far);
+    expect(marked.outside?.bar?.id).toBe(far);
     expect(marked.bars.map((b) => b.id)).not.toContain(far);
     expect(placeOf(rows.find((r) => r.school.school_key === far)!)).toEqual(marked.outside?.place);
 
@@ -241,6 +248,34 @@ describe("driversOf", () => {
     const main = rowsOf("additive_no_u");
     const queued = main.find((r) => r.cohort === "verification_queue")!.school.school_key;
     expect(partsOf(driversOf(ruleOf("additive_no_u"), main, queued)).outside).toBeNull();
+  });
+});
+
+describe("a marked school whose parts cannot be drawn", () => {
+  it("leaves out only the marked school's bar when its parts cannot be drawn", () => {
+    const rows = rowsOf("additive_no_u", "drivers");
+    const rule = ruleOf("additive_no_u", "drivers");
+    const far = rows.find((r) => r.cohort === "complete" && r.point_rank.rank === 24)!;
+    const key = far.school.school_key;
+    // The API gives no figure for one of its parts, so its parts cannot be added up to its score.
+    const broken = rows.map((r) =>
+      r === far
+        ? { ...r, need_part_contributions: { ...r.need_part_contributions!, service_deficit: null } }
+        : r
+    ) as ListedRow[];
+    const unmarked = partsOf(driversOf(rule, broken, null));
+    const marked = partsOf(driversOf(rule, broken, key));
+    expect(marked.bars).toEqual(unmarked.bars);
+    expect(marked.gaps).toEqual(unmarked.gaps);
+    expect(marked.outside).toEqual({ id: key, place: placeOf(far), bar: null });
+    // A top-20 school whose parts cannot be added up still leaves the whole list undrawn: its bar would be false.
+    const top = rows.find((r) => r.cohort === "complete" && r.point_rank.rank === 3)!;
+    const brokenTop = rows.map((r) =>
+      r === top
+        ? { ...r, need_part_contributions: { ...r.need_part_contributions!, service_deficit: null } }
+        : r
+    ) as ListedRow[];
+    expect(driversOf(rule, brokenTop, null).kind).toBe("unreadable");
   });
 });
 
@@ -326,6 +361,33 @@ describe("the counts the sentences say", () => {
         ["A", "Q"]
       )
     ).toBeNull();
+  });
+
+  it("counts two parts that only float rounding split as level at the top", () => {
+    const pieces = ["permanent_classroom_deficit", "teacher_housing_deficit", "A"] as const;
+    // 0.1 + 0.2 is 0.30000000000000004, the same figure as 0.3 left a hair apart by float rounding.
+    expect(0.1 + 0.2).not.toBe(0.3);
+    const split = bar([
+      ["permanent_classroom_deficit", 0.3],
+      ["teacher_housing_deficit", 0.1 + 0.2],
+      ["A", 0.1],
+    ]);
+    expect(largestOf(split).map((s) => s.piece)).toEqual([
+      "permanent_classroom_deficit",
+      "teacher_housing_deficit",
+    ]);
+    expect(largestParts([split], pieces)).toEqual({
+      pieces: ["permanent_classroom_deficit", "teacher_housing_deficit"],
+      count: 1,
+    });
+    // A real difference still decides, however small beside the scores.
+    const apart = bar([
+      ["permanent_classroom_deficit", 0.3],
+      ["teacher_housing_deficit", 0.3 + 1e-6],
+      ["A", 0.1],
+    ]);
+    expect(largestOf(apart).map((s) => s.piece)).toEqual(["teacher_housing_deficit"]);
+    expect(largestOf(bar([["A", 0]]))).toEqual([]);
   });
 
   it("the scale reaches the largest score, rounded up to a tenth, and no further than float noise", () => {

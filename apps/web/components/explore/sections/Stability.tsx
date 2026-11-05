@@ -26,31 +26,33 @@ const TESTED: readonly PersistenceRule[] = ["additive_no_u", "additive_u"];
 const isTested = (rule: CopyRuleId): rule is PersistenceRule => (TESTED as readonly string[]).includes(rule);
 
 /**
- * How far ahead of the screen the section starts reading the other rules' lists: a screen and a half, so they are in
- * by the time a reader scrolls to it, and a reader who never does reads none of them.
+ * The section reads the other rules' lists once it reaches the screen, and not before. Any look-ahead measured in
+ * screens fires on first load on a desktop, where set 2 starts about 1,700 px down; at a screen and a half that cost
+ * readers who never scrolled about 265 KiB of lists. With none, a reader who never reaches the section reads none of
+ * them on any screen, and one whose screen already shows it reads them at once.
  */
-const AHEAD = "150% 0px";
+const AHEAD = "0px";
 
-/** True once the element has come within `AHEAD` of the screen; it stays true. */
-function useNear(element: React.RefObject<HTMLElement | null>): boolean {
-  const [near, setNear] = useState(false);
+/** True once the element has reached the screen; it stays true. */
+function useOnScreen(element: React.RefObject<HTMLElement | null>): boolean {
+  const [onScreen, setOnScreen] = useState(false);
   useEffect(() => {
     const target = element.current;
-    if (near || !target) return;
+    if (onScreen || !target) return;
     if (typeof IntersectionObserver === "undefined") {
-      setNear(true);
+      setOnScreen(true);
       return;
     }
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) setNear(true);
+        if (entries.some((entry) => entry.isIntersecting)) setOnScreen(true);
       },
       { rootMargin: AHEAD }
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [element, near]);
-  return near;
+  }, [element, onScreen]);
+  return onScreen;
 }
 
 /**
@@ -59,7 +61,7 @@ function useNear(element: React.RefObject<HTMLElement | null>): boolean {
  * the school the picker marks.
  *
  * The page's first load reads only the shown rule's list, which carries that rule's own test. The other rules' lists
- * are read when the section comes near the screen, by the hook every list is read by, so the earlier method's list is
+ * are read when the section reaches the screen, by the hook every list is read by, so the earlier method's list is
  * one read whichever section asks for it first. Until they are in, the shown rule's test is drawn and the chart of
  * ranks says it is loading; a list that fails offers Retry there, and the rest of the page stays as it is.
  */
@@ -83,9 +85,11 @@ export function Stability({
   const { rule, copy, schools } = bound;
   const { rules, results, inputs } = data;
   const host = useRef<HTMLElement>(null);
-  const near = useNear(host);
+  const onScreen = useOnScreen(host);
   const offers = (id: string) => rules.rules.some((r) => r.rule_id === id);
-  const asked = BUMP_RULES.map((id) => (near && id !== rule && offers(id) ? { rule: id as RuleId } : null));
+  const asked = BUMP_RULES.map((id) =>
+    onScreen && id !== rule && offers(id) ? { rule: id as RuleId } : null
+  );
   const reads = [
     useScreeningResults(asked[0]),
     useScreeningResults(asked[1]),
@@ -100,7 +104,7 @@ export function Stability({
     asked[i] !== null && read.data?.run.rule_id === asked[i]!.rule ? [read.data] : []
   );
   const failed = reads.some((read, i) => asked[i] !== null && read.isError);
-  const ready = near && lists.length === asked.filter((a) => a !== null).length;
+  const ready = onScreen && lists.length === asked.filter((a) => a !== null).length;
   const urgencyList = lists.find((list) => list.run.rule_id === "additive_u") ?? null;
 
   const markedId = marked?.id ?? null;
@@ -167,7 +171,7 @@ export function Stability({
       className={explore.section}
       aria-labelledby="explore-stability"
       data-region="stability"
-      data-lists={ready ? "ready" : failed ? "failed" : near ? "loading" : "waiting"}
+      data-lists={ready ? "ready" : failed ? "failed" : onScreen ? "loading" : "waiting"}
     >
       <h2 id="explore-stability" className={explore.question}>
         {W.question}

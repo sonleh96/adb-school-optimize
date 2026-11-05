@@ -6,7 +6,9 @@
  *
  * The five parts of school need take the five even steps of the map's navy ramp (lib/screening/marks.ts, RAMP_HEX),
  * in an order that puts at least two steps between neighbours, so two parts side by side never look alike; the other
- * inputs share one grey. Every mark keeps 3:1 on the white card (tests/explore/drivers-marks.test.ts).
+ * inputs share one grey. The two darkest steps, classrooms and power and water, still look alike in the legend, so
+ * power and water also carries a light diagonal hatch, on its key and in every bar. Every mark keeps 3:1 on the white
+ * card (tests/explore/drivers-marks.test.ts).
  */
 .figure {
   container: drivers / inline-size;
@@ -14,6 +16,8 @@
   --part-housing: #20509e;
   --part-facilities: #447dd5;
   --part-services: #0f3a83;
+  /* The hatch over power and water: a light tint of its own blue, 5:1 against it, so the lines show at 10 px. */
+  --part-hatch: #9fb5dc;
   --part-locality: #3266b9;
   --part-other: #868b95;
   /* The ring of a figure that is not recorded: the map's range ring (lib/screening/marks.ts, RANGE_RING_HEX). */
@@ -203,7 +207,8 @@
 }
 .seg[data-piece="service_deficit"],
 .swatch[data-piece="service_deficit"] {
-  background: var(--part-services);
+  background-color: var(--part-services);
+  background-image: repeating-linear-gradient(135deg, var(--part-hatch) 0 1.5px, transparent 1.5px 4.5px);
 }
 .seg[data-piece="locality_disadvantage"],
 .swatch[data-piece="locality_disadvantage"] {
@@ -273,6 +278,20 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-2);
+}
+/* The marked school outside the top 20 whose parts cannot be drawn: its rank and a sentence, where its bar would be. */
+.undrawn {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 3px 6px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.undrawn b {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 /* The table, wider than a phone: it scrolls inside its own region, the school's name kept in view. */

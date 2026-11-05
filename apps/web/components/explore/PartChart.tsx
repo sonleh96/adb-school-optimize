@@ -4,6 +4,7 @@ import { type CSSProperties, useId, useLayoutEffect, useMemo, useRef, useState }
 
 import { stackDots } from "@/lib/explore/dots";
 import { type PartColumns, columnOf, raised, tallest, ticksOf } from "@/lib/explore/parts";
+import { bands } from "@/lib/explore/scale";
 import { EXPLORE } from "@/lib/screening/copy/explore";
 import { formatCount } from "@/lib/screening/copy/format";
 
@@ -60,6 +61,16 @@ export function PartChart({ chart, marked }: { chart: PartColumns; marked: Marke
   const top = tallest(chart);
   const ticks = ticksOf(chart);
   const markedColumn = marked ? columnOf(chart, marked.id) : null;
+  const markedTick =
+    chart.steps[0]?.kind === "category" &&
+    markedColumn !== null &&
+    markedColumn > 0 &&
+    markedColumn < chart.steps.length - 1
+      ? {
+          at: bands(chart.steps.length, 1).centre(markedColumn),
+          label: words.label(chart.steps[markedColumn]),
+        }
+      : null;
   const markedUnrecorded = marked !== null && chart.unrecorded.some((school) => school.id === marked.id);
   const markedDot = marked && stack ? stack.dots.find((dot) => dot.item.id === marked.id) : undefined;
   const base = stack ? ABOVE + Math.max(stack.height, stack.diameter) : 0;
@@ -149,8 +160,25 @@ export function PartChart({ chart, marked }: { chart: PartColumns; marked: Marke
             </span>
           ))}
         </div>
+        {/* A phone names only the ends of a scale of categories, so the marked school's category gets its own line,
+            under its column, below the two ends' names. */}
+        {markedTick ? (
+          <p
+            className={styles.markedTick}
+            style={{ "--at": markedTick.at } as CSSProperties}
+            data-region="marked-tick"
+            aria-hidden="true"
+          >
+            <span>{markedTick.label}</span>
+          </p>
+        ) : null}
       </div>
       <p className={styles.axis}>{words.axis}</p>
+      {words.spacing ? (
+        <p className={styles.axis} data-region="spacing">
+          {words.spacing}
+        </p>
+      ) : null}
       <p className={styles.axis}>{words.direction}</p>
       {chart.unrecorded.length > 0 ? (
         <p className={styles.note}>{EXPLORE.unrecorded(chart.unrecorded.length)}</p>

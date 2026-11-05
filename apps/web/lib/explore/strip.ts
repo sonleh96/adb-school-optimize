@@ -1,8 +1,10 @@
 /**
  * A part's strip: the explore page's chart of one part of school need, shrunk to a single row beside the card's line
- * on how the school's record compares with the list. It holds the chart's own columns, so the strip, the chart and the
- * line all place the school by the same figure (`partFigure`), among the same schools: those the rule puts in order.
- * Its columns run the chart's way, from the smallest figure to the largest, which is the way the line's "more" reads.
+ * on how the school's record compares with the list. It holds the chart's own columns, so the strip and the line place
+ * the school by the same figure (`partFigure`), among the same schools: those the card's rule puts in order. Under the
+ * main rule that is the explore page's own list; under another rule the strip counts that rule's list, which the
+ * explore page does not chart, so the card links to it only under the main rule. Its columns run the chart's way, from
+ * the smallest figure to the largest, which is the way the line's "more" reads.
  */
 import type { CopyRuleId, CopySchool, NeedKey } from "@/lib/screening/copy/model";
 

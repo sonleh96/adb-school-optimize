@@ -20,6 +20,8 @@
  *  9. The switch shows another list than the one with urgency, loses the main list, or never recovers from a failed
  *     read                               -> "the switch shows the list with urgency ..." and
  *                                           "keeps the main list while the other loads, and recovers ..."
+ * 10. The list with urgency is read before anyone asks for it, so a reader who never presses the switch pays for it
+ *                                        -> "reads the list with urgency only when the switch asks for it"
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -223,6 +225,28 @@ test("orders and names the parts as the score diagram does, and colours each as 
     for (const s of bar.segments.filter((x) => !x.open))
       expect(s.colour, `${bar.name} ${s.piece}`).toBe(swatches[s.piece] ?? swatches[otherKey]);
   }
+  // Power and water also wears a hatch, on its key and in every bar, so it is not read as classrooms' navy.
+  const patterns = await legend
+    .locator("li[data-piece-key]")
+    .evaluateAll((items) =>
+      Object.fromEntries(
+        items.map((li) => [
+          li.getAttribute("data-piece-key"),
+          getComputedStyle(li.querySelector("span")!).backgroundImage,
+        ])
+      )
+    );
+  expect(patterns["service_deficit"]).toContain("repeating-linear-gradient");
+  expect(patterns["permanent_classroom_deficit"]).toBe("none");
+  const worn = await section(page)
+    .locator("[data-region=bars] [data-piece]:not([data-open])")
+    .evaluateAll((segs) =>
+      segs.map((s) => ({
+        piece: s.getAttribute("data-piece")!,
+        pattern: getComputedStyle(s).backgroundImage,
+      }))
+    );
+  for (const s of worn) expect(s.pattern, s.piece).toBe(patterns[s.piece] ?? patterns[otherKey]);
 });
 
 test("a range school's bar runs from its lower score to its upper, its blank figure hollow at the end", async ({
@@ -496,4 +520,28 @@ test("keeps the main list while the other loads, and recovers from a failed read
   await expect(section(page).locator("[data-rule]").first()).toHaveAttribute("data-rule", "additive_u");
   await expect(section(page).getByRole("alert")).toHaveCount(0);
   await expect(section(page).locator("[aria-busy=true]")).toHaveCount(0);
+});
+
+test("reads the list with urgency only when the switch asks for it", async ({ page, context }) => {
+  await useMockDataset(context, "drivers");
+  const asked: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.endsWith("/screening/results")) asked.push(url.searchParams.get("rule")!);
+  });
+  await openDrivers(page);
+  // Straight to this question, past set 2, which reads every rule's list once it is on screen.
+  await page.locator("#explore-drivers").evaluate((heading) => heading.scrollIntoView({ block: "start" }));
+  await page.evaluate(
+    () =>
+      new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 300))))
+  );
+  await expect(page.locator("[data-region=stability]")).toHaveAttribute("data-lists", "waiting");
+  expect(asked).toEqual(["additive_no_u"]);
+
+  const radio = section(page).getByRole("radio", { name: DRIVERS.rules.urgency });
+  await expect(radio).toBeInViewport();
+  await radio.check();
+  await expect(section(page).locator("[data-rule]").first()).toHaveAttribute("data-rule", "additive_u");
+  expect(asked).toEqual(["additive_no_u", "additive_u"]);
 });

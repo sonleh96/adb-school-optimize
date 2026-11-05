@@ -104,7 +104,17 @@ function everything(): { label: string; text: string; sentence: boolean }[] {
     for (const kept of [0, 1, 2, top].filter((k) => k <= top)) add("bump.answer", B.answer(kept, top, 7));
   add("bump.what", B.what(RULE));
   add("bump.pairs", B.pairs);
-  for (const word of [B.without, B.with, B.axis, B.lane, B.table.school, B.table.none, B.table.marked])
+  for (const word of [
+    B.without,
+    B.with,
+    B.axis,
+    B.lane,
+    B.key.kept,
+    B.key.rest,
+    B.table.school,
+    B.table.none,
+    B.table.marked,
+  ])
     add("bump word", word, false);
   for (const n of [21, 22, 131, 1284]) add(`bump.closer(21, ${n})`, B.closer(21, n));
   add("bump.range", B.range);

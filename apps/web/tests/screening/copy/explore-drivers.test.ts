@@ -42,6 +42,7 @@ describe("the drivers section's words", () => {
     for (const [label, text] of [
       ["question", DRIVERS.question],
       ["bars.ranges", bars.ranges],
+      ["bars.outsideUndrawn", bars.outsideUndrawn],
       ["gaps.lede", gaps.lede],
       ["gaps.tieNote", gaps.tieNote],
       ["gaps.roundingNote", gaps.roundingNote],

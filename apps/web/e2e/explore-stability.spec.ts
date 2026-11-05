@@ -17,8 +17,9 @@
  *                                        -> "fits a ... phone with a school marked and both tables open"
  *  7. A table says something its chart does not draw
  *                                        -> "each table says what its chart draws"
- *  8. The page's first load reads every rule's list, or the earlier method's list is read twice, once for this
- *     section and once for the drivers' switch  -> "reads the other rules' lists only when set 2 comes near ..."
+ *  8. The page's first load reads another rule's list on any screen before set 2 is on it (on a desktop, set 2's
+ *     look-ahead fired at once), or the earlier method's list is read twice, once for this section and once for the
+ *     drivers' switch                    -> "reads only the main list on a first load at ... px ..."
  *  9. A failed read of another rule's list breaks the page, or Retry does not ask for it again
  *                                        -> "says in the chart when another rule's list fails, and recovers on Retry"
  * 10. A column's range under the dot plot is missing or wrong, sits under another column, or names a range its dots
@@ -26,6 +27,11 @@
  *                                        -> "names each column's range under it ..."
  * 11. The earlier method's test is offered but cannot be pressed, with no reason, while its list loads or after it
  *     fails; or the dot plot has no Retry   -> "says in the dot plot why the earlier method's test cannot be shown ..."
+ * 12. A middle column's label is a bare number with no unit beside it, so "under 10" reads as a count of schools
+ *                                        -> "gives the middle columns' numbers their unit ..."
+ * 13. The chart of ranks draws every school's line alike, so the schools that stay in the top 20 under every rule are
+ *     lost in the crossings; or the marked school is not the strongest line; or nothing says what the kinds of line
+ *     are                                -> "draws the schools in the top 20 under every rule stronger than the rest ..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -37,7 +43,7 @@ import { DRIVERS } from "../lib/screening/copy/explore-drivers";
 import { EXPLORE_STABILITY } from "../lib/screening/copy/explore-stability";
 import { LAYOUT } from "../lib/screening/copy/words";
 
-import { type MockDataset, expect, test } from "./screening-helpers";
+import { type MockDataset, expect, test, useMockDataset } from "./screening-helpers";
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -710,6 +716,101 @@ for (const size of [
     }
   });
 
+for (const width of [1440, 360])
+  test(`gives the middle columns' numbers their unit, on the line under them, at ${width} px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await openExplore(page);
+    const labels = frequencies(page).locator("[data-region=frequency-columns] > span");
+    const bare = (await labels.allTextContents()).filter((label) => /\d/.test(label) && !label.includes("%"));
+    expect(bare.length, "the middle labels are bare numbers").toBeGreaterThan(0);
+    // The words straight after the drawing are the axis line, and they name the unit.
+    const axis = frequencies(page).locator("div:has(> [data-region=frequency-columns]) + p");
+    await expect(axis).toBeVisible();
+    expect((await axis.textContent())!.toLowerCase()).toContain("per cent");
+  });
+
+test("draws the schools in the top 20 under every rule stronger than the rest, and the marked school strongest", async ({
+  page,
+  context,
+}) => {
+  // The drivers dataset has a full top 20, 13 of them kept and 7 that leave it under some rule with a line drawn.
+  await useMockDataset(context, "drivers");
+  // Kept, from the saved lists alone: certainly in the top 20 under every rule, by its rank or its range's lowest rank.
+  const lists = RULES.map(
+    (rule) => new Map(saved(rule, "drivers").rows.map((r) => [r.school.school_key, r]))
+  );
+  const certain = (row: SavedRow | undefined) =>
+    row?.cohort === "complete"
+      ? row.point_rank.scope_code === "complete_under_rule" && row.point_rank.rank! <= TOP
+      : row?.cohort === "interval"
+        ? row.rank_bounds.scope_code === "eligible" && row.rank_bounds.worst! <= TOP
+        : false;
+  const top = saved(MAIN, "drivers")
+    .rows.filter((r) => r.cohort === "complete" && r.point_rank.rank! <= TOP)
+    .map((r) => r.school.school_key);
+  const kept = new Set(top.filter((key) => lists.every((byKey) => certain(byKey.get(key)))));
+  expect(kept.size).toBeGreaterThan(0);
+  expect(kept.size).toBeLessThan(top.length);
+  // Mark a school of each kind in turn, one ranked under two neighbouring rules so it has a line: the marked line is
+  // the strongest whichever kind it is.
+  const ranked = (i: number, key: string) => {
+    const row = lists[i].get(key);
+    return row?.cohort === "complete" && row.point_rank.scope_code === "complete_under_rule";
+  };
+  const lined = (key: string) => RULES.slice(1).some((_, i) => ranked(i, key) && ranked(i + 1, key));
+  for (const markedKey of [
+    top.find((k) => kept.has(k) && lined(k))!,
+    top.find((k) => !kept.has(k) && lined(k))!,
+  ]) {
+    await openExplore(page, `?school=${markedKey}`);
+    const drawn = await bump(page)
+      .locator("svg g[data-school-key]")
+      .evaluateAll((groups) =>
+        groups.flatMap((g) => {
+          const line = g.querySelector("line");
+          if (!line) return [];
+          const style = getComputedStyle(line);
+          const [r, gr, b] = style.stroke.match(/\d+/g)!.map(Number);
+          const lin = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+          return [
+            {
+              key: g.getAttribute("data-school-key")!,
+              marked: g.hasAttribute("data-marked"),
+              width: parseFloat(style.strokeWidth),
+              luminance: 0.2126 * lin(r) + 0.7152 * lin(gr) + 0.0722 * lin(b),
+            },
+          ];
+        })
+      );
+    const marked = drawn.filter((d) => d.marked);
+    const keptLines = drawn.filter((d) => !d.marked && kept.has(d.key));
+    const rest = drawn.filter((d) => !d.marked && !kept.has(d.key));
+    expect(markedKey).toBeTruthy();
+    expect(marked.map((d) => d.key)).toEqual([markedKey]);
+    expect(keptLines.length + rest.length + 1).toBe(drawn.length);
+    // Stronger means thicker and darker: the marked school above the kept, the kept above the rest.
+    const most = (list: typeof drawn, f: (d: (typeof drawn)[number]) => number) => Math.max(...list.map(f));
+    const least = (list: typeof drawn, f: (d: (typeof drawn)[number]) => number) => Math.min(...list.map(f));
+    expect(least(keptLines, (d) => d.width)).toBeGreaterThan(most(rest, (d) => d.width));
+    expect(most(keptLines, (d) => d.luminance)).toBeLessThan(least(rest, (d) => d.luminance));
+    expect(marked[0].width).toBeGreaterThan(most(keptLines, (d) => d.width));
+    expect(marked[0].luminance).toBeLessThan(least(keptLines, (d) => d.luminance));
+    // Every line a reader follows keeps 3:1 on the white card.
+    for (const d of drawn) expect((1 + 0.05) / (d.luminance + 0.05), d.key).toBeGreaterThanOrEqual(3);
+  }
+  // One line says what the two kinds of line are, and the answer counts the stronger ones.
+  const key = bump(page).locator("[data-region=bump-key]");
+  await expect(key).toBeVisible();
+  await expect(key).toContainText(W.bump.key.kept);
+  await expect(key).toContainText(W.bump.key.rest);
+  expect(await key.evaluate((p) => p.getBoundingClientRect().height)).toBeLessThan(40);
+  await expect(bump(page).locator("[data-region=bump-answer]")).toHaveText(
+    W.bump.answer(kept.size, top.length, RULES.length)
+  );
+});
+
 test("says in the dot plot why the earlier method's test cannot be shown yet, and retries it there", async ({
   page,
   problems,
@@ -757,32 +858,52 @@ test("says in the dot plot why the earlier method's test cannot be shown yet, an
   await expect(bump(page).getByRole("alert")).toHaveCount(0);
 });
 
-test("reads the other rules' lists only when set 2 comes near, and the earlier method's once", async ({
-  page,
-}) => {
-  // A phone's screen, where set 2 starts well below the first screen and a screen and a half of reading ahead.
-  await page.setViewportSize({ width: 390, height: 844 });
-  const asked: string[] = [];
-  page.on("request", (request) => {
-    const url = new URL(request.url());
-    if (url.pathname.endsWith("/api/v1/screening/results")) asked.push(url.searchParams.get("rule")!);
+/** Lets an observer that the last layout or scroll set off report, and any read it asks for start. */
+const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 300))))
+  );
+
+for (const size of [
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1000 },
+  { width: 390, height: 844 },
+])
+  test(`reads only the main list on a first load at ${size.width} px, the others once set 2 is on screen, and the earlier method's once`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size);
+    const asked: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/v1/"))
+        asked.push(
+          url.pathname.split("/").pop()! +
+            (url.searchParams.has("rule") ? `:${url.searchParams.get("rule")}` : "")
+        );
+    });
+    await page.goto("/explore");
+    await expect(page.locator("figure[data-part] svg circle").first()).toBeVisible({ timeout: 45_000 });
+    await settle(page);
+    // Set 2 starts below the first screen, so a reader who never scrolls has no need of the other lists.
+    expect(await section(page).evaluate((s) => s.getBoundingClientRect().top)).toBeGreaterThan(size.height);
+    await expect(section(page)).toHaveAttribute("data-lists", "waiting");
+    expect([...asked].sort()).toEqual(["inputs", "results:" + MAIN, "rules"]);
+
+    await section(page).scrollIntoViewIfNeeded();
+    await expect(bump(page).locator("svg circle").first()).toBeVisible({ timeout: 45_000 });
+    expect(asked.filter((a) => a.startsWith("results:")).sort()).toEqual(
+      RULES.map((r) => "results:" + r).sort()
+    );
+
+    // The drivers' own switch to the earlier method's list finds it already read.
+    const drivers = page.locator("[data-region=drivers]");
+    await drivers.scrollIntoViewIfNeeded();
+    await drivers.getByRole("radio", { name: DRIVERS.rules.urgency }).check();
+    await expect(drivers.locator("[data-rule]").first()).toHaveAttribute("data-rule", URGENCY);
+    expect(asked.filter((a) => a === "results:" + URGENCY)).toHaveLength(1);
   });
-  await page.goto("/explore");
-  await expect(page.locator("figure[data-part] svg circle").first()).toBeVisible({ timeout: 45_000 });
-  await expect(section(page)).toHaveAttribute("data-lists", "waiting");
-  expect(asked).toEqual([MAIN]);
-
-  await section(page).scrollIntoViewIfNeeded();
-  await expect(bump(page).locator("svg circle").first()).toBeVisible({ timeout: 45_000 });
-  expect([...asked].sort()).toEqual([...RULES].sort());
-
-  // The drivers' own switch to the earlier method's list finds it already read.
-  const drivers = page.locator("[data-region=drivers]");
-  await drivers.scrollIntoViewIfNeeded();
-  await drivers.getByRole("radio", { name: DRIVERS.rules.urgency }).check();
-  await expect(drivers.locator("[data-rule]").first()).toHaveAttribute("data-rule", URGENCY);
-  expect(asked.filter((rule) => rule === URGENCY)).toHaveLength(1);
-});
 
 test("says in the chart when another rule's list fails, and recovers on Retry", async ({
   page,

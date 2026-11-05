@@ -18,6 +18,8 @@
  *     scrolls sideways                            -> "on a 390 and a 360 px phone the card stays within its limit"
  *  7. A screen reader reads a strip as well as its line, or reaches it as an image
  *                                                 -> "a screen reader reads each comparison once ..."
+ *  8. Under a rule other than the main one, the card links to charts that count the main rule's list, not the one
+ *     its lines and strips count                  -> "links to the charts only under the main rule ..."
  * The /screening first screen's pixels against the base are compared outside this suite, at eight sizes.
  */
 import { readFileSync } from "node:fs";
@@ -284,13 +286,10 @@ test("a strip shows only beside a line, under every rule", async ({ page, contex
     } else await expect(strips(card(page)), rule).toHaveCount(0);
   }
 
-  // A school whose reasons hold no part of school need has no lines, so no strip; its link closes the section.
+  // A school whose reasons hold no part of school need has no lines, so no strip.
   await openCard(page, keyOf("bottleneck_u", "Sample School 25"), "bottleneck_u");
   await expect(card(page).locator("[data-region=need-box]")).toHaveCount(0);
   await expect(strips(card(page))).toHaveCount(0);
-  await expect(card(page).locator("[data-region=inspector-why] > :last-child")).toHaveText(
-    LAYOUT.seeAmongAll
-  );
 
   // A record to verify is not in the list: no line, no strip and no link.
   const queued = rowsOf(MAIN_RULE).find((r) => r.cohort === "verification_queue")!.school.school_key;
@@ -364,6 +363,32 @@ test("the link opens the charts with the card's school marked, in the same tab, 
   await back();
   await expect(page.getByRole("switch", { name: "Show method details" })).toBeChecked();
   await expect(card(page).locator("[data-region=method-see-all]")).toBeVisible();
+});
+
+test("links to the charts only under the main rule, the one list they count", async ({ page }) => {
+  const rules = read("default", "rules.json").rules.map((r: { rule_id: string }) => r.rule_id) as string[];
+  await openCard(page, listedOf(MAIN_RULE)[0].school.school_key);
+  await expect(seeAll(page)).toHaveCount(1);
+  for (const rule of rules.filter((r) => r !== MAIN_RULE)) {
+    await openCard(page, listedOf(rule)[0].school.school_key, rule);
+    // The lines and strips count this rule's list, which the charts do not draw, so the card offers no way to them.
+    await expect(card(page).locator("[data-region=inspector-why]"), rule).toBeVisible();
+    await expect(seeAll(page), rule).toHaveCount(0);
+  }
+  // Nor do the method details under another rule, where the main rule's card has the link at their foot.
+  for (const rule of [MAIN_RULE, "additive_u"]) {
+    const school = listedOf(rule)[0].school;
+    await openWorkspace(page, rule === MAIN_RULE ? "" : `?${new URLSearchParams({ rule })}`);
+    await page.getByRole("switch", { name: "Show method details" }).click();
+    await orderedRow(page, school.source_school_name).click();
+    await expect(card(page).getByRole("heading", { name: school.source_school_name })).toBeVisible();
+    await expect(card(page).locator("[data-region=inspector-across]")).toBeVisible();
+    await expect(
+      card(page).locator("[data-region=method-see-all]").getByRole("link", { name: LAYOUT.seeAmongAll }),
+      rule
+    ).toHaveCount(rule === MAIN_RULE ? 1 : 0);
+    if (rule !== MAIN_RULE) await expect(seeAll(page), rule).toHaveCount(0);
+  }
 });
 
 test("the first screen shows no strip and no link", async ({ page }) => {

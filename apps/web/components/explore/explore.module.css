@@ -25,6 +25,8 @@
      lightest, still 4:1 on the white card (lib/screening/marks.ts, RAMP_HEX). */
   --mark-chosen: #002569;
   --mark-other: #447dd5;
+  /* The middle step, between the two: in the chart of ranks, the schools in the top 20 under every rule. */
+  --mark-kept: #20509e;
   --wrap: 1120px;
 
   min-height: 100vh;
@@ -302,9 +304,30 @@
   transform: translateX(-50%);
   white-space: nowrap;
 }
+/* The marked school's category, on a line of its own under the ticks: only a phone shows it, since wider charts name
+   every column. It is centred on its column and set in the marked school's ink. */
+.markedTick {
+  display: none;
+}
 /* Six remoteness categories do not fit under a phone's narrow columns: only the two ends are named there, each over
-   the next column too, and the table names them all. */
+   the next column too, and the table names them all. The marked school's column is named on the line below. */
 @container (max-width: 419px) {
+  .markedTick {
+    display: block;
+    position: relative;
+    height: 16px;
+  }
+  .markedTick > span {
+    position: absolute;
+    top: 0;
+    left: calc(var(--at) * 100%);
+    transform: translateX(-50%);
+    font-size: 11.5px;
+    line-height: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
   .ticks[data-kind="category"] > span:not(:first-child):not(:last-child) {
     display: none;
   }

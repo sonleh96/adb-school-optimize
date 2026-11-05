@@ -8,7 +8,8 @@
  *                         -> "shades each province by its count of the top 20, as its legend and its table say"
  *  3. The marked school's province is not outlined, another one is, or the words and the table do not say which
  *                         -> "outlines the marked school's province, whatever its shade, ..."
- *  4. A school whose province the map does not have is dropped, or drawn on a wrong shape
+ *  4. A school whose province the map does not have is dropped, or drawn on a wrong shape; or the marked school's
+ *     row among them is not tagged as marked
  *                         -> "keeps schools whose province is not on the map in words and in the table"
  *  5. On a 360 px phone the map is too small to read, the page scrolls sideways, or a key leaves the card
  *                         -> "fits a 360 px phone with the map as wide as its card"
@@ -16,6 +17,11 @@
  *                         -> "separates neighbours by the card's white and draws each pale province by its edge"
  *  7. The outlines ride in the page's script, or a file that does not arrive leaves the reader with nothing
  *                         -> "reads the outlines as a static file, and keeps every count when it does not arrive"
+ *  8. A first-time reader cannot tell which shape is which: a province with schools in the top 20 has no name on or
+ *     beside the map, a name points at another province, two names cover each other, or on a phone the names are
+ *     unreadable or shown only on hover
+ *                         -> "names each province with schools in the top 20 ..." and
+ *                            "keeps every name apart when the top 20 spread over 20 provinces, at ..."
  * Each expected count and shade is worked out here from the fixture's own rows and the legend's stated breaks.
  */
 import { readFileSync } from "node:fs";
@@ -291,6 +297,9 @@ test("keeps schools whose province is not on the map in words and in the table",
   );
   // They come after the 22 provinces of the map.
   expect(table.slice(22)).toEqual(off);
+  // The marked school's own row is tagged, as a province on the map would be, and no other row is.
+  expect(off.filter((r) => r.marked).map((r) => r.name)).toEqual([school.province]);
+  await expect(section(page).locator("table tbody tr[data-marked] th")).toContainText(EXPLORE.table.marked);
 });
 
 test("fits a 360 px phone with the map as wide as its card", async ({ page, context }) => {
@@ -409,3 +418,123 @@ test("reads the outlines as a static file, and keeps every count when it does no
   await expect(fresh.locator("[data-region=province-map-table] tbody tr")).toHaveCount(22);
   await fresh.close();
 });
+
+/** The provinces that hold the top 20 when it is spread one school each over the 20 hardest to name: every one but the
+ * two widest, so the crowded highlands, the islands and the National Capital District all need their names at once. */
+const SPREAD = Object.keys(TOWNS).filter((p) => p !== "Western" && p !== "Sandaun");
+
+/** Serves the province-map dataset's main list with its top 20 moved one each into the `SPREAD` provinces. */
+async function spreadTop20(page: Page) {
+  await page.route(
+    (url) => url.pathname.endsWith("/screening/results") && url.searchParams.get("rule") === "additive_no_u",
+    async (route) => {
+      const body = await (await route.fetch()).json();
+      let next = 0;
+      for (const row of body.rows)
+        if (row.cohort === "complete" && row.point_rank.rank <= 20) row.school.province = SPREAD[next++];
+      return route.fulfill({ json: body });
+    }
+  );
+}
+
+/** What names the map's provinces: each visible name or number, its box, and the province whose fill holds a point. */
+async function namesOf(page: Page, region: "province-map-names" | "province-map-numbers") {
+  return section(page).evaluate((root, which) => {
+    const svg = root.querySelector<SVGSVGElement>("svg")!;
+    const paths = [...root.querySelectorAll<SVGPathElement>("path[data-province]")];
+    const toMap = (x: number, y: number) => new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!.inverse());
+    const holder = (p: DOMPoint) =>
+      paths.filter((path) => path.isPointInFill(p)).map((path) => path.getAttribute("data-province"));
+    return [...root.querySelectorAll<HTMLElement>(`[data-region="${which}"] [data-province]`)]
+      .filter((el) => getComputedStyle(el).display !== "none" && el.getBoundingClientRect().width > 0)
+      .map((el) => {
+        const box = el.getBoundingClientRect();
+        const province = el.getAttribute("data-province")!;
+        const leader = root.querySelector(`line[data-leader="${province}"]`);
+        // A name on its shape is held by its centre; a name beside it, by the far end of its line.
+        const point = leader
+          ? new DOMPoint(Number(leader.getAttribute("x1")), Number(leader.getAttribute("y1")))
+          : toMap(box.x + box.width / 2, box.y + box.height / 2);
+        return {
+          province,
+          text: el.textContent!.replace(/\s+/g, " ").trim(),
+          box: { x: box.x, y: box.y, width: box.width, height: box.height },
+          heldBy: holder(point),
+        };
+      });
+  }, region);
+}
+
+type Named = Awaited<ReturnType<typeof namesOf>>[number];
+/** Two names cover each other when their boxes meet; two round numbers, when their circles do. */
+const overlaps = (a: Named["box"], b: Named["box"], round: boolean) =>
+  round
+    ? Math.hypot(a.x + a.width / 2 - (b.x + b.width / 2), a.y + a.height / 2 - (b.y + b.height / 2)) <
+      (a.width + b.width) / 2
+    : a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+function expectApartAndInside(
+  named: Named[],
+  card: { x: number; y: number; width: number; height: number },
+  round = false
+) {
+  for (const [i, a] of named.entries()) {
+    expect(a.heldBy, a.province).toEqual([a.province]);
+    expect(a.box.x, a.province).toBeGreaterThanOrEqual(card.x);
+    expect(a.box.x + a.box.width, a.province).toBeLessThanOrEqual(card.x + card.width);
+    for (const b of named.slice(i + 1))
+      expect(overlaps(a.box, b.box, round), `${a.province} / ${b.province}`).toBe(false);
+  }
+}
+
+test("names each province with schools in the top 20 on a wide map, and numbers them on a phone with a key", async ({
+  page,
+  context,
+}) => {
+  await useMockDataset(context, "province-map");
+  const tallies = talliesOf(rowsOf("province-map"));
+  const holding = [...tallies]
+    .filter(([name, t]) => name in TOWNS && t.top20 > 0)
+    .sort(([a, x], [b, y]) => y.top20 - x.top20 || a.localeCompare(b, "en"));
+  expect(holding.length).toBeGreaterThan(3);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openMap(page);
+  const names = await namesOf(page, "province-map-names");
+  expect(names.map((n) => n.province).sort()).toEqual(holding.map(([name]) => name).sort());
+  for (const n of names) expect(n.text, n.province).toBe(`${n.province} ${tallies.get(n.province)!.top20}`);
+  expectApartAndInside(names, (await section(page).locator("figure").boundingBox())!);
+  await expect(
+    section(page).locator("[data-region=province-map-numbers] [data-province]").first()
+  ).toBeHidden();
+
+  for (const width of [390, 360]) {
+    await page.setViewportSize({ width, height: 800 });
+    const numbers = await namesOf(page, "province-map-numbers");
+    expect(numbers.map((n) => n.text)).toEqual(holding.map((_, i) => String(i + 1)));
+    expect(numbers.map((n) => n.province)).toEqual(holding.map(([name]) => name));
+    expectApartAndInside(numbers, (await section(page).locator("figure").boundingBox())!, true);
+    await expect(
+      section(page).locator("[data-region=province-map-names] [data-province]").first()
+    ).toBeHidden();
+    // The key under the map names each number, in the same order, with its count: nothing needs a hover.
+    const key = section(page).locator("[data-region=province-map-key]");
+    await expect(key).toBeVisible();
+    await expect(key.locator("li")).toHaveText(holding.map(([name, t], i) => `${i + 1}${name} ${t.top20}`));
+  }
+});
+
+for (const width of [1024, 922, 390, 360])
+  test(`keeps every name apart when the top 20 spread over 20 provinces, at ${width} px`, async ({
+    page,
+    context,
+  }) => {
+    await useMockDataset(context, "province-map");
+    await spreadTop20(page);
+    await page.setViewportSize({ width, height: 900 });
+    await openMap(page);
+    const numbered = width < 600;
+    const named = await namesOf(page, numbered ? "province-map-numbers" : "province-map-names");
+    expect(named.map((n) => n.province).sort()).toEqual([...SPREAD].sort());
+    expectApartAndInside(named, (await section(page).locator("figure").boundingBox())!, numbered);
+  });

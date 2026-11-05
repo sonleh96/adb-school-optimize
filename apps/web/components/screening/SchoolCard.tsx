@@ -11,6 +11,7 @@ import {
   type InputKey,
   type ListedSchool,
   type MissingValueKind,
+  PRIMARY_RULE,
   inList,
   schoolFromDetail,
 } from "@/lib/screening/copy";
@@ -228,12 +229,12 @@ export function SchoolCard(props: CardProps) {
           record && detail.data ? (
             <>
               {methodLayer({ record, detail: detail.data })}
-              {inList(record, rule) ? (
+              {inList(record, rule) && (STRIPS_SHOWN_IN === "method details" || chartsCount(rule)) ? (
                 <div className={strips.methodFoot} data-region="method-see-all">
                   {STRIPS_SHOWN_IN === "method details" ? (
                     <PartsCompared copy={copy} rule={rule} school={record} schools={schools} />
                   ) : null}
-                  <SeeAmongAll copy={copy} id={record.id} />
+                  {chartsCount(rule) ? <SeeAmongAll copy={copy} id={record.id} /> : null}
                 </div>
               ) : null}
             </>
@@ -302,8 +303,15 @@ function CardPending({ failed, copy, retry }: { failed: boolean; copy: BoundCopy
 }
 
 /**
+ * Whether the charts of all schools count the list this rule orders. They draw the main rule's list only, so under
+ * another rule a link would open charts that count other schools than the card's lines and strips do.
+ */
+const chartsCount = (rule: CopyRuleId) => rule === PRIMARY_RULE;
+
+/**
  * The way from a card to the charts of all schools, with this school marked in every chart. A plain link in the same
- * tab: the card stays in this page's address and history, so Back returns to it.
+ * tab: the card stays in this page's address and history, so Back returns to it. Shown only under the main rule
+ * (`chartsCount`).
  */
 function SeeAmongAll({ copy, id }: { copy: BoundCopy; id: string }) {
   return (
@@ -377,7 +385,7 @@ function WhyItSitsHere({
   // The way to the charts of all schools is the school need box's last line, under the comparisons it widens; a card
   // without the box has it at the section's foot.
   const linkAfter = why.blocks.findIndex((block) => block.kind === "need");
-  const seeAll = <SeeAmongAll copy={copy} id={school.id} />;
+  const seeAll = chartsCount(rule) ? <SeeAmongAll copy={copy} id={school.id} /> : null;
   return (
     <section className={styles.why} data-region="inspector-why" aria-label={LAYOUT.why}>
       <span className={`${styles.eyebrow} ${styles.eyebrowNavy}`}>{LAYOUT.why}</span>

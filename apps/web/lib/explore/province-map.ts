@@ -110,10 +110,11 @@ export const FILLS: Readonly<Record<Exclude<ShadeKey, "none">, string>> = {
  */
 export const PALE_EDGE = "#6f7889";
 /**
- * The hatching that tells none from 0, lighter than the edge (2.3:1 on white): the edge draws the province, and the
- * hatching only marks it as holding no school of the data, so it stays quiet where many provinces have none.
+ * The hatching that tells none from 0, 3.1:1 on the white it is drawn over: the 0 tint is only 1.3:1 on white, so the
+ * hatching is the cue that keeps the two apart, and it holds 3:1 as a mark must. It stays lighter than the edge, which
+ * draws the province.
  */
-export const HATCH = "#a3aab6";
+export const HATCH = "#8a92a0";
 /** The card the map sits on, and the gap between two provinces: every bin's fill is at least 4:1 against it. */
 export const CARD = "#ffffff";
 
@@ -205,4 +206,61 @@ export function answerOf(view: MapView): {
       .map((p) => p.name)
       .sort((a, b) => a.localeCompare(b, "en")),
   };
+}
+
+/**
+ * Where the map names a province, in the boundary file's units, for every province of the map. The layout is fixed, so
+ * whichever provinces hold schools of the top 20, no two names cover each other: a browser test draws the hardest set
+ * at the narrowest map that shows names.
+ *
+ * - `at`: a point inside the province. A name sits centred on it, on the province's own shape.
+ * - `off`: for a shape too small or too crowded to hold its name (the islands, the National Capital District, a few in
+ *   the highlands), the name sits here instead, aligned by `align`, with a thin line to `at`.
+ * - `wrap`: a long name set in two lines, so it fits its shape.
+ * - `mark`: where a phone puts the province's number instead of its name, when it differs from `at`. Every number is at
+ *   least 42 units from every other, 15 px on a 360 px phone, so no two 14 px numbers touch.
+ */
+export interface ProvinceLabel {
+  readonly at: readonly [number, number];
+  readonly off?: { readonly x: number; readonly y: number; readonly align: "start" | "middle" | "end" };
+  readonly wrap?: true;
+  readonly mark?: readonly [number, number];
+}
+export const LABELS: Readonly<Record<string, ProvinceLabel>> = {
+  Bougainville: { at: [790, 311], off: { x: 742, y: 350, align: "end" } },
+  Central: { at: [340, 425] },
+  Chimbu: { at: [216, 300], mark: [228, 299] },
+  "East New Britain": { at: [600, 215], off: { x: 592, y: 306, align: "middle" } },
+  "East Sepik": { at: [112, 200] },
+  "Eastern Highlands": { at: [262, 330], mark: [262, 331], wrap: true },
+  Enga: { at: [140, 250], mark: [138, 243] },
+  Gulf: { at: [198, 340] },
+  Hela: { at: [108, 282], mark: [84, 252] },
+  Jiwaka: { at: [205, 271], mark: [207, 261] },
+  Madang: { at: [250, 234] },
+  Manus: { at: [326, 72], off: { x: 362, y: 72, align: "start" } },
+  "Milne Bay": { at: [467, 488], off: { x: 480, y: 566, align: "middle" } },
+  Morobe: { at: [322, 356] },
+  "National Capital District": { at: [341, 468], off: { x: 330, y: 548, align: "middle" } },
+  "New Ireland": { at: [645, 190], off: { x: 668, y: 172, align: "start" } },
+  Northern: { at: [400, 445] },
+  Sandaun: { at: [44, 158] },
+  "Southern Highlands": { at: [148, 309], mark: [138, 309], wrap: true },
+  "West New Britain": { at: [482, 272] },
+  Western: { at: [53, 335] },
+  "Western Highlands": {
+    at: [180, 254],
+    off: { x: 182, y: 226, align: "middle" },
+    mark: [168, 278],
+    wrap: true,
+  },
+};
+
+/** The provinces the map names: each with schools of the top 20, most first and then by name, numbered from 1. */
+export function namedProvinces(
+  view: MapView
+): { readonly province: ShadedProvince; readonly number: number }[] {
+  return tableRows(view)
+    .filter((p) => (p.tally?.top20 ?? 0) > 0)
+    .map((province, i) => ({ province, number: i + 1 }));
 }

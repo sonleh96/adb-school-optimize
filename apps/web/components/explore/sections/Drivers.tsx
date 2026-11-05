@@ -5,11 +5,13 @@ import { type CSSProperties, type ReactNode, useId, useMemo, useState } from "re
 import {
   type Bar,
   type Gap,
+  type Outside,
   type Piece,
   drawnOf,
   driversOf,
   edgeOf,
   isNeedPart,
+  largestOf,
   largestParts,
   needLeads,
   scaleOf,
@@ -234,7 +236,7 @@ function BarsFigure({
 }: {
   pieces: readonly Piece[];
   bars: readonly Bar[];
-  outside: Bar | null;
+  outside: Outside | null;
   ruleName: string;
   label: (piece: Piece) => string;
   nameOf: (id: string) => string;
@@ -244,15 +246,15 @@ function BarsFigure({
   const captionId = useId();
   const tableId = useId();
   const [open, setOpen] = useState(false);
-  const all = outside ? [...bars, outside] : bars;
+  const all = outside?.bar ? [...bars, outside.bar] : bars;
   const scale = scaleOf(all);
   const largest = largestParts(bars, pieces);
   const others = pieces.filter((piece) => !isNeedPart(piece));
   const anyOpen = all.some((bar) => bar.upper > bar.lower);
   const markedBar = marked === null ? undefined : all.find((bar) => bar.id === marked);
   // The part that adds the most to the marked school's score, or every part level at the most.
-  const markedMost = markedBar ? Math.max(0, ...markedBar.segments.map((s) => s.lower)) : 0;
-  const markedTop = markedBar ? markedBar.segments.filter((s) => s.lower === markedMost) : [];
+  const markedTop = markedBar ? largestOf(markedBar) : [];
+  const markedMost = Math.max(0, ...markedTop.map((s) => s.lower));
   const tenths = { "--tenths": scale.ticks.length - 1 } as CSSProperties;
 
   return (
@@ -312,9 +314,18 @@ function BarsFigure({
       {outside ? (
         <div className={styles.outside}>
           <p className={styles.outsideHead}>{DRIVERS.bars.outside}</p>
-          <ol className={styles.rows} style={tenths} data-max={scale.max} data-region="outside">
-            <BarRow bar={outside} max={scale.max} name={nameOf(outside.id)} marked />
-          </ol>
+          {outside.bar ? (
+            <ol className={styles.rows} style={tenths} data-max={scale.max} data-region="outside">
+              <BarRow bar={outside.bar} max={scale.max} name={nameOf(outside.id)} marked />
+            </ol>
+          ) : (
+            <p className={styles.undrawn} data-region="outside-undrawn" data-school-key={outside.id}>
+              <span className={styles.rank}>{placeLabel(outside.place)}</span>
+              <span>
+                <b>{nameOf(outside.id)}</b> {DRIVERS.bars.outsideUndrawn}
+              </span>
+            </p>
+          )}
         </div>
       ) : null}
       {markedBar && markedMost > 0 ? (

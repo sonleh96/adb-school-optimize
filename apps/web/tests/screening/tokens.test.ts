@@ -14,6 +14,8 @@
  *                                                                        -> "the explore page's colours share..."
  *  8. An explore dot falls under 3:1 on its card, or the marked school's dot under 3:1 against the others, so it
  *     cannot be told apart by its colour                                -> "the explore page's marks keep..."
+ *  9. In the chart of ranks, the kept schools' colour leaves the ramp, or does not sit between the marked school's
+ *     and the others', so the three strengths of line do not read in order -> "the kept schools' colour sits ..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -101,5 +103,13 @@ describe("the explore page's colours", () => {
           contrastRatio(EXPLORE[ink], hex(EXPLORE[surface])),
           `${ink} on ${surface}`
         ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the kept schools' colour sits on the ramp between the marked school's and the others', at 3:1 on the card", () => {
+    expect(EXPLORE["mark-kept"]).toBe(RAMP_HEX[2].toLowerCase());
+    const onCard = (mark: string) => contrastRatio(EXPLORE[mark], hex(EXPLORE.panel));
+    expect(onCard("mark-kept")).toBeGreaterThanOrEqual(3);
+    expect(onCard("mark-chosen")).toBeGreaterThan(onCard("mark-kept"));
+    expect(onCard("mark-kept")).toBeGreaterThan(onCard("mark-other"));
   });
 });

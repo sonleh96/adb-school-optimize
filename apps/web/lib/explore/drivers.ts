@@ -13,8 +13,12 @@
  * sum of its parts. A list whose parts do not add up to its scores gets no bars either: a bar that does not end at the
  * school's score would say something false.
  *
+ * Two figures less than `SAME_SCORE` apart are the same figure, as the card's tie note reads them: two neighbours that
+ * close are tied, two parts that close are level, and a bar's parts add up to its score within it.
+ *
  * Pure, so the section, its table and the tests read the same figures.
  */
+import { SAME_SCORE } from "@/lib/screening/copy/rank";
 import { type OrderedRow, type Place, placeOf } from "@/lib/screening/list";
 import {
   type Input,
@@ -30,15 +34,6 @@ export const TOP = 20;
 /** The gaps run this many places past the top 20, so the edge of the top 20 has neighbours on both sides. */
 export const PAST = 2;
 
-/**
- * Two scores less than this far apart are the same score. The engine adds about a dozen numbers between 0 and 1 in
- * floating point, so two schools whose figures are equal in exact arithmetic can come out a few units of the 16th
- * decimal place apart: it scores power and water at 0.44999999999999996 for a generator with piped water and 0.45 for
- * solar panels with a tank (coordination note of 4 November 2026). A billionth is millions of times that noise, and
- * thousands of times smaller than the smallest gap the paper's records give between two neighbours. The same tolerance
- * decides whether a bar's parts add up to its score.
- */
-export const SAME_SCORE = 1e-9;
 /** A gap under this is a close call: the tool writes scores to three decimal places, where the two can read the same. */
 export const CLOSE_CALL = 0.001;
 
@@ -84,6 +79,16 @@ export interface Gap {
   readonly kind: GapKind;
 }
 
+/**
+ * The marked school outside the top 20, with its bar. The bar is null when its parts do not add up to its score: then
+ * only its bar is left out, and the top 20 are still drawn.
+ */
+export interface Outside {
+  readonly id: string;
+  readonly place: Place;
+  readonly bar: Bar | null;
+}
+
 export type Drivers =
   /** The rule's score is its parts added up: the bars of the top 20, and the gaps to the 22nd place. */
   | {
@@ -92,8 +97,8 @@ export type Drivers =
       readonly pieces: readonly Piece[];
       /** The schools with a place in the top 20 and those whose range of places reaches it, in the list's order. */
       readonly bars: readonly Bar[];
-      /** The marked school's bar when it is in the list but not in the top 20, or null. */
-      readonly outside: Bar | null;
+      /** The marked school when it is in the list but not in the top 20, or null. */
+      readonly outside: Outside | null;
       /** Each pair of neighbouring places from the 1st to the 22nd, among the schools with one place. */
       readonly gaps: readonly Gap[];
     }
@@ -176,10 +181,12 @@ export function driversOf(rule: Rule, rows: readonly ListedRow[], marked: string
 
   const ordered = rows.filter(isOrdered);
   const bars = ordered.filter(inTop).map((row) => barOf(row, pieces));
+  if (bars.some((bar) => bar === null)) return { kind: "unreadable" };
   const outsideRow =
     marked === null ? undefined : ordered.find((r) => r.school.school_key === marked && !inTop(r));
-  const outside = outsideRow ? barOf(outsideRow, pieces) : null;
-  if (bars.some((bar) => bar === null) || (outsideRow && !outside)) return { kind: "unreadable" };
+  const outside = outsideRow
+    ? { id: outsideRow.school.school_key, place: placeOf(outsideRow), bar: barOf(outsideRow, pieces) }
+    : null;
   return { kind: "parts", pieces, bars: bars as Bar[], outside, gaps: gapsOf(ordered) };
 }
 
@@ -231,6 +238,15 @@ export function needLeads(bars: readonly Bar[]): number {
 }
 
 /**
+ * The recorded parts that add the most to one bar's score, in the diagram's order: every part within `SAME_SCORE` of
+ * the largest, so two parts that only float rounding split are level. Empty when no part adds anything.
+ */
+export function largestOf(bar: Bar): readonly Segment[] {
+  const top = Math.max(0, ...bar.segments.map((s) => s.lower));
+  return top <= 0 ? [] : bar.segments.filter((s) => top - s.lower < SAME_SCORE);
+}
+
+/**
  * The part that is the largest recorded part of the most bars, with how many; several parts when they share the
  * count, in the diagram's order. A bar whose largest part ties counts for each. Null when no bar has a part above 0.
  */
@@ -239,11 +255,7 @@ export function largestParts(
   pieces: readonly Piece[]
 ): { readonly pieces: readonly Piece[]; readonly count: number } | null {
   const counts = new Map<Piece, number>();
-  for (const bar of bars) {
-    const top = Math.max(0, ...bar.segments.map((s) => s.lower));
-    if (top <= 0) continue;
-    for (const s of bar.segments) if (s.lower === top) counts.set(s.piece, (counts.get(s.piece) ?? 0) + 1);
-  }
+  for (const bar of bars) for (const s of largestOf(bar)) counts.set(s.piece, (counts.get(s.piece) ?? 0) + 1);
   const count = Math.max(0, ...counts.values());
   return count === 0 ? null : { pieces: pieces.filter((p) => counts.get(p) === count), count };
 }

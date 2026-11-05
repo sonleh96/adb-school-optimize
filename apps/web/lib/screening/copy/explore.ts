@@ -59,6 +59,11 @@ export interface PartWords {
   /** Which way along the axis adds more to school need. */
   readonly direction: string;
   /**
+   * Under the axis, when its columns are only the values the list holds rather than a scale: why two neighbouring
+   * columns can be far apart in value.
+   */
+  readonly spacing?: string;
+  /**
    * A step's row in the table, and its label under its column. A share's axis labels only its two ends this way, and
    * the lines between its quarter steps with `edge`.
    */
@@ -171,6 +176,8 @@ const PARTS: Readonly<Record<NeedKey, PartWords>> = {
     title: "Power and water",
     axis: "Score for power and water, on the research team's scale",
     direction: "A higher score adds more to school need.",
+    spacing:
+      "Only the scores that schools in the list record get a column, so the columns sit side by side however far apart their scores are.",
     label: (step) => (step.kind === "points" ? score(step.points) : noStep(step, "services")),
     records: (step) => {
       if (step.kind !== "points") return noStep(step, "services");

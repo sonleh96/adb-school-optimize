@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
-import { type Bump, type BumpSchool, GROUP_OF, type Standing, TOP, joins } from "@/lib/explore/bump";
+import { type Bump, type BumpSchool, GROUP_OF, type Standing, TOP, isKept, joins } from "@/lib/explore/bump";
 import type { BoundCopy, CopySchool } from "@/lib/screening/copy";
 import { EXPLORE } from "@/lib/screening/copy/explore";
 import { EXPLORE_STABILITY } from "@/lib/screening/copy/explore-stability";
@@ -107,14 +107,16 @@ export function StabilityBump({
   const markedRow = marked ? (schools.find((s) => s.id === marked.id) ?? null) : null;
   const ranges = schools.some((s) => s.standings.some((standing) => standing.kind === "range"));
 
+  // Three strengths of line: the marked school's, then the schools kept in the top 20 under every rule, then the rest.
   const marks = (school: BumpSchool, on: boolean) => {
     const key = school.id;
+    const kept = isKept(school);
     return (
-      <g key={key} data-school-key={key} data-marked={on || undefined}>
+      <g key={key} data-school-key={key} data-marked={on || undefined} data-kept={kept || undefined}>
         {joins(school.standings).map(([from, to]) => (
           <line
             key={from.column}
-            className={on ? styles.lineMarked : styles.bumpLine}
+            className={on ? styles.lineMarked : kept ? styles.lineKept : styles.bumpLine}
             x1={x(from.column)}
             y1={frame.y(from.rank)}
             x2={x(to.column)}
@@ -130,7 +132,7 @@ export function StabilityBump({
               return (
                 <circle
                   key={rule}
-                  className={on ? styles.pointMarked : styles.point}
+                  className={on ? styles.pointMarked : kept ? styles.pointKept : styles.point}
                   cx={x(column)}
                   cy={frame.y(standing.rank)}
                   r={on ? 4 : 2.75}
@@ -148,7 +150,7 @@ export function StabilityBump({
               return (
                 <rect
                   key={rule}
-                  className={on ? styles.rangeMarked : styles.range}
+                  className={on ? styles.rangeMarked : kept ? styles.rangeKept : styles.range}
                   x={x(column) - half}
                   y={y1}
                   width={half * 2}
@@ -204,6 +206,16 @@ export function StabilityBump({
         {W.answer(bump.kept, top.length, rules.length)}
       </p>
       <p className={styles.testNote}>{W.what(ruleName)}</p>
+      <p className={styles.bumpKey} data-region="bump-key" aria-hidden="true">
+        <span>
+          <span className={styles.keyLine} data-kept="" />
+          {W.key.kept}
+        </span>
+        <span>
+          <span className={styles.keyLine} />
+          {W.key.rest}
+        </span>
+      </p>
       <div ref={host} className={styles.bump} aria-hidden="true">
         <div
           className={styles.head}

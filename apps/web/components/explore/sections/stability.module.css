@@ -189,7 +189,34 @@
   min-height: 520px;
 }
 
-/* The chart of the top 20 under each rule: the rules' names over their columns, then the ranks. */
+/* The chart of the top 20 under each rule: the line that keys its two kinds of line, the rules' names over their
+   columns, then the ranks. */
+.bumpKey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.bumpKey > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* A short piece of each kind of line, as thick and as dark as the chart draws it. */
+.keyLine {
+  flex: none;
+  width: 18px;
+  height: 1.25px;
+  border-radius: 1px;
+  background: var(--mark-other);
+}
+.keyLine[data-kept] {
+  height: 2px;
+  background: var(--mark-kept);
+}
 .bump {
   margin-top: 14px;
 }
@@ -244,9 +271,17 @@
   fill: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
+/* Three strengths of line, so the schools that stay in the top 20 under every rule stand out of the tangle: the
+   marked school's navy at 3 px, the kept schools' mid navy at 2 px, and the rest the page's light blue at 1.25 px.
+   Each holds 3:1 on the card. */
 .bumpLine {
   stroke: var(--mark-other);
-  stroke-width: 1.5;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+}
+.lineKept {
+  stroke: var(--mark-kept);
+  stroke-width: 2;
   stroke-linecap: round;
 }
 .lineMarked {
@@ -259,6 +294,11 @@
   stroke: var(--panel);
   stroke-width: 1.5;
 }
+.pointKept {
+  fill: var(--mark-kept);
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
 .pointMarked {
   fill: var(--mark-chosen);
   stroke: var(--panel);
@@ -268,6 +308,11 @@
    outside a list is an open ring. */
 .range {
   fill: var(--mark-other);
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.rangeKept {
+  fill: var(--mark-kept);
   stroke: var(--panel);
   stroke-width: 1;
 }
@@ -330,9 +375,15 @@
 @media (forced-colors: active) {
   .dot,
   .point,
-  .bumpLine {
+  .bumpLine,
+  .lineKept,
+  .pointKept {
     fill: GrayText;
     stroke: GrayText;
+  }
+  .keyLine {
+    forced-color-adjust: none;
+    background: GrayText;
   }
   .chosen,
   .pointMarked,
