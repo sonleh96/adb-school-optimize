@@ -10,6 +10,10 @@
  *  5. The homepage's copy of a token drifts from the workspace's        -> "the homepage's colours share..."
  *  6. A homepage text colour falls under 4.5:1 on a surface it sits on, or its text on the navy band, the navy card
  *     and the footer under 7:1                                          -> "the homepage's colours keep..."
+ *  7. The explore page's copy of a token drifts from the workspace's, or its dots leave the map's ramp
+ *                                                                        -> "the explore page's colours share..."
+ *  8. An explore dot falls under 3:1 on its card, or the marked school's dot under 3:1 against the others, so it
+ *     cannot be told apart by its colour                                -> "the explore page's marks keep..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -17,6 +21,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { contrastRatio } from "@/lib/screening/contrast";
+import { RAMP_HEX } from "@/lib/screening/marks";
 
 const tokensOf = (file: string): Record<string, string> =>
   Object.fromEntries(
@@ -29,6 +34,7 @@ const tokensOf = (file: string): Record<string, string> =>
 const WORKSPACE = tokensOf("components/screening/screening.module.css");
 const SIGN_IN = tokensOf("app/sign-in/sign-in.module.css");
 const HOME = tokensOf("app/home.module.css");
+const EXPLORE = tokensOf("components/explore/explore.module.css");
 const hex = (value: string) => (value === "#fff" ? "#ffffff" : value);
 
 describe("the workspace's inks", () => {
@@ -71,5 +77,29 @@ describe("the homepage's colours", () => {
     for (const surface of ["navy", "ink"])
       for (const ink of ["on-navy", "on-navy-2"])
         expect(ratio(ink, surface), `${ink} on ${surface}`).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe("the explore page's colours", () => {
+  it("share the workspace's values for the tokens both use, and take their dots from the map's ramp", () => {
+    const shared = Object.keys(EXPLORE).filter((k) => k in WORKSPACE);
+    expect(shared).toEqual(
+      expect.arrayContaining(["paper", "panel", "ink", "ink-2", "ink-3", "navy", "navy-2"])
+    );
+    for (const k of shared) expect(EXPLORE[k], k).toBe(WORKSPACE[k]);
+    expect(EXPLORE["mark-chosen"]).toBe(RAMP_HEX[0].toLowerCase());
+    expect(EXPLORE["mark-other"]).toBe(RAMP_HEX[RAMP_HEX.length - 1].toLowerCase());
+  });
+
+  it("the explore page's marks keep 3:1 on the card, and the marked school's 3:1 against every other dot", () => {
+    for (const mark of ["mark-chosen", "mark-other"])
+      expect(contrastRatio(EXPLORE[mark], hex(EXPLORE.panel)), mark).toBeGreaterThanOrEqual(3);
+    expect(contrastRatio(EXPLORE["mark-chosen"], EXPLORE["mark-other"])).toBeGreaterThanOrEqual(3);
+    for (const surface of ["paper", "panel"])
+      for (const ink of ["ink", "ink-2", "ink-3", "navy"])
+        expect(
+          contrastRatio(EXPLORE[ink], hex(EXPLORE[surface])),
+          `${ink} on ${surface}`
+        ).toBeGreaterThanOrEqual(4.5);
   });
 });

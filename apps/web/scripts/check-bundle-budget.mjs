@@ -14,12 +14,16 @@ import { gzipSync } from "node:zlib";
  * connection each 10 KiB is about a tenth of a second before the first school shows. `/`, the homepage, is server
  * markup with no script of its own: 132.1 KiB gzip in 5 chunks on 3 November 2026, all of it the framework's
  * runtime. Its budget leaves less room than a library such as React Query (11 KiB) takes, so one cannot arrive
- * with a change unnoticed.
+ * with a change unnoticed. `/explore` is the same runtime with React Query and the screening API's reads: 147.9 KiB
+ * gzip in 7 chunks on 5 November 2026. Its charts, their words and the copy that binds the data load in chunks of
+ * their own while the data does, each larger than its budget's room (the charts' chunk is 13.7 KiB), so neither can
+ * slip into the first load.
  */
 const dist = process.env.NEXT_DIST_DIR || ".next";
 const routes = {
   "/screening": { file: `${dist}/server/app/screening.html`, budgetBytes: 230 * 1024 },
   "/": { file: `${dist}/server/app/index.html`, budgetBytes: 138 * 1024 },
+  "/explore": { file: `${dist}/server/app/explore.html`, budgetBytes: 154 * 1024 },
 };
 // The map's libraries, by a string only they hold. They must stay out of the first load: each is larger than the
 // whole budget's headroom, and on a phone the List shows no map until Map is chosen.

@@ -213,14 +213,14 @@ test("the study section and the footer each give both contacts as mail links tha
 
 // Failure mode: search engines are given no rules, so the tool's many view addresses get indexed, or the homepage
 // itself is shut out.
-test("robots.txt lets search engines read the homepage and keeps the tool's views out", async ({
+test("robots.txt lets search engines read the homepage and keeps the tool's views and the explore page out", async ({
   request,
 }) => {
   const response = await request.get("/robots.txt");
   expect(response.status()).toBe(200);
   const rules = await response.text();
   expect(rules).toMatch(/^Allow: \/$/m);
-  for (const path of ["/screening", "/sign-in", "/auth/", "/api/"])
+  for (const path of ["/screening", "/explore", "/sign-in", "/auth/", "/api/"])
     expect(rules).toContain(`Disallow: ${path}`);
 });
 
