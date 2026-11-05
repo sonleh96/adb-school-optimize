@@ -17,8 +17,9 @@
  *                                        -> "fits a ... phone with a school marked and both tables open"
  *  7. A table says something its chart does not draw
  *                                        -> "each table says what its chart draws"
- *  8. The page's first load reads every rule's list, or the earlier method's list is read twice, once for this
- *     section and once for the drivers' switch  -> "reads the other rules' lists only when set 2 comes near ..."
+ *  8. The page's first load reads another rule's list on any screen before set 2 is on it (on a desktop, set 2's
+ *     look-ahead fired at once), or the earlier method's list is read twice, once for this section and once for the
+ *     drivers' switch                    -> "reads only the main list on a first load at ... px ..."
  *  9. A failed read of another rule's list breaks the page, or Retry does not ask for it again
  *                                        -> "says in the chart when another rule's list fails, and recovers on Retry"
  * 10. A column's range under the dot plot is missing or wrong, sits under another column, or names a range its dots
@@ -757,32 +758,52 @@ test("says in the dot plot why the earlier method's test cannot be shown yet, an
   await expect(bump(page).getByRole("alert")).toHaveCount(0);
 });
 
-test("reads the other rules' lists only when set 2 comes near, and the earlier method's once", async ({
-  page,
-}) => {
-  // A phone's screen, where set 2 starts well below the first screen and a screen and a half of reading ahead.
-  await page.setViewportSize({ width: 390, height: 844 });
-  const asked: string[] = [];
-  page.on("request", (request) => {
-    const url = new URL(request.url());
-    if (url.pathname.endsWith("/api/v1/screening/results")) asked.push(url.searchParams.get("rule")!);
+/** Lets an observer that the last layout or scroll set off report, and any read it asks for start. */
+const settle = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 300))))
+  );
+
+for (const size of [
+  { width: 1440, height: 900 },
+  { width: 1600, height: 1000 },
+  { width: 390, height: 844 },
+])
+  test(`reads only the main list on a first load at ${size.width} px, the others once set 2 is on screen, and the earlier method's once`, async ({
+    page,
+  }) => {
+    await page.setViewportSize(size);
+    const asked: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/v1/"))
+        asked.push(
+          url.pathname.split("/").pop()! +
+            (url.searchParams.has("rule") ? `:${url.searchParams.get("rule")}` : "")
+        );
+    });
+    await page.goto("/explore");
+    await expect(page.locator("figure[data-part] svg circle").first()).toBeVisible({ timeout: 45_000 });
+    await settle(page);
+    // Set 2 starts below the first screen, so a reader who never scrolls has no need of the other lists.
+    expect(await section(page).evaluate((s) => s.getBoundingClientRect().top)).toBeGreaterThan(size.height);
+    await expect(section(page)).toHaveAttribute("data-lists", "waiting");
+    expect([...asked].sort()).toEqual(["inputs", "results:" + MAIN, "rules"]);
+
+    await section(page).scrollIntoViewIfNeeded();
+    await expect(bump(page).locator("svg circle").first()).toBeVisible({ timeout: 45_000 });
+    expect(asked.filter((a) => a.startsWith("results:")).sort()).toEqual(
+      RULES.map((r) => "results:" + r).sort()
+    );
+
+    // The drivers' own switch to the earlier method's list finds it already read.
+    const drivers = page.locator("[data-region=drivers]");
+    await drivers.scrollIntoViewIfNeeded();
+    await drivers.getByRole("radio", { name: DRIVERS.rules.urgency }).check();
+    await expect(drivers.locator("[data-rule]").first()).toHaveAttribute("data-rule", URGENCY);
+    expect(asked.filter((a) => a === "results:" + URGENCY)).toHaveLength(1);
   });
-  await page.goto("/explore");
-  await expect(page.locator("figure[data-part] svg circle").first()).toBeVisible({ timeout: 45_000 });
-  await expect(section(page)).toHaveAttribute("data-lists", "waiting");
-  expect(asked).toEqual([MAIN]);
-
-  await section(page).scrollIntoViewIfNeeded();
-  await expect(bump(page).locator("svg circle").first()).toBeVisible({ timeout: 45_000 });
-  expect([...asked].sort()).toEqual([...RULES].sort());
-
-  // The drivers' own switch to the earlier method's list finds it already read.
-  const drivers = page.locator("[data-region=drivers]");
-  await drivers.scrollIntoViewIfNeeded();
-  await drivers.getByRole("radio", { name: DRIVERS.rules.urgency }).check();
-  await expect(drivers.locator("[data-rule]").first()).toHaveAttribute("data-rule", URGENCY);
-  expect(asked.filter((rule) => rule === URGENCY)).toHaveLength(1);
-});
 
 test("says in the chart when another rule's list fails, and recovers on Retry", async ({
   page,
