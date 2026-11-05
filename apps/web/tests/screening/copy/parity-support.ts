@@ -334,16 +334,7 @@ export const FN_ARGS: Record<string, unknown[][]> = {
     [1, "additive_no_u"],
     [0, "additive_no_u"],
   ],
-  "EXPLORE_PROVINCE.ranges": [
-    [0, 0],
-    [1, 0],
-    [1, 1],
-    [2, 2],
-    [4, 2],
-    [4, 0],
-    [12, 3],
-    [12, 12],
-  ],
+  "EXPLORE_PROVINCE.ranges": [[0], [1], [2], [4], [12]],
   "EXPLORE_PROVINCE.reasons": [
     [0, 0, 0, 0],
     [90, 54, 36, 0],

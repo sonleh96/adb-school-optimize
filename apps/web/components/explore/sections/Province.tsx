@@ -50,7 +50,7 @@ export function Province({
         unrecorded?.inList ?? 0
       ),
       order: WORDS.order(unrecorded !== undefined),
-      top: [WORDS.top(ranks.complete, rule), WORDS.ranges(ranks.range, ranks.reach)]
+      top: [WORDS.top(ranks.complete, rule), WORDS.ranges(ranks.range)]
         .filter((sentence) => sentence !== null)
         .join(" "),
       reasons: WORDS.reasons(

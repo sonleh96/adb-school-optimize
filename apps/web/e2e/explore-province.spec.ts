@@ -18,6 +18,11 @@
  *                                            -> "draws every province ..."
  *  8. A keyboard cannot open the tables, or a screen reader reads the drawing instead of its words and tables
  *                                            -> "a keyboard opens the tables ..."
+ *  9. The answer reads its count of the provinces the records name as the country's, or a top-20 school with no
+ *     province is counted nowhere on the page
+ *                                            -> "names the provinces as the records' count, and counts a top-20 ..."
+ * 10. How many range schools could reach the top 20 is said twice, here and under the map
+ *                                            -> "says once how many range schools could reach the top 20"
  * The expected counts come from the dataset's definition in services/api/scripts/generate_screening_fixtures.py
  * (`provinces_records`): 24 complete schools of which 20 rank 1 to 20, 2 range schools and 8 records to verify.
  */
@@ -155,6 +160,41 @@ test("draws every province from A to Z, the records with no province last, as it
   await expect(section(page).getByText(WORDS.order(true))).toBeVisible();
 });
 
+test("names the provinces as the records' count, and counts a top-20 school with no province", async ({
+  page,
+  context,
+}) => {
+  await useMockDataset(context, "provinces");
+  await openSection(page);
+  // Five provinces are named in the records, four of them by a school in the list; one top-20 school names none.
+  const answer = section(page).locator("[data-region=province-answer]");
+  await expect(answer).toHaveText(WORDS.answer(5, 4, 1));
+  await expect(answer).toHaveText(/^The records name 5 provinces, /);
+  // That school counts on the map's side, among the records the map leaves out, with the top 20 it holds.
+  const map = page.locator("[data-region=province-map]");
+  await map.scrollIntoViewIfNeeded();
+  await map.getByRole("button", { name: EXPLORE.table.show }).click();
+  const counts = await map
+    .locator("table tbody tr td")
+    .evaluateAll((tds) => tds.map((td) => Number(td.textContent)).filter((n) => !Number.isNaN(n)));
+  expect(counts.reduce((a, b) => a + b, 0)).toBe(20);
+  await expect(map.locator("[data-region=province-map-off-map]")).toContainText("in the top 20");
+});
+
+test("says once how many range schools could reach the top 20", async ({ page, context }) => {
+  await useMockDataset(context, "provinces");
+  await openSection(page);
+  // Both range schools' possible ranks reach the top 20, and the page says so in one place only: under the map.
+  const text = (
+    await page.locator("[data-region=province], [data-region=province-map]").allTextContents()
+  ).join(" ");
+  const said = text.match(/(could also be in the top 20|possible ranks of [^.]* reach the top 20)/g) ?? [];
+  expect(said).toHaveLength(1);
+  await expect(page.locator("[data-region=province-map-ranges]")).toContainText(
+    "could also be in the top 20"
+  );
+});
+
 test("counts each record to verify once, under the first reason that holds, and says so", async ({
   page,
   context,
@@ -165,7 +205,7 @@ test("counts each record to verify once, under the first reason that holds, and 
   // Both range schools' possible ranks reach the top 20 (best ranks 17th and 18th in the saved list), yet each counts
   // with the other schools in the list.
   await expect(section(page).locator("[data-region=province-top]")).toHaveText(
-    `${WORDS.top(24, MAIN)} ${WORDS.ranges(2, 2)}`
+    `${WORDS.top(24, MAIN)} ${WORDS.ranges(2)}`
   );
 });
 

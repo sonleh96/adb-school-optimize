@@ -10,8 +10,10 @@
  *  4. The rule that counts a record once is not said where a record could be in both groups
  *                                                    -> "says how a record with both reasons is counted ..."
  *  5. A school that shows a range is said to be outside the top 20, which its own card can contradict ("It is in the
- *     top 20 either way")                            -> "says how a range school is counted ..."
- *  6. The answer claims more provinces than the data gives, or leaves out the schools with no province
+ *     top 20 either way"); or how many could reach the top 20 is said here and again under the map
+ *                                                    -> "says how a range school is counted ..."
+ *  6. The answer claims more provinces than the data gives, or reads its count of the provinces the records name as
+ *     the country's ("of the 22 provinces"), or leaves out the schools with no province
  *                                                    -> "answers with the data's own counts ..."
  *  7. The section writes a word of its own, outside the copy and its guards
  *                                                    -> "the section writes no word of its own"
@@ -68,9 +70,7 @@ describe("the province section's words", () => {
     for (const complete of COUNTS)
       for (const rule of ["additive_no_u", "additive_u", "benchmark"] as const)
         check(`top(${complete}, ${rule})`, WORDS.top(complete, rule), true);
-    for (const range of COUNTS)
-      for (const reach of [0, 1, 2, range])
-        if (reach <= range) check(`ranges(${range}, ${reach})`, WORDS.ranges(range, reach), true);
+    for (const range of COUNTS) check(`ranges(${range})`, WORDS.ranges(range), true);
     for (const counts of QUEUES) check(`reasons(${JSON.stringify(counts)})`, reasonsOf(counts), true);
     for (const province of ["North Province", null])
       for (const inList of [1, 2, 3, 125])
@@ -96,8 +96,8 @@ describe("the province section's words", () => {
     expect(WORDS.marked(null, 2)).toBe(
       "Its record gives no province, and neither does 1 other school in the list."
     );
-    expect(WORDS.ranges(1, 1)).toBe(
-      "The one school that shows a range has no single rank, so the chart counts it with the other schools in the list. Its possible ranks reach the top 20."
+    expect(WORDS.ranges(1)).toBe(
+      "The one school that shows a range has no single rank, so the chart counts it with the other schools in the list."
     );
   });
 
@@ -126,16 +126,17 @@ describe("the province section's words", () => {
   });
 
   it("says how a range school is counted, never that it is outside the top 20", () => {
-    expect(WORDS.ranges(0, 0)).toBeNull();
-    expect(WORDS.ranges(4, 2)).toBe(
-      "The four schools that show a range have no single rank, so the chart counts them with the other schools in the list. The possible ranks of two of them reach the top 20."
+    expect(WORDS.ranges(0)).toBeNull();
+    expect(WORDS.ranges(4)).toBe(
+      "The four schools that show a range have no single rank, so the chart counts them with the other schools in the list."
     );
-    for (const range of COUNTS.filter((n) => n > 0))
-      for (const reach of [0, 1, range]) {
-        const text = WORDS.ranges(range, reach)!;
-        expect(text, text).toMatch(/counts (it|them) with the other schools in the list\./);
-        expect(text, text).not.toMatch(/(not|outside|out of) (in )?the top 20/i);
-      }
+    for (const range of COUNTS.filter((n) => n > 0)) {
+      const text = WORDS.ranges(range)!;
+      expect(text, text).toMatch(/counts (it|them) with the other schools in the list\./);
+      expect(text, text).not.toMatch(/(not|outside|out of) (in )?the top 20/i);
+      // How many could reach the top 20 is the map's note, so it is said once, there.
+      expect(text, text).not.toMatch(/top 20/);
+    }
     // The top 20 counts the first 20 ranks among the schools with one rank each, as the top list does.
     expect(WORDS.top(130, "additive_no_u")).toBe(
       "The top 20 are the first 20 ranks in the list, among the 130 schools with a record for every input the rule uses."
@@ -146,12 +147,30 @@ describe("the province section's words", () => {
   });
 
   it("answers with the data's own counts, the schools with no province included", () => {
-    expect(WORDS.answer(22, 21, 0)).toBe("The schools in the list come from 21 of the 22 provinces.");
-    expect(WORDS.answer(5, 4, 1)).toBe(
-      "The schools in the list come from 4 of the 5 provinces; 1 school in the list has no province recorded."
+    expect(WORDS.answer(22, 21, 0)).toBe(
+      "The records name 22 provinces, and the schools in the list come from 21 of them."
     );
-    expect(WORDS.answer(3, 3, 0)).toBe("The schools in the list come from all 3 provinces.");
-    expect(WORDS.answer(1, 1, 0)).toBe("The schools in the list come from the one province.");
+    expect(WORDS.answer(5, 4, 1)).toBe(
+      "The records name 5 provinces, and the schools in the list come from 4 of them; 1 school in the list has no province recorded."
+    );
+    expect(WORDS.answer(3, 3, 0)).toBe(
+      "The records name 3 provinces, and the schools in the list come from all of them."
+    );
+    expect(WORDS.answer(2, 2, 0)).toBe(
+      "The records name 2 provinces, and the schools in the list come from both."
+    );
+    expect(WORDS.answer(1, 1, 0)).toBe(
+      "The records name one province, and the schools in the list come from it."
+    );
+    // The count is the provinces the records name, never said as the country's.
+    for (const [provinces, listed] of [
+      [22, 21],
+      [20, 20],
+      [5, 4],
+    ])
+      expect(WORDS.answer(provinces, listed, 0)).not.toMatch(
+        /\bof the \d+ provinces\b|\ball \d+ provinces\b/
+      );
     expect(WORDS.answer(2, 0, 3)).toBe("No school in the list has a province recorded.");
     // Which provinces hold the top 20 is the province map's answer, said once, there.
     expect(WORDS.answer(22, 21, 0)).not.toMatch(/top 20/);

@@ -9,17 +9,20 @@
  *
  * Nothing in the entry `./index` imports this file, so the workspace does not carry it.
  */
-import { completePhrase, countWord, oneRange, rangePhrase } from "./counts";
+import { completePhrase, oneRange, rangePhrase } from "./counts";
 import { capitalise, formatCount, joinList, plural } from "./format";
 import type { CopyRuleId } from "./model";
 import { ruleReads } from "./rules";
 import { LAYOUT } from "./words";
 
-/** "all 22 provinces", "21 of the 22 provinces": the provinces the schools of the list come from. */
-const fromProvinces = (listed: number, provinces: number): string => {
-  if (listed < provinces) return `${formatCount(listed)} of the ${formatCount(provinces)} provinces`;
-  if (provinces === 1) return "the one province";
-  return provinces === 2 ? "both provinces" : `all ${formatCount(provinces)} provinces`;
+/**
+ * "all of them", "21 of them": how many of the provinces the records name the schools of the list come from. The count
+ * is of the provinces the records name, never the country's: a load that named fewer would not cover the country.
+ */
+const ofThem = (listed: number, provinces: number): string => {
+  if (listed < provinces) return `${formatCount(listed)} of them`;
+  if (provinces === 1) return "it";
+  return provinces === 2 ? "both" : "all of them";
 };
 
 /** Why the records not in the list yet wait, one group each: the verb for one record and for several. */
@@ -44,7 +47,8 @@ export const EXPLORE_PROVINCE = Object.freeze({
       unrecorded === 0
         ? ""
         : `; ${formatCount(unrecorded)} ${plural(unrecorded, "school in the list has", "schools in the list have")} no province recorded`;
-    return `The schools in the list come from ${fromProvinces(listed, provinces)}${missing}.`;
+    const named = provinces === 1 ? "one province" : `${formatCount(provinces)} provinces`;
+    return `The records name ${named}, and the schools in the list come from ${ofThem(listed, provinces)}${missing}.`;
   },
   title: "Schools by province",
   /** How the rows are ordered, so a reader knows where to look for a province. */
@@ -68,21 +72,14 @@ export const EXPLORE_PROVINCE = Object.freeze({
       : `Only ${formatCount(complete)} schools have a single rank, so all of them are in the top 20.`;
   },
   /**
-   * How the schools that show a range are counted, and how many of them have possible ranks that reach the top 20.
-   * Null when no school shows a range.
+   * How the schools that show a range are counted. Null when no school shows a range. How many of them could reach
+   * the top 20 is the province map's note (`EXPLORE_MAP.ranges`), so the page says it once.
    */
-  ranges: (range: number, reach: number): string | null => {
+  ranges: (range: number): string | null => {
     if (range === 0) return null;
     const c = { range };
     const one = oneRange(c);
-    const counted = `${capitalise(rangePhrase(c))} ${one ? "has" : "have"} no single rank, so the chart counts ${one ? "it" : "them"} with the other schools in the list.`;
-    if (reach === 0) return counted;
-    const whose = one
-      ? "Its possible ranks reach"
-      : reach < range
-        ? `The possible ranks of ${countWord(reach)} of them reach`
-        : `The possible ranks of ${range === 2 ? "both" : `all ${countWord(range)}`} reach`;
-    return `${counted} ${whose} the top 20.`;
+    return `${capitalise(rangePhrase(c))} ${one ? "has" : "have"} no single rank, so the chart counts ${one ? "it" : "them"} with the other schools in the list.`;
   },
   /**
    * The records not in the list yet, by the first reason that holds, with the rule that counts each record once.
