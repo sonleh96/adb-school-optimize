@@ -16,6 +16,8 @@
  *     its schools are spelt otherwise -> "adds up the spellings of one province, and keeps unknown and blank ..."
  *  6. The sentence over the map names the wrong provinces or misses a tie
  *                                    -> "names every province that holds the most"
+ *  7. 0 and no school in the data differ only by cues under 3:1, so a reader with low contrast sensitivity takes a
+ *     province with no school in the data for 0 -> "tells 0 from no school in the data by a hatch of 3:1 or more"
  * Which schools count in the top 20 is E3's `provinceCounts` and its tests (lib/explore/province.ts); the browser test
  * counts from the fixture's own rows. Where each province is drawn is checked in the browser, against a town in each
  * (e2e/explore-province-map.spec.ts).
@@ -29,6 +31,7 @@ import {
   BINS,
   CARD,
   FILLS,
+  HATCH,
   MAP_VIEW,
   PALE_EDGE,
   PROVINCES,
@@ -140,6 +143,12 @@ describe("the map's colours", () => {
     const darkness = BINS.map((bin) => contrastRatio(FILLS[bin.key], CARD));
     expect(darkness).toEqual([...darkness].sort((a, b) => a - b));
     expect(new Set(darkness).size).toBe(BINS.length);
+  });
+
+  it("tells 0 from no school in the data by a hatch of 3:1 or more", () => {
+    // Both are pale and edged alike; the 0 tint alone is far under 3:1 on white, so the hatch must carry the difference.
+    expect(contrastRatio(FILLS["0"], CARD)).toBeLessThan(3);
+    expect(contrastRatio(HATCH, CARD)).toBeGreaterThanOrEqual(3);
   });
 });
 

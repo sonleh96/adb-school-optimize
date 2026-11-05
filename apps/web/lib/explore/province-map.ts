@@ -110,10 +110,11 @@ export const FILLS: Readonly<Record<Exclude<ShadeKey, "none">, string>> = {
  */
 export const PALE_EDGE = "#6f7889";
 /**
- * The hatching that tells none from 0, lighter than the edge (2.3:1 on white): the edge draws the province, and the
- * hatching only marks it as holding no school of the data, so it stays quiet where many provinces have none.
+ * The hatching that tells none from 0, 3.1:1 on the white it is drawn over: the 0 tint is only 1.3:1 on white, so the
+ * hatching is the cue that keeps the two apart, and it holds 3:1 as a mark must. It stays lighter than the edge, which
+ * draws the province.
  */
-export const HATCH = "#a3aab6";
+export const HATCH = "#8a92a0";
 /** The card the map sits on, and the gap between two provinces: every bin's fill is at least 4:1 against it. */
 export const CARD = "#ffffff";
 
