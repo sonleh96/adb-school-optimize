@@ -18,6 +18,8 @@
  *                                        -> "says when there is no data, and recovers from a failed read"
  *  8. The power-and-water chart spaces only the scores the list holds evenly, with nothing saying so, so 0.2 next to
  *     0.6 reads as a linear scale       -> "says the power-and-water columns are only the scores the list holds"
+ *  9. On a phone, the remoteness chart names only its two ends, so the marked school's column has no name under it
+ *                                        -> "names the marked school's remoteness under its column on a ... px phone"
  * Sign-in is checked in auth-static.spec.ts with the other pages, and the first load in scripts/check-bundle-budget.mjs.
  */
 import { readFileSync } from "node:fs";
@@ -342,9 +344,14 @@ for (const size of [
       expect(labels.length, key).toBeGreaterThan(1);
       for (const [i, box] of labels.entries()) {
         expect(inside(box), `${key} label ${i}`).toBe(true);
-        // Labels in a row never cover one another.
-        if (i > 0)
-          expect(box.x, `${key} label ${i}`).toBeGreaterThanOrEqual(labels[i - 1].x + labels[i - 1].width);
+        // Two labels never cover one another: one on a line of its own, below the others, may sit under them.
+        for (const other of labels.slice(0, i)) {
+          const sameLine = box.y < other.y + other.height && other.y < box.y + box.height;
+          if (sameLine)
+            expect(box.x >= other.x + other.width || other.x >= box.x + box.width, `${key} label ${i}`).toBe(
+              true
+            );
+        }
       }
     }
   });
@@ -363,6 +370,48 @@ test("says the power-and-water columns are only the scores the list holds, and n
     await expect(spacing).toHaveText(EXPLORE.parts.services.spacing!);
   }
 });
+
+for (const width of [390, 360])
+  test(`names the marked school's remoteness under its column on a ${width} px phone`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    const inputs = inputsOf("default");
+    const listed = listedOf("default").map((r) => r.school.school_key);
+    for (const category of ["Accessible", "Moderately accessible", "Remote", "Very remote"]) {
+      const key = listed.find((k) => inputs.get(k)!.locality === category)!;
+      await openExplore(page, `?school=${key}`);
+      const figure = figureOf(page, "locality");
+      const tick = figure.locator("[data-region=marked-tick] > span");
+      await expect(tick, category).toBeVisible();
+      await expect(tick, category).toHaveText(category);
+      const box = (await tick.boundingBox())!;
+      const plot = (await figure.locator("svg").boundingBox())!;
+      const column = Number(await figure.locator("svg circle[data-marked]").getAttribute("data-column"));
+      const centre = plot.x + ((column + 0.5) * plot.width) / 6;
+      const ends = await figure.locator("[data-tick=step]").evaluateAll((spans) =>
+        spans
+          .filter((s) => getComputedStyle(s).display !== "none")
+          .map((s) => {
+            const r = s.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+          })
+      );
+      // Under its own column: centred on it, within the drawing, and clear of the two ends' names.
+      expect(column, category).toBeGreaterThan(0);
+      expect(column, category).toBeLessThan(5);
+      expect(Math.abs(box.x + box.width / 2 - centre), category).toBeLessThan(1.5);
+      expect(box.x, category).toBeGreaterThanOrEqual(plot.x - 1);
+      expect(box.x + box.width, category).toBeLessThanOrEqual(plot.x + plot.width + 1);
+      expect(ends, category).toHaveLength(2);
+      for (const end of ends)
+        expect(
+          box.x + box.width <= end.left ||
+            box.x >= end.right ||
+            box.y >= end.bottom ||
+            box.y + box.height <= end.top,
+          `${category} clear of an end's name`
+        ).toBe(true);
+    }
+  });
 
 test("says when there is no data, and recovers from a failed read", async ({ page, context, problems }) => {
   await useMockDataset(context, "empty");
