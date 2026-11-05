@@ -51,6 +51,8 @@ export const EXPLORE_MAP = Object.freeze({
     },
     marked: "Province of the marked school",
   },
+  /** Over the list under a narrow map, whose numbers stand for the provinces' names. */
+  key: "Provinces numbered on the map",
   /** The marked school's line, when its province is on the map. */
   marked: (school: string, province: string, count: number) =>
     `${school} is in ${province}, outlined on the map. ${province} has ${count === 0 ? "none" : formatCount(count)} of the top 20.`,

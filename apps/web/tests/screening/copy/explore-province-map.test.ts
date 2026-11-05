@@ -30,6 +30,7 @@ describe("the province map's words", () => {
     for (const [label, text] of [
       ["legend.title", legend.title],
       ["legend.marked", legend.marked],
+      ["key", EXPLORE_MAP.key],
       ...Object.entries(legend.shades).map(([k, v]) => [`legend.shades.${k}`, v]),
       ...Object.entries(table).map(([k, v]) => [`table.${k}`, v]),
     ])

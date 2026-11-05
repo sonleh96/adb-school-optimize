@@ -18,6 +18,10 @@
  *                                    -> "names every province that holds the most"
  *  7. 0 and no school in the data differ only by cues under 3:1, so a reader with low contrast sensitivity takes a
  *     province with no school in the data for 0 -> "tells 0 from no school in the data by a hatch of 3:1 or more"
+ *  8. A province's name or number points into another province, or a province has no place for its name; or two of a
+ *     phone's numbers sit close enough to touch; or the numbers do not run most first
+ *                                    -> "places every province's name and number inside it, ..." and
+ *                                       "numbers the provinces with schools in the top 20, most first"
  * Which schools count in the top 20 is E3's `provinceCounts` and its tests (lib/explore/province.ts); the browser test
  * counts from the fixture's own rows. Where each province is drawn is checked in the browser, against a town in each
  * (e2e/explore-province-map.spec.ts).
@@ -32,10 +36,12 @@ import {
   CARD,
   FILLS,
   HATCH,
+  LABELS,
   MAP_VIEW,
   PALE_EDGE,
   PROVINCES,
   answerOf,
+  namedProvinces,
   provinceKey,
   provinceNamed,
   shadeMap,
@@ -219,5 +225,57 @@ describe("the counts", () => {
         ])
       )
     ).toEqual({ holding: 3, most: 3, leaders: ["Hela", "Jiwaka"] });
+  });
+});
+
+/** The boundary file's rings for each province, as numbers: every path is straight segments in absolute units. */
+const RINGS = new Map(
+  [...BOUNDARIES.matchAll(/data-name="([^"]+)" d="([^"]+)"/g)].map(([, name, d]) => [
+    name,
+    [...d.matchAll(/M([^MZ]+)Z?/g)].map(([, ring]) =>
+      [...ring.matchAll(/(-?[\d.]+),(-?[\d.]+)/g)].map(([, x, y]) => [Number(x), Number(y)] as const)
+    ),
+  ])
+);
+/** Whether a point is inside a province, by the even-odd rule its path is drawn with. */
+function holds(name: string, [x, y]: readonly [number, number]): boolean {
+  let inside = false;
+  for (const ring of RINGS.get(name)!)
+    for (let i = 0; i < ring.length; i++) {
+      const [x1, y1] = ring[i];
+      const [x2, y2] = ring[(i + 1) % ring.length];
+      if (y1 > y !== y2 > y && x < x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)) inside = !inside;
+    }
+  return inside;
+}
+
+describe("the map's names", () => {
+  it("places every province's name and number inside it, and no two numbers within 42 units", () => {
+    expect(Object.keys(LABELS).sort()).toEqual([...PROVINCES].sort());
+    for (const [name, label] of Object.entries(LABELS))
+      for (const point of [label.at, label.mark ?? label.at])
+        expect(
+          PROVINCES.filter((p) => holds(p, point)),
+          `${name} at ${point}`
+        ).toEqual([name]);
+    // A phone's 14 px numbers stay apart on the narrowest map, about 0.37 px a unit.
+    const marks = Object.entries(LABELS).map(([name, label]) => [name, label.mark ?? label.at] as const);
+    for (const [i, [a, p]] of marks.entries())
+      for (const [b, q] of marks.slice(i + 1))
+        expect(Math.hypot(p[0] - q[0], p[1] - q[1]), `${a} / ${b}`).toBeGreaterThanOrEqual(42);
+  });
+
+  it("numbers the provinces with schools in the top 20, most first and then by name", () => {
+    const view = shadeMap(PROVINCES, [
+      counted("Hela", 9, 6),
+      counted("Enga", 5, 3),
+      counted("Jiwaka", 4, 3),
+      counted("Manus", 2, 0),
+    ]);
+    expect(namedProvinces(view).map(({ province, number }) => [number, province.name])).toEqual([
+      [1, "Hela"],
+      [2, "Enga"],
+      [3, "Jiwaka"],
+    ]);
   });
 });
