@@ -21,6 +21,7 @@ import * as port from "@/lib/screening/copy";
 import type { CopyData } from "@/lib/screening/copy";
 import * as exploreModule from "@/lib/screening/copy/explore";
 import * as exploreProvinceModule from "@/lib/screening/copy/explore-province";
+import * as exploreMapModule from "@/lib/screening/copy/explore-province-map";
 import * as later from "@/lib/screening/copy/later";
 import * as methodModule from "@/lib/screening/copy/method";
 import * as treeModule from "@/lib/screening/copy/tree";
@@ -55,6 +56,7 @@ const everything = {
   ...treeModule,
   ...exploreModule,
   ...exploreProvinceModule,
+  ...exploreMapModule,
 };
 
 let proto: Api;
@@ -97,6 +99,7 @@ suite("the port says what the prototype says [needs RISE_PNG_DESIGN_ROOT]", () =
       "SCORE_TREE",
       "EXPLORE",
       "EXPLORE_PROVINCE",
+      "EXPLORE_MAP",
       "GUIDE",
       "BANNED",
       "SIGN_IN",

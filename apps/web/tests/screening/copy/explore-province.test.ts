@@ -58,14 +58,13 @@ describe("the province section's words", () => {
     for (const unrecorded of [true, false]) check(`order(${unrecorded})`, WORDS.order(unrecorded), true);
     for (const provinces of [1, 2, 3, 22])
       for (const listed of [0, 1, 2, provinces])
-        for (const top of [0, 1, listed])
-          for (const unrecorded of [0, 1, 2])
-            if (listed <= provinces && top <= listed)
-              check(
-                `answer(${provinces}, ${listed}, ${top}, ${unrecorded})`,
-                WORDS.answer(provinces, listed, top, unrecorded),
-                true
-              );
+        for (const unrecorded of [0, 1, 2])
+          if (listed <= provinces)
+            check(
+              `answer(${provinces}, ${listed}, ${unrecorded})`,
+              WORDS.answer(provinces, listed, unrecorded),
+              true
+            );
     for (const complete of COUNTS)
       for (const rule of ["additive_no_u", "additive_u", "benchmark"] as const)
         check(`top(${complete}, ${rule})`, WORDS.top(complete, rule), true);
@@ -147,19 +146,15 @@ describe("the province section's words", () => {
   });
 
   it("answers with the data's own counts, the schools with no province included", () => {
-    expect(WORDS.answer(22, 21, 10, 0)).toBe(
-      "The schools in the list come from 21 of the 22 provinces, and the top 20 from 10 of them."
+    expect(WORDS.answer(22, 21, 0)).toBe("The schools in the list come from 21 of the 22 provinces.");
+    expect(WORDS.answer(5, 4, 1)).toBe(
+      "The schools in the list come from 4 of the 5 provinces; 1 school in the list has no province recorded."
     );
-    expect(WORDS.answer(5, 4, 4, 1)).toBe(
-      "The schools in the list come from 4 of the 5 provinces, and the top 20 from all of them; 1 school in the list has no province recorded."
-    );
-    expect(WORDS.answer(3, 3, 1, 0)).toBe(
-      "The schools in the list come from all 3 provinces, and the top 20 from one of them."
-    );
-    expect(WORDS.answer(1, 1, 1, 0)).toBe(
-      "The schools in the list come from the one province, the top 20 included."
-    );
-    expect(WORDS.answer(2, 0, 0, 3)).toBe("No school in the list has a province recorded.");
+    expect(WORDS.answer(3, 3, 0)).toBe("The schools in the list come from all 3 provinces.");
+    expect(WORDS.answer(1, 1, 0)).toBe("The schools in the list come from the one province.");
+    expect(WORDS.answer(2, 0, 3)).toBe("No school in the list has a province recorded.");
+    // Which provinces hold the top 20 is the province map's answer, said once, there.
+    expect(WORDS.answer(22, 21, 0)).not.toMatch(/top 20/);
   });
 
   it("the section writes no word of its own", () => {

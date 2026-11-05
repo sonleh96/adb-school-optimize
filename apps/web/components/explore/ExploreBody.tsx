@@ -11,6 +11,7 @@ import { type Marked, PartChart } from "./PartChart";
 import { type PickerGroup, SchoolPicker } from "./SchoolPicker";
 import styles from "./explore.module.css";
 import { Province } from "./sections/Province";
+import { ProvinceMap } from "./sections/ProvinceMap";
 
 /** The school the address marks. This chunk only ever runs in the browser, so the address is there to read. */
 const markedInAddress = (): string | null =>
@@ -160,6 +161,7 @@ export function ExploreBody({
         rule={bound.rule}
         marked={school && { id: school.id, name: view.names.get(school.id)! }}
       />
+      <ProvinceMap rows={results.rows} marked={school} names={view.names} />
     </>
   );
 }

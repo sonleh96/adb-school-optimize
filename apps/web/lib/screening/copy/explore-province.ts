@@ -1,6 +1,7 @@
 /**
- * The words of the explore page's province section: where the schools of the list come from, where the top 20 are,
- * and why the records not in the list yet wait. Each count comes from the data the page binds
+ * The words of the explore page's province section: where the schools of the list come from, how the top 20 sits in
+ * each province's bar, and why the records not in the list yet wait. Which provinces hold the top 20 is the province
+ * map's answer, the next section's (explore-province-map.ts), so this section does not say it again. Each count comes from the data the page binds
  * (`lib/explore/province.ts`), never from here.
  *
  * The records not in the list yet are records to verify before they can be put in order, never incomplete records:
@@ -21,14 +22,6 @@ const fromProvinces = (listed: number, provinces: number): string => {
   return provinces === 2 ? "both provinces" : `all ${formatCount(provinces)} provinces`;
 };
 
-/** "and the top 20 from 10 of them", after the provinces of the list. */
-const topFrom = (top: number, listed: number): string => {
-  if (top === 0) return "";
-  if (top < listed) return `, and the top 20 from ${top === 1 ? "one" : formatCount(top)} of them`;
-  if (listed === 1) return ", the top 20 included";
-  return `, and the top 20 from ${listed === 2 ? "both" : "all"} of them`;
-};
-
 /** Why the records not in the list yet wait, one group each: the verb for one record and for several. */
 const GROUPS = [
   { key: "missing", one: "has a detail missing", many: "have a detail missing" },
@@ -40,10 +33,9 @@ export const EXPLORE_PROVINCE = Object.freeze({
   question: "Where are the schools?",
   /**
    * The section's answer, in one sentence. `provinces` is how many provinces the records name, `listed` how many of
-   * them have a school in the list, `top` how many have one in the top 20, and `unrecorded` how many schools in the
-   * list give no province.
+   * them have a school in the list, and `unrecorded` how many schools in the list give no province.
    */
-  answer: (provinces: number, listed: number, top: number, unrecorded: number): string => {
+  answer: (provinces: number, listed: number, unrecorded: number): string => {
     if (listed === 0)
       return unrecorded === 0
         ? "No school is in the list yet."
@@ -52,7 +44,7 @@ export const EXPLORE_PROVINCE = Object.freeze({
       unrecorded === 0
         ? ""
         : `; ${formatCount(unrecorded)} ${plural(unrecorded, "school in the list has", "schools in the list have")} no province recorded`;
-    return `The schools in the list come from ${fromProvinces(listed, provinces)}${topFrom(top, listed)}${missing}.`;
+    return `The schools in the list come from ${fromProvinces(listed, provinces)}${missing}.`;
   },
   title: "Schools by province",
   /** How the rows are ordered, so a reader knows where to look for a province. */

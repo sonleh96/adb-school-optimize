@@ -15,13 +15,16 @@ The homepage shows each outside credit in its footer, linked to the source.
 
 ## Map
 
-- `png-provinces.svg`: drawn from World Bank Official Boundaries, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
-  Source: https://datacatalog.worldbank.org/search/dataset/0038272.
+- `png-provinces.svg`: Papua New Guinea's 22 provinces, drawn from World Bank Official Boundaries, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Source: version 2 of the dataset at https://datacatalog.worldbank.org/search/dataset/0038272, its file `World Bank Official Boundaries - Admin 1.geojson` (254,535,760 bytes, SHA-256 `2cd52d0ebea4889850471597c84222eeb817bc0077ac9d49bbcfed7d5faac2b6`), downloaded on 5 November 2026.
+  `apps/web/scripts/build-province-map.mjs` draws this file from it, and its header gives the download command; run on that file, it writes this one byte for byte.
+  Each province is one path, with its World Bank code as its id and its name in `data-name`.
   The boundaries shown do not imply any judgement on the legal status of any territory.
-  Simplified and redrawn, with small islands left out; it shows no school, mark or name.
-  Credit shown on the homepage: "Boundaries: World Bank Official Boundaries, CC BY 4.0."
-  Provenance gap: the file it was drawn from, `datasets/PNG_provinces.geojson`, is not in this repository, and no record says where it came from.
-  Its fields (`WB_A3`, `WB_STATUS`, `GEOM_SRCE: "WB GAD"`) point to the World Bank dataset above.
+  Simplified and redrawn, with small islands left out; it shows no school or mark.
+  The homepage shows it faintly, and the explore page shades its provinces by the schools of the top 20 their records name.
+  Both pages show the credit "Boundaries: World Bank Official Boundaries, CC BY 4.0.", linked to the dataset's page.
+  Provenance: the repository's `datasets/PNG_provinces.geojson`, which the first version of this file was drawn from and which is not committed, holds the same 22 features as that version 2 file, geometry for geometry.
+  Version 3 of the dataset (21 October 2026) has the same 22 names and codes with redrawn lines; the map stays on version 2, the one the repository's boundary file came from.
   Natural Earth, which is public domain, was checked first, but its admin-1 layer (version 5.2.0-pre on 4 November 2026) has 20 of the country's provinces, without Hela and Jiwaka.
 
 ## Screenshots
