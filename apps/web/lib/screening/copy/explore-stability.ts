@@ -190,6 +190,11 @@ export const EXPLORE_STABILITY = Object.freeze({
     axis: "Rank under each rule, with 1 at the top",
     closer: (from: number, to: number) =>
       `Below the line under rank ${formatCount(from - 1)}, ranks ${formatCount(from)} to ${formatCount(to)} are drawn closer together.`,
+    /** The line under the answer that keys the two kinds of line; the marked school is keyed over every chart. */
+    key: Object.freeze({
+      kept: "In the top 20 under every rule",
+      rest: "The rest of this top 20",
+    }),
     lane: LAYOUT.incompleteTab,
     range: "A bar gives the highest and lowest ranks a school could take while a figure is missing.",
     out: "A ring in the bottom row means the school is not in that rule's list yet.",

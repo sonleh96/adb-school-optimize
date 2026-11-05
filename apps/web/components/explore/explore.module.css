@@ -25,6 +25,8 @@
      lightest, still 4:1 on the white card (lib/screening/marks.ts, RAMP_HEX). */
   --mark-chosen: #002569;
   --mark-other: #447dd5;
+  /* The middle step, between the two: in the chart of ranks, the schools in the top 20 under every rule. */
+  --mark-kept: #20509e;
   --wrap: 1120px;
 
   min-height: 100vh;

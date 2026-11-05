@@ -29,6 +29,9 @@
  *     fails; or the dot plot has no Retry   -> "says in the dot plot why the earlier method's test cannot be shown ..."
  * 12. A middle column's label is a bare number with no unit beside it, so "under 10" reads as a count of schools
  *                                        -> "gives the middle columns' numbers their unit ..."
+ * 13. The chart of ranks draws every school's line alike, so the schools that stay in the top 20 under every rule are
+ *     lost in the crossings; or the marked school is not the strongest line; or nothing says what the kinds of line
+ *     are                                -> "draws the schools in the top 20 under every rule stronger than the rest ..."
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -40,7 +43,7 @@ import { DRIVERS } from "../lib/screening/copy/explore-drivers";
 import { EXPLORE_STABILITY } from "../lib/screening/copy/explore-stability";
 import { LAYOUT } from "../lib/screening/copy/words";
 
-import { type MockDataset, expect, test } from "./screening-helpers";
+import { type MockDataset, expect, test, useMockDataset } from "./screening-helpers";
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -727,6 +730,86 @@ for (const width of [1440, 360])
     await expect(axis).toBeVisible();
     expect((await axis.textContent())!.toLowerCase()).toContain("per cent");
   });
+
+test("draws the schools in the top 20 under every rule stronger than the rest, and the marked school strongest", async ({
+  page,
+  context,
+}) => {
+  // The drivers dataset has a full top 20, 13 of them kept and 7 that leave it under some rule with a line drawn.
+  await useMockDataset(context, "drivers");
+  // Kept, from the saved lists alone: certainly in the top 20 under every rule, by its rank or its range's lowest rank.
+  const lists = RULES.map(
+    (rule) => new Map(saved(rule, "drivers").rows.map((r) => [r.school.school_key, r]))
+  );
+  const certain = (row: SavedRow | undefined) =>
+    row?.cohort === "complete"
+      ? row.point_rank.scope_code === "complete_under_rule" && row.point_rank.rank! <= TOP
+      : row?.cohort === "interval"
+        ? row.rank_bounds.scope_code === "eligible" && row.rank_bounds.worst! <= TOP
+        : false;
+  const top = saved(MAIN, "drivers")
+    .rows.filter((r) => r.cohort === "complete" && r.point_rank.rank! <= TOP)
+    .map((r) => r.school.school_key);
+  const kept = new Set(top.filter((key) => lists.every((byKey) => certain(byKey.get(key)))));
+  expect(kept.size).toBeGreaterThan(0);
+  expect(kept.size).toBeLessThan(top.length);
+  // Mark a school of each kind in turn, one ranked under two neighbouring rules so it has a line: the marked line is
+  // the strongest whichever kind it is.
+  const ranked = (i: number, key: string) => {
+    const row = lists[i].get(key);
+    return row?.cohort === "complete" && row.point_rank.scope_code === "complete_under_rule";
+  };
+  const lined = (key: string) => RULES.slice(1).some((_, i) => ranked(i, key) && ranked(i + 1, key));
+  for (const markedKey of [
+    top.find((k) => kept.has(k) && lined(k))!,
+    top.find((k) => !kept.has(k) && lined(k))!,
+  ]) {
+    await openExplore(page, `?school=${markedKey}`);
+    const drawn = await bump(page)
+      .locator("svg g[data-school-key]")
+      .evaluateAll((groups) =>
+        groups.flatMap((g) => {
+          const line = g.querySelector("line");
+          if (!line) return [];
+          const style = getComputedStyle(line);
+          const [r, gr, b] = style.stroke.match(/\d+/g)!.map(Number);
+          const lin = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+          return [
+            {
+              key: g.getAttribute("data-school-key")!,
+              marked: g.hasAttribute("data-marked"),
+              width: parseFloat(style.strokeWidth),
+              luminance: 0.2126 * lin(r) + 0.7152 * lin(gr) + 0.0722 * lin(b),
+            },
+          ];
+        })
+      );
+    const marked = drawn.filter((d) => d.marked);
+    const keptLines = drawn.filter((d) => !d.marked && kept.has(d.key));
+    const rest = drawn.filter((d) => !d.marked && !kept.has(d.key));
+    expect(markedKey).toBeTruthy();
+    expect(marked.map((d) => d.key)).toEqual([markedKey]);
+    expect(keptLines.length + rest.length + 1).toBe(drawn.length);
+    // Stronger means thicker and darker: the marked school above the kept, the kept above the rest.
+    const most = (list: typeof drawn, f: (d: (typeof drawn)[number]) => number) => Math.max(...list.map(f));
+    const least = (list: typeof drawn, f: (d: (typeof drawn)[number]) => number) => Math.min(...list.map(f));
+    expect(least(keptLines, (d) => d.width)).toBeGreaterThan(most(rest, (d) => d.width));
+    expect(most(keptLines, (d) => d.luminance)).toBeLessThan(least(rest, (d) => d.luminance));
+    expect(marked[0].width).toBeGreaterThan(most(keptLines, (d) => d.width));
+    expect(marked[0].luminance).toBeLessThan(least(keptLines, (d) => d.luminance));
+    // Every line a reader follows keeps 3:1 on the white card.
+    for (const d of drawn) expect((1 + 0.05) / (d.luminance + 0.05), d.key).toBeGreaterThanOrEqual(3);
+  }
+  // One line says what the two kinds of line are, and the answer counts the stronger ones.
+  const key = bump(page).locator("[data-region=bump-key]");
+  await expect(key).toBeVisible();
+  await expect(key).toContainText(W.bump.key.kept);
+  await expect(key).toContainText(W.bump.key.rest);
+  expect(await key.evaluate((p) => p.getBoundingClientRect().height)).toBeLessThan(40);
+  await expect(bump(page).locator("[data-region=bump-answer]")).toHaveText(
+    W.bump.answer(kept.size, top.length, RULES.length)
+  );
+});
 
 test("says in the dot plot why the earlier method's test cannot be shown yet, and retries it there", async ({
   page,

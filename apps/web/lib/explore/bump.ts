@@ -78,6 +78,13 @@ export interface BumpSchool {
   readonly top: boolean;
 }
 
+/**
+ * Kept: in the anchor's top 20 and certainly in the top 20 under every rule drawn. The chart draws these darker, and
+ * the answer counts them, so the two always agree.
+ */
+export const isKept = (school: BumpSchool): boolean =>
+  school.top && school.standings.every((standing) => inTop(standing));
+
 export interface Bump {
   /** The rules drawn, in the chart's order: every rule of the seven whose list the page has. */
   readonly rules: readonly CopyRuleId[];
@@ -139,7 +146,7 @@ export function bumpOf(
     rules: drawn.map(({ rule }) => rule),
     schools,
     n: Math.max(TOP, ...counted, ...reached),
-    kept: schools.filter((s) => s.top && s.standings.every((standing) => inTop(standing))).length,
+    kept: schools.filter(isKept).length,
     anyOut: schools.some((s) => s.standings.some((standing) => standing.kind === "out")),
     reaching: own.rows.filter((row) => {
       const standing = standingOf(row);
