@@ -54,6 +54,26 @@ def test_migrations_keep_rows_when_rerun(connection):  # DB1
     assert counts["screening_results"] == 7 * len(mixed_records())
 
 
+LEGACY_OBJECTS = (
+    "districts",
+    "scoring_scenarios",
+    "school_scores",
+    "layer_catalog",
+    "vector_layer_features",
+    "ranked_school_scores_latest",
+)
+
+
+def test_the_old_model_is_gone_after_the_migrations(connection):  # DB24
+    apply_migrations(connection)
+
+    left = [
+        name for name in LEGACY_OBJECTS if scalar(connection, "select to_regclass(%s)", (f"public.{name}",))
+    ]
+    assert left == []
+    assert scalar(connection, "select to_regclass('public.schools')") is not None
+
+
 PRIVILEGES = ("select", "insert", "update", "delete", "truncate", "references", "trigger")
 
 
