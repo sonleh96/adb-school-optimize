@@ -1,13 +1,9 @@
+import { apiOrigin } from "./scripts/api-origin.mjs";
 import { assertNoTestSeams } from "./scripts/test-seams.mjs";
 
 assertNoTestSeams(process.env);
 
-const VERCEL_API_BASE_URL = "https://rise-png-api-73728254844.asia-southeast1.run.app";
-
-/** The server the app's `/api/v1` routes go to, or "" when they go nowhere (a build with no API to proxy to). */
-const API_ORIGIN = (
-  process.env.API_PROXY_TARGET || (process.env.VERCEL === "1" ? VERCEL_API_BASE_URL : "")
-).replace(/\/$/, "");
+const API_ORIGIN = apiOrigin(process.env);
 
 const originOf = (value) => {
   try {
