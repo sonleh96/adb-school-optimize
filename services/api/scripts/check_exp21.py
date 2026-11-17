@@ -4,6 +4,7 @@ Usage: python services/api/scripts/check_exp21.py <api base url> <EXP-21 results
 
 The results dir is `experiments/decision_rules/EXP-21-v0.1.0-20261012/results` under the methodology reference root.
 Reads the API over HTTP and the frozen EXP-21 tables, and writes only the report. Exits 1 on any mismatch.
+With sign-in on, put an allowlisted Supabase access token in API_TOKEN; it is sent as a bearer token.
 Scores within 1e-12 absolute; ranks, cohorts, school set and persistence flags exactly;
 top-20 frequencies exactly as stored floats.
 """
@@ -12,6 +13,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 import urllib.request
 from pathlib import Path
@@ -37,7 +39,10 @@ def num(value):
 
 def main(base: str, ref: Path, out: Path) -> int:
     url = f"{base.rstrip('/')}/api/v1/screening/results?rule=additive_u&input_version={VERSION}"
-    with urllib.request.urlopen(url, timeout=120) as response:
+    request = urllib.request.Request(url)
+    if os.environ.get("API_TOKEN"):
+        request.add_header("Authorization", f"Bearer {os.environ['API_TOKEN']}")
+    with urllib.request.urlopen(request, timeout=120) as response:
         body = json.load(response)
     rows = {r["school"]["source_school_name"]: r for r in body["rows"]}
     table = pd.read_csv(ref / "all_school_results.csv", float_precision="round_trip")
@@ -46,6 +51,10 @@ def main(base: str, ref: Path, out: Path) -> int:
 
     mismatches: list[dict] = []
     checked = 0
+    if len(rows) != len(body["rows"]):
+        mismatches.append(
+            {"field": "duplicate school names in the API", "rows": len(body["rows"]), "names": len(rows)}
+        )
 
     def check(school, field, api, want, exact):
         nonlocal checked

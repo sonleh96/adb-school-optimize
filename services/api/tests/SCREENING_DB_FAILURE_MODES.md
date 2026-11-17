@@ -32,6 +32,7 @@ With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of 
 | DB21 | CI loses the database and the job still passes. | `DATABASE_URL` is missing or the service is down, the database tests skip, and nothing fails. |
 | DB22 | The load only works on tuple rows. | A connection with `dict_row`, as the API pool uses, breaks indexing by position. |
 | DB23 | The command crashes on a bad source set. | A source table without the key column, an unreadable file or an empty set ends in a traceback instead of a plain message. |
+| DB24 | The old model's objects come back. | A database built from `infra/sql` holds `districts`, `scoring_scenarios`, `school_scores`, `layer_catalog`, `vector_layer_features` or `ranked_school_scores_latest`, which `008_drop_legacy_model.sql` drops. |
 
 ## Test map
 
@@ -39,6 +40,7 @@ With `REQUIRE_DATABASE_TESTS=1`, as in CI, each of these cases fails instead of 
 | --- | --- |
 | `test_migrations_are_rerunnable_and_leave_the_schema_unchanged` | DB1 |
 | `test_migrations_keep_rows_when_rerun` | DB1 |
+| `test_the_old_model_is_gone_after_the_migrations` | DB24 |
 | `test_new_tables_are_closed_to_the_data_api_roles` | DB2 |
 | `test_a_failed_apply_leaves_no_screening_table_behind` | DB18 |
 | `test_load_stores_one_run_per_rule_and_one_result_per_school` | DB4, DB10 |

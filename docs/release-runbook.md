@@ -43,29 +43,34 @@ The web app deploys to production from `main`: Vercel builds every push to `main
 ### Before the cutover
 
 1. Record the current Vercel production deployment ID, the serving Cloud Run revision and its image digest, and the newest migration applied to the database.
+   The database does not track migrations, so the previous release record is where the newest applied file is written down.
 2. Back up the database with `pg_dump -Fc -n public --no-owner --no-privileges`, keep the file outside the repository, and write down the restore command next to it.
+   `pg_dump` must be the server's major version or newer (Postgres 17 on the current project).
    Supabase Pro keeps daily backups as well.
-3. Apply the new files in `infra/sql`, in file order, each in one transaction.
+3. Apply the new files in `infra/sql`, in file order: `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f <file>`.
+   Each file from `005` on wraps itself in one transaction; `001` to `004` do not, so a fresh database takes those with `psql -1`.
    Migrations are additive, apart from drops of objects nothing reads, so the live API keeps working on the new schema.
 4. Build the API image from the release commit and tag it `<yyyymmdd>-<short sha>`.
-5. Deploy it with no traffic under a release tag: `gcloud run deploy rise-png-api --image <image> --no-traffic --tag rel-<yyyymmdd>`.
-   `gcloud run services describe rise-png-api` prints the tag's URL.
+5. Deploy it with no traffic under a release tag: `gcloud run deploy rise-png-api --project adb-sr --region asia-southeast1 --image <image> --no-traffic --tag rel-<yyyymmdd>`.
+   `gcloud run services describe rise-png-api --project adb-sr --region asia-southeast1` prints the tag's URL.
 6. Check the tag's URL:
    - `GET /` returns 200 with `X-Request-ID` and `X-Content-Type-Options: nosniff`.
      Use `/` on Cloud Run: its front end answers `/healthz` itself with a 404, so the request never reaches the API.
    - `GET /openapi.json` lists the routes the release adds, and `GET /api/v1/screening/rules` returns 200.
    - `python services/api/scripts/check_exp21.py <tag url> <EXP-21 results dir> <report.json>` passes: the `additive_u` list of `paper-2026-10-12` still equals EXP-21.
+     The results dir is `experiments/decision_rules/EXP-21-v0.1.0-20261012/results` under the methodology reference root; with sign-in on, the script reads a token from `API_TOKEN`.
    - With sign-in on: an unauthenticated `/api/v1` request returns the structured 401, and an allowlisted token returns 200.
-7. Build a preview of the release commit against the tag: `vercel deploy --build-env API_PROXY_TARGET=<tag url>` from `apps/web`.
+7. Build a preview of the release commit against the tag: from the repository root of a clean checkout of that commit, run `vercel deploy --yes --scope sonleh96s-projects --build-env API_PROXY_TARGET=<tag url>`.
+   The Vercel project's root directory is `apps/web`, and the CLI uploads the working tree as it is on disk.
    A preview calls the API through its own `/api/v1` proxy, and `API_PROXY_TARGET` picks the proxy's target (`apps/web/scripts/api-origin.mjs`).
    `NEXT_PUBLIC_API_BASE_URL` must stay a Production-only variable in Vercel: set for Preview, it sends the preview's browser straight to the production API and the check below proves nothing.
 8. Open `/screening` and `/explore` on the preview, confirm the list, the map and a school's card load, and confirm in the Cloud Run request logs that the preview's requests reached the tag's URL.
 
 ### Cutover
 
-9. Move all traffic to the new revision: `gcloud run services update-traffic rise-png-api --to-tags rel-<yyyymmdd>=100`.
-   Release first the side that works with the other's old version.
+9. Release first the side that works with the other's old version.
    That is usually the API, because its changes are additive; if neither side does, announce a short break.
+   Move all traffic to the new revision: `gcloud run services update-traffic rise-png-api --project adb-sr --region asia-southeast1 --to-tags rel-<yyyymmdd>=100`.
 10. Merge the release branch into `main` with a merge commit.
    Vercel builds the merge with the Production variables and moves the production domain to it.
 11. Check production: `/screening` and `/explore` load their data, every `/api/v1` call returns 200, and `check_exp21.py` passes against the production API.
@@ -100,7 +105,7 @@ Roll back at more than twice the baseline error rate, more than a 50 percent p95
 Frontend rollback target is the previously recorded healthy Vercel deployment.
 API rollback target is the previously recorded healthy Cloud Run revision and image digest.
 
-1. Restore 100 percent API traffic to the previous healthy Cloud Run revision: `gcloud run services update-traffic rise-png-api --to-revisions <revision>=100`.
+1. Restore 100 percent API traffic to the previous healthy Cloud Run revision: `gcloud run services update-traffic rise-png-api --project adb-sr --region asia-southeast1 --to-revisions <revision>=100`.
 2. Roll the web back to the previous healthy Vercel deployment: `vercel rollback <deployment id>`.
    After a rollback, a push to `main` no longer moves the production domain; `vercel promote <deployment id>` of the fixed deployment turns that back on.
 3. Leave `AUTH_REQUIRED` as it is during rollback.
