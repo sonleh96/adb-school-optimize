@@ -1,6 +1,8 @@
 # RISE-PNG release runbook
 
-This runbook covers local verification, staging, production, rollback, and the first-hour performance check for the authenticated RISE-PNG application.
+This runbook covers local verification, production releases, rollback, and the first-hour performance check for RISE-PNG.
+Sign-in is off in production (`AUTH_REQUIRED` is unset on Cloud Run and Vercel).
+The steps that apply only with sign-in on say so.
 
 ## Release gates
 
@@ -32,27 +34,48 @@ The WebGL regression test must keep exactly one context alive across repeated vi
 The C5 browser launcher uses deterministic local API fixtures and never contacts production data services.
 Lighthouse blocks third-party basemap tiles and evaluates the median of three runs so the release gate measures application work without public tile-network variance.
 
-## Staging deployment
+## Production release
 
-1. Apply the additive database migrations in `infra/sql` through the newest file in the reviewed migration workflow.
-2. Configure staging Supabase redirects, allowlists, and server-only auth variables from `docs/authentication.md`.
-3. Configure the Cloud Run API variables from `infra/cloud-run/README.md`, including exact staging CORS origins and `AUTH_REQUIRED=true`.
-4. Deploy the API image and confirm `/healthz` returns 200 with `X-Request-ID` and `X-Content-Type-Options: nosniff`.
-5. Confirm unauthenticated `/api/v1` requests return the structured 401 response.
-6. Deploy the frontend with its staging API origin and server-only Supabase variables.
-7. Sign in with one allowlisted account and verify the workspace list and map, a school's card, and a CSV export.
-8. Verify one unlisted account is rejected and a random-origin CORS preflight has no allow-origin response header.
-9. Hold staging for at least one normal briefing session and inspect client errors, API error rate, and latency.
+There is no staging environment.
+A Cloud Run revision that takes no traffic and a Vercel preview built against it stand in for one.
+The web app deploys to production from `main`: Vercel builds every push to `main`, so a merge into `main` is a production web release.
 
-## Production deployment
+### Before the cutover
 
-1. Record the currently healthy Vercel deployment ID, Cloud Run revision, container image digest, and database migration version.
-2. Confirm a recent Supabase backup and verify that the migrations are applied.
-3. Deploy the immutable API image first with zero traffic, then send an authenticated health request and one `/api/v1/screening/rules` request to the new revision.
-4. Move a small traffic share to the new API revision and monitor for 15 minutes.
-5. Deploy the frontend preview against the canary API revision and run the sign-in and workspace flow.
-6. Promote the frontend and API only when error rate is within 10 percent of baseline and p95 latency is within 20 percent of baseline.
-7. Monitor for one hour after promotion and keep the release owner available.
+1. Record the current Vercel production deployment ID, the serving Cloud Run revision and its image digest, and the newest migration applied to the database.
+2. Back up the database with `pg_dump -Fc -n public --no-owner --no-privileges`, keep the file outside the repository, and write down the restore command next to it.
+   Supabase Pro keeps daily backups as well.
+3. Apply the new files in `infra/sql`, in file order, each in one transaction.
+   Migrations are additive, apart from drops of objects nothing reads, so the live API keeps working on the new schema.
+4. Build the API image from the release commit and tag it `<yyyymmdd>-<short sha>`.
+5. Deploy it with no traffic under a release tag: `gcloud run deploy rise-png-api --image <image> --no-traffic --tag rel-<yyyymmdd>`.
+   `gcloud run services describe rise-png-api` prints the tag's URL.
+6. Check the tag's URL:
+   - `GET /` returns 200 with `X-Request-ID` and `X-Content-Type-Options: nosniff`.
+     Use `/` on Cloud Run: its front end answers `/healthz` itself with a 404, so the request never reaches the API.
+   - `GET /openapi.json` lists the routes the release adds, and `GET /api/v1/screening/rules` returns 200.
+   - `python services/api/scripts/check_exp21.py <tag url> <EXP-21 results dir> <report.json>` passes: the `additive_u` list of `paper-2026-10-12` still equals EXP-21.
+   - With sign-in on: an unauthenticated `/api/v1` request returns the structured 401, and an allowlisted token returns 200.
+7. Build a preview of the release commit against the tag: `vercel deploy --build-env API_PROXY_TARGET=<tag url>` from `apps/web`.
+   A preview calls the API through its own `/api/v1` proxy, and `API_PROXY_TARGET` picks the proxy's target (`apps/web/scripts/api-origin.mjs`).
+   `NEXT_PUBLIC_API_BASE_URL` must stay a Production-only variable in Vercel: set for Preview, it sends the preview's browser straight to the production API and the check below proves nothing.
+8. Open `/screening` and `/explore` on the preview, confirm the list, the map and a school's card load, and confirm in the Cloud Run request logs that the preview's requests reached the tag's URL.
+
+### Cutover
+
+9. Move all traffic to the new revision: `gcloud run services update-traffic rise-png-api --to-tags rel-<yyyymmdd>=100`.
+   Release first the side that works with the other's old version.
+   That is usually the API, because its changes are additive; if neither side does, announce a short break.
+10. Merge the release branch into `main` with a merge commit.
+   Vercel builds the merge with the Production variables and moves the production domain to it.
+11. Check production: `/screening` and `/explore` load their data, every `/api/v1` call returns 200, and `check_exp21.py` passes against the production API.
+12. Record the new Cloud Run revision, image digest, Vercel deployment ID and applied migrations, and the rollback commands with the previous values from step 1.
+13. Monitor for one hour, as below, and keep the release owner available.
+
+### Before turning sign-in on
+
+Configure the Supabase redirects, allowlists and server-only variables from `docs/authentication.md` and the Cloud Run variables from `infra/cloud-run/README.md`.
+Then sign in with one allowlisted account and check the workspace, a school's card and a CSV export, and check that an unlisted account is refused and that a preflight from a random origin gets no allow-origin header.
 
 ## First-hour monitoring
 
@@ -64,7 +87,8 @@ Check these signals at deployment, 15 minutes, and 60 minutes:
 - database pool saturation and Supabase connection count;
 - Cloud Run CPU and memory;
 - WebGL context count after repeated visits to the workspace;
-- failed sign-ins, structured 401 volume, and CORS failures;
+- CORS failures;
+- with sign-in on, failed sign-ins and the volume of structured 401 responses;
 - export response failures.
 
 Advance when error rate is within 10 percent and p95 latency is within 20 percent of the prior healthy baseline.
@@ -76,13 +100,14 @@ Roll back at more than twice the baseline error rate, more than a 50 percent p95
 Frontend rollback target is the previously recorded healthy Vercel deployment.
 API rollback target is the previously recorded healthy Cloud Run revision and image digest.
 
-1. Stop traffic promotion immediately.
-2. Restore 100 percent API traffic to the previous healthy Cloud Run revision.
-3. Promote the previous healthy Vercel deployment.
-4. Keep `AUTH_REQUIRED=true` during rollback.
-5. Do not reverse an additive migration during an application rollback.
-6. Recheck health, authenticated screening data, workspace rendering, and exports.
-7. Record the incident window, request IDs, affected release identifiers, and follow-up owner.
+1. Restore 100 percent API traffic to the previous healthy Cloud Run revision: `gcloud run services update-traffic rise-png-api --to-revisions <revision>=100`.
+2. Roll the web back to the previous healthy Vercel deployment: `vercel rollback <deployment id>`.
+   After a rollback, a push to `main` no longer moves the production domain; `vercel promote <deployment id>` of the fixed deployment turns that back on.
+3. Leave `AUTH_REQUIRED` as it is during rollback.
+4. Do not reverse a migration during an application rollback: the previous release runs on the new schema.
+   Restore the backup only for a data-integrity problem.
+5. Recheck `GET /` on the API, the screening data, the workspace and exports.
+6. Record the incident window, request IDs, affected release identifiers, and follow-up owner.
 
 ## Performance baseline
 
