@@ -1,0 +1,363 @@
+{
+ "dataset": "provinces",
+ "input_version": "synthetic-fixture-v1",
+ "pinned": "uuids (run ids, school ids) and timestamps",
+ "requests": [
+  {
+   "file": "rules.json",
+   "path": "/api/v1/screening/rules",
+   "query": {}
+  },
+  {
+   "file": "results/additive_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "results/need_first_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "results/need_first_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "results/benchmark.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "results/additive_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "inputs.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {}
+  },
+  {
+   "file": "inputs.pinned.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {
+    "input_version": "synthetic-fixture-v1"
+   }
+  },
+  {
+   "file": "schools/1f61510f7f334145e7302aaef744b426.json",
+   "path": "/api/v1/screening/schools/by-key/1f61510f7f334145e7302aaef744b426",
+   "query": {}
+  },
+  {
+   "file": "schools/f6b563ee2643016c5825618e6b407789.json",
+   "path": "/api/v1/screening/schools/by-key/f6b563ee2643016c5825618e6b407789",
+   "query": {}
+  },
+  {
+   "file": "schools/cd1529c0c7b8f2dfa05f82d021fbc9f6.json",
+   "path": "/api/v1/screening/schools/by-key/cd1529c0c7b8f2dfa05f82d021fbc9f6",
+   "query": {}
+  },
+  {
+   "file": "schools/8afabd4460b3a55c6060a3adb9af20be.json",
+   "path": "/api/v1/screening/schools/by-key/8afabd4460b3a55c6060a3adb9af20be",
+   "query": {}
+  },
+  {
+   "file": "schools/ca07a9fb574b075d66a637f19d931d23.json",
+   "path": "/api/v1/screening/schools/by-key/ca07a9fb574b075d66a637f19d931d23",
+   "query": {}
+  },
+  {
+   "file": "schools/170f8b17a48cfc5a1b3766f361825f52.json",
+   "path": "/api/v1/screening/schools/by-key/170f8b17a48cfc5a1b3766f361825f52",
+   "query": {}
+  },
+  {
+   "file": "schools/7cb50e8debdb69d42020395fe21e808e.json",
+   "path": "/api/v1/screening/schools/by-key/7cb50e8debdb69d42020395fe21e808e",
+   "query": {}
+  },
+  {
+   "file": "schools/1bcac99e4decf2ad403b583087315be1.json",
+   "path": "/api/v1/screening/schools/by-key/1bcac99e4decf2ad403b583087315be1",
+   "query": {}
+  },
+  {
+   "file": "schools/8bf0e6c9a6893c71791043ff6ad4aba7.json",
+   "path": "/api/v1/screening/schools/by-key/8bf0e6c9a6893c71791043ff6ad4aba7",
+   "query": {}
+  },
+  {
+   "file": "schools/6716efd92ceb9cc34c810fdc833b465f.json",
+   "path": "/api/v1/screening/schools/by-key/6716efd92ceb9cc34c810fdc833b465f",
+   "query": {}
+  },
+  {
+   "file": "schools/860bb26cf7001885c8a88ff30ea2207a.json",
+   "path": "/api/v1/screening/schools/by-key/860bb26cf7001885c8a88ff30ea2207a",
+   "query": {}
+  },
+  {
+   "file": "schools/4f853aceba346996d50ce8e8028085c9.json",
+   "path": "/api/v1/screening/schools/by-key/4f853aceba346996d50ce8e8028085c9",
+   "query": {}
+  },
+  {
+   "file": "schools/9e2ffaff2adccc3f7a7576e777783e0a.json",
+   "path": "/api/v1/screening/schools/by-key/9e2ffaff2adccc3f7a7576e777783e0a",
+   "query": {}
+  },
+  {
+   "file": "schools/8b63366af31aaf3cce5cbefb32b17136.json",
+   "path": "/api/v1/screening/schools/by-key/8b63366af31aaf3cce5cbefb32b17136",
+   "query": {}
+  },
+  {
+   "file": "schools/13f0b8b44ecd708d8ad555f580115bf6.json",
+   "path": "/api/v1/screening/schools/by-key/13f0b8b44ecd708d8ad555f580115bf6",
+   "query": {}
+  },
+  {
+   "file": "schools/ee36fefb9fceb1efc2a3edef2b215ea4.json",
+   "path": "/api/v1/screening/schools/by-key/ee36fefb9fceb1efc2a3edef2b215ea4",
+   "query": {}
+  },
+  {
+   "file": "schools/f83efd799b835c0ddec8c6afe712f97c.json",
+   "path": "/api/v1/screening/schools/by-key/f83efd799b835c0ddec8c6afe712f97c",
+   "query": {}
+  },
+  {
+   "file": "schools/a6123b626f0aa531d210893b41c4d296.json",
+   "path": "/api/v1/screening/schools/by-key/a6123b626f0aa531d210893b41c4d296",
+   "query": {}
+  },
+  {
+   "file": "schools/3b0cb266f3d4617bef271737d5f5f320.json",
+   "path": "/api/v1/screening/schools/by-key/3b0cb266f3d4617bef271737d5f5f320",
+   "query": {}
+  },
+  {
+   "file": "schools/1da46dbfc515850c77f02d5a0bf58752.json",
+   "path": "/api/v1/screening/schools/by-key/1da46dbfc515850c77f02d5a0bf58752",
+   "query": {}
+  },
+  {
+   "file": "schools/33722ad1326fbfde184c70f27332621c.json",
+   "path": "/api/v1/screening/schools/by-key/33722ad1326fbfde184c70f27332621c",
+   "query": {}
+  },
+  {
+   "file": "schools/17403bed4aedfe658a39d0b55bea13fe.json",
+   "path": "/api/v1/screening/schools/by-key/17403bed4aedfe658a39d0b55bea13fe",
+   "query": {}
+  },
+  {
+   "file": "schools/823ad49813970c78295f4122a59c5ff4.json",
+   "path": "/api/v1/screening/schools/by-key/823ad49813970c78295f4122a59c5ff4",
+   "query": {}
+  },
+  {
+   "file": "schools/3f10f874d5a158089dd382507fe4adca.json",
+   "path": "/api/v1/screening/schools/by-key/3f10f874d5a158089dd382507fe4adca",
+   "query": {}
+  },
+  {
+   "file": "schools/4a874c4634a50e179f65eaf979315d9c.json",
+   "path": "/api/v1/screening/schools/by-key/4a874c4634a50e179f65eaf979315d9c",
+   "query": {}
+  },
+  {
+   "file": "schools/080d0ec80f4c41c4c1fe0c947153efcf.json",
+   "path": "/api/v1/screening/schools/by-key/080d0ec80f4c41c4c1fe0c947153efcf",
+   "query": {}
+  },
+  {
+   "file": "schools/50a21ff3c0ae53ebe7f16395eff5b758.json",
+   "path": "/api/v1/screening/schools/by-key/50a21ff3c0ae53ebe7f16395eff5b758",
+   "query": {}
+  },
+  {
+   "file": "schools/3398850d227c7155e95fbb34c7f05f29.json",
+   "path": "/api/v1/screening/schools/by-key/3398850d227c7155e95fbb34c7f05f29",
+   "query": {}
+  },
+  {
+   "file": "schools/8f4ec9f82878aa71e47ccf48b8200625.json",
+   "path": "/api/v1/screening/schools/by-key/8f4ec9f82878aa71e47ccf48b8200625",
+   "query": {}
+  },
+  {
+   "file": "schools/19d9943385c3e3ff032a364bad427983.json",
+   "path": "/api/v1/screening/schools/by-key/19d9943385c3e3ff032a364bad427983",
+   "query": {}
+  },
+  {
+   "file": "schools/06f83a68c1c6a284d53d9aaff85a203b.json",
+   "path": "/api/v1/screening/schools/by-key/06f83a68c1c6a284d53d9aaff85a203b",
+   "query": {}
+  },
+  {
+   "file": "schools/ee86483e8a4bf7d38941856552d86d48.json",
+   "path": "/api/v1/screening/schools/by-key/ee86483e8a4bf7d38941856552d86d48",
+   "query": {}
+  },
+  {
+   "file": "schools/438f57c4afaabdadda69b41829950b0f.json",
+   "path": "/api/v1/screening/schools/by-key/438f57c4afaabdadda69b41829950b0f",
+   "query": {}
+  },
+  {
+   "file": "schools/0c58f4052223abb0c64c2b546a11064f.json",
+   "path": "/api/v1/screening/schools/by-key/0c58f4052223abb0c64c2b546a11064f",
+   "query": {}
+  },
+  {
+   "file": "compare/additive_u__additive_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "additive_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "additive_no_u"
+   }
+  }
+ ]
+}

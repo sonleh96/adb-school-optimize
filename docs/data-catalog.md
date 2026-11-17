@@ -4,11 +4,11 @@ Status: Sprint 0 minimum catalog for research use.
 
 Date: 2026-08-09.
 
-This catalog records what the current application uses and which governance fields remain unknown.
+This catalog records what the current application loads and which governance fields remain unknown.
 
 It does not certify the datasets for operational investment decisions.
 
-## Primary scoring source
+## Primary school source
 
 | Item | Current record |
 | --- | --- |
@@ -28,52 +28,32 @@ It does not certify the datasets for operational investment decisions.
 
 The source combines school facilities, connectivity, enrolment, accessibility, hazard, environmental, and conflict indicators.
 
+The screening API reads each school's id and coordinates from `public.schools`.
+Every other value it shows comes from the stored screening inputs.
+
 School names are currently the ingestion conflict key, so rename and collision risk remains until a governed source identifier is supplied.
 
 ## Supporting sources
 
 | Source group | Local artifacts | Current use |
 | --- | --- | --- |
-| Administrative boundaries | `PNG_country.geojson`, `PNG_provinces.geojson`, `PNG_districts.geojson`, `aggregated_district_data.geojson` | Map display, district context, and spatial review |
-| Road network | `roads_intersect_2026_2.json` | Context layer and access analysis |
-| Population access | `pop_access_*_v2.csv`, `pop_no_*_v2.csv` | Walking, cycling, and driving access indicators |
-| Air quality | `air_quality.geojson` | District context and map layer |
-| Emissions | `districts_emis.csv`, `districts_emis.xlsx` | District environmental context |
-| Flood hazard | `PNG_flood_JRC.tif` | Physical-risk input and raster display |
-| Land cover | `Dynamic World LULC.tif` | Terrain and land-cover context |
+| Administrative boundaries | `PNG_districts.geojson`, `aggregated_district_data.geojson` | Ingestion check that each school's coordinates fall inside a district polygon. Nothing is stored from them. |
+| Other layers | `PNG_country.geojson`, `PNG_provinces.geojson`, `roads_intersect_2026_2.json`, `pop_access_*_v2.csv`, `pop_no_*_v2.csv`, `air_quality.geojson`, `districts_emis.csv`, `districts_emis.xlsx`, `PNG_flood_JRC.tif`, `Dynamic World LULC.tif` | Not loaded or shown by the application. |
 
 The repository does not currently record authoritative owner, extraction date, reference period, license, or transformation lineage for these supporting sources.
 
-## Required scoring fields
+## Quality controls
 
-The executable scoring contract is defined by `ColumnConfig.required_columns` in the scoring package.
+The school loader stops before writing when a school's coordinates fall outside every district polygon.
+It prints a warning when a school's district label differs from the polygon that covers it (`services/api/app/ingestion/data_quality.py`).
 
-The contract now includes `Grade 7-10 Students per 1000 Population`, which the formula previously read without declaring.
-
-Missing required columns fail before formula execution with a schema-validation error.
-
-Missing values within declared fields may still be imputed under the configured research method and must be disclosed in outputs.
-
-## Automated quality controls
-
-The scoring package now performs the following checks without silently changing source values:
-
-- WGS84 coordinate validity is a hard failure.
-- Duplicate school names remain a hard failure under the default policy.
-- Percentage values outside 0 to 100 are reported for review.
-- Exact duplicate school coordinates are reported for identity review.
-- Accessible population is checked for walking-to-cycling-to-driving nesting.
-- Catchment WKT parsing, school-point coverage, and travel-mode nesting are reported.
-- Every scoring run records structured issues in its summary and warnings.
-
-District label versus polygon assignment still requires the administrative-boundary ingestion check and is not resolved by the scoring package alone.
+Screening inputs are parsed through the engine's input contract in `school_scoring.screening.inputs`.
+An unknown value stays unknown, a school that fails the gate is queued with its reasons, and nothing is imputed.
 
 ## Run provenance
 
-Every scoring run now records a research score version plus SHA-256 fingerprints of the input table, scoring configuration, and weight configuration.
-
-The additive database migration `infra/sql/003_scoring_run_provenance.sql` stores these fields with the scenario once applied.
-
+Every stored screening run carries a manifest with the rule, its weights, the anchors, the engine package version, and SHA-256 fingerprints of the inputs.
+An input version is frozen: loading different numbers under an existing version id is refused.
 The fingerprints identify exact run inputs but do not replace source ownership, licensing, or reference-period metadata.
 
 ## Governance work still required
@@ -82,6 +62,6 @@ The fingerprints identify exact run inputs but do not replace source ownership, 
 - Record source system, extraction date, reference period, and license.
 - Obtain a durable school identifier from an authoritative registry.
 - Record every source-to-curated transformation with code version and row-level exception logs.
-- Review and disposition all quality exceptions before a score version is released.
+- Review and disposition all quality exceptions before an input version is released.
 - Define retention, access, correction, and approval procedures with ADB and education-sector stakeholders.
 

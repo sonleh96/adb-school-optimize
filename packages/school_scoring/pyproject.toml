@@ -4,15 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "school-scoring"
-version = "0.1.0"
-description = "Deterministic school need and priority scoring engine for RISE-PNG."
+version = "0.2.0"
+description = "Deterministic school screening engine for RISE-PNG."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy",
     "pandas",
-    "shapely",
-    "pyproj",
 ]
 
 [project.optional-dependencies]
@@ -27,3 +25,6 @@ include = ["school_scoring*"]
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "reproduction: compares the screening engine with frozen research outputs; needs RISE_PNG_REFERENCE_ROOT and RISE_PNG_DATASETS_ROOT",
+]

@@ -1,0 +1,160 @@
+# Screening API failure modes
+
+Written before the tests.
+Each test in `test_screening_api_*.py` carries the id of the failure mode it guards.
+All of them run against a real PostGIS database (`DATABASE_URL`), with invented records loaded through the ingestion function of the screening database tests.
+Without `DATABASE_URL` they skip, like the screening database tests.
+Nothing in them is mocked: the application, its connection pool and the stored runs are the real ones.
+
+| Id | Failure mode | How it would show |
+| --- | --- | --- |
+| API1 | A rank loses its scope, or carries the wrong one. | A row, a detail entry, a comparison or an export gives a rank without the scope label and count of its cohort, or the label and count differ from the stored run. |
+| API2 | An interval school gets a point rank. | `rank_point`, a point score or a position among the point rows appears for a school with a missing environmental input, in the list, the detail, the comparison or an export. |
+| API3 | Urgency appears under an urgency-omitted rule. | `U`, a `U` contribution or a maximum term that names `U` is shown for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`, or a rule's `uses_urgency` is wrong. |
+| API4 | A filter changes ranks or anchors, or does not say so. | A province or district filter renumbers the remaining rows, changes a bound, or the response does not state that filters only hide rows. |
+| API5 | The list is in the wrong order. | Complete schools are not in point-rank order; an interval school is not at its lower-score position by default, or `placement=upper` does not move it to its upper-score position; the placement of a row is not stated; the queue is not ordered by province, district and name; equal scores are not separated by school name in code point order; a need-first rule orders interval schools by score without N first. |
+| API7 | An export cannot rebuild the list. | Re-sorting the exported rows by the declared keys and the name tie-break does not give the listed point ranks; the method record omits a key needed to read the file; the file cannot be parsed after the `#` block. |
+| API8 | An export names the wrong rule. | The method record, the row `rule_id`, the filename or the sheet name disagree with the requested rule, or `_u` and `_no_u` rules are confused, or a proposed rule is labelled as circulated. |
+| API9 | A new route is reachable without authentication. | Any route under `/api/v1/screening` answers 200 without a bearer token when authentication is required. |
+| API10 | Cache headers are wrong. | A JSON GET has no `Cache-Control` or `ETag`; the `ETag` does not change when the input version or the rule changes; `If-None-Match` is ignored; an error response or an export is cacheable. |
+| API11 | An unknown id is not a 404, or has another error shape. | An unknown rule, input version or school gives 200, 500 or a body that is not the API's `{"error": {code, message, details}}` envelope. |
+| API12 | A value is altered on the way out. | A float is rounded or becomes `NaN` in JSON, a name is trimmed or case-folded, an integer rank becomes a float, an unknown value becomes zero, or what the list returns differs from the stored run. |
+| API13 | A comparison is computed on the wrong cohort or the wrong way. | `/compare` ranks schools that are not complete under both rules, its metrics differ from the engine's `pairwise_metrics`, or exits and entrants are swapped. |
+| API14 | The default input version is wrong. | The default is not the latest version, or `/input-versions` does not mark it, or the default rule is not the revised paper's main rule, `additive_no_u`. |
+| API15 | Range schools are mishandled in an export. | A range row carries a point rank or point score, is not flagged, or appears with `include_ranges=false`; a range school that could reach the shortlist is left out. |
+| API16 | The incomplete export is wrong. | It lacks a queued school, includes a school that is not queued under the chosen rule, or gives no missing details. |
+| API17 | The method record is incomplete or wrong. | It omits a required item (rule provenance, role, score kind, formula, weights, input version and hash, anchors hash, package version, tie rule, scopes and counts, placement convention, filters, `k`, generation time, caveat), or states a hash that differs from the stored run. |
+| API18 | The school detail is wrong. | It shows another school, omits a rule, shows the stored raw inputs altered, or answers for a school that is not in the input version. |
+| API19 | A spreadsheet reads a name as a formula. | An XLSX cell holding a school name that starts with `=` is stored as a formula. |
+| API20 | A top export drops range schools without saying so. | With `include_ranges` false or defaulted, interval schools that could reach `k` are missing and the method record does not say how many there are or that they are left out. |
+| API22 | The current run is chosen by chance, or a run cannot be pinned. | With two runs of one rule, the response follows insertion time or text order of the package version instead of the highest version; a request cannot name a package version; a pinned request is not cached as immutable. |
+| API21 | A school cannot be reached, or a link hides a school. | A school with no `schools` row has no detail route; the key differs between requests or equals another version's key; two schools linked to one `school_id` show only one of them. |
+| API23 | Control or invisible characters reach a filter or cause a server error. | A control character, a bidirectional control or other format character (Cf), or U+2028 or U+2029 in a query or path parameter is accepted or gives a 500, a letter with an accent is refused, or text stored with a control character makes the XLSX writer raise. |
+| API24 | A CSV text cell is read as a formula, or the exact name is lost. | A text cell of the CSV that starts with `=`, `+`, `-`, `@`, a tab or a carriage return (the school name, province, district or locality) has no apostrophe in front (also when whitespace or a line break comes first), a number is given one, the method record does not say so, the XLSX changes its exact name, or the XLSX turns a carriage return into a line feed. |
+| API29 | Excel mangles the CSV. | The file has no byte order mark so accents are misread, or a method-record line holds a comma and is split across columns. |
+| API25 | A browser script cannot read the screening headers. | The CORS response does not expose `Content-Disposition`, `ETag`, `X-Screening-Input-Version`, `X-Screening-Input-Sha256` or the research-use header, so a web client cannot name a download or see the version. |
+| API26 | A comparison hides its scope or its exclusions. | A rank in `/compare` (common ranks, entrants, exits) has no scope label, or a school that is not complete under both rules vanishes without a reason. |
+| API27 | Urgency is present as a key or column, even empty, under a rule that does not read it. | `components` has a `U` key, an export has a `U` column, or the queue export lists the urgency source value as missing, for `additive_no_u`, `need_first_no_u` or `bottleneck_no_u`. |
+| API28 | The display order is read as a rank. | The field that numbers the rows of the list is called a position or rank, or is not documented as display order, so a client quotes it as a rank that differs from the point rank. |
+| API30 | A newer engine's stored fields break reading. | A run or result stored with a field the API does not know gives a 500 instead of being read, or the unknown field is passed on to clients. |
+| API31 | The bulk inputs differ from the per-school detail. | For some school or field, `/inputs` gives a value, a name, a key or an order that `/schools/by-key` and the stored version do not; a float is rounded, a negative zero or an unknown becomes zero, a name loses its spaces. |
+| API32 | A scope code is missing, wrong, or taken from the label. | A rank, a manifest, a detail entry or a comparison (ranks, entrants, exits, common cohort, interval bounds) lacks its code, a point rank carries the bounds' code, or the label no longer equals the engine's label for the count the same response states. |
+| API33 | The persistence flag is wrong. | A school at the threshold in every setting is not flagged, a school below it in one setting is, a school outside the experiment gets false instead of null, one input version shows the flag of another, or one rule shows the flag of the other rule's experiment. |
+| API34 | The flag is read as a result of another rule. | `persistent_candidate`, `persistence` or the limitation appear in the list, detail entry or comparison of any rule but `additive_u` and `additive_no_u`, or inside the school's inputs. |
+| API35 | The flag has no provenance, or hides its limit. | The rules, input-versions or results response omits the source file hash, the experiment, the draws, the settings, the threshold or the rule's own limitation, gives one rule the other's limitation, or `/rules` does not say which experiment backs each rule. |
+| API40 | A run stored by an earlier engine breaks or lies. | The API answers 500 for a run whose provenance it no longer knows, or serves a stored role that contradicts `/rules` (two primary rules), instead of a 409 that names the run. |
+| API41 | Loading again does not repair a database an earlier engine loaded. | After a loader rerun the API still serves the old run, or the engine's package version is not above the one that stored it. |
+| API39 | A compared entrant or exit has the wrong scope code. | `rank_scope_code` of a top-20 entrant or exit in `/compare` is `complete_under_rule` or `eligible` instead of `common_complete_cohort`, and no test notices because the data has too few schools for the top 20 to change. |
+| API38 | The route by link is cached as immutable. | `GET /schools/{school_id}` with an input version and a package version is sent as `immutable`, so a client keeps it across a reload of `schools` that changes which schools the id links to. |
+| API36 | The margin of a persistent school is wrong or left to the reader. | A school inside the rule's band above the threshold (one standard error for `additive_u`, two for `additive_no_u`) is not marked, a school further above or below the line is, the lowest frequency is not the minimum over the settings, the standard error does not follow the stored draws, or the provenance does not state the definition and the band. |
+| API42 | A school's frequencies per setting are wrong, misplaced or read as more than they are. | A row or detail entry of `additive_u` or `additive_no_u` serves frequencies that differ from the stored rows (rounded, another rule's or another version's), in an order other than the set's settings, or under setting ids the provenance does not list; a school outside the experiment or a version without numbers gets zeros or an empty list instead of null; the field appears under any other rule or in a comparison; the flag or the lowest frequency disagrees with the frequencies served beside it; or the field's description omits that a frequency is a share of draws, not a probability. |
+
+## Test map
+
+| Test | Failure mode |
+| --- | --- |
+| `test_the_csv_rebuilds_the_list_from_its_declared_keys` | API7, API12 |
+| `test_k_cuts_the_list_at_a_point_rank_and_a_name_tie_is_broken_by_code_point` | API7 |
+| `test_names_are_exported_byte_for_byte` | API12 |
+| `test_values_are_written_in_full_precision` | API12 |
+| `test_unknown_values_are_empty_cells_never_zero` | API12 |
+| `test_the_method_record_names_everything_needed_to_read_the_file` | API17 |
+| `test_the_caveat_for_an_urgency_rule_says_urgency_is_unresolved_not_omitted` | API17 |
+| `test_every_export_names_the_rule_it_was_asked_for` | API8, API3 |
+| `test_range_schools_have_their_own_flagged_rows_with_bounds_and_no_point_rank` | API2, API15 |
+| `test_range_rows_are_left_out_unless_asked_for_and_unless_they_could_reach_the_cut` | API15 |
+| `test_range_schools_are_included_by_default_and_the_record_counts_those_reaching_k_after_filters` | API20 |
+| `test_a_complete_school_is_never_listed_as_a_range_row_and_a_rule_without_environment_has_none` | API2 |
+| `test_filters_in_an_export_hide_rows_without_renumbering_ranks` | API4 |
+| `test_the_xlsx_holds_a_method_record_sheet_and_the_same_table_as_the_csv` | API7, API12, API17 |
+| `test_a_school_name_that_looks_like_a_formula_stays_text_in_the_xlsx` | API19 |
+| `test_the_incomplete_export_lists_exactly_the_queue_with_missing_details` | API16 |
+| `test_the_queue_depends_on_the_rule_and_on_the_filters` | API16, API4 |
+| `test_every_gate_failure_has_a_plain_description` | API16 |
+| `test_control_characters_in_stored_text_do_not_break_the_xlsx` | API23 |
+| `test_the_csv_guards_every_text_cell_that_starts_with_a_formula_character` | API24 |
+| `test_province_district_and_locality_are_guarded_in_the_csv_but_numbers_are_not` (6 characters) | API24 |
+| `test_the_csv_guards_a_cell_whose_first_visible_character_is_a_formula_character` (6 names) | API24 |
+| `test_a_negative_number_in_the_csv_is_not_guarded` | API24 |
+| `test_the_csv_opens_in_excel_with_accents_and_one_column_per_record_line` | API29 |
+| `test_urgency_has_no_column_and_no_missing_input_under_an_urgency_omitted_rule` | API27 |
+| `test_every_screening_route_rejects_an_unauthenticated_request` | API9 |
+| `test_json_responses_carry_a_cache_policy_and_a_validator` | API10 |
+| `test_a_matching_validator_gets_304_and_any_other_gets_the_body` | API10 |
+| `test_the_validator_follows_the_rule_the_placement_the_filter_and_the_input_version` | API10 |
+| `test_errors_and_exports_are_not_cacheable` | API10 |
+| `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` | API23 |
+| `test_a_browser_script_may_read_the_screening_headers_and_the_filename` | API25 |
+| `test_rules_list_the_registry_with_weights_as_fractions_and_floats` | API3, API8, API14 |
+| `test_the_default_input_version_is_the_latest_and_is_marked` | API14 |
+| `test_results_list_complete_schools_by_point_rank_then_interval_at_lower_bound_then_the_queue` | API1, API2, API5 |
+| `test_upper_placement_moves_interval_schools_to_their_upper_bound_and_says_so` | API5, API28 |
+| `test_a_need_first_rule_places_interval_schools_by_need_first_then_by_score` | API5 |
+| `test_the_queue_is_ordered_by_province_then_district_then_name_in_code_point_order` | API5 |
+| `test_urgency_omitted_rules_hold_back_only_the_schools_that_fail_the_gate` | API3, API5 |
+| `test_filters_hide_rows_and_never_renumber_ranks` | API4 |
+| `test_every_rule_returns_exactly_what_the_engine_produced` | API1, API12 |
+| `test_identity_carries_the_exact_source_name_the_place_and_the_coordinates_of_the_school` | API12 |
+| `test_interval_and_queued_schools_never_carry_a_point_rank_or_point_score` | API2 |
+| `test_urgency_never_appears_in_an_urgency_omitted_rule` | API3 |
+| `test_unknown_ids_are_404_in_the_apis_error_envelope` | API11 |
+| `test_nothing_loaded_is_404_not_a_server_error` | API11 |
+| `test_malformed_arguments_are_validation_errors_in_the_same_envelope` | API11 |
+| `test_school_detail_shows_the_school_under_all_seven_rules_with_its_stored_inputs` | API1, API18 |
+| `test_school_detail_for_an_interval_school_has_bounds_and_no_point_rank` | API2, API18 |
+| `test_compare_ranks_the_schools_complete_under_both_rules_and_reports_the_metrics` | API1, API13 |
+| `test_compare_gives_the_bounds_of_interval_schools_under_both_rules` | API2, API13 |
+| `test_compare_of_a_rule_with_itself_agrees_completely` | API13 |
+| `test_compare_lists_top_twenty_entrants_and_exits_with_both_ranks_and_scores` | API13 |
+| `test_the_current_run_is_the_highest_package_version_and_any_run_can_be_pinned` | API22 |
+| `test_every_school_has_a_key_and_a_detail_route_even_when_it_is_not_linked` | API21 |
+| `test_the_school_key_is_stable_per_version_and_differs_between_versions` | API21 |
+| `test_the_route_on_a_school_id_returns_every_school_that_shares_the_link` | API21 |
+| `test_compare_labels_every_rank_with_its_scope_and_lists_the_schools_it_leaves_out` | API26 |
+| `test_stored_runs_with_fields_a_newer_engine_added_still_read_and_are_served_unchanged` | API30 |
+| `test_the_bulk_inputs_equal_the_per_school_detail_for_every_school` | API31 |
+| `test_the_bulk_inputs_name_the_version_and_its_hash_like_every_other_screening_route` | API31 |
+| `test_the_bulk_inputs_keep_every_value_exactly` | API12, API31 |
+| `test_the_default_is_the_latest_version_and_a_named_version_gives_its_own_schools` | API14, API31 |
+| `test_an_unknown_version_is_a_404_in_the_error_envelope_and_nothing_loaded_is_too` | API11 |
+| `test_a_request_that_names_the_version_is_immutable_and_the_default_is_not` | API10, API31 |
+| `test_the_validator_changes_with_the_input_version` | API10 |
+| `test_every_rank_carries_a_scope_code_that_matches_its_label_and_count` | API32 |
+| `test_a_range_school_has_two_different_scopes_and_the_codes_say_which_is_which` | API32 |
+| `test_the_school_detail_carries_the_codes_for_every_rule` | API32 |
+| `test_every_route_that_serves_a_scope_label_serves_its_code_and_the_two_agree` | API32 |
+| `test_a_label_and_a_code_that_disagree_are_caught_by_the_check` | API32 |
+| `test_the_codes_follow_the_engine_for_the_stored_runs` | API32 |
+| `test_each_list_flags_the_schools_of_its_own_experiment_and_leaves_the_rest_null` (2 rules) | API33 |
+| `test_the_two_rules_disagree_where_their_experiments_do` | API33 |
+| `test_no_other_rule_carries_the_flag_or_the_provenance_at_all` | API34 |
+| `test_the_school_detail_flags_the_entry_of_each_rule_with_that_rules_own_numbers` | API34 |
+| `test_each_rules_provenance_names_its_experiment_and_its_own_limit` | API35 |
+| `test_the_rules_list_says_which_experiment_backs_each_rule` | API35 |
+| `test_a_version_without_the_numbers_has_null_flags_and_no_provenance` | API33, API35 |
+| `test_a_version_with_one_set_serves_only_that_rules_provenance` | API35 |
+| `test_another_versions_numbers_are_not_lent_to_a_version_without_them` | API33 |
+| `test_the_flag_does_not_move_a_rank_or_a_score` (2 rules) | API12 |
+| `test_the_record_names_the_experiment_behind_a_rules_persistence_and_its_own_limit` | API17, API35 |
+| `test_a_rule_without_persistence_numbers_has_no_persistence_lines_in_its_record` | API17, API34 |
+| `test_every_screening_route_rejects_an_unauthenticated_request` (now also `/inputs`) | API9 |
+| `test_control_characters_in_any_text_parameter_are_a_422_not_a_500` (now also `/inputs`) | API23 |
+| `test_every_entrant_and_exit_of_a_comparison_carries_the_common_cohort_scope_code` | API39 |
+| `test_the_engine_is_newer_than_the_one_that_stored_the_old_runs` | API40 |
+| `test_a_stale_run_answers_409_and_names_itself_never_500` (6 rules) | API40 |
+| `test_every_route_that_reads_a_run_refuses_a_stale_one_clearly` | API40 |
+| `test_a_run_whose_rule_metadata_is_unchanged_is_still_served` | API40 |
+| `test_loading_the_version_again_stores_the_current_runs_and_the_api_serves_them` | API41 |
+| `test_the_old_run_can_still_be_pinned_and_is_refused_by_name` | API41 |
+| `test_no_route_that_carries_the_links_is_cached_as_immutable` | API38 |
+| `test_a_wrong_scope_code_on_an_entrant_or_an_exit_is_caught_by_the_check` | API39 |
+| `test_the_route_by_link_is_never_cached_as_immutable_because_the_links_change` | API38 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_circulated_rule_inside_one_standard_error` | API36 |
+| `test_a_persistent_school_is_threshold_adjacent_under_the_revised_rule_inside_two_standard_errors` | API36 |
+| `test_the_detail_carries_the_margin_fields_on_the_entries_of_the_two_rules_only` | API36, API34 |
+| `test_the_provenance_states_the_margin_each_rule_is_judged_by` | API36, API35 |
+| `test_each_entry_serves_the_stored_frequencies_in_the_sets_setting_order` (2 rules) | API42 |
+| `test_only_the_two_rules_carry_the_frequencies_and_a_school_outside_the_experiment_has_null` | API42, API34 |
+| `test_a_version_without_the_numbers_has_null_frequencies_never_zeros` | API42 |
+| `test_the_flag_and_the_lowest_frequency_follow_the_frequencies_served_beside_them` (2 datasets) | API42, API33, API36 |
+| `test_the_frequencies_say_they_are_shares_of_draws_not_probabilities` | API42 |

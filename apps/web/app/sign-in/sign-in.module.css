@@ -1,0 +1,169 @@
+/*
+ * The sign-in page, in the workspace's typefaces and tokens. The token values are those of
+ * components/screening/screening.module.css (`.root`); the fonts come from app/fonts.ts through the layout.
+ */
+.page {
+  --paper: #f3f1ec;
+  --panel: #fff;
+  --ink: #111a2c;
+  --ink-2: #3d4759;
+  --ink-3: #4f596b;
+  --hair: rgba(17, 26, 44, 0.12);
+  --hair-2: rgba(17, 26, 44, 0.075);
+  --navy: #002569;
+  --navy-wash: color-mix(in srgb, var(--navy) 6%, transparent);
+  --alert: #8f1d14;
+  --alert-wash: rgba(143, 29, 20, 0.07);
+  --edge: color-mix(in srgb, var(--navy) 10%, transparent);
+  --field-edge: rgba(17, 26, 44, 0.48);
+  --shadow: 0 1px 2px rgba(10, 20, 40, 0.06), 0 18px 40px -24px rgba(10, 20, 40, 0.34);
+  --r-panel: 14px;
+  --r-box: 10px;
+  --r-control: 8px;
+  --serif: var(--font-screening-serif), Georgia, serif;
+  --sans: var(--font-screening-sans), system-ui, sans-serif;
+  --track-label: 0.13em;
+  --track-title: -0.02em;
+
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 14px/20px var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Under the workspace's navy rule, which the card clips to its corners. */
+.card {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 400px);
+  padding: 28px 32px 32px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--navy);
+}
+
+/* The workspace's masthead, as it reads at the head of the column: the logo on white, with clear space round it. */
+.brand {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 1px;
+  align-items: center;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hair-2);
+}
+/* The official mark keeps its square corners. */
+.logo {
+  grid-row: 1 / 3;
+  width: 30px;
+  height: 30px;
+}
+.name {
+  margin: 0;
+  font: 600 12px/14px var(--sans);
+  letter-spacing: var(--track-label);
+}
+.sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+
+.title {
+  margin: 28px 0 0;
+  font: 600 26px/31px var(--sans);
+  letter-spacing: var(--track-title);
+  text-wrap: balance;
+}
+.lead {
+  margin: 10px 0 0;
+  color: var(--ink-2);
+}
+
+.note {
+  margin: 18px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-box);
+}
+.sent {
+  background: var(--navy-wash);
+  color: var(--navy);
+}
+.error {
+  background: var(--alert-wash);
+  color: var(--alert);
+}
+
+.form {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+.form label {
+  font-weight: 500;
+  font-size: 13px;
+}
+.form input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+}
+/* Unavailable, the box keeps its edge, so it still reads as the place for an email, and greys inside. */
+.form input:disabled {
+  background: var(--hair-2);
+}
+.form input:focus-visible,
+.form button:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+.form button {
+  height: 40px;
+  margin-top: 8px;
+  border: 1px solid var(--navy);
+  border-radius: var(--r-control);
+  background: var(--navy);
+  cursor: pointer;
+  font: 500 13.5px/1 var(--sans);
+  color: #fff;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.form button:not(:disabled):active {
+  transform: scale(0.98);
+}
+/* Unavailable, the button greys but its words stay readable: 8:1 on the grey. */
+.form button:disabled {
+  border-color: var(--hair);
+  background: var(--hair-2);
+  cursor: default;
+  color: var(--ink-2);
+}
+
+.hint {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form button {
+    transition: none;
+  }
+}

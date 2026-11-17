@@ -1,0 +1,2817 @@
+/*
+ * The screening workspace. Measures follow the design specification (notes/final.md, "Tokens"): paper behind the
+ * map, floating panels, one navy accent, a 4 px grid. The tokens are ADB's colours in Darkhorse's design language
+ * (.audit-work/build/audit-20261102/design-report.md). Everything is scoped to this module, so the old pages are
+ * unaffected. app/sign-in/sign-in.module.css repeats the tokens it uses; keep the two in step.
+ */
+.root {
+  /* Surfaces: paper behind the map, white panels on it, and the guide rail between the two. */
+  --paper: #f3f1ec;
+  --panel: #fff;
+  --rail-bg: #f8f7f3;
+  /* Inks in navy-slate. The third is the lightest text: 7:1 on the white panels and 6.2:1 or more on the paper, the
+     rail and a chosen row (tests/screening/tokens.test.ts). */
+  --ink: #111a2c;
+  --ink-2: #3d4759;
+  --ink-3: #4f596b;
+  --hair: rgba(17, 26, 44, 0.12);
+  --hair-2: rgba(17, 26, 44, 0.075);
+  /* The one accent: the ADB logo's own navy (adb.org's adb-logo.svg), and its tints. */
+  --navy: #002569;
+  --navy-2: #1c5cab;
+  --navy-wash: color-mix(in srgb, var(--navy) 6%, transparent);
+  --navy-wash-2: color-mix(in srgb, var(--navy) 11%, transparent);
+  --navy-line: color-mix(in srgb, var(--navy) 30%, transparent);
+  --queue: #6e6b63;
+  /* Edges: a navy hairline round what floats, and 3:1 for what marks a field or a control's state (WCAG 1.4.11). */
+  --edge: color-mix(in srgb, var(--navy) 10%, transparent);
+  --field-edge: rgba(17, 26, 44, 0.48);
+  /* Controls: a switch is a grey track whose chosen side is white with a navy ring (12:1 on the track), and an
+     outlined button or chip has a navy-tinted edge. */
+  --track: #e8ecf2;
+  --ring-chosen: 0 1px 2px rgba(10, 20, 40, 0.12), inset 0 0 0 1.5px var(--navy);
+  --control-edge: color-mix(in srgb, var(--navy) 26%, transparent);
+  /* Depth: a soft shadow with a negative spread, so a panel floats without a dark rim. */
+  --shadow: 0 1px 2px rgba(10, 20, 40, 0.06), 0 18px 40px -24px rgba(10, 20, 40, 0.34);
+  --shadow-pop: 0 1px 2px rgba(10, 20, 40, 0.08), 0 24px 48px -20px rgba(10, 20, 40, 0.4);
+  /* Corners: a floating panel, a box or popover inside or over it, a control, a chip. */
+  --r-panel: 14px;
+  --r-box: 10px;
+  --r-control: 8px;
+  --r-chip: 999px;
+  /* Type: Plex Sans for the interface, Newsreader for lead sentences. Small labels are tracked capitals; titles and
+     figures are set tight. */
+  --serif: var(--font-screening-serif), Georgia, serif;
+  --sans: var(--font-screening-sans), system-ui, sans-serif;
+  --mono: var(--font-screening-mono), ui-monospace, monospace;
+  --font-label: 600 10.5px/14px var(--sans);
+  --track-label: 0.13em;
+  --track-title: -0.02em;
+  --track-figure: -0.035em;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  /* The guide rail's width: the page's boot script decides it before the first paint, the guidance store after. */
+  --rail-w: var(--boot-rail, 0px);
+  --col-w: 416px;
+  --card-w: 392px;
+  --gap: 16px;
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 13px/18px var(--sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+.root button {
+  font: inherit;
+  color: inherit;
+}
+.root button:disabled {
+  cursor: default;
+}
+
+/* A small label over what it names: tracked capitals in the interface face, as Darkhorse sets theirs. */
+.eyebrow {
+  margin: 0;
+  font: var(--font-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.eyebrowNavy {
+  color: var(--navy);
+}
+
+/* The analyst letter beside a rule's words: "S", "S0" with the 0 lowered. */
+.sym {
+  font: italic 400 22px/24px var(--serif);
+  letter-spacing: -0.02em;
+  color: var(--ink-2);
+}
+.sym sub {
+  font-size: 0.62em;
+  font-style: normal;
+  vertical-align: -0.28em;
+  line-height: 0;
+  margin-left: 0.04em;
+}
+
+.linkButton,
+.moreLink,
+.arrowLink,
+.otherRules {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--navy-line);
+  text-underline-offset: 3px;
+}
+/* An arrow link is a sentence: it wraps when the window is narrower than its words, its arrow after the last word. */
+.arrowLink {
+  display: inline-block;
+  max-width: 100%;
+  text-align: left;
+}
+.arrowLink svg {
+  display: inline;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+.otherRules {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.otherRules svg {
+  opacity: 0.7;
+}
+.otherRulesActive {
+  font-weight: 600;
+}
+.moreLink {
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .linkButton:hover,
+  .moreLink:hover,
+  .arrowLink:hover,
+  .otherRules:hover {
+    text-decoration-color: var(--navy);
+  }
+}
+
+.root :is(button, a):focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* ---------- the stage holds the map and every floating panel ---------- */
+.stage {
+  position: absolute;
+  inset: 0 0 0 var(--rail-w);
+}
+/* Skip to the list: out of sight until the keyboard reaches it, then over everything at the top left. It appears at
+   once, as a keyboard action should. */
+.skipLink {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 60;
+  padding: 9px 14px;
+  border-radius: var(--r-control);
+  background: var(--navy);
+  color: #fff;
+  font: 500 13px/1 var(--sans);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 16px));
+}
+.skipLink:focus {
+  transform: none;
+  outline: 2px solid var(--navy-2);
+  outline-offset: 2px;
+}
+/* Popovers render here, above the panels, so a panel's clipping never cuts them. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.map {
+  position: absolute;
+  inset: 0;
+  background: #ece9e2;
+}
+/*
+ * The place numbers are markers in this container, and their z-index (RankLabels.tsx) is relative to it. As a
+ * stacking context of its own, the container is painted as one layer: the panels and card over the map stay on top
+ * of the numbers, and the tooltip, attribution and map controls (z-index 2 and up) stay above them.
+ */
+.map :global(.maplibregl-canvas-container) {
+  isolation: isolate;
+}
+/*
+ * The map takes the keyboard like any control, so it shows where focus is. deck.gl writes `outline: none` into the
+ * canvas's style attribute, which only an important rule can beat.
+ */
+.map :global(.maplibregl-canvas):focus-visible {
+  outline: 2px solid var(--navy) !important;
+  outline-offset: -3px;
+}
+/* Zoom buttons sit at the map's top left, 16 px right of the column; under the map bar while the method details show
+   it, following it when it steps down a row. */
+.map :global(.maplibregl-ctrl-top-left) {
+  left: calc(var(--col-w) + var(--gap) * 2);
+  top: var(--zoom-top, var(--gap));
+}
+/* Help in the actions: as tall as its neighbours, and lifted off the map as they are. */
+.actions [data-region="help-button"] {
+  height: 34px;
+  box-shadow: var(--shadow);
+}
+/* The zoom buttons as one floating control, edged and lifted like the panels. The map's own stylesheet loads with the
+   map's script, after this one, so these rules outrank its `.maplibregl-ctrl-group:not(:empty)`. */
+.map :global(.maplibregl-ctrl-group.maplibregl-ctrl-group:not(:empty)) {
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
+  box-shadow: var(--shadow);
+}
+.root[data-mapbar] .map :global(.maplibregl-ctrl-top-left) {
+  top: calc(var(--bar-top, var(--gap)) + 52px);
+}
+/* A panel showing the previous rule's rows: its content fades, its paper stays solid so the map does not show through. */
+.stale {
+  pointer-events: none;
+}
+.stale > * {
+  opacity: 0.5;
+}
+.notice {
+  position: absolute;
+  left: calc(var(--col-w) + var(--gap) * 2 + 48px);
+  top: var(--gap);
+  z-index: 2;
+  margin: 0;
+  padding: 6px 10px;
+  max-width: 340px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
+}
+.mapLoading {
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  box-shadow: var(--shadow);
+  border-radius: var(--r-panel);
+}
+
+/* ---------- the column: masthead, rule, tabs, list ---------- */
+.column {
+  position: absolute;
+  left: var(--gap);
+  top: var(--gap);
+  bottom: var(--gap);
+  width: var(--col-w);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 3;
+}
+
+/*
+ * ADB's identity: the logo on white, under a navy rule. A navy band would swallow the logo's own navy square (1:1),
+ * so the band is the rule along the top and the logo keeps its edge. Clear space round the logo is at least a third
+ * of its size: 10 px for the 30 px mark.
+ */
+.masthead {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  column-gap: 12px;
+  row-gap: 1px;
+  align-items: center;
+  padding: 14px 20px 11px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: var(--navy);
+}
+/* The official mark keeps its square corners. */
+.logo {
+  grid-row: 1 / 3;
+  width: 30px;
+  height: 30px;
+}
+.mastName {
+  grid-column: 2;
+  margin: 0;
+  font: 600 12px/14px var(--sans);
+  letter-spacing: var(--track-label);
+}
+.mastSub {
+  grid-column: 2;
+  margin: 0;
+  font-size: 13px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+/* How this works, top right of the masthead. */
+.mastActions {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: start;
+  margin-top: 2px;
+}
+
+.rule {
+  padding: 12px 20px 13px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.ruleSkeleton {
+  height: 66px;
+  border-bottom: 1px solid var(--hair-2);
+}
+/* Closed, the rule area is one plain line, Change beside it, and one link under it. */
+.ruleNowRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+}
+.ruleNowText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.ruleChange {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 2px 8px 3px 10px;
+  border: 1px solid var(--control-edge);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 12.5px/17px var(--sans);
+  color: var(--navy);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.ruleChange:not(:disabled):active {
+  transform: scale(0.97);
+}
+.ruleChange:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+.ruleChange svg {
+  transition: transform 200ms var(--ease-out);
+}
+.ruleChange svg[data-open] {
+  transform: rotate(180deg);
+}
+.ruleChange[aria-expanded="true"] {
+  background: var(--navy-wash);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ruleChange:not(:disabled):hover {
+    border-color: color-mix(in srgb, var(--navy) 45%, transparent);
+    background: var(--navy-wash);
+  }
+}
+/* What the rule on screen weighs, with its shares: the first thing the open choice says. */
+.ruleShares {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* Open: the choices under the plain line, set off by a hairline. */
+.ruleChoices {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+}
+.ruleTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+/* The two rules as a switch: a grey track, the chosen side white with a navy ring. */
+.ruleSeg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 8px;
+  border-radius: var(--r-box);
+  padding: 3px;
+  gap: 3px;
+  background: var(--track);
+}
+.ruleButton {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 10px 7px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+/* Above the workspace's `.root button { color: inherit }`, so the side not chosen takes the quieter ink. */
+.ruleSeg .ruleButton {
+  color: var(--ink-2);
+}
+.ruleButtonLabel {
+  font: 500 13px/17px var(--sans);
+  text-wrap: balance;
+}
+.ruleButton:not([aria-pressed="true"]):not(:disabled):active {
+  transform: scale(0.98);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ruleButton:not([aria-pressed="true"]):not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.6);
+  }
+}
+.ruleButton[aria-pressed="true"] {
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  cursor: default;
+}
+.ruleButton[aria-pressed="true"] .ruleButtonLabel {
+  font-weight: 600;
+}
+.ruleButton:disabled:not([aria-pressed="true"]) {
+  color: var(--ink-3);
+}
+/* With nothing loaded the rule cannot change: the chosen side fades too, and Other rules stops reading as a link. */
+.ruleButton[aria-pressed="true"]:disabled {
+  opacity: 0.7;
+}
+.otherRules:disabled {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.statement {
+  margin: 8px 0 0;
+  padding: 7px 10px 8px;
+  border-radius: var(--r-box);
+  background: var(--navy-wash);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.ruleLine {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.ruleLine b {
+  font-weight: 600;
+}
+.symInline {
+  font-size: 17px;
+  line-height: 1;
+  margin-right: 4px;
+  color: var(--navy);
+}
+.ruleRole {
+  color: var(--ink-3);
+}
+
+/* Other rules: a popover of all seven, the other five first. */
+.pop {
+  position: absolute;
+  width: 320px;
+  display: flex;
+  pointer-events: auto;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
+  box-shadow: var(--shadow-pop);
+  transform-origin: top left;
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+@starting-style {
+  .pop {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+.pop[data-instant] {
+  transition: none;
+}
+.popScroll {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 14px 10px 12px;
+}
+.popScroll > .eyebrow {
+  padding: 0 6px 6px;
+}
+.popList + .eyebrow {
+  margin-top: 10px;
+}
+.popList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.popRule {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 6px;
+  align-items: start;
+  width: 100%;
+  padding: 8px 8px 9px 6px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.popRule .sym {
+  justify-self: center;
+  margin-top: 2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .popRule:hover {
+    background: rgba(21, 24, 29, 0.04);
+  }
+}
+.popRule[aria-pressed="true"] {
+  background: var(--navy-wash-2);
+}
+.popRule[aria-pressed="true"] .popRuleLabel,
+.popRule[aria-pressed="true"] .sym {
+  color: var(--navy);
+}
+.popRuleText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.popRuleLabel {
+  font: 500 13px/17px var(--sans);
+}
+.popRuleLine {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.popRuleRole {
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+}
+.popNote {
+  margin: 10px 6px 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--hair-2);
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+/* ---------- tabs ---------- */
+.tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.tab {
+  position: relative;
+  padding: 10px 0 9px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--ink-3);
+}
+.tab:disabled {
+  cursor: default;
+}
+.tabCount {
+  margin-left: 5px;
+  font-weight: 400;
+}
+.tab[aria-selected="true"] {
+  color: var(--ink);
+}
+.tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--navy);
+}
+
+/* ---------- the list region: What changed, the list head and the rows scroll together ---------- */
+.listScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.listScroll.stale {
+  opacity: 0.5;
+}
+.listScroll.stale > * {
+  opacity: 1;
+}
+
+.changed {
+  padding: 12px 20px 13px;
+  border-bottom: 1px solid var(--hair-2);
+  background: color-mix(in srgb, var(--navy) 3.5%, transparent);
+}
+.changedTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.changedLead {
+  margin: 6px 0;
+  font: 400 15px/21px var(--serif);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.changedExample {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.exampleKey {
+  display: inline-block;
+  margin-right: 8px;
+  font: 600 10.5px/18px var(--sans);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.changedSource {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+}
+.changedActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 8px 0 0;
+}
+
+.listHead {
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--hair-2);
+}
+.scopeLine {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.scopeDetail {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.queueTitle {
+  margin: 0 0 3px;
+  font: 500 13px/18px var(--sans);
+}
+
+/* ---------- the find control: one compact button on the line above each list, its panel, and what it leaves ---------- */
+.findRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+/* The line takes the room the buttons leave; when that is under 14em, the buttons move under it together. */
+.findRow > :first-child {
+  flex: 1 1 14em;
+  min-width: 0;
+}
+.findActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  margin-left: auto;
+}
+/* As tall as a touch target needs, without making its line taller: the first school stays where it was. */
+.findToggle {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  margin: -5px 0;
+  padding: 0 10px;
+  border: 1px solid var(--control-edge);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 12.5px/1 var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.findToggle:active {
+  transform: scale(0.97);
+}
+.findToggle[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--navy) 28%, transparent);
+  background: var(--navy-wash);
+  color: var(--navy);
+}
+/* A filter is on and the panel is closed. */
+.findToggle[data-active]::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--navy);
+}
+.queueTitle + .findToggle {
+  margin-top: -5px;
+}
+/* A 320 px phone leaves the line 280 px: Province and Download or print the list fit it with less room inside. */
+@media (max-width: 359px) {
+  .findActions {
+    gap: 6px;
+  }
+  .findToggle {
+    gap: 4px;
+    padding: 0 7px;
+  }
+}
+/* Download or print the list beside Find: only in the narrow layout, where the actions hide in Menu. */
+.listExport {
+  display: none;
+}
+.findPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px 10px;
+  min-width: 0;
+  margin: 10px 0 2px;
+  padding: 0;
+  border: 0;
+  transition:
+    opacity 160ms var(--ease-out),
+    transform 160ms var(--ease-out);
+}
+@starting-style {
+  .findPanel {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.root[data-instant] .findPanel {
+  transition: none;
+}
+.findLegend {
+  float: left;
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.findField {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-2);
+}
+.findName {
+  grid-column: 1 / -1;
+}
+.findField select,
+.findField input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--field-edge);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  font: 400 13px/1.2 var(--sans);
+  color: var(--ink);
+  text-overflow: ellipsis;
+}
+.findField select:focus-visible,
+.findField input:focus-visible {
+  outline: 2px solid var(--navy-2);
+  outline-offset: 1px;
+}
+.findStatus {
+  color: var(--ink);
+}
+
+/* ---------- the printout (PrintView): the list on screen, whole, under what it is; never the controls or the map ---------- */
+.print {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 14mm 12mm;
+  }
+  .root {
+    position: static;
+    overflow: visible;
+    background: #fff;
+  }
+  .root > :not(.print) {
+    display: none !important;
+  }
+  .print {
+    display: block;
+    color: #000;
+    font: 400 10pt/1.35 var(--sans);
+  }
+  .printTitle {
+    margin: 0 0 6pt;
+    font: 600 14pt/1.25 var(--sans);
+  }
+  .printLine {
+    margin: 0 0 3pt;
+    font-size: 9.5pt;
+    color: #222;
+  }
+  .printTable {
+    width: 100%;
+    margin-top: 10pt;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  /* A school's name keeps to a line or two; the Why line, or what to verify, takes the rest of the page. */
+  .printTable[data-kind="list"] th:nth-child(1) {
+    width: 11%;
+  }
+  .printTable[data-kind="list"] th:nth-child(2) {
+    width: 24%;
+  }
+  .printTable[data-kind="list"] th:nth-child(3),
+  .printTable[data-kind="list"] th:nth-child(4) {
+    width: 14%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(1) {
+    width: 30%;
+  }
+  .printTable[data-kind="queue"] th:nth-child(2),
+  .printTable[data-kind="queue"] th:nth-child(3) {
+    width: 17%;
+  }
+  /* The column heads come again at the top of every page. */
+  .printTable thead {
+    display: table-header-group;
+  }
+  .printTable th {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 1pt solid #000;
+    text-align: left;
+    font: 600 8.5pt/1.2 var(--sans);
+  }
+  .printTable td {
+    padding: 4pt 8pt 4pt 0;
+    border-bottom: 0.5pt solid #bbb;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .printTable tr {
+    break-inside: avoid;
+  }
+}
+.findStatus > [role="status"] {
+  overflow-wrap: anywhere;
+}
+/* A phone zooms the page into a field set smaller than 16 px, and a finger needs the taller box. */
+@media (pointer: coarse) {
+  .findField select,
+  .findField input {
+    height: 40px;
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .findPanel {
+    transition-property: opacity;
+  }
+  @starting-style {
+    .findPanel {
+      transform: none;
+    }
+  }
+}
+.queueLead {
+  margin: 0 0 6px;
+  font: 400 15.5px/21px var(--serif);
+  text-wrap: pretty;
+}
+.queueGroups {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.groupBy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-control);
+  background: var(--track);
+}
+.segmented button {
+  padding: 1px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: 500 12px/18px var(--sans);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--panel);
+  box-shadow: var(--ring-chosen);
+  color: var(--navy);
+  font-weight: 600;
+}
+.segmented button:disabled {
+  cursor: default;
+}
+
+.rows,
+.groupRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rows {
+  padding-bottom: 8px;
+}
+.rows[aria-busy="true"] {
+  pointer-events: none;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 8px;
+  column-gap: 12px;
+  align-items: start;
+  width: 100%;
+  padding: 7px 20px 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+/* A row chosen or passed over from the keyboard changes at once, as every keyboard action here does. */
+.root[data-instant] .row {
+  transition: none;
+}
+.rowQueued {
+  grid-template-columns: minmax(0, 1fr) 8px;
+}
+/* A range is one phrase, "1st to 9th", so its column grows to hold it on one line rather than stack its best rank
+   alone on top, where a reader takes it for a single place. */
+.row[data-cohort="interval"] {
+  grid-template-columns: auto minmax(0, 1fr) 8px;
+}
+li + li > .row::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 1px;
+  background: var(--hair-2);
+}
+.listNote + li > .row::before {
+  display: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover {
+    background: rgba(21, 24, 29, 0.03);
+  }
+}
+.row[data-hover] {
+  background: rgba(21, 24, 29, 0.035);
+}
+.row[aria-pressed="true"] {
+  background: var(--navy-wash);
+}
+.row[aria-pressed="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--navy);
+}
+li + li > .row[aria-pressed="true"]::before,
+li:has(> .row[aria-pressed="true"]) + li > .row::before {
+  opacity: 0;
+}
+.root .row:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Figures are bold and set tight, a size up from the names beside them. */
+.place {
+  text-align: right;
+  font: 600 17px/19px var(--sans);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: var(--track-title);
+  color: var(--ink);
+}
+.ord {
+  position: relative;
+  top: -0.42em;
+  margin-left: 0.5px;
+  font-size: 0.62em;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 0;
+  vertical-align: baseline;
+  color: var(--ink-3);
+}
+.placeRange {
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 17px;
+  color: var(--navy-2);
+}
+.placeRange .ord {
+  color: var(--navy-2);
+}
+.placeTo {
+  font: 500 11px/14px var(--sans);
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+}
+/* The group a range counts in goes under it. */
+.placeRange [data-of] {
+  display: block;
+  margin: 0;
+}
+.ordinal {
+  white-space: nowrap;
+}
+.rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.name {
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* The separator and the province (or district) are one unbreakable piece, so "·" never ends a line (R6). */
+.where {
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.tie {
+  margin-top: 1px;
+  font-size: 12.5px;
+  line-height: 17px;
+  font-style: italic;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+/* One line on why the school sits there; the key word in navy, the rest in the list's secondary ink. */
+.rowWhy {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* "Why" as a small navy label before the reason. Only its look changes: the page still holds the word as written. */
+.rowWhyKey {
+  margin-right: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--navy);
+}
+.rowChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  margin-top: 2px;
+}
+.rowChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+.rowChip::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--queue);
+  border-radius: 50%;
+}
+.chevron {
+  align-self: center;
+  color: var(--ink-3);
+  opacity: 0.55;
+  transition:
+    opacity 150ms ease,
+    transform 160ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .row:hover .chevron {
+    opacity: 1;
+    color: var(--navy);
+    transform: translateX(2px);
+  }
+}
+.row[aria-pressed="true"] .chevron {
+  opacity: 1;
+  color: var(--navy);
+}
+
+.listNote {
+  position: relative;
+  margin: 0;
+  padding: 9px 20px 9px 78px;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.listNote + li {
+  border-top: 1px solid var(--hair-2);
+}
+/* The range note's sign: the map key's ring with a centre dot, in the rank column's place. */
+.rangeNote > .keyMark {
+  position: absolute;
+  left: 55px;
+  top: 12px;
+}
+
+.groupHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px 6px;
+  border-bottom: 1px solid var(--hair-2);
+  background: var(--panel);
+  font: 600 10.5px/12px var(--sans);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.groupCount {
+  letter-spacing: 0;
+}
+.groupHead + .groupRows > li:first-child > .row::before {
+  display: none;
+}
+
+.state {
+  margin: 0;
+  padding: 28px 20px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+/* Under the loading line once the load has taken a few seconds. */
+.stillLoading {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.refreshFailed {
+  margin: 0;
+  padding: 9px 20px;
+  border-bottom: 1px solid var(--hair-2);
+  color: var(--ink-2);
+}
+.error {
+  padding: 20px;
+  color: var(--ink);
+}
+.error p {
+  margin: 0 0 10px;
+}
+
+/* ---------- names inside sentences are set apart (R18) ---------- */
+.nameIn {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ---------- top right: the actions ---------- */
+/* Right of the column, and on a second row when the guide rail leaves too little room for one (1024 with the rail). */
+/* While Help's menu is open it lies over whatever sits under the actions: the map bar, the hint, the card. */
+.actions:has([data-menu-open]) {
+  z-index: 13;
+}
+.actions {
+  position: absolute;
+  top: var(--gap);
+  right: var(--gap);
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: calc(100% - var(--col-w) - var(--gap) * 3);
+}
+.root[data-card-docked] .actions {
+  max-width: calc(100% - var(--gap) * 2);
+}
+.actionButton,
+.retryButton {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  transition:
+    transform 160ms var(--ease-out),
+    border-color 150ms ease;
+}
+.retryButton {
+  height: 32px;
+  box-shadow: none;
+}
+.actionButton:not(:disabled):active,
+.retryButton:not(:disabled):active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .actionButton:not(:disabled):hover,
+  .retryButton:not(:disabled):hover {
+    border-color: rgba(21, 24, 29, 0.28);
+  }
+}
+.actionButton:disabled,
+.retryButton:disabled {
+  color: var(--ink-3);
+  box-shadow: none;
+}
+
+/* Sign out is a quiet text action beside the others: no border, fill or shadow, so Copy link stays the one button.
+   Scoped under .root to outrank `.root button`, which would otherwise give it the button ink and font. */
+.root .quietAction {
+  height: 34px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .root .quietAction:hover {
+    color: var(--ink);
+    text-decoration: underline;
+  }
+}
+
+/* ---------- the empty card slot says how to fill it ---------- */
+/* Under the actions, or under the map bar when the bar would touch it (MapBar sets --hint-top). Never wider than the
+   map right of the zoom buttons. */
+.slotHint {
+  position: absolute;
+  top: var(--hint-top, 64px);
+  right: var(--gap);
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  max-width: min(300px, calc(100% - var(--col-w) - var(--gap) * 3 - 44px));
+  margin: 0;
+  padding: 9px 12px 10px;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+}
+.slotHint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+/* ---------- empty and failed loads: one sentence, one way forward (R14) ---------- */
+.fullState {
+  padding: 28px 20px;
+}
+.fullState p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+
+/* ---------- the map's foot: the key, placed just above the plain caveat however the caveat wraps ---------- */
+.foot {
+  position: absolute;
+  left: calc(var(--gap) + var(--col-w) + var(--gap));
+  right: 260px;
+  bottom: 12px;
+  z-index: 2;
+  pointer-events: none;
+}
+.root[data-has-insp] .foot {
+  right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
+.root[data-card-docked] .foot {
+  left: var(--gap);
+}
+/* With the guide rail open the map is narrow (about 360 px in the compact layout, and as little at 1280 beside compare
+   mode's wider column): the key and the caveat take all of it, and leave the line below them to the basemap's credit.
+   A key squeezed into what is left beside the credit grows tall enough to meet the map bar. */
+.root[data-rail] .foot {
+  right: var(--gap);
+  bottom: 24px;
+}
+/* A card there takes the map's right side, so the key and the caveat stop short of it. */
+.root[data-rail][data-has-insp] .foot {
+  right: calc(var(--gap) + var(--card-w) + var(--gap));
+}
+/* The glossary drawer takes the right of the map; the key and the caveat make room for it. */
+.root[data-gloss] .foot {
+  right: calc(var(--gap) + 400px + 28px);
+}
+.root[data-gloss][data-has-insp] .foot {
+  right: calc(var(--gap) + var(--card-w) + 12px + 400px + 28px);
+}
+.foot > * {
+  pointer-events: auto;
+}
+.caveat {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* Which data the list comes from, one short line under the caveat. Hidden with the caveat where the list's head
+   shows both instead (the narrow layout). */
+.dataVersion {
+  margin: 2px 0 0;
+  font-size: 11.5px; /* One line at 360 px wide, whatever the month */
+  line-height: 16px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The key hangs above the caveat, so arriving after the caveat it moves nothing on screen. */
+.legend {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 18px;
+  max-width: min(760px, 100%);
+  padding: 10px 14px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.legend[data-stale] > * {
+  opacity: 0.5;
+}
+/* The method details' key: its title and Key on one row. */
+.legendTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+/* The key's one line: the colour strip, the three marks in a few words, and the way to the full key. */
+.keyLine {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+.miniRamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+/* The colour steps as separate, rounded swatches, as Darkhorse's keys set theirs. */
+.miniSwatches {
+  display: inline-flex;
+  gap: 2px;
+}
+.miniSwatches i {
+  width: 13px;
+  height: 7px;
+  border-radius: 1.5px;
+}
+.keysShort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.keysShort li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.legend[data-open] .keyLine {
+  justify-content: flex-end;
+}
+.legendTitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.keyToggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-decoration: underline;
+  text-decoration-color: var(--navy-line);
+  text-underline-offset: 3px;
+}
+.keyToggle svg {
+  transition: transform 160ms var(--ease-out);
+}
+.keyToggle svg[data-open] {
+  transform: rotate(180deg);
+}
+.legendBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ramp {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ramp li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ramp i {
+  display: block;
+  height: 8px;
+  border-radius: 2px;
+}
+.ramp span {
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.legend[data-stacked] .ramp span {
+  white-space: normal;
+}
+.keys {
+  margin: 0;
+  padding: 6px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--hair-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.keys li {
+  display: grid;
+  grid-template-columns: 16px 152px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+}
+/* The numbers' words are a label alone, with no line after them: they take the line's width. */
+.keys li[data-region="legend-number"] b {
+  grid-column: 2 / -1;
+}
+/* Why the strip can end before the list does. */
+.rampNote {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.keys b {
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.legend[data-stacked] .keys li {
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+}
+.legend[data-stacked] .keys li > span:last-child {
+  grid-column: 2;
+}
+.legend[data-stacked] .keyMark {
+  margin-top: 3px;
+}
+.keyMark {
+  display: inline-block;
+  justify-self: center;
+  box-sizing: border-box;
+  border-radius: 50%;
+  position: relative;
+}
+.keyMark[data-mark="dot"] {
+  width: 11px;
+  height: 11px;
+  background: #20509e; /* RAMP_HEX[2] in lib/screening/marks.ts, the ramp's middle */
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+}
+.keyMark[data-mark="range"] {
+  width: 13px;
+  height: 13px;
+  border: 2px solid #3d4759;
+  background: #fbfaf7;
+}
+.keyMark[data-mark="range"]::after {
+  content: "";
+  position: absolute;
+  inset: 2.5px;
+  border-radius: 50%;
+  background: #3d4759;
+}
+.keyNumber {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+  color: #fbfaf7;
+  font:
+    600 10px/1 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.keyMark[data-mark="ring"] {
+  width: 9px;
+  height: 9px;
+  border: 1.25px solid var(--queue);
+  background: #fbfaf7;
+}
+
+/* The narrow layout's List / Map switch, the list's head and the card's caveat show only there. */
+.paneSwitch,
+.narrowHead,
+.cardCaveat {
+  display: none;
+}
+
+/* ---------- the school card ---------- */
+/* Under the actions: 64 px for one row, lower when they wrap to a second (the layer sets --actions-under). */
+.card {
+  position: absolute;
+  top: var(--actions-under, 64px);
+  right: var(--gap);
+  bottom: 40px;
+  z-index: 3;
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: right center;
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+@starting-style {
+  .card {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+.card[data-stale] .cardScroll {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.cardBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 12px 0 20px;
+}
+.cardBar > .eyebrow {
+  flex: 1;
+}
+.dockBack {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: 500 13px/18px var(--sans);
+  color: var(--navy);
+  text-align: left;
+}
+.dockBack:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-control);
+  background: transparent;
+  cursor: pointer;
+  color: var(--ink-2);
+  transition:
+    background-color 150ms ease,
+    transform 160ms var(--ease-out);
+}
+.iconButton:not(:disabled):active {
+  transform: scale(0.94);
+}
+@media (hover: hover) and (pointer: fine) {
+  .iconButton:not(:disabled):hover {
+    background: rgba(21, 24, 29, 0.06);
+    color: var(--ink);
+  }
+}
+/* Unavailable, the icon pales but keeps 3:1 on the panel, so the arrow can still be found. */
+.iconButton:disabled {
+  opacity: 0.62;
+}
+.cardPos {
+  min-width: 64px;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  white-space: nowrap;
+}
+.cardScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.cardHead {
+  padding: 6px 20px 16px;
+  min-width: 0;
+}
+/* A name wraps at any character, so even an unbroken 59-character token stays inside the card (R1). */
+.cardName {
+  margin: 0;
+  font: 600 22px/27px var(--sans);
+  letter-spacing: var(--track-title);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+/* The heading takes focus when the card replaces the list; a keyboard user sees where focus went. */
+.cardName:focus {
+  outline: none;
+}
+.cardName:focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+.cardMeta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 16px;
+  align-items: end;
+  padding: 14px 20px 16px;
+  border-top: 1px solid var(--hair-2);
+}
+.hero[data-form="range"],
+.hero[data-form="word"] {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 8px;
+}
+/* The school's place, the card's one big number: bold and tight, its ending small and navy. */
+.heroFigure {
+  font: 600 52px/46px var(--sans);
+  letter-spacing: var(--track-figure);
+  font-variant-numeric: lining-nums proportional-nums;
+  white-space: nowrap;
+}
+.heroFigure .ord {
+  font-size: 0.32em;
+  top: -1.3em;
+  margin-left: 1px;
+  color: var(--navy);
+}
+.heroFigure .placeTo {
+  position: relative;
+  top: -0.5em;
+  margin: 0 0.1em;
+  font: 500 0.36em/1 var(--sans);
+  letter-spacing: 0;
+}
+.hero[data-form="range"] .heroFigure {
+  font-size: 42px;
+  line-height: 40px;
+  color: var(--navy-2);
+}
+.hero[data-form="range"] .heroFigure .ord {
+  color: var(--navy-2);
+}
+.hero[data-form="word"] .heroFigure {
+  font-size: 28px;
+  line-height: 32px;
+  letter-spacing: var(--track-title);
+  white-space: normal;
+  text-wrap: balance;
+}
+.heroLabel {
+  padding-bottom: 2px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.heroLabel b {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+}
+.heroLabel span {
+  display: block;
+}
+
+/* "Why it sits here": the strongest block on screen, the only navy wash with a navy edge. */
+.why {
+  margin: 0 16px 16px;
+  padding: 12px 14px 14px;
+  border-radius: var(--r-box);
+  background: var(--navy-wash);
+  box-shadow: inset 3px 0 0 var(--navy);
+}
+.why > .eyebrow {
+  display: block;
+  margin-bottom: 4px;
+}
+.whyGrey {
+  background: rgba(21, 24, 29, 0.04);
+  box-shadow: inset 3px 0 0 var(--ink-2);
+}
+.whyGrey > .eyebrow {
+  color: var(--ink-2);
+}
+.whyLead {
+  margin: 0;
+  font: 400 16px/22px var(--serif);
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.whyText {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 19px;
+  text-wrap: pretty;
+}
+.needBox {
+  margin-top: 10px;
+  padding: 9px 12px 4px;
+  border: 1px solid color-mix(in srgb, var(--navy) 14%, transparent);
+  border-radius: var(--r-box);
+  background: var(--panel);
+}
+.needHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--hair-2);
+  font: 600 13px/18px var(--sans);
+}
+.needHead b {
+  font-weight: 500;
+}
+.needParts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.needParts li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 48px;
+  column-gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+}
+.needParts li:first-child {
+  border-top: 0;
+}
+.needParts li[data-on] {
+  color: var(--ink);
+}
+.needParts li[data-on] .needLabel {
+  font-weight: 500;
+}
+.needSentence {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+/* How the part's record compares with the list: the last line of each part, a step quieter than the reason above it,
+   and as quiet as the part itself in a part that is not one of the reasons. */
+.needStanding {
+  grid-column: 2 / -1;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 17px;
+  text-wrap: pretty;
+}
+.needParts li[data-on] .needStanding {
+  color: var(--ink-2);
+}
+/* The reasons' numbers in small ringed circles, like the guides' numbers in Start here. A part that is not one of the
+   reasons keeps an empty slot, never an empty ring that would read as a radio button. */
+.reasonN {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--control-edge);
+  border-radius: 50%;
+  font: 600 10.5px/1 var(--sans);
+  color: var(--navy);
+}
+.reasonN:empty {
+  border-color: transparent;
+}
+.reason {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--navy) 14%, transparent);
+  border-radius: var(--r-box);
+  background: var(--panel);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+}
+.reasonLabel {
+  display: block;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.flag {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--navy) 14%, transparent);
+  font-size: 13px;
+  line-height: 18px;
+}
+.flag::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--navy);
+  transform: rotate(45deg) translateY(-1px);
+}
+.record {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.record::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--navy-2);
+  transform: translateY(-1px);
+}
+
+.bar,
+.barMissing {
+  display: inline-block;
+  height: 6px;
+  border-radius: 1px;
+}
+.bar {
+  position: relative;
+  overflow: hidden;
+  background: rgba(21, 24, 29, 0.07);
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 1px;
+  background: var(--navy-2);
+}
+.barMissing {
+  border: 1px solid var(--ink-2);
+  background: repeating-linear-gradient(45deg, transparent 0 1.5px, rgba(61, 71, 89, 0.55) 1.5px 2.5px);
+}
+
+.numbers {
+  padding: 16px 20px 18px;
+  border-top: 1px solid var(--hair-2);
+}
+.numbers > .eyebrow {
+  display: block;
+}
+.numTotal {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.numTotal b {
+  font: 500 19px/24px var(--sans);
+}
+.numNoteText {
+  margin: 2px 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.numTable + .numNoteText {
+  margin-top: 10px;
+}
+.numNoteText + .numNoteText {
+  margin-top: -4px;
+}
+.numSub {
+  margin-bottom: 4px;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.numRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 56px;
+  column-gap: 10px;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 17px;
+}
+.numLabel {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.numValue {
+  text-align: right;
+  white-space: nowrap;
+}
+.numHead .numLabel,
+.numHead .numValue {
+  font-weight: 600;
+  color: var(--ink);
+}
+.numPart {
+  border-top-style: dashed;
+}
+.numPart .numLabel {
+  padding-left: 14px;
+}
+/* A missing reading: its label sits on one line under the hatched bar, spanning the value column (R10). */
+.numMissing {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 12.5px;
+  line-height: 17px;
+  font-style: italic;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.numFull {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  line-height: 17px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.numRow[data-missing] .numFull {
+  grid-row: 3;
+  margin-top: 2px;
+}
+.numNote {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 2px;
+}
+.kindTag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  font: 500 11.5px/16px var(--sans);
+  color: var(--ink-2);
+}
+.chipsBig {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 2px 0 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink);
+}
+.chip::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--queue);
+  border-radius: 50%;
+}
+.facts {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.facts li {
+  padding: 8px 0;
+  border-top: 1px solid var(--hair-2);
+  font-size: 13px;
+  line-height: 18px;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+.facts li:first-child {
+  padding-top: 2px;
+  border-top: 0;
+}
+.factLabel {
+  display: block;
+  font: 500 12px/16px var(--sans);
+  color: var(--ink-3);
+}
+.cardLoading {
+  height: 220px;
+  margin: 0 16px 16px;
+  border-radius: var(--r-box);
+  background: var(--navy-wash);
+}
+.cardFailed {
+  padding: 4px 20px 16px;
+}
+.cardFailed p {
+  margin: 0 0 8px;
+}
+
+/* ---------- map furniture ---------- */
+/* At most 280 px wide; a name wraps at any character, so it never spills out of the box (R5). */
+.tooltip {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 280px;
+  padding: 9px 11px 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
+  box-shadow: var(--shadow);
+  transition: opacity 120ms ease;
+}
+@starting-style {
+  .tooltip {
+    opacity: 0;
+  }
+}
+.tipName {
+  font: 500 13px/17px var(--sans);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.tipWhere {
+  font-size: 11.5px;
+  line-height: 15px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.tipPlace {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-2);
+}
+.tipNote {
+  font-size: 11.5px;
+  line-height: 15px;
+  color: var(--ink-3);
+}
+.tipHint {
+  margin-top: 4px;
+  font: 500 12px/16px var(--sans);
+  color: var(--navy);
+}
+/* The place number on each of the first ten dots; the dot itself is drawn on the map's canvas. */
+.rankLabel {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  color: #fbfaf7; /* MARK_PAPER_HEX in lib/screening/marks.ts, the paper of the marks */
+  font:
+    600 10px/1 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+.rankLabel span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+/* A number moved off its crowded dot takes the dot's navy disc with it (RAMP_HEX[0] is the logo's navy), ringed in
+   the marks' paper so it stands apart from the dots it sits beside, and a leader back to its own dot. */
+.rankLabel span[data-moved] {
+  background: var(--navy);
+  box-shadow: 0 0 0 1.5px #fbfaf7;
+  forced-color-adjust: none;
+}
+.rankLeader {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: var(--navy);
+  transform-origin: 0 50%;
+  forced-color-adjust: none;
+}
+.rankLabel [data-stale="true"] {
+  opacity: 0.4;
+}
+.attribution {
+  color: var(--ink-2);
+  position: absolute;
+  right: var(--gap);
+  bottom: 6px;
+  z-index: 2;
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 14px;
+}
+.attribution a {
+  color: inherit;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 76px;
+  z-index: 30;
+  max-width: min(420px, calc(100% - 32px));
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--r-box);
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 17px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 160ms ease,
+    transform 200ms var(--ease-out);
+}
+.toast[data-on] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ---------- the list steps aside while a card is open and the map would fall under 480 px ---------- */
+.column {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+.root[data-card-docked] .column {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 200ms var(--ease-out),
+    visibility 0s linear 200ms;
+}
+.root[data-card-docked] .map :global(.maplibregl-ctrl-top-left) {
+  left: var(--gap);
+}
+/* Keyboard actions never animate: after a key, panels move at once. */
+.root[data-instant] .column,
+.root[data-instant] .card,
+.root[data-instant] .toast {
+  transition: none;
+}
+
+/* ---------- desktop and compact widths (notes/final.md, "Responsive layout"); layout.ts holds the same numbers ---------- */
+@media (max-width: 1439px) {
+  .root {
+    --col-w: 384px;
+    --card-w: 360px;
+  }
+}
+@media (max-width: 1279px) {
+  .root {
+    --col-w: 360px;
+    --card-w: 360px;
+  }
+  /* A narrower switch keeps each rule's label on two lines. */
+  .ruleButton {
+    column-gap: 6px;
+    padding: 6px 8px 7px;
+  }
+  .foot {
+    right: 220px;
+  }
+}
+
+/* The narrow layout's top bar. Elsewhere the masthead sits at the top of the column. */
+.topBar {
+  display: none;
+}
+
+/* ---------- narrow: a top bar, a fixed map band, and the list region under it; the card takes the list's place ---------- */
+@media (max-width: 1023px) {
+  .root {
+    /* The same band as layout.ts, so the first paint, before any script, already has it right. */
+    --band: max(200px, 40vh);
+    /* Under the top bar, the List / Map switch; under that, the map band when it is open; then the list region. The
+       list comes first: the band opens from Map, or for a guide step, which takes the band and hides the switch. */
+    --switch-h: 0px;
+    --band-shown: 0px;
+    --region-top: calc(56px + var(--switch-h) + var(--band-shown));
+    background: var(--panel);
+  }
+  .root[data-pane] {
+    --switch-h: 44px;
+  }
+  .root[data-pane="map"],
+  .root[data-rail-band] {
+    --band-shown: var(--band);
+  }
+  .root[data-rail-band] {
+    --switch-h: 0px;
+  }
+  /* Under the top bar's layer, so the Help and Menu lists open over it. */
+  .root[data-pane] .paneSwitch {
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: var(--switch-h);
+    padding: 6px 12px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--hair-2);
+  }
+  /* The switch's track, under the two buttons. */
+  .root[data-pane] .paneSwitch::before {
+    content: "";
+    position: absolute;
+    inset: 6px 12px;
+    border-radius: var(--r-box);
+    background: var(--track);
+  }
+  .root[data-rail-band] .paneSwitch {
+    display: none;
+  }
+  /* The chosen side is white with a navy ring, set 3 px inside the track as in the other switches. */
+  .paneSwitch button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    border: 0;
+    border-radius: var(--r-box);
+    background: transparent;
+    cursor: pointer;
+    font: 500 13.5px/18px var(--sans);
+    color: var(--ink-2);
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  .paneSwitch button[aria-pressed="true"] {
+    background: var(--panel);
+    box-shadow:
+      inset 0 0 0 3px var(--track),
+      inset 0 0 0 4.5px var(--navy);
+    color: var(--navy);
+    font-weight: 600;
+  }
+  /* The list alone sits right under the switch, whose own line is the edge between them. */
+  .root[data-pane="list"]:not([data-rail-band]) .column,
+  .root[data-pane="list"]:not([data-rail-band]) .card {
+    border-top-width: 0;
+  }
+  /* The map keeps its size while the list alone shows, so nothing is drawn again when Map opens it. */
+  .root:not([data-pane="map"]):not([data-rail-band]) .map,
+  .root:not([data-pane="map"]):not([data-rail-band]) .foot {
+    visibility: hidden;
+  }
+  /* Start here fills the band it holds, so the map and its key under it are hidden too, out of the keyboard's way. A
+     step that points at the map shows it under a one-line bar instead. */
+  .root[data-rail-band="start"] .map,
+  .root[data-rail-band="start"] .foot {
+    visibility: hidden;
+  }
+  /* The list's head: what the tool is for, and the caveat. */
+  .narrowHead {
+    display: block;
+    padding: 12px 16px 12px;
+    border-bottom: 1px solid var(--hair-2);
+  }
+  .narrowHeadTitle {
+    margin: 0;
+    font: 600 15px/20px var(--sans);
+    letter-spacing: var(--track-title);
+    color: var(--ink);
+  }
+  .cardCaveat {
+    display: block;
+    flex: none;
+    margin: 0;
+    padding: 8px 16px 10px;
+    border-top: 1px solid var(--hair-2);
+    background: var(--panel);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  .narrowHeadCaveat {
+    margin: 4px 0 0;
+    font-size: 12.5px;
+    line-height: 17px;
+    color: var(--ink-2);
+    text-wrap: pretty;
+  }
+  /* The guide rail's layer (5), so a step's rings, which live inside the rail, still draw over the Menu button they
+     point at. While Help's or the Menu's list is open the bar rises over the rail (below), so the list opens over
+     Start here or a step in the band. */
+  /* The masthead's navy rule along its top. It sits inside the bar's 56 px, so nothing under the bar moves. */
+  .topBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: center;
+    height: 56px;
+    padding: 0 12px 0 16px;
+    background: var(--panel);
+    border-top: 4px solid var(--navy);
+    border-bottom: 1px solid var(--hair);
+  }
+  .topBar:has([data-menu-open]) {
+    z-index: 6;
+  }
+  .topBar .mastSub {
+    display: none;
+  }
+  .topBar .logo {
+    grid-row: auto;
+  }
+  /* One row: spanning the desktop masthead's two rows left the bar's content 10 px above its middle. */
+  .topBar .mastActions {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+    margin-top: 0;
+  }
+  .column > .masthead {
+    display: none;
+  }
+  /* Full width again: the switch has room for its usual measure. */
+  .ruleButton {
+    column-gap: 8px;
+    padding: 6px 10px 7px;
+  }
+  .map {
+    top: calc(56px + var(--switch-h));
+    bottom: auto;
+    height: var(--band);
+  }
+  .map :global(.maplibregl-ctrl-top-left),
+  .root[data-card-docked] .map :global(.maplibregl-ctrl-top-left) {
+    left: 8px;
+    top: 8px;
+  }
+  .column,
+  .card {
+    top: var(--region-top);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card {
+    transform-origin: center bottom;
+  }
+  @starting-style {
+    .card {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  .root[data-card-docked] .column {
+    transform: none;
+  }
+  /* The list region scrolls as one: rule, tabs, scope line and rows. */
+  .column {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .listScroll {
+    flex: none;
+    overflow: visible;
+  }
+  .actions,
+  .slotHint {
+    display: none;
+  }
+  .listExport {
+    display: inline-flex;
+  }
+  /* The key sits at the band's foot; the caveat is the list's, in its head. The open key never grows past the band:
+     its title and toggle stay in view under the switch, and what does not fit scrolls inside the key. */
+  .foot {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: calc(100% - 56px - var(--switch-h) - var(--band) + 8px);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    max-height: calc(var(--band) - 16px);
+  }
+  .foot .legend {
+    position: static;
+    margin-bottom: 0;
+    width: max-content;
+    max-width: 100%;
+    min-height: 0;
+  }
+  /* Where the line cannot hold it all, the three marks take the first row and the colour strip and the way to the full
+     key share the second, so the key stays two short rows over the map. */
+  .foot .keysShort {
+    order: -1;
+  }
+  .foot .legendBody {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .root[data-has-insp] .foot,
+  .root[data-card-docked] .foot {
+    left: 8px;
+    right: 8px;
+  }
+  .foot .caveat,
+  .foot .dataVersion {
+    display: none;
+  }
+  .legend {
+    padding: 7px 10px 8px;
+    box-shadow: 0 1px 2px rgba(10, 20, 40, 0.08);
+  }
+  .legendTitle {
+    font-size: 12.5px;
+    line-height: 17px;
+  }
+  /* The key spans the band's foot, so the basemap's credit sits at its top right instead. */
+  .attribution {
+    top: 6px;
+    bottom: auto;
+    right: 8px;
+  }
+}
+
+@media (max-width: 1023px) and (max-height: 599px) {
+  .root {
+    --band: max(160px, 32vh);
+  }
+  /* A short window: the rule area keeps every word and control, set closer, so the first school and its reason
+     still show under the band before any scrolling. */
+  .rule {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .ruleButton {
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+  .statement {
+    margin-top: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  /* The blocks above the list are set closer too, so on a 1440 by 900 laptop at 200 percent zoom (720 by 450) the
+     first school and its reason still show on a first visit, with Start here open. */
+  .root[data-pane] {
+    --switch-h: 38px;
+  }
+  .root[data-pane] .paneSwitch {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .narrowHead {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  /* Its 18 px would push the first school's reason out of the window; the files still name the version first. */
+  .narrowHead .dataVersion {
+    display: none;
+  }
+  .tab {
+    padding-top: 7px;
+    padding-bottom: 6px;
+  }
+  .listHead {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
+/* A short window (a phone on its side, or a page zoomed to 400 percent): the top bar and the List / Map switch would
+   take 100 of 256 px, so they scroll away with the list instead of staying. A card or a guide step in the band covers
+   the list region under them, so while one is open they stay, and the card keeps its own scroll. */
+@media (max-width: 1023px) and (max-height: 440px) {
+  .root:not([data-has-insp]):not([data-rail-band]) .stage {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The column grows to its rows and scrolls with the stage, so a wheel or a swipe over it moves the whole page. */
+  .root:not([data-has-insp]):not([data-rail-band]) .column {
+    bottom: auto;
+    overflow: visible;
+    overscroll-behavior: auto;
+  }
+}
+
+/* A phone: the same closer rule area, and 2 px less around each switch label. From 400 px the two rules sit side by
+   side with their labels on two lines; the main rule's label then has at least 14% to spare on Linux, whose text sets
+   wider than macOS's. */
+@media (max-width: 479px) {
+  .rule {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .ruleButton {
+    padding-left: 8px;
+    padding-right: 8px;
+    column-gap: 6px;
+  }
+  .statement {
+    margin-top: 6px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
+/* Below 400 px, side by side, "Combined factors," would have too little room to keep to one line on every platform.
+   The two rules stack instead, the main rule first, each label on a line of its own. */
+@media (max-width: 399px) {
+  .ruleSeg {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ruleButton {
+    padding-top: 3px;
+    padding-bottom: 4px;
+  }
+}
+
+.barButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  cursor: pointer;
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.barButton:disabled {
+  color: var(--ink-3);
+}
+.barButton:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ruleButton,
+  .ruleChange,
+  .findToggle,
+  .pop,
+  .chevron,
+  .column,
+  .card,
+  .toast,
+  .keyToggle svg,
+  .ruleChange svg,
+  .actionButton,
+  .iconButton {
+    transition-property: opacity;
+  }
+  .root[data-card-docked] .column {
+    transform: none;
+    transition-property: opacity, visibility;
+  }
+  .toast,
+  .toast[data-on] {
+    transform: translate(-50%, 0);
+  }
+  @starting-style {
+    .pop,
+    .card {
+      transform: none;
+    }
+  }
+}
+
+/* Forced colours drop the ring and the white fill that mark a switch's chosen side, so an outline inside the button
+   marks it. The focus ring is an outline too, so it takes over while the chosen side has the keyboard. */
+@media (forced-colors: active) {
+  .ruleButton[aria-pressed="true"]:not(:focus-visible),
+  .segmented button[aria-pressed="true"]:not(:focus-visible),
+  .paneSwitch button[aria-pressed="true"]:not(:focus-visible) {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}

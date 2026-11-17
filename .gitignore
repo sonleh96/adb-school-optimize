@@ -1,4 +1,5 @@
 __pycache__/
+*.egg-info/
 
 data/
 
@@ -22,3 +23,6 @@ apps/web/.audit-work-build/
 
 .serena/
 *.tsbuildinfo
+playwright-report/
+test-results/
+.lighthouseci/

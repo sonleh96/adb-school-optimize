@@ -11,13 +11,12 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "psycopg[binary]",
+    "psycopg-pool",
     "pandas",
     "numpy",
     "shapely",
     "openpyxl",
-    "python-multipart",
-    "google-cloud-storage",
-    "rasterio",
+    "PyJWT[crypto]",
 ]
 
 [project.optional-dependencies]

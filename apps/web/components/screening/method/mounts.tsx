@@ -1,0 +1,387 @@
+"use client";
+
+/**
+ * Where the method details and the export sheet meet the workspace. The workspace calls `useMethodMounts` once and puts
+ * each returned piece where its plain counterpart goes; a method piece is null while the method details are off (or
+ * still loading), and the plain one shows. This file is in the workspace's up-front script, so it holds only hooks and
+ * the two buttons that are always on screen: the method layer (`layer.ts`, built by `build.tsx`), compare mode and
+ * the export sheet each load in their own chunk on first use, and the method words through the copy's `methodFor`.
+ * Every change goes through the workspace controller, so a guide, a pasted link and a click land on the same screen.
+ */
+import { Download } from "lucide-react";
+import { type ReactNode, createRef, useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { type BoundCopy, type CopyRuleId, type CopySchool, RULE_IDS } from "@/lib/screening/copy";
+import { type RulePair, useScreeningCompare, useScreeningRules } from "@/lib/screening/hooks";
+import type { OrderedRow } from "@/lib/screening/list";
+import { type MarkPaint, NO_PAINT } from "@/lib/screening/method/paint";
+import type { ListedRow, SchoolDetailResponse, SchoolKey } from "@/lib/screening/types";
+import type { Band } from "@/lib/screening/workspace/bands";
+import type { Layout } from "@/lib/screening/workspace/layout";
+import type { PlainList } from "@/lib/screening/workspace/plain-list";
+import type { WorkspaceState } from "@/lib/screening/workspace/state";
+import type { WorkspaceStore } from "@/lib/screening/workspace/store";
+
+import type { MapBarClasses, MenuAct } from "../guide/GuidanceLayer";
+import type { RuleChoice } from "../useScreeningData";
+import base from "../screening.module.css";
+import styles from "./actions.module.css";
+import { MethodSwitch } from "./MethodSwitch";
+import { useMethod } from "./useMethod";
+
+/** Loads a chunk once; a failed load is tried again on the next call. */
+function once<T>(load: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | null = null;
+  return () =>
+    (pending ??= load().catch((error: unknown) => {
+      pending = null;
+      throw error;
+    }));
+}
+const loadLayer = once(() => import("./layer"));
+const loadCompare = once(() => import("../compare/layer"));
+const loadExport = once(() => import("../export/layer"));
+
+/**
+ * A chunk's exports, once `wanted` has held or `load` has been called (the switch pointed at, for one). `failed` holds
+ * after a load that did not arrive, until `load` tries again.
+ */
+function useChunk<T>(load: () => Promise<T>, wanted: boolean) {
+  const [mod, setMod] = useState<T | null>(null);
+  const [failed, setFailed] = useState(false);
+  const start = useCallback(() => {
+    setFailed(false);
+    void load().then(setMod, (error: unknown) => {
+      console.error(error);
+      setFailed(true);
+    });
+  }, [load]);
+  useEffect(() => {
+    if (wanted && !mod && !failed) start();
+  }, [wanted, mod, failed, start]);
+  return { mod, failed, load: start };
+}
+
+/** Two rules in the rules' own order, the order the app asks the API for a comparison in. */
+function canonicalPair(x: CopyRuleId, y: CopyRuleId): RulePair {
+  const order = (id: CopyRuleId) => RULE_IDS.indexOf(id);
+  return (order(x) <= order(y) ? { a: x, b: y } : { a: y, b: x }) as RulePair;
+}
+
+export interface MountInput {
+  store: WorkspaceStore;
+  state: WorkspaceState;
+  copy: BoundCopy;
+  /** The rule of the rows on screen, and the rule asked for (the switch shows it at once). */
+  rule: CopyRuleId | null;
+  requested: CopyRuleId;
+  rules: readonly RuleChoice[] | null;
+  /** The list and its data are on screen. */
+  ready: boolean;
+  stale: boolean;
+  rows: readonly ListedRow[];
+  ordered: readonly OrderedRow[];
+  schools: ReadonlyMap<string, CopySchool>;
+  selectedKey: SchoolKey | null;
+  hovered: SchoolKey | null;
+  layer: HTMLElement | null;
+  layout: Layout;
+  bands: readonly Band[];
+  /** The key's open state, the workspace's, shared with the plain key so the method key keeps it as it moves. */
+  keyOpen: boolean;
+  onKeyToggle: () => void;
+  /** The last action came from the keyboard: popovers appear at once. */
+  keyboard: boolean;
+  onSelect: (key: SchoolKey) => void;
+  /** The school under the pointer, kept out of the workspace's state like the map's (the guides own `hover`). */
+  onPointerHover: (key: SchoolKey | null) => void;
+  onRule: (rule: CopyRuleId) => void;
+  /** Says something briefly in the workspace's status line (a download, a copied record). */
+  onNotify: (message: string) => void;
+  /** The list on screen, as the plain download and the printout write it. */
+  plainList: PlainList;
+}
+
+export interface Mounts {
+  /** The method details are drawn. */
+  on: boolean;
+  methodSwitch: ReactNode;
+  /** "Download or print the list", in the actions. */
+  exportButton: ReactNode;
+  /** The same, at the head of the list, shown only in the narrow layout, where the actions hide in Menu. */
+  listExportButton: ReactNode;
+  /** The method switch and Download the top list as choices of the narrow layout's menu, which puts Copy link
+   * between them (notes/final.md, "Responsive layout"). */
+  methodMenuItem: (act: MenuAct) => ReactNode;
+  exportMenuItem: (act: MenuAct) => ReactNode;
+  /** The export sheet while it is open. */
+  exportSheet: ReactNode | null;
+  ruleArea: ReactNode | null;
+  rankedList: ReactNode | null;
+  /** Compare mode's column, which replaces the rule, the tabs and the list. */
+  compareColumn: ReactNode | null;
+  legend: ReactNode | null;
+  /** Map layers, for the end of the guidance map bar. */
+  mapBar: ((classes: MapBarClasses) => ReactNode) | null;
+  /** The incomplete records' filter by what is missing, the rows the filters leave, and the count before the order. */
+  queueFilter: ReactNode | null;
+  queueRows: (<T extends ListedRow>(rows: readonly T[]) => readonly T[]) | null;
+  queueShowing: string | null;
+  paint: MarkPaint;
+  rootClassName: string;
+  /** The card's method layer, given the school's whole record. */
+  cardLayer: ((input: { record: CopySchool; detail: SchoolDetailResponse }) => ReactNode) | null;
+}
+
+export function useMethodMounts(input: MountInput): Mounts {
+  const { store, state, copy, rule, ready } = input;
+  const comparing = state.mode === "compare";
+  const exporting = state.panel === "export" && ready && rule !== null;
+  const { mod, failed: layerFailed, load } = useChunk(loadLayer, state.analyst);
+  const { mod: compareMod, failed: compareFailed, load: loadComparison } = useChunk(loadCompare, comparing);
+  const { mod: exportMod, failed: exportFailed, load: loadSheet } = useChunk(loadExport, exporting);
+  const { method, failed: wordsFailed, retry: retryWords } = useMethod(copy, rule, state.analyst && ready);
+  const on = state.analyst && ready && mod !== null && method !== null && rule !== null;
+  const detail = useScreeningRules().data?.rules ?? null;
+  // Held in state, not useRef: they go to the method chunk's builder as plain objects for its buttons to fill.
+  const [filterButton] = useState(() => createRef<HTMLButtonElement>());
+  const [layersButton] = useState(() => createRef<HTMLButtonElement>());
+  const exportOpener = useRef<HTMLButtonElement>(null);
+
+  // The remoteness filter can only hold a class the list has. The workspace tells the store the provinces and districts.
+  const { rows } = input;
+  useEffect(() => {
+    if (!mod || rows.length === 0) return;
+    store.setKnown({ localities: new Set(mod.filterOptions(rows).localities) });
+  }, [store, mod, rows]);
+
+  // Compare mode: the rule compared with (`compare`) and the rule on screen, from the API's comparison of the two.
+  const a = (state.compare ?? null) as CopyRuleId | null;
+  const pair = comparing && a && rule && a !== rule ? canonicalPair(a, rule) : null;
+  const comparison = useScreeningCompare(pair);
+  const compared = useMemo(
+    () => (mod && comparison.data && a && rule ? mod.comparedOf(comparison.data, a, rule, state.k) : null),
+    [mod, comparison.data, a, rule, state.k]
+  );
+  const paint = useMemo(
+    (): MarkPaint =>
+      on && mod
+        ? mod.paintFor({
+            hide: state.hide,
+            rows,
+            filters: { prov: state.prov, dist: state.dist, q: state.q, loc: state.loc, miss: state.miss },
+            compared: comparing ? compared : null,
+            edges: method.compare.moveEdges,
+          })
+        : NO_PAINT,
+    [
+      on,
+      mod,
+      method,
+      state.hide,
+      state.prov,
+      state.dist,
+      state.q,
+      state.loc,
+      state.miss,
+      rows,
+      comparing,
+      compared,
+    ]
+  );
+
+  const methodSwitch = (
+    <MethodSwitch
+      label={copy.LAYOUT.methodSwitch}
+      on={state.analyst}
+      disabled={!ready}
+      title={ready ? undefined : copy.LAYOUT.availableAfterLoad}
+      onIntent={load}
+      onToggle={() => store.setState({ analyst: !state.analyst })}
+    />
+  );
+
+  // The button that opened the sheet, so closing it hands focus back there; none for the menu's choice, which leaves.
+  const openedFrom = useRef<HTMLElement | null>(null);
+  const openSheet = (from: HTMLElement | null) => {
+    openedFrom.current = from;
+    store.setState({ panel: "export", pop: null });
+  };
+  const exportButton = (
+    <button
+      ref={exportOpener}
+      type="button"
+      className={styles.open}
+      data-region="export-button"
+      disabled={!ready}
+      title={ready ? undefined : copy.LAYOUT.availableAfterLoad}
+      aria-haspopup="dialog"
+      aria-expanded={state.panel === "export"}
+      onPointerEnter={loadSheet}
+      onFocus={loadSheet}
+      onClick={(event) => openSheet(event.currentTarget)}
+    >
+      {copy.TERMS.export.label}
+    </button>
+  );
+  // The same action at the head of the list, for the narrow layout, where the actions above hide in Menu.
+  const listExportButton = (
+    <button
+      type="button"
+      className={`${base.findToggle} ${base.listExport}`}
+      data-region="list-export"
+      disabled={!ready}
+      aria-haspopup="dialog"
+      aria-expanded={state.panel === "export"}
+      onPointerEnter={loadSheet}
+      onFocus={loadSheet}
+      onClick={(event) => openSheet(event.currentTarget)}
+    >
+      <Download size={13} aria-hidden />
+      {copy.TERMS.export.label}
+    </button>
+  );
+  const methodMenuItem = (act: MenuAct) => (
+    <button
+      type="button"
+      aria-pressed={state.analyst}
+      disabled={!ready}
+      onPointerEnter={load}
+      onClick={act(() => store.setState({ analyst: !state.analyst }))}
+    >
+      {copy.LAYOUT.methodSwitch}
+    </button>
+  );
+  const exportMenuItem = (act: MenuAct) => (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      disabled={!ready}
+      onClick={act(() => {
+        loadSheet();
+        openSheet(null);
+      })}
+    >
+      {copy.TERMS.export.label}
+    </button>
+  );
+  // A chunk or the method words that did not load say so in the copy's words, with a Retry that asks again.
+  const failure = (retry: () => void, close?: () => void) => (
+    <div className={`${base.fullState} ${styles.failure}`} role="alert">
+      <p>{copy.LAYOUT.loadFailed}</p>
+      <button type="button" className={base.retryButton} onClick={retry}>
+        {copy.LAYOUT.retry}
+      </button>
+      {close ? (
+        <button type="button" className={base.retryButton} onClick={close}>
+          {copy.HELP.close}
+        </button>
+      ) : null}
+    </div>
+  );
+  const methodFailure =
+    state.analyst && ready && (layerFailed || wordsFailed)
+      ? failure(() => {
+          if (layerFailed) load();
+          if (wordsFailed) retryWords();
+        })
+      : null;
+
+  const exportSheet =
+    exporting && exportFailed ? (
+      <div className={styles.sheetFailure}>{failure(loadSheet, () => store.setState({ panel: null }))}</div>
+    ) : exporting && exportMod && rule ? (
+      <exportMod.ExportSheet
+        copy={copy}
+        method={on ? method : null}
+        rule={rule}
+        comparedWith={comparing && on ? a : null}
+        n={state.n}
+        filters={{ prov: state.prov, dist: state.dist, q: state.q, loc: state.loc }}
+        list={input.plainList}
+        schools={input.schools}
+        layer={input.layer}
+        instant={input.keyboard}
+        pack={state.pack}
+        onTab={(pack) => store.setState({ pack })}
+        onLength={(n) => store.setState({ n })}
+        onClose={() => {
+          store.setState({ panel: null });
+          // The sheet leaves the page as it closes, so focus goes back to the button that opened it: the one at the
+          // head of the list, or the actions' button, or in the narrow layout, where the actions are hidden, the
+          // menu's button.
+          requestAnimationFrame(() => {
+            const opener = openedFrom.current?.isConnected ? openedFrom.current : exportOpener.current;
+            const shown = opener && opener.getClientRects().length > 0 ? opener : null;
+            (shown ?? document.querySelector<HTMLElement>('[data-region="actions-menu"]'))?.focus({
+              preventScroll: true,
+            });
+          });
+        }}
+        onNotify={input.onNotify}
+      />
+    ) : null;
+
+  const common = {
+    on,
+    methodSwitch,
+    exportButton,
+    listExportButton,
+    methodMenuItem,
+    exportMenuItem,
+    exportSheet,
+    paint,
+  };
+  if (!on || !mod || !method || !rule) {
+    return {
+      ...common,
+      on: false,
+      ruleArea: methodFailure,
+      rankedList: null,
+      compareColumn: null,
+      legend: null,
+      mapBar: null,
+      queueFilter: null,
+      queueRows: null,
+      queueShowing: null,
+      rootClassName: "",
+      cardLayer: null,
+    };
+  }
+
+  const built = mod.buildMounts({
+    ...input,
+    method,
+    rule,
+    detail,
+    compared,
+    filterButton,
+    layersButton,
+    compareColumn: ({ compared: data, names }) =>
+      compareFailed ? (
+        failure(loadComparison)
+      ) : compareMod && a && input.rules ? (
+        <compareMod.CompareColumn
+          copy={copy}
+          words={method}
+          a={a}
+          b={rule}
+          rules={input.rules}
+          data={data}
+          failed={comparison.isError}
+          onRetry={() => void comparison.refetch()}
+          names={names}
+          count={input.ordered.length}
+          pop={state.pop}
+          layer={input.layer}
+          keyboard={input.keyboard}
+          selected={input.selectedKey}
+          hovered={input.hovered}
+          onState={(patch) => store.setState(patch)}
+          onSelect={input.onSelect}
+          onHover={input.onPointerHover}
+        />
+      ) : null,
+  });
+  return { ...common, ...built };
+}

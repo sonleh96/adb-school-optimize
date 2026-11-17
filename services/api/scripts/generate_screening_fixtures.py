@@ -1,0 +1,994 @@
+"""Save the screening API's responses for invented schools as the web tests' fixtures.
+
+    python services/api/scripts/generate_screening_fixtures.py \
+        --database-url postgresql://postgres:local@localhost:55432/postgres
+
+The script starts from the synthetic factories of the API tests, creates a throwaway database on the server
+named by ``--database-url`` for each dataset below, applies every migration, loads invented records (and invented
+persistence numbers for both rules that can have them) through the real ingestion function and calls the real application with a test client.
+Each response it saves is exactly what the API sent, except for the volatile values listed in ``PINNED``,
+which are replaced by fixed ones so that a rerun writes identical files. Each throwaway database is dropped
+at the end.
+
+Every dataset has its own directory under the output folder, and ``index.json`` in it lists every captured
+request with its file and, when it is not 200, its status. The default dataset sits in the folder itself.
+A capture that is not JSON (the top list's CSV) is saved as the API's bytes, and its entry also lists the headers
+that describe the file (``FILE_HEADERS``), so the mock can answer with them.
+``apps/web/scripts/mock-api.mjs`` serves those and nothing else, so a web test can only see responses the API
+really produced.
+
+Nothing in the output comes from a real school, place or value: the records are invented here.
+The server must be local, like the API's own database tests require.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import tempfile
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from itertools import combinations, pairwise
+from pathlib import Path
+from urllib.parse import quote
+
+import psycopg
+from psycopg import sql
+from psycopg.conninfo import make_conninfo
+
+REPO = Path(__file__).resolve().parents[3]
+sys.path[:0] = [str(REPO / "services" / "api"), str(REPO / "packages" / "school_scoring")]
+sys.path.append(str(REPO / "services" / "api" / "tests"))
+
+from app.ingestion.load_screening_inputs import read_persistence_source  # noqa: E402
+from app.main import app  # noqa: E402
+from app.routers.screening import DEFAULT_RULE_ID  # noqa: E402
+from app.screening_queries import school_key  # noqa: E402
+from app.settings import get_settings  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from school_scoring.screening import RULES, GateFailure, SchoolRecord  # noqa: E402
+from screening_db_factories import record, write_persistence_files  # noqa: E402
+from screening_db_helpers import (  # noqa: E402
+    DatabaseTestsUnavailable,
+    apply_migrations,
+    load,
+    server_url,
+)
+
+DEFAULT_OUT = REPO / "apps" / "web" / "e2e" / "fixtures" / "screening"
+VERSION = "synthetic-fixture-v1"
+API = "/api/v1/screening"
+MAIN_RULES = ("additive_u", "additive_no_u")
+CIRCULATED_RULE = "additive_u"
+REVISED_RULE = "additive_no_u"
+# The rule the screen opens on: the revised paper's main rule, as the API says.
+DEFAULT_RULE = DEFAULT_RULE_ID
+
+# What the web tests rely on in the default dataset, written down so a reviewer sees the shape of the data
+# without reading the loop.
+COMPLETE, INTERVAL, QUEUED = 16, 5, 4
+# Names without a ``schools`` row, so their coordinates are unknown: one complete school and one queued school.
+WITHOUT_COORDINATES = ("Sample School 05", "Sample School 22")
+
+# Roles that a plain PostGIS server lacks and the lockdown migration refers to (Supabase provides them).
+BOOTSTRAP_ROLES = """
+do $$
+begin
+    if not exists (select from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+    if not exists (select from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+end
+$$
+"""
+
+# Replaced after capture, because the database or the clock chooses them and they would change on every run.
+PINNED = "uuids (run ids, school ids) and timestamps"
+UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+TIMESTAMP = re.compile(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|\+00:00)")
+FIXED_TIMESTAMP = "2026-01-01T00:00:00Z"
+
+# The headers that say what a downloaded file is, kept with a capture that is not JSON. Transport headers (length,
+# compression, the request id) are the mock's own business.
+FILE_HEADERS = (
+    "content-type",
+    "content-disposition",
+    "cache-control",
+    "x-rise-png-decision-use",
+    "x-content-type-options",
+    "referrer-policy",
+)
+# The lengths of the top list the export sheet offers.
+TOP_LENGTHS = (10, 20, 30)
+
+PLACES = (
+    ("North Province", "North One", -5.6, 145.2),
+    ("North Province", "North Two", -5.4, 146.4),
+    ("South Province", "South One", -7.4, 146.2),
+    ("South Province", "South Two", -7.0, 144.8),
+    ("East Province", "East One", -6.2, 147.6),
+)
+LOCALITIES = ("Accessible", "Remote", "Very remote", "Highly accessible", "Moderately accessible")
+
+# Names and places that a layout has to survive. Each length is asserted where the data is checked.
+NAME_72_WITH_DIACRITICS = "Écôle Intermédiaire Supérieure de la Vallée Ŝainte-Zoé des Hautes Terres"
+NAME_59_NO_BREAK = ("Unbroken" * 8)[:59]
+PROVINCE_33 = "Province of the Far Eastern Isles"
+DISTRICT_70 = "District of the Upper Western Highlands and the Southern Lowlands, Bay"
+# The engine refuses a name that is empty or only whitespace, so no stored school has a blank name.
+# A zero-width space is the nearest a stored name can come: it passes every check and shows as nothing.
+NAME_LOOKS_BLANK = "\u200b"
+SPACED_PAIR = ("Spaced Name School", "Spaced  Name School")
+
+# A record so little in need that it stays below every other school.
+LITTLE_NEED = dict(
+    locality="Highly accessible",
+    permanent_classrooms=8.0,
+    teacher_houses=10.0,
+    libraries=1.0,
+    workshops=1.0,
+    practical_skills_buildings=1.0,
+    home_economics_buildings=1.0,
+    computer_labs=1.0,
+    specialized_classrooms=1.0,
+    power_source="Grid",
+    water_source="Piped",
+    secondary_students_per_1000=900.0,
+    progression_g10_corrected_pct=100.0,
+    progression_g12_corrected_pct=100.0,
+    walking_catchment_population=1e6,
+    emissions_co2e_100yr_10km_tonnes=0.0,
+    water_flooded_vegetation_fraction_500m=0.0,
+    urgency_source_scalar=0.0,
+)
+
+
+def complete_record(i: int, name: str, **overrides) -> SchoolRecord:
+    """A school with every input known. ``i`` varies the values so that the schools differ."""
+    values = dict(
+        locality=LOCALITIES[i % len(LOCALITIES)],
+        permanent_classrooms=float(i % 7),
+        teacher_houses=float(i % 5),
+        libraries=float(i % 2),
+        workshops=float(i % 3 == 0),
+        computer_labs=float(i % 4 == 1),
+        secondary_students_per_1000=40.0 + 13 * i,
+        conflict_population_exposure=float(i % 4) / 10,
+        progression_g10_corrected_pct=50.0 + (i * 7) % 40,
+        progression_g12_corrected_pct=10.0 + (i * 11) % 30,
+        walking_catchment_population=100.0 * (i + 1),
+        aqi_p95_selected=20.0 + 9 * i,
+        emissions_co2e_100yr_10km_tonnes=float(i * i * 10),
+        water_flooded_vegetation_fraction_500m=round(0.05 * i, 2),
+        urgency_source_scalar=round(0.05 * ((i * 5) % 16), 2),
+    )
+    return record(name, **{**values, **overrides})
+
+
+def placed(
+    records: list[SchoolRecord], overrides: dict[str, tuple[str, str]] | None = None
+) -> tuple[SchoolRecord, ...]:
+    """Give each record a province and district: the cycle of ``PLACES``, or the one named in ``overrides``."""
+    result = []
+    for i, r in enumerate(records):
+        province, district, _, _ = PLACES[i % len(PLACES)]
+        province, district = (overrides or {}).get(r.school_name, (province, district))
+        result.append(replace(r, province=province, district=district))
+    return tuple(result)
+
+
+# ---------------------------------------------------------------------------------------------
+# The datasets. Each one is a database of its own and a directory of its own.
+# ---------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Dataset:
+    name: str
+    directory: str  # relative to the output folder; empty for the default dataset
+    records: tuple[SchoolRecord, ...]
+    # Lower top-20 frequencies of the two invented experiments, by school name, in the order of the three settings:
+    # the one that included urgency (rule additive_u) and the one that left it out (rule additive_no_u).
+    persistence: dict[str, tuple[float, float, float]]
+    persistence_no_u: dict[str, tuple[float, float, float]]
+    without_coordinates: tuple[str, ...] = ()
+    # Claims about the data that a web test relies on; the generator refuses to write a dataset that breaks one.
+    claims: tuple[tuple[str, Callable[[list[dict]], bool]], ...] = ()
+    # The rule whose rows the claims read.
+    claims_rule: str = CIRCULATED_RULE
+    # The top lists saved as CSV, as (rule, length). The export sheet previews and downloads these.
+    top_lists: tuple[tuple[str, int], ...] = ((DEFAULT_RULE, 20),)
+    # Every pair of rules compared, not only the circulated rule against each other: compare mode can pick any two.
+    every_pair: bool = False
+    # Top lists cut by a province, as (rule, length, province, file suffix): the export follows the screen's filter.
+    filtered_top_lists: tuple[tuple[str, int, str, str], ...] = ()
+    # Where each record's school is, as (latitude, longitude) in the records' order; empty for ``position``'s spread.
+    positions: tuple[tuple[float, float], ...] = ()
+
+
+def main_records() -> tuple[SchoolRecord, ...]:
+    """Sixteen complete schools, five interval schools and four queued ones under the urgency-included additive rule."""
+    complete = [complete_record(i, f"Sample School {i + 1:02d}") for i in range(COMPLETE)]
+    interval = [
+        record("Sample School 17", aqi_p95_selected=None, permanent_classrooms=1.0),
+        record("Sample School 18", water_flooded_vegetation_fraction_500m=None, permanent_classrooms=2.0),
+        record("Sample School 19", emissions_co2e_100yr_10km_tonnes=None, permanent_classrooms=3.0),
+        record("Café Sample 20", aqi_p95_selected=None, emissions_co2e_100yr_10km_tonnes=None),
+    ]
+    queued = [
+        record("Sample School 21", teachers=None),
+        record("Sample School 22", locality="Nowhere"),
+        record("Sample School 23", urgency_source_scalar=None),
+        # Nothing in this record feeds a normalization anchor, so it changes no other school's score.
+        record(
+            "Sample School 24",
+            teachers=None,
+            secondary_students_per_1000=None,
+            district_luminosity_area_integral=None,
+            conflict_population_exposure=None,
+            urgency_source_scalar=None,
+            walking_catchment_population=None,
+            aqi_p95_selected=None,
+            emissions_co2e_100yr_10km_tonnes=None,
+            water_flooded_vegetation_fraction_500m=None,
+        ),
+    ]
+    # Last, so that adding it moves no other school's place. Its record is so little in need that even with the
+    # worst possible air-quality reading it stays below every other school: its best and worst place are the same.
+    exact_range = record("Sample School 25", aqi_p95_selected=None, **LITTLE_NEED)
+    return placed([*complete, *interval, *queued, exact_range])
+
+
+def worst_names_records() -> tuple[SchoolRecord, ...]:
+    ordinary = [complete_record(i, f"Worst Case {i + 1:02d}") for i in range(10)]
+    odd = [
+        complete_record(10, NAME_72_WITH_DIACRITICS),
+        complete_record(11, NAME_59_NO_BREAK),
+        complete_record(12, "Worst Case Long Place"),
+        complete_record(13, NAME_LOOKS_BLANK),
+        complete_record(14, "Worst Case Blank District"),
+        complete_record(15, SPACED_PAIR[0]),
+        complete_record(16, SPACED_PAIR[1]),
+    ]
+    return placed(
+        [*ordinary, *odd],
+        {
+            "Worst Case Long Place": (PROVINCE_33, DISTRICT_70),
+            NAME_LOOKS_BLANK: ("North Province", ""),
+            "Worst Case Blank District": ("South Province", ""),
+        },
+    )
+
+
+def ties_and_ranges_records() -> tuple[SchoolRecord, ...]:
+    ranked = [complete_record(i, f"Ranked {i + 1:02d}") for i in range(12)]
+    # Same inputs, so the same scores under every rule: the name alone decides their order.
+    ties = [complete_record(7, name) for name in ("Tie Alpha", "Tie Bravo", "Tie Charlie")]
+    ranges = [
+        complete_record(3, "Range Air", aqi_p95_selected=None),
+        complete_record(5, "Range Emissions", emissions_co2e_100yr_10km_tonnes=None),
+        complete_record(8, "Range Land", water_flooded_vegetation_fraction_500m=None),
+        complete_record(
+            9,
+            "Range All",
+            aqi_p95_selected=None,
+            emissions_co2e_100yr_10km_tonnes=None,
+            water_flooded_vegetation_fraction_500m=None,
+        ),
+    ]
+    # One school for each reason the engine can hold a school for verification.
+    queued = [
+        complete_record(2, "Queue Missing Stock", teachers=None),
+        complete_record(4, "Queue Negative Stock", libraries=-1.0),
+        complete_record(6, "Queue Zero Denominator", total_classrooms=0.0),
+        complete_record(1, "Queue Service Coding", power_source="Candles"),
+        complete_record(3, "Queue Locality", locality="Nowhere"),
+        complete_record(5, "Queue Area Context", progression_g10_corrected_pct=None),
+        complete_record(7, "Queue Reach", walking_catchment_population=None),
+        complete_record(9, "Queue Urgency", urgency_source_scalar=None),
+    ]
+    return placed([*ranked, *ties, *ranges, *queued])
+
+
+def one_record() -> tuple[SchoolRecord, ...]:
+    return placed([complete_record(0, "Only School")])
+
+
+# Twelve schools on a grid 0.3 degrees apart in one valley, and three far away that frame the whole country. A phone's
+# map shows the country at about 40 pixels a degree, so neighbours sit 12 pixels apart, closer than a place number is
+# wide: the first ten places are all in the valley and their numbers collide, as the real list's do in the highlands.
+CROWDED = 12
+CROWDED_POSITIONS = tuple((-5.7 - 0.3 * (i // 4), 144.6 + 0.3 * (i % 4)) for i in range(CROWDED))
+FRAME_POSITIONS = ((-2.1, 147.0), (-10.3, 150.4), (-6.0, 141.4))
+
+
+def crowded_records() -> tuple[SchoolRecord, ...]:
+    valley = [complete_record(i, f"Valley {i + 1:02d}") for i in range(CROWDED)]
+    frame = [record(f"Frame {i + 1}", **LITTLE_NEED) for i in range(len(FRAME_POSITIONS))]
+    return placed([*valley, *frame])
+
+
+# The explore page's province chart: a province name longer than any real one, a province with no school in the list,
+# records with no province at all (so no schools row, which needs one), and a record to verify for each way the chart
+# counts a reason, the record with both a missing count and 0 classrooms among them.
+PROVINCE_42 = "Autonomous Region of the Far Eastern Isles"
+NO_PROVINCE = ("Nowhere Top 01", "Nowhere Missing")
+
+
+def provinces_records() -> tuple[SchoolRecord, ...]:
+    """Twenty-four complete schools, two range schools and eight records to verify, in five provinces and none.
+
+    Four complete schools are so little in need that they rank 21st to 24th under every rule, so the top 20 is the
+    other twenty: 8 in North, 4 in South, 5 in East, 2 in the long-named province and 1 with no province.
+    """
+
+    def at(r: SchoolRecord, province: str | None) -> SchoolRecord:
+        return replace(r, province=province, district=None if province is None else f"{province} District")
+
+    north, south, east, west = "North Province", "South Province", "East Province", "West Province"
+    top = [
+        *[at(complete_record(i, f"North Top {i + 1:02d}"), north) for i in range(8)],
+        *[at(complete_record(8 + i, f"South Top {i + 1:02d}"), south) for i in range(4)],
+        *[at(complete_record(12 + i, f"East Top {i + 1:02d}"), east) for i in range(5)],
+        *[at(complete_record(17 + i, f"Isles Top {i + 1:02d}"), PROVINCE_42) for i in range(2)],
+        at(complete_record(19, NO_PROVINCE[0]), None),
+    ]
+    little = [
+        at(record(f"{name} Little {i + 1:02d}", **LITTLE_NEED), province)
+        for name, province in (("South", south), ("Isles", PROVINCE_42))
+        for i in range(2)
+    ]
+    ranges = [
+        at(complete_record(3, "North Range", aqi_p95_selected=None), north),
+        at(complete_record(5, "Isles Range", aqi_p95_selected=None), PROVINCE_42),
+    ]
+    queued = [
+        at(complete_record(2, "North Missing", teachers=None), north),
+        at(complete_record(4, "South Zero Classrooms", total_classrooms=0.0), south),
+        at(complete_record(6, "East Missing And Zero", teachers=None, total_classrooms=0.0), east),
+        at(complete_record(7, "East Zero Teachers", teachers=0.0), east),
+        at(complete_record(9, "Isles Zero Classrooms", total_classrooms=0.0), PROVINCE_42),
+        at(complete_record(1, "West Missing", libraries=None), west),
+        at(complete_record(5, "West Reach", walking_catchment_population=None), west),
+        at(complete_record(8, NO_PROVINCE[1], power_source=None), None),
+    ]
+    return (*top, *little, *ranges, *queued)
+
+
+def drivers_records() -> tuple[SchoolRecord, ...]:
+    """More than 22 schools with one place, so the explore page's top 20 has a 21st and a 22nd past it, and in the
+    top 20 the pairs its gaps must word: an exact tie, a tie that only floating point splits, a close call, and a
+    range school whose places cross the 20th."""
+    ordinary = [complete_record(i, f"Driver {i + 1:02d}") for i in range(21)]
+    # Same inputs, so the same score: a tie the name breaks.
+    level = [complete_record(16, name, teachers=12.0) for name in ("Level Alpha", "Level Bravo")]
+    # Power and water sum to the same 0.9 on the study's scale, but the engine halves 0.7 + 0.2 to 0.44999999999999996
+    # and 0.4 + 0.5 to 0.45, so the two scores differ only in the last bits of a float.
+    noise = [
+        complete_record(10, "Noise Generator", power_source="Generator", water_source="Piped"),
+        complete_record(10, "Noise Solar", power_source="Solar", water_source="Tank"),
+    ]
+    # Three more people within walking distance: a gap far under 0.001.
+    close = [
+        complete_record(12, "Close One", teachers=11.0),
+        complete_record(12, "Close Two", teachers=11.0, walking_catchment_population=1303.0),
+    ]
+    ranges = [
+        complete_record(14, "Range Air", aqi_p95_selected=None),
+        complete_record(0, "Range Edge", aqi_p95_selected=None),
+    ]
+    return placed([*ordinary, *level, *noise, *close, *ranges])
+
+
+def _name(row: dict) -> str:
+    return row["school"]["source_school_name"]
+
+
+def _has_72_character_name_with_diacritics(rows: list[dict]) -> bool:
+    return any(len(_name(r)) == 72 and not _name(r).isascii() for r in rows)
+
+
+def _has_59_character_name_with_no_break(rows: list[dict]) -> bool:
+    return any(len(_name(r)) == 59 and not any(c.isspace() or c == "-" for c in _name(r)) for r in rows)
+
+
+def _has_long_place(rows: list[dict]) -> bool:
+    return any(
+        len(r["school"]["district"] or "") == 70 and len(r["school"]["province"] or "") == 33 for r in rows
+    )
+
+
+def _has_name_that_looks_blank(rows: list[dict]) -> bool:
+    return any(_name(r).strip("\u200b") == "" for r in rows)
+
+
+def _has_blank_district(rows: list[dict]) -> bool:
+    return any(r["school"]["district"] == "" for r in rows)
+
+
+def _has_names_that_differ_only_by_spaces(rows: list[dict]) -> bool:
+    names = [_name(r) for r in rows]
+    return any(a != b and a.split() == b.split() for a in names for b in names)
+
+
+def _has_three_way_tie(rows: list[dict]) -> bool:
+    points = [r["scores"]["point"] for r in rows if r["cohort"] == "complete"]
+    return any(points.count(p) >= 3 for p in points)
+
+
+def _has_ranges_that_mix_scopes(rows: list[dict]) -> bool:
+    """Range schools have no point rank, and their bounds count a different set of schools than a point rank does."""
+    ranges = [r for r in rows if r["cohort"] == "interval"]
+    return len(ranges) >= 3 and all(
+        r["point_rank"]["rank"] is None
+        and r["rank_bounds"]["best"] is not None
+        and r["point_rank"]["scope_code"] != r["rank_bounds"]["scope_code"]
+        and r["point_rank"]["scope"] != r["rank_bounds"]["scope"]
+        for r in ranges
+    )
+
+
+def _has_every_queue_reason(rows: list[dict]) -> bool:
+    return {f for r in rows for f in r["gate_failures"]} == {f.value for f in GateFailure}
+
+
+def _is_one_complete_school(rows: list[dict]) -> bool:
+    return len(rows) == 1 and rows[0]["cohort"] == "complete"
+
+
+def _has_top_20_without_the_little_need_schools(rows: list[dict]) -> bool:
+    complete = [r for r in rows if r["cohort"] == "complete"]
+    top = [_name(r) for r in complete if r["point_rank"]["rank"] <= 20]
+    return len(complete) == 24 and len(top) == 20 and not any(" Little " in name for name in top)
+
+
+def _has_each_reason_the_province_chart_counts(rows: list[dict]) -> bool:
+    queued = {_name(r): set(r["gate_failures"]) for r in rows if r["cohort"] == "verification_queue"}
+    return queued == {
+        "North Missing": {"missing_stock_field"},
+        "South Zero Classrooms": {"nonpositive_denominator"},
+        "East Missing And Zero": {"missing_stock_field", "nonpositive_denominator"},
+        "East Zero Teachers": {"nonpositive_denominator"},
+        "Isles Zero Classrooms": {"nonpositive_denominator"},
+        "West Missing": {"missing_stock_field"},
+        "West Reach": {"unresolved_reach"},
+        "Nowhere Missing": {"missing_stock_field"},
+    }
+
+
+def _has_records_with_no_province(rows: list[dict]) -> bool:
+    return {_name(r) for r in rows if r["school"]["province"] is None} == set(NO_PROVINCE)
+
+
+def _has_province_with_no_school_in_the_list(rows: list[dict]) -> bool:
+    west = [r for r in rows if r["school"]["province"] == "West Province"]
+    return len(west) == 2 and all(r["cohort"] == "verification_queue" for r in west)
+
+
+WORST_NAMES_CLAIMS = (
+    ("a 72-character name with diacritics", _has_72_character_name_with_diacritics),
+    ("a 59-character name with no break opportunity", _has_59_character_name_with_no_break),
+    ("a 70-character district and a 33-character province", _has_long_place),
+    ("a name that looks blank", _has_name_that_looks_blank),
+    ("a blank district", _has_blank_district),
+    ("two names that differ only by spaces", _has_names_that_differ_only_by_spaces),
+)
+TIES_CLAIMS = (
+    ("three schools with exactly equal scores under the main rule", _has_three_way_tie),
+    ("range schools whose bounds and point rank count different schools", _has_ranges_that_mix_scopes),
+    ("a school for each reason the engine holds one for verification", _has_every_queue_reason),
+)
+ONE_CLAIMS = (("exactly one complete school", _is_one_complete_school),)
+
+
+def _has_first_ten_in_the_valley(rows: list[dict]) -> bool:
+    first = [r for r in rows if r["cohort"] == "complete" and r["point_rank"]["rank"] <= 10]
+    return len(first) == 10 and all(_name(r).startswith("Valley ") for r in first)
+
+
+CROWDED_CLAIMS = (("the first ten places all in the valley", _has_first_ten_in_the_valley),)
+PROVINCES_CLAIMS = (
+    ("a top 20 without the four little-need schools", _has_top_20_without_the_little_need_schools),
+    ("each record to verify with the reasons its name gives", _has_each_reason_the_province_chart_counts),
+    ("records with no province, one in the list and one not", _has_records_with_no_province),
+    ("a province with no school in the list", _has_province_with_no_school_in_the_list),
+)
+
+
+# Invented schools in 11 of the country's 22 provinces, for the explore page's province map: a school of the main
+# rule's top 20 in eight of them, at least one province in each bin of the map's legend (1, 2, 3, 4, and 5 or more),
+# three provinces whose schools are all outside the top 20 (ranked below it, showing a range, or waiting to be
+# verified), and 11 provinces with no school at all. The province names are public geography; every school, district
+# and value is invented, and the counts are chosen for the map, not taken from the study.
+MAP_COMPLETE = 26
+MAP_TOP20 = {
+    "Western": 7,
+    "Gulf": 4,
+    "East Sepik": 3,
+    "West New Britain": 2,
+    "Milne Bay": 1,
+    "Hela": 1,
+    "Enga": 1,
+    "New Ireland": 1,
+}
+# Each invented school's province, chosen from its rank under the main rule (in the comment), which the claims below
+# hold the generator to.
+MAP_PROVINCES = {
+    "Map Sample 23": "Western",  # 1
+    "Map Sample 17": "Gulf",  # 2
+    "Map Sample 22": "East Sepik",  # 3
+    "Map Sample 08": "Western",  # 4
+    "Map Sample 15": "West New Britain",  # 5
+    "Map Sample 18": "Western",  # 6
+    "Map Sample 12": "Gulf",  # 7
+    "Map Sample 16": "Milne Bay",  # 8
+    "Map Sample 13": "Western",  # 9
+    "Map Sample 25": "East Sepik",  # 10
+    "Map Sample 26": "Hela",  # 11
+    "Map Sample 24": "Western",  # 12
+    "Map Sample 03": "Gulf",  # 13
+    "Map Sample 11": "West New Britain",  # 14
+    "Map Sample 21": "Western",  # 15
+    "Map Sample 20": "East Sepik",  # 16
+    "Map Sample 07": "Enga",  # 17
+    "Map Sample 02": "Western",  # 18
+    "Map Sample 19": "Gulf",  # 19
+    "Map Sample 09": "New Ireland",  # 20
+    "Map Sample 01": "Morobe",  # 21
+    "Map Sample 10": "Morobe",  # 22
+    "Map Sample 05": "Morobe",  # 23
+    "Map Sample 06": "Western",  # 24
+    "Map Sample 14": "Gulf",  # 25
+    "Map Sample 04": "Hela",  # 26
+    "Map Range One": "Madang",
+    "Map Range Two": "Western",
+    "Map Queue One": "Manus",
+    "Map Queue Two": "Manus",
+}
+
+
+def map_records() -> tuple[SchoolRecord, ...]:
+    # The land-cover share is scaled down so that it stays a share past the 21st school; above 1 it would read as
+    # missing and the school would show a range.
+    complete = [
+        complete_record(
+            i, f"Map Sample {i + 1:02d}", water_flooded_vegetation_fraction_500m=round(0.03 * i, 2)
+        )
+        for i in range(MAP_COMPLETE)
+    ]
+    ranges = [
+        complete_record(4, "Map Range One", aqi_p95_selected=None),
+        complete_record(9, "Map Range Two", emissions_co2e_100yr_10km_tonnes=None),
+    ]
+    queued = [
+        complete_record(2, "Map Queue One", teachers=None),
+        complete_record(6, "Map Queue Two", teachers=None),
+    ]
+    return tuple(
+        replace(
+            r,
+            province=MAP_PROVINCES[r.school_name],
+            district=f"{MAP_PROVINCES[r.school_name]} Sample District",
+        )
+        for r in [*complete, *ranges, *queued]
+    )
+
+
+def _top20_by_province(rows: list[dict]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for r in rows:
+        if r["cohort"] == "complete" and r["point_rank"]["rank"] <= 20:
+            counts[r["school"]["province"]] = counts.get(r["school"]["province"], 0) + 1
+    return counts
+
+
+def _cohorts_of(rows: list[dict], province: str) -> set[str]:
+    return {r["cohort"] for r in rows if r["school"]["province"] == province}
+
+
+def _has_every_bin(rows: list[dict]) -> bool:
+    return _top20_by_province(rows) == MAP_TOP20
+
+
+def _has_provinces_with_none_in_the_top20(rows: list[dict]) -> bool:
+    top = _top20_by_province(rows)
+    below = [r for r in rows if r["school"]["province"] == "Morobe"]
+    return (
+        "Morobe" not in top
+        and len(below) > 0
+        and all(r["cohort"] == "complete" and r["point_rank"]["rank"] > 20 for r in below)
+        and _cohorts_of(rows, "Madang") == {"interval"}
+        and _cohorts_of(rows, "Manus") == {"verification_queue"}
+    )
+
+
+def _has_a_range_reaching_the_top20(rows: list[dict]) -> bool:
+    return any(r["cohort"] == "interval" and r["rank_bounds"]["best"] <= 20 for r in rows)
+
+
+MAP_CLAIMS = (
+    ("under the main rule, a top-20 school in eight provinces, in every bin of the map", _has_every_bin),
+    (
+        "a province ranked below the top 20, one showing a range only, one waiting only",
+        _has_provinces_with_none_in_the_top20,
+    ),
+    ("a school showing a range whose best rank is inside the top 20", _has_a_range_reaching_the_top20),
+)
+
+
+def _top_gaps(rows: list[dict]) -> list[float]:
+    """The score gaps between neighbouring places from the 1st to the 22nd."""
+    points = sorted(
+        (r["point_rank"]["rank"], r["scores"]["point"]) for r in rows if r["cohort"] == "complete"
+    )[:22]
+    return [a[1] - b[1] for a, b in pairwise(points)]
+
+
+DRIVERS_CLAIMS = (
+    ("at least 22 schools with one place", lambda rows: len(_top_gaps(rows)) == 21),
+    ("an exact tie in the top 20", lambda rows: 0.0 in _top_gaps(rows)[:19]),
+    (
+        "a tie that only floating point splits, in the top 20",
+        lambda rows: any(0 < g < 1e-9 for g in _top_gaps(rows)[:19]),
+    ),
+    ("a gap under 0.001 in the top 20", lambda rows: any(1e-9 < g < 1e-3 for g in _top_gaps(rows)[:19])),
+)
+
+
+def datasets() -> tuple[Dataset, ...]:
+    return (
+        Dataset(
+            name="main",
+            directory="",
+            records=main_records(),
+            # Sample School 01, 02 and 06 are persistent: 01 well above the line, 02 exactly on it and 06 0.0014 above
+            # it, both within one standard error. 03 is one setting short, 04 is far below, and 17 shows that a
+            # range school can be in the experiment too.
+            persistence={
+                "Sample School 01": (0.99, 0.97, 1.0),
+                "Sample School 02": (0.8, 0.8, 0.8),
+                "Sample School 03": (0.9, 0.7999, 0.95),
+                "Sample School 04": (0.2, 0.3, 0.4),
+                "Sample School 06": (0.8014, 0.9, 0.95),
+                "Sample School 17": (0.1, 0.1, 0.2),
+            },
+            # The urgency-omitted experiment names other schools. 03 is persistent here and not above, 07 is one
+            # setting short, and 06 is 0.0105 above the line: inside two standard errors, which is the revised paper's
+            # band, and outside the one standard error of the circulated paper.
+            persistence_no_u={
+                "Sample School 01": (0.95, 0.97, 1.0),
+                "Sample School 02": (0.9, 0.9, 0.9),
+                "Sample School 03": (0.9, 0.9, 0.95),
+                "Sample School 04": (0.2, 0.3, 0.4),
+                "Sample School 06": (0.8105, 0.9, 0.95),
+                "Sample School 07": (0.9, 0.79, 0.9),
+                "Sample School 17": (0.1, 0.1, 0.2),
+            },
+            without_coordinates=WITHOUT_COORDINATES,
+            top_lists=tuple((rule_id, k) for rule_id in RULES for k in TOP_LENGTHS),
+            every_pair=True,
+            filtered_top_lists=((DEFAULT_RULE, 20, "South Province", "south"),),
+        ),
+        Dataset(
+            name="worst-names",
+            directory="worst-names",
+            records=worst_names_records(),
+            persistence={NAME_72_WITH_DIACRITICS: (0.95, 0.96, 0.99), "Worst Case 01": (0.5, 0.5, 0.5)},
+            persistence_no_u={NAME_72_WITH_DIACRITICS: (0.9, 0.9, 0.9), "Worst Case 02": (0.4, 0.4, 0.4)},
+            # Two names that differ only by spaces cannot be told apart by the school table, so neither is located.
+            without_coordinates=SPACED_PAIR,
+            claims=WORST_NAMES_CLAIMS,
+        ),
+        Dataset(
+            name="ties-and-ranges",
+            directory="ties-and-ranges",
+            records=ties_and_ranges_records(),
+            persistence={"Ranked 01": (1.0, 1.0, 1.0), "Range Air": (0.3, 0.4, 0.5)},
+            persistence_no_u={"Ranked 01": (0.85, 0.9, 1.0), "Range Air": (0.2, 0.3, 0.4)},
+            claims=TIES_CLAIMS,
+        ),
+        Dataset(
+            name="one",
+            directory="one",
+            records=one_record(),
+            persistence={"Only School": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Only School": (1.0, 1.0, 1.0)},
+            claims=ONE_CLAIMS,
+        ),
+        Dataset(
+            name="crowded",
+            directory="crowded",
+            records=crowded_records(),
+            persistence={"Valley 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Valley 01": (1.0, 1.0, 1.0)},
+            claims=CROWDED_CLAIMS,
+            positions=(*CROWDED_POSITIONS, *FRAME_POSITIONS),
+        ),
+        Dataset(
+            name="provinces",
+            directory="provinces",
+            records=provinces_records(),
+            persistence={"North Top 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"North Top 01": (1.0, 1.0, 1.0)},
+            # The schools table needs a province, so a record without one has no row there, and no coordinates.
+            without_coordinates=NO_PROVINCE,
+            claims=PROVINCES_CLAIMS,
+        ),
+        Dataset(
+            name="province-map",
+            directory="province-map",
+            records=map_records(),
+            persistence={"Map Sample 01": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Map Sample 01": (1.0, 1.0, 1.0)},
+            claims=MAP_CLAIMS,
+            claims_rule=REVISED_RULE,
+        ),
+        Dataset(
+            name="drivers",
+            directory="drivers",
+            records=drivers_records(),
+            persistence={"Driver 17": (1.0, 1.0, 1.0)},
+            persistence_no_u={"Driver 17": (0.95, 0.97, 1.0)},
+            claims=DRIVERS_CLAIMS,
+        ),
+        # No input version is loaded: the rules list is there, every read of results or inputs is a 404.
+        Dataset(name="empty", directory="empty", records=(), persistence={}, persistence_no_u={}),
+    )
+
+
+# ---------------------------------------------------------------------------------------------
+# Building a dataset's database.
+# ---------------------------------------------------------------------------------------------
+
+
+def position(index: int) -> tuple[float, float]:
+    """Latitude and longitude of the invented school at ``index``: its place's centre plus a fixed offset."""
+    _, _, lat, lon = PLACES[index % len(PLACES)]
+    return lat + 0.45 * (((index * 37) % 11) / 10 - 0.5), lon + 0.45 * (((index * 53) % 13) / 12 - 0.5)
+
+
+def add_schools(connection: psycopg.Connection, ds: Dataset) -> None:
+    """One ``schools`` row per record, except those without coordinates, so the ingestion links the rest."""
+    for i, r in enumerate(ds.records):
+        if r.school_name in ds.without_coordinates:
+            continue
+        lat, lon = ds.positions[i] if ds.positions else position(i)
+        connection.execute(
+            "insert into schools (school_name, province, district, latitude, longitude, geom) "
+            "values (%s, %s, %s, %s, %s, st_setsrid(st_makepoint(%s, %s), 4326))",
+            (r.school_name, r.province, r.district, lat, lon, lon, lat),
+        )
+
+
+def create_database(admin: psycopg.Connection, url: str, ds: Dataset) -> str:
+    name = f"rise_screening_fixtures_{uuid.uuid4().hex[:8]}"
+    admin.execute(BOOTSTRAP_ROLES)
+    admin.execute(sql.SQL("create database {}").format(sql.Identifier(name)))
+    with psycopg.connect(make_conninfo(url, dbname=name), autocommit=True) as connection:
+        apply_migrations(connection)
+        if not ds.records:
+            return name
+        add_schools(connection, ds)
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            sources = [
+                read_persistence_source(root, write_persistence_files(root, ds.persistence), CIRCULATED_RULE),
+                read_persistence_source(
+                    root,
+                    write_persistence_files(root, ds.persistence_no_u, urgency_omitted=True),
+                    REVISED_RULE,
+                ),
+            ]
+            load(connection, ds.records, VERSION, sources)
+    return name
+
+
+# ---------------------------------------------------------------------------------------------
+# Capturing the responses.
+# ---------------------------------------------------------------------------------------------
+
+
+class Capture:
+    """Calls the real application and remembers each request with the exact body it answered."""
+
+    def __init__(self, client: TestClient):
+        self.client = client
+        self.entries: list[dict] = []
+        self.bodies: dict[str, str] = {}
+        # Files added after the first fixtures were written. They come last when uuids are numbered (see ``pin``),
+        # so adding them renumbers nothing in the files that were already there.
+        self.late: set[str] = set()
+
+    def get(self, path: str, file: str, status: int = 200, **params: str) -> dict:
+        """``path`` is written as the API defines it; a school key goes in percent-encoded by the caller."""
+        response = self.client.get(path, params=params)
+        if response.status_code != status:
+            raise SystemExit(
+                f"{path} {params} answered {response.status_code}, not {status}: {response.text[:300]}"
+            )
+        entry = {"path": path, "query": dict(sorted(params.items())), "file": file}
+        if status != 200:
+            entry["status"] = status
+        self.entries.append(entry)
+        self.bodies[file] = response.text
+        return response.json()
+
+    def get_as_answered(self, path: str, file: str, **params: str) -> int:
+        """Records the request with whatever status the API gives, for reads whose answer depends on the data."""
+        status = self.client.get(path, params=params).status_code
+        self.get(path, file, status=status, **params)
+        return status
+
+    def get_file(self, path: str, file: str, **params: str) -> None:
+        """A download: the body is kept as the API's text, and the headers that describe the file with it.
+        An answer that is not 200 is the API's JSON refusal, kept as any other refusal is."""
+        response = self.client.get(path, params=params)
+        if response.status_code != 200:
+            refusal = file.rsplit(".", 1)[0] + ".json"
+            self.late.add(refusal)
+            self.get(path, refusal, status=response.status_code, **params)
+            return
+        self.late.add(file)
+        self.entries.append(
+            {
+                "path": path,
+                "query": dict(sorted(params.items())),
+                "file": file,
+                "headers": {
+                    name: response.headers[name] for name in FILE_HEADERS if name in response.headers
+                },
+            }
+        )
+        self.bodies[file] = response.content.decode("utf-8")
+
+
+def school_detail_file(cap: Capture, name: str) -> None:
+    encoded = quote(school_key(VERSION, name), safe="")
+    cap.get(f"{API}/schools/by-key/{encoded}", f"schools/{encoded}.json")
+
+
+def capture_comparisons(cap: Capture, every_pair: bool = False) -> None:
+    """Each of the two main rules against each of the others: What changed reads one of these after any switch from
+    the rule the screen opens on, or from the rule beside it in the switch. Where the data cannot be compared (one
+    school, no data at all), the API's own refusal is what the mock answers.
+
+    With ``every_pair``, the other pairs too, for compare mode. The web app asks for a pair in the rules' own order
+    (the earlier rule as ``a``) whichever way round the screen shows it, so that order is the one saved. The pairs of
+    the circulated rule were saved first; the others come later (see ``pin``)."""
+    for rule_id in RULES:
+        if rule_id != CIRCULATED_RULE:
+            cap.get_as_answered(
+                f"{API}/compare", f"compare/{CIRCULATED_RULE}__{rule_id}.json", a=CIRCULATED_RULE, b=rule_id
+            )
+    for a, b in combinations(RULES, 2):
+        if CIRCULATED_RULE not in (a, b) and (every_pair or DEFAULT_RULE in (a, b)):
+            file = f"compare/{a}__{b}.json"
+            cap.late.add(file)
+            cap.get_as_answered(f"{API}/compare", file, a=a, b=b)
+
+
+def capture_top_lists(cap: Capture, ds: Dataset) -> None:
+    """The top list's CSV, with its method record, for each (rule, length) the dataset names."""
+    for rule_id, k in ds.top_lists:
+        cap.get_file(f"{API}/exports/top.csv", f"exports/top_{rule_id}_{k}.csv", rule=rule_id, k=str(k))
+    for rule_id, k, province, suffix in ds.filtered_top_lists:
+        cap.get_file(
+            f"{API}/exports/top.csv",
+            f"exports/top_{rule_id}_{k}_{suffix}.csv",
+            rule=rule_id,
+            k=str(k),
+            province=province,
+        )
+
+
+def capture_all(client: TestClient, ds: Dataset) -> tuple[Capture, dict[str, list[dict]]]:
+    """Every request the web tests may make for this dataset. Returns the capture and each rule's rows."""
+    cap = Capture(client)
+    cap.get(f"{API}/rules", "rules.json")
+    if not ds.records:
+        # The screen asks for the default rule's list before the rules say which rule that is.
+        cap.get(f"{API}/results", f"results/{DEFAULT_RULE}.json", status=404, rule=DEFAULT_RULE)
+        cap.get(f"{API}/inputs", "inputs.json", status=404)
+        capture_comparisons(cap)
+        capture_top_lists(cap, ds)
+        return cap, {}
+    rows_by_rule = {}
+    for rule_id in RULES:
+        rows_by_rule[rule_id] = cap.get(f"{API}/results", f"results/{rule_id}.json", rule=rule_id)["rows"]
+    for rule_id in MAIN_RULES:
+        cap.get(f"{API}/results", f"results/{rule_id}.upper.json", rule=rule_id, placement="upper")
+    cap.get(f"{API}/inputs", "inputs.json")
+    cap.get(f"{API}/inputs", "inputs.pinned.json", input_version=VERSION)
+    circulated_rows = rows_by_rule[CIRCULATED_RULE]
+
+    # School detail for every school, so a test can open any card. The order is the list's, so a rerun is identical.
+    for row in circulated_rows:
+        school_detail_file(cap, row["school"]["source_school_name"])
+    capture_comparisons(cap, ds.every_pair)
+    capture_top_lists(cap, ds)
+    return cap, rows_by_rule
+
+
+def check_claims(ds: Dataset, rows_by_rule: dict[str, list[dict]]) -> None:
+    rows = rows_by_rule.get(ds.claims_rule, [])
+    broken = [claim for claim, holds in ds.claims if not holds(rows)]
+    if broken:
+        raise SystemExit(f"dataset {ds.name!r} no longer has: " + "; ".join(broken))
+
+
+def pin(bodies: dict[str, str], late: set[str] | frozenset[str] = frozenset()) -> dict[str, str]:
+    """Replace uuids and timestamps by fixed values, in the order the files are written, so a rerun is identical.
+    The ``late`` files are numbered after the others, so adding one never renumbers a file that was already saved."""
+    mapping: dict[str, str] = {}
+    for file in sorted(bodies, key=lambda f: (f in late, f)):
+        for found in UUID.findall(bodies[file]):
+            mapping.setdefault(
+                found, str(uuid.uuid5(uuid.NAMESPACE_URL, f"rise-screening-fixture/{len(mapping)}"))
+            )
+    pinned = {}
+    for file, body in bodies.items():
+        body = UUID.sub(lambda m: mapping[m.group(0)], body)
+        pinned[file] = TIMESTAMP.sub(FIXED_TIMESTAMP, body)
+    return pinned
+
+
+def write(out: Path, ds: Dataset, cap: Capture) -> None:
+    for file, body in pin(cap.bodies, cap.late).items():
+        path = out / file
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not file.endswith(".json"):
+            # A download is saved byte for byte (its byte order mark and line ends included), as a browser gets it.
+            path.write_bytes(body.encode("utf-8"))
+            continue
+        # Parse and write back with sorted keys: the content is the API's, the bytes are stable.
+        path.write_text(
+            json.dumps(json.loads(body), sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    index = {
+        "dataset": ds.name,
+        "pinned": PINNED,
+        "input_version": VERSION if ds.records else None,
+        "requests": cap.entries,
+    }
+    (out / "index.json").write_text(json.dumps(index, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--database-url", default=os.environ.get("DATABASE_URL"), help="A local PostGIS server."
+    )
+    parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
+    args = parser.parse_args(argv)
+    try:
+        url = server_url({"DATABASE_URL": args.database_url} if args.database_url else {})
+    except DatabaseTestsUnavailable as error:
+        print(f"refused: {error}", file=sys.stderr)
+        return 2
+
+    with psycopg.connect(url, autocommit=True) as admin:
+        for ds in datasets():
+            name = create_database(admin, url, ds)
+            try:
+                os.environ["DATABASE_URL"] = make_conninfo(url, dbname=name)
+                os.environ["SUPABASE_URL"] = "https://example.supabase.co"
+                os.environ.pop("AUTH_REQUIRED", None)
+                get_settings.cache_clear()
+                with TestClient(app) as client:
+                    cap, rows_by_rule = capture_all(client, ds)
+                check_claims(ds, rows_by_rule)
+                write(args.out / ds.directory, ds, cap)
+            finally:
+                admin.execute(sql.SQL("drop database if exists {} with (force)").format(sql.Identifier(name)))
+                get_settings.cache_clear()
+            print(f"{ds.name}: wrote {len(cap.bodies)} responses to {args.out / ds.directory}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

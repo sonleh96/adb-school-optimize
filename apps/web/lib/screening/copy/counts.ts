@@ -1,0 +1,218 @@
+/**
+ * Counts taken from the data they describe. Every count in the copy comes from here, never from a constant.
+ * A function that states a count takes `opts.counts` and, without it, says the same thing without a number.
+ */
+import { SMALL, capitalise, formatCount, plural } from "./format";
+import { isNeedGate } from "./gates";
+import type { CountBag, CountableSchool, Counts, PersistenceRule, VerifyGroup } from "./model";
+
+/** A school whose record gives only its remoteness category and nothing else. */
+export function isRemotenessOnly(school: CountableSchool): boolean {
+  return (
+    Array.isArray(school.gate_failures) &&
+    school.gate_failures.filter(isNeedGate).length === 4 &&
+    !!school.condition &&
+    Object.values(school.condition).every((v) => v == null) &&
+    school.locality != null
+  );
+}
+
+/** The details of a record that school need is built from: the twelve the paper's record check counts. */
+const CORE_DETAILS = [
+  "classrooms_total",
+  "classrooms_permanent",
+  "teachers",
+  "teacher_houses",
+  "libraries",
+  "workshops",
+  "practical_skills",
+  "home_economics",
+  "computer_labs",
+  "specialized_classrooms",
+  "power_source",
+  "water_source",
+] as const;
+
+/**
+ * Why a school's record waits to be verified, in the paper's two groups: a detail school need is built from is
+ * missing (blank, or recorded in a form that cannot be read), or every such detail is there and the record gives 0
+ * classrooms in total. A recorded 0 needs checking, but it is neither a mistake nor a blank. Anything else (a negative
+ * count, a district figure, walking reach, the urgency rating) is `other`. The group the engine's reasons give
+ * (`verify`, set by the adapter) comes first; a record without one is read from its details. Null for a school that
+ * can be put in order, or a record whose details are not known here.
+ */
+export function verifyGroup(school: CountableSchool): VerifyGroup | null {
+  if (school.cohort !== "queue") return null;
+  if (school.verify) return school.verify;
+  const condition = school.condition;
+  if (!condition) return null;
+  if (CORE_DETAILS.some((detail) => condition[detail] == null)) return "missing";
+  return condition.classrooms_total === 0 ? "zero" : "other";
+}
+
+/**
+ * Counts taken from the schools. `flaggedRule` says which rule's stochastic test the flag count is for; without it
+ * no flag count is made, because a count of "the flag" means nothing until it says which test.
+ */
+export function countsFrom(schools: readonly CountableSchool[] = [], flaggedRule?: PersistenceRule): Counts {
+  const c = {
+    all: schools.length,
+    complete: 0,
+    range: 0,
+    queue: 0,
+    urgencyZero: 0,
+    emissionsNone: 0,
+    airMissing: 0,
+    remotenessOnly: 0,
+    queueMissing: 0,
+    queueZero: 0,
+    flagged: 0,
+    ranked: 0,
+  };
+  for (const s of schools) {
+    if (s.cohort === "complete") c.complete += 1;
+    else if (s.cohort === "interval") c.range += 1;
+    else if (s.cohort === "queue") c.queue += 1;
+    if (s.components && s.components.U === 0) c.urgencyZero += 1;
+    if (s.cohort !== "queue" && s.raw && s.raw.E_raw === 0) c.emissionsNone += 1;
+    if (s.cohort !== "queue" && ((s.raw && s.raw.Q_raw == null) || s.missing_env?.aqi)) c.airMissing += 1;
+    if (s.cohort === "queue" && isRemotenessOnly(s)) c.remotenessOnly += 1;
+    const group = verifyGroup(s);
+    if (group === "missing") c.queueMissing += 1;
+    else if (group === "zero") c.queueZero += 1;
+    if (flaggedRule && s.persistence?.[flaggedRule]?.persistent) c.flagged += 1;
+  }
+  c.ranked = c.complete + c.range;
+  const { flagged, ...rest } = c;
+  return Object.freeze(flaggedRule ? { ...rest, flagged } : rest);
+}
+
+/** True when the count is known: present and a whole number. Narrows `c` so the count can be read. */
+export function known<K extends string>(
+  c: CountBag | null | undefined,
+  k: K
+): c is CountBag & Record<K, number> {
+  return !!c && Number.isInteger(c[k]);
+}
+
+export const countWord = (n: number): string => (n < 10 ? SMALL[n] : formatCount(n));
+export const countSuffix = (c: CountBag | undefined, k: string): string =>
+  known(c, k) ? ` (${formatCount(c[k])})` : "";
+
+/** Which inputs a rule reads: the urgency rating, and the air-quality, emissions and land-cover figures. */
+export interface Reads {
+  readonly urgency: boolean;
+  readonly readings: boolean;
+}
+const READS_ALL: Reads = { urgency: true, readings: true };
+/** "every input recorded" for a rule that reads every input, and "a record for every input the rule uses" otherwise. */
+export const everyInput = (reads: Reads = READS_ALL): string =>
+  reads.urgency && reads.readings ? "every input recorded" : "a record for every input the rule uses";
+
+/** "the 36 schools with every input recorded" or, without counts, "the schools with every input recorded". */
+export function theSchools(c: CountBag | undefined, k: string, rest: string): string {
+  if (!known(c, k) || c[k] === 0) return `the schools ${rest}`;
+  if (c[k] === 1) return `the one school ${rest}`;
+  return `the ${formatCount(c[k])} schools ${rest}`;
+}
+
+export const completePhrase = (c: CountBag | undefined, reads?: Reads): string =>
+  theSchools(c, "complete", `with ${everyInput(reads)}`);
+export const orderedPhrase = (c: CountBag | undefined): string =>
+  theSchools(c, "ranked", "that can be put in order");
+export const rangePhrase = (c: CountBag | null | undefined): string => {
+  if (!known(c, "range") || c.range === 0) return "the schools that show a range";
+  return c.range === 1
+    ? "the one school that shows a range"
+    : `the ${countWord(c.range)} schools that show a range`;
+};
+export const allRecords = (c: CountBag | undefined): string =>
+  known(c, "all") && c.all > 0 ? `all ${formatCount(c.all)} records` : "all the records";
+
+// One range school takes a singular verb and pronoun: "The one school that shows a range is listed where it would sit".
+export const oneRange = (c: CountBag | null | undefined): boolean => known(c, "range") && c.range === 1;
+// "The four schools that show a range are" / "The one school that shows a range is".
+export const rangeSubject = (c: CountBag | undefined): string =>
+  `${capitalise(rangePhrase(c))} ${oneRange(c) ? "is" : "are"}`;
+// R12: the numerals mark the first 10 under the rule, or every school that has a place if fewer.
+export const numbersHelp = (c: CountBag | undefined, reads?: Reads): string => {
+  const n = known(c, "complete") ? Math.min(10, c.complete) : 10;
+  if (n === 0) return `No dot is numbered, because no school has ${everyInput(reads)}.`;
+  if (n === 1) return "The numbered dot is the first school under the chosen rule.";
+  return `Numbered dots are the first ${n} under the chosen rule.`;
+};
+export const theyWould = (c: CountBag | undefined): string =>
+  oneRange(c) ? "it would sit" : "they would sit";
+export const theirScore = (c: CountBag | null | undefined): string => (oneRange(c) ? "its" : "their");
+/**
+ * The records to verify in the paper's two groups, with the data's counts: "13 have a detail missing. 8 record 0
+ * classrooms in total, which needs checking." A group of none is left out, and records held for anything else are
+ * said apart, so the counts always add up to the tab's.
+ */
+export function queueGroups(c: CountBag | undefined): string {
+  if (!known(c, "queue") || !known(c, "queueMissing") || !known(c, "queueZero"))
+    return "Some have a detail missing. Others record a value that needs checking, such as 0 classrooms in total.";
+  if (c.queue === 0) return "No record needs verifying.";
+  const other = c.queue - c.queueMissing - c.queueZero;
+  const said = [
+    c.queueMissing > 0
+      ? `${formatCount(c.queueMissing)} ${plural(c.queueMissing, "has", "have")} a detail missing.`
+      : null,
+    c.queueZero > 0
+      ? `${formatCount(c.queueZero)} ${plural(c.queueZero, "records", "record")} 0 classrooms in total, which needs checking.`
+      : null,
+    other > 0
+      ? `${formatCount(other)} ${plural(other, "needs", "need")} checking for another reason, which ${plural(other, "its entry names", "each entry names")}.`
+      : null,
+  ]
+    .filter((sentence): sentence is string => sentence !== null)
+    .join(" ");
+  // Counts that do not add up (a group counted from another list) say nothing rather than something false.
+  return (
+    said ||
+    "Some have a detail missing. Others record a value that needs checking, such as 0 classrooms in total."
+  );
+}
+
+export const amongAllOrdered = (c: CountBag | undefined): string =>
+  known(c, "ranked") && c.ranked > 0
+    ? `all ${formatCount(c.ranked)} schools that can be put in order`
+    : "all schools that can be put in order";
+
+// One sentence for the groups, explained together wherever either count first appears.
+// A rule that reads no air-quality figure has no range schools, so it says nothing about a missing figure.
+export function groupsSentence(c: CountBag | undefined, reads?: Reads): string {
+  const every = everyInput(reads);
+  const readsReadings = reads?.readings ?? true;
+  // The prototype read `ranked` unchecked; a bag that lacks it now gets the count-free sentence instead of "NaN".
+  if (!known(c, "complete") || !known(c, "range") || !known(c, "ranked")) {
+    return readsReadings
+      ? `Schools with ${every} have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order.`
+      : `Schools with ${every} have one rank each, and can be put in order.`;
+  }
+  const { ranked } = c;
+  const showsRanges = readsReadings && c.range > 0;
+  // A group of none is said as none, and a clause about a group that is empty is left out.
+  if (c.complete === 0) {
+    if (!showsRanges) return `No school has ${every}, so no school can be put in order.`;
+    return `No school has ${every}, but ${countWord(c.range)} ${plural(c.range, "lacks", "lack")} a figure such as air quality and ${plural(c.range, "shows", "show")} a range of ranks, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
+  }
+  const done = `${formatCount(c.complete)} ${plural(c.complete, "school has", "schools have")} ${every}`;
+  if (!showsRanges)
+    return `${done}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
+  const more = `${countWord(c.range)} more ${plural(c.range, "lacks", "lack")} a figure such as air quality and ${plural(c.range, "shows", "show")} a range of ranks`;
+  return `${done}, and ${more}, so ${formatCount(ranked)} ${plural(ranked, "school", "schools")} can be put in order.`;
+}
+
+// The urgency definition; with counts it says how many schools have 0.
+export function urgencyDefinition(c: CountBag | undefined): string {
+  const head =
+    "The urgency rating is a number that came with the original school data, described as hazard-related. How it was made has not been traced, so what it measures is not known";
+  if (!known(c, "urgencyZero") || !known(c, "all") || c.all === 0) return `${head}.`;
+  let who: string;
+  if (c.urgencyZero === 0) who = "no school has 0";
+  else if (c.urgencyZero === c.all) who = "every school has 0";
+  else if (c.urgencyZero * 2 > c.all) who = "most schools have 0";
+  else who = `${formatCount(c.urgencyZero)} of the ${formatCount(c.all)} schools have 0`;
+  return `${head}, and ${who}.`;
+}

@@ -1,0 +1,726 @@
+/**
+ * The fixed copy: rule names, terms, strings, ideas, the explainer, the questions and the guides.
+ *
+ * Failure modes, each with the test that catches it:
+ *  1. A string carries a leaked value, a double space, a dash, a banned word or a rule letter without its plain
+ *     name. Every fixed string runs through the writing guards, with no data bound and with counts bound.
+ *  2. A rule's role, source or urgency flag drifts, so a proposed rule reads as circulated. Checked per rule.
+ *  3. A share is shown wrongly in words. One literal per rule family.
+ *  4. A term loses a field, sits in two glossary groups or in none. Checked over the whole map.
+ *  5. The three ideas lose their word counts when a number fills a slot. Checked with and without counts.
+ *  6. The explainer states the two group sizes before it explains them, or the school-need section lacks its definition.
+ *  7. A count appears in copy that has no data bound, or copy bound to one data set shows the counts of another,
+ *     so a stale number could ship. Two invented data sets with no number in common stand in for the study.
+ *  8. A source file gains an en or em dash.
+ */
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import * as copy from "@/lib/screening/copy";
+import { bindCopy, copyFor } from "@/lib/screening/copy";
+import * as later from "@/lib/screening/copy/later";
+import { METHOD, buildMethod } from "@/lib/screening/copy/method";
+import { parseWith } from "@/lib/screening/schema";
+import { resultsResponse } from "@/lib/screening/types";
+
+import { readFixture } from "../fixtures";
+
+import {
+  Corpus,
+  RULES,
+  addFixedCopy,
+  fixtureInputs,
+  fixtureResults,
+  withLater,
+  type FixedCopy,
+} from "./helpers";
+
+const FULL = {
+  all: 148,
+  complete: 96,
+  range: 3,
+  ranked: 99,
+  queue: 49,
+  urgencyZero: 110,
+  emissionsNone: 31,
+  airMissing: 3,
+  remotenessOnly: 7,
+  flagged: 5,
+};
+const SMALL = {
+  all: 12,
+  complete: 6,
+  range: 2,
+  ranked: 8,
+  queue: 4,
+  urgencyZero: 12,
+  emissionsNone: 1,
+  airMissing: 2,
+  remotenessOnly: 1,
+  flagged: 1,
+};
+
+describe("every fixed string follows the writing rules", () => {
+  it("with no data bound, as the module exports them", () => {
+    const corpus = new Corpus();
+    addFixedCopy(corpus, { ...copy, ...later }, "unbound");
+    expect(corpus.problems).toEqual([]);
+    expect(corpus.checked).toBeGreaterThan(200);
+  });
+
+  it.each([
+    ["a mid-sized set", FULL],
+    ["a small data set", SMALL],
+    [
+      "one school",
+      {
+        all: 1,
+        complete: 1,
+        range: 0,
+        ranked: 1,
+        queue: 0,
+        urgencyZero: 0,
+        emissionsNone: 0,
+        airMissing: 0,
+        remotenessOnly: 0,
+        flagged: 0,
+      },
+    ],
+    [
+      "no schools",
+      {
+        all: 0,
+        complete: 0,
+        range: 0,
+        ranked: 0,
+        queue: 0,
+        urgencyZero: 0,
+        emissionsNone: 0,
+        airMissing: 0,
+        remotenessOnly: 0,
+        flagged: 0,
+      },
+    ],
+  ])("with counts for %s", async (_name, counts) => {
+    const corpus = new Corpus();
+    addFixedCopy(corpus, await withLater(copyFor({ counts })), "bound");
+    expect(corpus.problems).toEqual([]);
+  });
+
+  it("for interface words, help words, keyboard hints and the guides", () => {
+    const corpus = new Corpus();
+    const LAYOUT_ARGS: Record<string, unknown[]> = {
+      otherRulesCount: [5],
+      keyRamp: ["1st", "20th"],
+      keyRampNote: [20, 4],
+      ruleNow: ["additive_no_u"],
+      ruleNowShort: ["additive_no_u"],
+      addedBy: ["School need"],
+      backToCirculated: ["Combined factors, with urgency"],
+      notComputedGroup: ["Need first, no urgency", 4],
+      listTitle: [20, "the combined-factors rule with urgency (S)"],
+      fingerprints: [15],
+      afterDownload: ["the top list"],
+      viewOf: [2, 4],
+      placeRange: ["3rd", "12th"],
+      valueRange: ["0.487", "0.537"],
+      underRule: ["Rank in the list", "the combined-factors rule with urgency (S)"],
+      groupMany: [3],
+      tooltipMissing: ["classroom count blank, power source blank"],
+      tipNotComputed: ["Need first"],
+      savedToast: [3],
+      removeView: ["Top of the list"],
+      viewsFull: [50],
+      viewPartMissing: [["rule", "school", "hover"], "upper"],
+      linkPartMissing: [["prov", "dist"]],
+      partAdds: ["Remoteness"],
+      findShowing: [3, 31, "list", { province: "Highlands", district: "Upper Valley", name: "alder" }],
+      listLede: [31, true],
+      listMore: [21],
+      listMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
+      queueMade: [
+        "the main method",
+        "Combined factors, without urgency",
+        "3 November 2026",
+        "paper-2026-10-12",
+      ],
+      dataVersion: ["paper-2026-10-12", "21 October 2026"],
+      researchNote: [20],
+    };
+    const LAYOUT_SENTENCES = new Set([
+      "workspaceHint",
+      "rowHintQueue",
+      "fingerprints",
+      "afterDownload",
+      "emptyFiltered",
+      "emptyIncompleteFiltered",
+      "afterDownloadList",
+      "afterDownloadPack",
+      "copyNotDone",
+      "linkNotCopied",
+      "emptyData",
+      "staleRun",
+      "stillLoading",
+      "refreshStale",
+      "loadFailed",
+      "availableAfterLoad",
+      "fileNotByRemoteness",
+      "noViews",
+      "viewsFull",
+      "viewPartMissing",
+      "linkPartMissing",
+      "mapKeyboard",
+      "basemapUnavailable",
+      "refreshFailed",
+      "sessionEnded",
+      "findShowing",
+      "findNoneHint",
+      "listLede",
+      "listFirstLine",
+      "listMore",
+      "listMade",
+      "queueMade",
+      "dataVersion",
+      "researchNote",
+      "researchNotByName",
+      "researchFailed",
+      "afterDownloadPlain",
+    ]);
+    for (const [k, v] of Object.entries(copy.LAYOUT)) {
+      // A file name is a name, not a sentence; its own test checks it.
+      if (k === "topListFileName" || k === "listFileName") continue;
+      const text = typeof v === "function" ? (v as (...a: unknown[]) => string)(...LAYOUT_ARGS[k]) : v;
+      corpus.add(`LAYOUT.${k}`, text, { sentence: LAYOUT_SENTENCES.has(k) });
+    }
+    for (const [k, v] of Object.entries(copy.HELP)) {
+      const text = typeof v === "function" ? (v as (n: number) => string)(25) : v;
+      corpus.add(`HELP.${k}`, text, {
+        sentence: ["bar", "barKeys", "none", "liveOn", "liveOff"].includes(k),
+        keys: ["barKeys", "liveOn", "esc"].includes(k),
+      });
+    }
+    for (const [k, v] of Object.entries(copy.KEYS))
+      corpus.add(`KEYS.${k}`, v, { sentence: false, keys: true });
+
+    const G = later.GUIDE;
+    corpus.add("GUIDE.stepOf", G.stepOf(1, 3), { sentence: false });
+    corpus.add("GUIDE.stepCounter", G.stepCounter(2, 5, 1, 3), { sentence: false });
+    corpus.add("GUIDE.pointToCard", G.pointToCard(3));
+    corpus.add("GUIDE.pointToCard(0)", G.pointToCard(0));
+    corpus.add("GUIDE.needNumbered", G.needNumbered(2, 3));
+    corpus.add("GUIDE.needNumbered all", G.needNumbered(3, 3));
+    corpus.add("GUIDE.pageHint", G.pageHint, { sentence: false, keys: true });
+    corpus.add("GUIDE.pointToMissing", G.pointToMissing);
+    for (const k of ["railAria", "sectionsAria", "seen", "viewFallbackOnScreen"] as const)
+      corpus.add(`GUIDE.${k}`, G[k], { sentence: false });
+    corpus.add("GUIDE.drift", G.drift);
+    corpus.add("GUIDE.driftRestore", G.driftRestore, { sentence: false });
+    corpus.add("GUIDE.stepCount", G.stepCount(4), { sentence: false });
+    corpus.add("GUIDE.stepCount(1)", G.stepCount(1), { sentence: false });
+    corpus.add("GUIDE.howCount", G.howCount(6), { sentence: false });
+    corpus.add("GUIDE.howCount(1)", G.howCount(1), { sentence: false });
+    corpus.add("GUIDE.seenCount", G.seenCount(2, 5), { sentence: false });
+    corpus.add("GUIDE.rangeWords", G.rangeWords(5, 6), { sentence: false });
+    corpus.add("GUIDE.rangeWords(equal)", G.rangeWords(5, 5), { sentence: false });
+    for (const [k, v] of Object.entries(G.seedViews)) {
+      corpus.add(`GUIDE.seedViews.${k}.name`, v.name, { sentence: false });
+      const on = "onScreen" in v ? v.onScreen : null;
+      if (on)
+        corpus.add(
+          `GUIDE.seedViews.${k}.onScreen`,
+          typeof on === "function" ? on(copy.LAYOUT.incompleteTab) : on,
+          { sentence: false }
+        );
+    }
+    for (const t of G.tasks) {
+      corpus.add(`GUIDE ${t.id}.title`, t.title, { sentence: false });
+      corpus.add(`GUIDE ${t.id}.sub`, t.sub, { sentence: /\?$/.test(t.sub) });
+      for (const st of t.steps as readonly Record<string, unknown>[]) {
+        const text = (v: unknown, ...args: unknown[]) =>
+          typeof v === "function" ? (v as (...a: unknown[]) => string)(...args) : (v as string);
+        const where = `GUIDE ${t.id}.${String(st.key)}`;
+        corpus.add(`${where}.onScreen`, st.onScreen, { sentence: false });
+        if (st.title !== undefined) {
+          corpus.add(`${where}.title`, text(st.title, "Alder Junior High School", "1st"), {
+            sentence: false,
+          });
+          if (typeof st.title === "function")
+            corpus.add(`${where}.title(other)`, text(st.title, "Alder", null), { sentence: false });
+        }
+        if (st.body !== undefined)
+          corpus.add(`${where}.body`, text(st.body, "Birch", "Alder", "16th", "Hazel", "17th"));
+        if (st.tryIt !== undefined) corpus.add(`${where}.tryIt`, text(st.tryIt, "Birch and Elm", 2));
+      }
+    }
+    expect(corpus.problems).toEqual([]);
+  });
+});
+
+describe("rules", () => {
+  const ROLES = ["Main rule", "Strict alternative", "Sensitivity check", "Urgency sensitivity", "Reference"];
+  const SOURCES = ["As circulated in the earlier paper", "As set out in the revised paper"];
+
+  it.each(RULES)(
+    "%s has one of the five roles and one of the two sources, and a rule of the revised paper leaves urgency out",
+    (id) => {
+      expect(ROLES).toContain(copy.ruleRole(id));
+      expect(SOURCES).toContain(copy.ruleSource(id));
+      // The revised paper's three rules leave urgency out; the four rules of the circulated paper all use it.
+      expect(copy.ruleUsesUrgency(id)).toBe(copy.ruleSource(id) === SOURCES[0]);
+      expect(copy.ruleName(id).endsWith(`(${copy.ruleSymbol(id)})`)).toBe(true);
+      expect(copy.ruleShortName(id)).toMatch(/^[A-Z][a-z]+( [a-z]+)*(, no urgency)?$/);
+      expect(copy.ruleLabel(id)).not.toMatch(/weight/i);
+    }
+  );
+
+  it("writes each rule's words so the text guards pass", () => {
+    const corpus = new Corpus();
+    for (const id of RULES) {
+      corpus.add(`ruleLabel(${id})`, copy.ruleLabel(id), { sentence: false });
+      corpus.add(`ruleShortName(${id})`, copy.ruleShortName(id), { sentence: false });
+      corpus.add(`ruleOneLine(${id})`, copy.ruleOneLine(id));
+      corpus.add(`ruleRole(${id})`, copy.ruleRole(id), { sentence: false });
+      corpus.add(`ruleSource(${id})`, copy.ruleSource(id), { sentence: false });
+      corpus.add(`ruleRoleLine(${id})`, copy.ruleRoleLine(id), { sentence: false });
+      corpus.add(`ruleName(${id})`, copy.ruleName(id), { sentence: false });
+      corpus.add(`ruleExplanation(${id})`, copy.ruleExplanation(id));
+      corpus.add(`ruleRelation(${id})`, copy.ruleRelation(id));
+      corpus.add(`urgencyNote(${id})`, copy.urgencyNote(id));
+      for (const key of ["N", "A", "U", "R", "Q", "E", "L", "need_part"] as const)
+        corpus.add(`shareSentence(${id}, ${key})`, copy.shareSentence(id, key));
+    }
+    expect(corpus.problems).toEqual([]);
+  });
+
+  it("says a rule that leaves urgency out leaves it out", () => {
+    expect(copy.shareSentence("additive_no_u", "U")).toBe("The urgency rating is left out by this rule.");
+    expect(copy.urgencyNote("additive_no_u").startsWith("Left out by this rule.")).toBe(true);
+    expect(copy.urgencyNote("additive_u").startsWith("This rule uses the urgency rating.")).toBe(true);
+  });
+
+  it("reads the main rule and the urgency sensitivity differently, and the rest by role and paper", () => {
+    expect(copy.ruleRoleLine("additive_no_u")).toBe(
+      "The main rule of the revised paper, which leaves urgency out"
+    );
+    expect(copy.ruleRoleLine("additive_u")).toBe(
+      "A sensitivity check that puts the urgency rating back, from the circulated paper"
+    );
+    expect(copy.ruleRoleLine("need_first_no_u")).toBe("Strict alternative, from the revised paper");
+    expect(copy.ruleRoleLine("bottleneck_no_u")).toBe("Sensitivity check, from the revised paper");
+    expect(copy.ruleRoleLine("need_first_u")).toBe("Urgency sensitivity, from the circulated paper");
+    expect(copy.ruleRoleLine("bottleneck_u")).toBe("Urgency sensitivity, from the circulated paper");
+    expect(copy.ruleRoleLine("benchmark")).toBe("Reference, from the circulated paper");
+  });
+
+  it("is the rule without urgency that is the main rule, and nothing is pending, proposed or awaiting review", () => {
+    expect(RULES.filter((id) => copy.ruleRole(id) === "Main rule")).toEqual(["additive_no_u"]);
+    const everything = RULES.flatMap((id) => [
+      copy.ruleRole(id),
+      copy.ruleSource(id),
+      copy.ruleRoleLine(id),
+      copy.ruleRelation(id),
+      copy.ruleExplanation(id),
+      copy.ruleOneLine(id),
+    ]).join(" ");
+    expect(everything).not.toMatch(/proposed|pending|awaiting|has not been|not yet reviewed/i);
+    expect(copy.TERMS.rule_roles.help + copy.TERMS.source.help).not.toMatch(
+      /proposed|pending|awaiting|not yet/i
+    );
+  });
+
+  it.each([
+    ["additive_u", "N", "School need counts for 60 percent of the score."],
+    ["additive_no_u", "N", "School need counts for about 63 percent of the score."],
+    ["additive_u", "need_part", "Each part of school need counts for 12 percent of the score."],
+    ["benchmark", "Q", "Air quality is left out by this rule."],
+    ["need_first_u", "N", "School need sets the order under this rule."],
+    [
+      "need_first_no_u",
+      "R",
+      "Walking reach only breaks exact ties between schools with the same school need.",
+    ],
+    [
+      "bottleneck_u",
+      "U",
+      "The urgency rating counts for 3 percent of the score, and a further 40 percent of the score when the urgency rating is the school's largest factor.",
+    ],
+    [
+      "bottleneck_no_u",
+      "need_part",
+      "Each part of school need counts for about 8 percent of the score, and a further 8 percent of the score when school need is the school's largest factor.",
+    ],
+  ] as const)("says %s's share of %s in words", (id, key, want) => {
+    expect(copy.shareSentence(id, key)).toBe(want);
+  });
+
+  it("refuses a rule or a factor it has no words for", () => {
+    expect(() => copy.ruleLabel("nope" as never)).toThrow("Unknown rule id: nope");
+    expect(() => copy.shareSentence("additive_u", "X" as never)).toThrow("No factor called X");
+    expect(copy.isCopyRuleId("additive_u")).toBe(true);
+    expect(copy.isCopyRuleId("a_rule_the_api_adds_later")).toBe(false);
+  });
+});
+
+describe("the term map", () => {
+  const P = copyFor({ counts: FULL });
+
+  it("gives every term all five fields", () => {
+    for (const [key, t] of Object.entries(P.TERMS)) {
+      for (const f of ["technical", "label", "line", "help", "where"] as const) {
+        expect(t[f], `${key}.${f}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("puts every term in exactly one glossary group, and only terms", () => {
+    const grouped = later.GLOSSARY_GROUPS.flatMap((g) => g.keys);
+    for (const key of Object.keys(P.TERMS))
+      expect(
+        grouped.filter((x) => x === key),
+        key
+      ).toHaveLength(1);
+    for (const key of grouped) expect(P.TERMS, key).toHaveProperty(key);
+    for (const g of later.GLOSSARY_GROUPS) expect(g.heading.split(/\s+/).length).toBeLessThanOrEqual(4);
+  });
+
+  it("refuses a term it does not have", () => {
+    expect(() => copy.term("nope" as never)).toThrow("Unknown term: nope");
+    expect(copy.term("rank").label).toBe("Rank in the list");
+  });
+
+  it("keeps the urgency definition in one position", () => {
+    expect(P.TERMS.urgency.line).toBe(P.STRINGS.urgencyDefinition);
+    for (const phrase of ["described as hazard-related", "has not been traced", "not known"]) {
+      expect(P.STRINGS.urgencyDefinition).toContain(phrase);
+    }
+  });
+});
+
+describe("the three ideas", () => {
+  const words = (s: string) => s.trim().split(/\s+/).length;
+
+  it.each([
+    ["no counts", {}],
+    ["a mid-sized set", FULL],
+    ["a few schools", SMALL],
+    ["one range school and one incomplete record", { ...SMALL, range: 1, ranked: 7, queue: 1 }],
+    ["no range schools", { ...SMALL, range: 0, ranked: 6, queue: 0 }],
+    ["thousands of schools", { all: 12900, complete: 10000, range: 180, ranked: 10180, queue: 2720 }],
+  ])("hold their word counts with %s", (_name, counts) => {
+    for (const [key, idea] of Object.entries(copy.buildIdeas(counts))) {
+      expect(words(idea.short), `${key}.short`).toBe(25);
+      expect(words(idea.long), `${key}.long`).toBe(60);
+    }
+  });
+
+  it("never says 'Some schools' of a single school, and uses the plural for several", () => {
+    const one = copy.buildIdeas({ ...SMALL, range: 1, ranked: 7, queue: 1 });
+    expect(one.ranges.title).toBe("One school shows a range because an air-quality figure is missing");
+    expect(one.queue.title).toBe("One school is not in the list yet because its record needs verifying");
+    for (const text of Object.values(one.ranges).concat(Object.values(one.queue)))
+      expect(text, text).not.toMatch(/\bSome schools\b|\b(?:they|their|them|these schools|each one)\b/i);
+    expect(one.queue.long).toMatch(/^One of the 12 schools has a record to verify/);
+    const several = copy.buildIdeas({ ...SMALL, range: 2, queue: 4 });
+    expect(several.ranges.title).toBe("Two schools show a range because an air-quality figure is missing");
+    expect(several.queue.short).toMatch(/^4 schools are not in the list yet/);
+  });
+
+  it("says what an air-quality figure is wherever it names the range", () => {
+    expect(copy.IDEAS.ranges.short).toContain("air-pollution");
+    expect(copy.IDEAS.ranges.long).toContain("air-pollution");
+  });
+});
+
+describe("the explainer and the questions", async () => {
+  const P = await withLater(copyFor({ counts: FULL }));
+
+  it("has six sections of at least three sentences, each key once", () => {
+    expect(P.HOW_IT_WORKS.map((s) => s.key)).toEqual([
+      "purpose",
+      "placed",
+      "need",
+      "inputs",
+      "rules",
+      "limits",
+    ]);
+    for (const s of P.HOW_IT_WORKS) expect(s.sentences.length, s.key).toBeGreaterThanOrEqual(3);
+  });
+
+  it("explains the two group sizes together, in the groups sentence, before it states either alone", () => {
+    const flat = P.HOW_IT_WORKS.flatMap((s) => s.sentences);
+    const firstCount = flat.find((t) => new RegExp(`\\b(${FULL.complete}|${FULL.ranked})\\b`).test(t));
+    expect(firstCount).toBe(
+      `Under the paper's main rule, ${P.groupsSentence("additive_no_u").replace(/^./, (c) => c.toLowerCase())}`
+    );
+    expect(P.scope("additive_u").groups).toBe(
+      "96 schools have every input recorded, and three more lack a figure such as air quality and show a range of ranks, so 99 schools can be put in order."
+    );
+  });
+
+  it("defines school need in its own section and shares the separate-measures and urgency sentences", () => {
+    const need = P.HOW_IT_WORKS.find((s) => s.key === "need");
+    expect(need?.sentences).toContain(P.STRINGS.schoolNeedDefinition);
+    const flat = P.HOW_IT_WORKS.flatMap((s) => s.sentences);
+    expect(flat).toContain(P.STRINGS.separateMeasures);
+    expect(flat).toContain(P.STRINGS.urgencyDefinition);
+  });
+
+  it("asks five questions in a fixed order, each answered by a function the copy exports", () => {
+    expect(P.FIRST_QUESTIONS.map((q) => q.key)).toEqual(["purpose", "why", "ranges", "incomplete", "trust"]);
+    for (const q of P.FIRST_QUESTIONS) {
+      expect(q.question.endsWith("?"), q.key).toBe(true);
+      expect(typeof (copy as Record<string, unknown>)[q.live], `${q.key} -> ${q.live}`).toBe("function");
+    }
+  });
+
+  it("holds five guides", () => {
+    expect(later.GUIDE.tasks.map((t) => t.id)).toEqual(["q1", "q2", "q3", "q4", "q5"]);
+  });
+});
+
+describe("the fixed strings that carry a rule of the project", () => {
+  it("keeps the precise caveat for analyst views and a plain one for the screen", () => {
+    expect(copy.STRINGS.caveatAnalyst).toBe(copy.STRINGS.caveat);
+  });
+
+  it("states how each persistence test was drawn from the data, per rule, never from a literal", async () => {
+    const lists = RULES.map((r) => fixtureResults(r));
+    const bound = bindCopy({ view: "additive_no_u", inputs: fixtureInputs(), lists });
+    const s0 = (await bound.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u");
+    const s = (await bound.copy.methodFor("additive_u")).insp.persistent("additive_u");
+    const want =
+      "at least 80% of 5,000 Dirichlet weight draws in each of the three concentration settings (20/15, 40/35 and 100/80)";
+    expect(s0).toContain(`membership in ${want}, drawn fresh over the six components`);
+    expect(s).toContain(`membership in ${want} of the circulated, urgency-included experiment`);
+    // Another draw count and threshold, in one rule's list only, change that rule's words and not the other's.
+    const body = structuredClone(readFixture("results/additive_no_u.json")) as {
+      persistence: { draws: number; threshold: number; settings: unknown[] };
+    };
+    Object.assign(body.persistence, { draws: 2000, threshold: 0.9 });
+    body.persistence.settings.splice(1);
+    const other = parseWith(resultsResponse, body, "results");
+    const changed = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) => (l.run.rule_id === "additive_no_u" ? other : l)),
+    });
+    expect((await changed.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u")).toContain(
+      "at least 90% of 2,000 Dirichlet weight draws in the concentration setting (20/15)"
+    );
+    expect((await changed.copy.methodFor("additive_u")).insp.persistent("additive_u")).toContain(want);
+    // A block that gives none of it says none.
+    body.persistence = { standard_error: 0.005 } as never;
+    const bare = bindCopy({
+      view: "additive_no_u",
+      inputs: fixtureInputs(),
+      lists: lists.map((l) =>
+        l.run.rule_id === "additive_no_u" ? parseWith(resultsResponse, body, "results") : l
+      ),
+    });
+    expect(
+      (await bare.copy.methodFor("additive_no_u")).insp.persistent("additive_no_u").replace("top-20", "")
+    ).not.toMatch(/\d/);
+  });
+
+  it("states a test only when its numbers are usable, and prints a concentration as the data gives it", () => {
+    const test = (over: object) => ({
+      draws: 3000,
+      threshold: 0.75,
+      settings: [{ topLevel: 17.5, schoolNeed: 12.5 }],
+      ...over,
+    });
+    const say = (t: object) =>
+      buildMethod({ tests: { additive_no_u: t as never } }).insp.persistent("additive_no_u");
+    // Not rounded: 17.5 and 12.5 are not 18 and 13.
+    expect(say(test({}))).toContain(
+      "at least 75% of 3,000 Dirichlet weight draws in the concentration setting (17.5/12.5)"
+    );
+    expect(
+      say(
+        test({
+          settings: [
+            { topLevel: 20.25, schoolNeed: 15 },
+            { topLevel: 1000, schoolNeed: 80.5 },
+          ],
+        })
+      )
+    ).toContain("in each of the two concentration settings (20.25/15 and 1000/80.5)");
+    // A count of draws that is not a positive whole number, a threshold off the 0 to 1 scale, or a setting at or below
+    // 0 is missing, and the words state no number rather than "80% of 0 draws".
+    const none = say({ draws: undefined, threshold: undefined, settings: [] });
+    for (const bad of [
+      { draws: 0 },
+      { draws: -5 },
+      { draws: 2.5 },
+      { threshold: 0 },
+      { threshold: 1.2 },
+      { settings: [] },
+      { settings: [{ topLevel: 0, schoolNeed: 15 }] },
+      { settings: [{ topLevel: 20, schoolNeed: -1 }] },
+    ])
+      expect(say(test(bad)), JSON.stringify(bad)).toBe(none);
+    expect(none.replace("top-20", "")).not.toMatch(/\d/);
+  });
+
+  it("names the method card's extra-share row by the factor or factors that attain the largest value", () => {
+    expect(METHOD.insp.largestRow(["School need"])).toBe("Extra share for the largest factor: school need");
+    expect(METHOD.insp.largestRow(["School need", "District context"])).toBe(
+      "Extra share for the largest factor: school need and district context"
+    );
+    expect(METHOD.insp.largestRow([])).toBe("Extra share for the largest factor");
+    expect(METHOD.insp.largestRow(["School need"])).not.toBe(copy.TERMS.school_need.label);
+  });
+
+  it("names a missing figure as listed where it would sit if air quality added nothing, never as 0", () => {
+    expect(copy.buildScope({}).listOrder).toContain("added nothing");
+    expect(copy.TERMS.list_order.line).toContain("added nothing");
+  });
+
+  it("keeps method detail out of the plain flag text, and gives each rule's flag its own words", () => {
+    const { additive_no_u: revised, additive_u: circulated } = copy.STRINGS.persistentFlag;
+    for (const t of [revised, circulated]) expect(t).not.toMatch(/5,000|Dirichlet/);
+    expect(revised).not.toBe(circulated);
+    // No draw count, threshold or setting is typed: without the data the words state none, and with it they state its own.
+    for (const r of ["additive_no_u", "additive_u"] as const) {
+      expect(METHOD.insp.persistent(r).replace("top-20", ""), r).not.toMatch(/\d/);
+      expect(METHOD.insp.persistent(r), r).toMatch(/Dirichlet weight draws in each concentration setting/);
+    }
+    // Each test is said to be its own: the fresh six-component run is not an isolated estimate of urgency's effect, and
+    // the circulated experiment is never relabelled as an urgency-omitted result.
+    expect(METHOD.insp.persistent("additive_no_u")).toMatch(/six components.*not an isolated estimate/);
+    expect(METHOD.insp.persistent("additive_u")).toMatch(/circulated, urgency-included experiment/);
+    expect(METHOD.insp.persistent("additive_u")).toMatch(/not a result for the rule without urgency/);
+    expect(circulated).toMatch(/not a result for the rule without urgency/);
+    expect(`${revised} ${METHOD.insp.persistent("additive_no_u")}`).not.toMatch(
+      /proposed|has not been redone/i
+    );
+  });
+
+  it("opens every scope sentence with the groups sentence", () => {
+    const P = copyFor({ counts: FULL });
+    for (const t of [
+      P.scope("additive_u").scopeComplete,
+      P.scope("additive_u").scopeRanked,
+      P.termsFor("additive_u").cohort_complete.line,
+      P.termsFor("additive_u").cohort_ranked.line,
+      P.termsFor("additive_u").rank_range.help,
+    ]) {
+      expect(t.startsWith(P.scope("additive_u").groups)).toBe(true);
+    }
+    expect(P.scope("additive_u").scopeDetail).toContain(
+      "99 schools can be put in order, 96 with every input recorded and 3 that show a range of ranks."
+    );
+  });
+});
+
+describe("counts belong to the data they came from", () => {
+  // Two invented data sets. No number of one appears in the other, and none is a size the copy uses for anything else.
+  const SET_A = {
+    all: 47,
+    complete: 27,
+    range: 6,
+    ranked: 33,
+    queue: 14,
+    urgencyZero: 31,
+    emissionsNone: 9,
+    airMissing: 6,
+    remotenessOnly: 3,
+    flagged: 2,
+  };
+  const SET_B = {
+    all: 91,
+    complete: 68,
+    range: 13,
+    ranked: 81,
+    queue: 22,
+    urgencyZero: 70,
+    emissionsNone: 17,
+    airMissing: 13,
+    remotenessOnly: 8,
+    flagged: 7,
+  };
+  const numbersOf = (set: Record<string, number>) => Object.values(set).filter((n) => n >= 10);
+  const mentions = (set: Record<string, number>) =>
+    new RegExp(`(?<![\\w.,])(${numbersOf(set).join("|")})(?![\\w%,])`);
+  const textsOf = (P: FixedCopy) => {
+    const corpus = new Corpus();
+    addFixedCopy(corpus, P, "set");
+    for (const [k, t] of Object.entries(P.TERMS))
+      corpus.add(`TERMS.${k}.technical`, t.technical, { sentence: false, plain: false });
+    return corpus.texts;
+  };
+
+  it("keeps the counts of one data set out of the copy bound to the other", async () => {
+    for (const [own, other] of [
+      [SET_A, SET_B],
+      [SET_B, SET_A],
+    ]) {
+      const texts = textsOf(await withLater(copyFor({ counts: own })));
+      expect(texts.filter(([, t]) => mentions(other).test(t)).map(([label]) => label)).toEqual([]);
+      // The copy does say its own counts, so the check above is not passing on silence.
+      expect(texts.filter(([, t]) => mentions(own).test(t)).length).toBeGreaterThan(10);
+    }
+  });
+
+  it("states no count of either data set with no data bound", () => {
+    const texts = textsOf({ ...copy, ...later });
+    for (const set of [SET_A, SET_B]) expect(texts.filter(([, t]) => mentions(set).test(t))).toEqual([]);
+  });
+
+  it("builds the module's own copy from no counts at all", () => {
+    expect(copy.TERMS).toEqual(copy.buildTerms({}));
+    expect(copy.STRINGS).toEqual(copy.buildStrings({}));
+    expect(copy.IDEAS).toEqual(copy.buildIdeas({}));
+    expect(later.HOW_IT_WORKS).toEqual(later.buildHow({}));
+    expect(later.FIRST_QUESTIONS).toEqual(later.buildQuestions());
+    expect(copy.buildScope({}).groups).toBe(
+      "Schools with every input recorded have one rank each, and schools that lack a figure such as air quality show a range of ranks; together they can be put in order."
+    );
+  });
+
+  it("labels the three groups for analysts with their size only in bound copy", () => {
+    expect(copy.TERMS.cohort_complete.technical).toBe("Complete-primary cohort");
+    expect(copy.TERMS.cohort_ranked.technical).toBe("Condition-eligible cohort");
+    expect(copy.TERMS.queue.technical).toBe("Verification queue");
+    const A = copyFor({ counts: SET_A }).termsFor("additive_u");
+    expect([A.cohort_complete.technical, A.cohort_ranked.technical, A.queue.technical]).toEqual([
+      "Complete-primary cohort, 27 schools",
+      "Condition-eligible cohort, 33 schools",
+      "Verification queue, 14 schools",
+    ]);
+    expect(copyFor({ counts: { queue: 1 } }).termsFor("additive_u").queue.technical).toBe(
+      "Verification queue, 1 school"
+    );
+  });
+
+  it("differs from copy bound to empty data, which counts zero schools", () => {
+    expect(copyFor({}).scope("additive_u").groups).toBe(
+      "No school has every input recorded, so no school can be put in order."
+    );
+  });
+});
+
+describe("the source files", () => {
+  const dir = path.resolve(__dirname, "../../../lib/screening/copy");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".ts"));
+
+  it("hold no en or em dash", () => {
+    const offenders = files.filter((f) => /[\u2013\u2014]/.test(readFileSync(path.join(dir, f), "utf8")));
+    expect(offenders).toEqual([]);
+    expect(files.length).toBeGreaterThan(10);
+  });
+
+  it("never read the retired queue_priority signal", () => {
+    const offenders = files.filter((f) =>
+      /\.queue_priority|\[['"]queue_priority['"]\]/.test(readFileSync(path.join(dir, f), "utf8"))
+    );
+    expect(offenders).toEqual([]);
+  });
+});

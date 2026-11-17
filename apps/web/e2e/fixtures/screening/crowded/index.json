@@ -1,0 +1,268 @@
+{
+ "dataset": "crowded",
+ "input_version": "synthetic-fixture-v1",
+ "pinned": "uuids (run ids, school ids) and timestamps",
+ "requests": [
+  {
+   "file": "rules.json",
+   "path": "/api/v1/screening/rules",
+   "query": {}
+  },
+  {
+   "file": "results/additive_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "results/need_first_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_u"
+   }
+  },
+  {
+   "file": "results/need_first_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "need_first_no_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_u"
+   }
+  },
+  {
+   "file": "results/bottleneck_no_u.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "results/benchmark.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "rule": "benchmark"
+   }
+  },
+  {
+   "file": "results/additive_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_u"
+   }
+  },
+  {
+   "file": "results/additive_no_u.upper.json",
+   "path": "/api/v1/screening/results",
+   "query": {
+    "placement": "upper",
+    "rule": "additive_no_u"
+   }
+  },
+  {
+   "file": "inputs.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {}
+  },
+  {
+   "file": "inputs.pinned.json",
+   "path": "/api/v1/screening/inputs",
+   "query": {
+    "input_version": "synthetic-fixture-v1"
+   }
+  },
+  {
+   "file": "schools/508e0560fd26427624215a9ba30298f3.json",
+   "path": "/api/v1/screening/schools/by-key/508e0560fd26427624215a9ba30298f3",
+   "query": {}
+  },
+  {
+   "file": "schools/5a0780820f708a4e5e328367c81c5f91.json",
+   "path": "/api/v1/screening/schools/by-key/5a0780820f708a4e5e328367c81c5f91",
+   "query": {}
+  },
+  {
+   "file": "schools/ea39e197a173c45c3833b5f9895a1d9a.json",
+   "path": "/api/v1/screening/schools/by-key/ea39e197a173c45c3833b5f9895a1d9a",
+   "query": {}
+  },
+  {
+   "file": "schools/08dd844bcb08b35b11b233f5523550e3.json",
+   "path": "/api/v1/screening/schools/by-key/08dd844bcb08b35b11b233f5523550e3",
+   "query": {}
+  },
+  {
+   "file": "schools/02cb474a0ac155ea935baa8970073461.json",
+   "path": "/api/v1/screening/schools/by-key/02cb474a0ac155ea935baa8970073461",
+   "query": {}
+  },
+  {
+   "file": "schools/027f1b55c6c1b9ea6c520b7084ef1f93.json",
+   "path": "/api/v1/screening/schools/by-key/027f1b55c6c1b9ea6c520b7084ef1f93",
+   "query": {}
+  },
+  {
+   "file": "schools/41457931d321cbe2b331b192b73cb9a1.json",
+   "path": "/api/v1/screening/schools/by-key/41457931d321cbe2b331b192b73cb9a1",
+   "query": {}
+  },
+  {
+   "file": "schools/4588d3f1aae22762faf3be7a08193141.json",
+   "path": "/api/v1/screening/schools/by-key/4588d3f1aae22762faf3be7a08193141",
+   "query": {}
+  },
+  {
+   "file": "schools/15bc848c079ba25eb2b734cb802bd974.json",
+   "path": "/api/v1/screening/schools/by-key/15bc848c079ba25eb2b734cb802bd974",
+   "query": {}
+  },
+  {
+   "file": "schools/5dcf22aac52927886aac2b245d843ddd.json",
+   "path": "/api/v1/screening/schools/by-key/5dcf22aac52927886aac2b245d843ddd",
+   "query": {}
+  },
+  {
+   "file": "schools/d661760c21ebd3142f0747ca52aaa4e8.json",
+   "path": "/api/v1/screening/schools/by-key/d661760c21ebd3142f0747ca52aaa4e8",
+   "query": {}
+  },
+  {
+   "file": "schools/98046455d7e0c6b86e1be2fc8e4ef072.json",
+   "path": "/api/v1/screening/schools/by-key/98046455d7e0c6b86e1be2fc8e4ef072",
+   "query": {}
+  },
+  {
+   "file": "schools/a175aad97ffaba8fcb2d53dea86f07de.json",
+   "path": "/api/v1/screening/schools/by-key/a175aad97ffaba8fcb2d53dea86f07de",
+   "query": {}
+  },
+  {
+   "file": "schools/5159d66f1b3f9307c07a1c87b149e01b.json",
+   "path": "/api/v1/screening/schools/by-key/5159d66f1b3f9307c07a1c87b149e01b",
+   "query": {}
+  },
+  {
+   "file": "schools/8b465d883cfa24bf5f5868f9b9f4cfb1.json",
+   "path": "/api/v1/screening/schools/by-key/8b465d883cfa24bf5f5868f9b9f4cfb1",
+   "query": {}
+  },
+  {
+   "file": "compare/additive_u__additive_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "additive_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__need_first_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "need_first_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__bottleneck_no_u.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "bottleneck_no_u"
+   }
+  },
+  {
+   "file": "compare/additive_no_u__benchmark.json",
+   "path": "/api/v1/screening/compare",
+   "query": {
+    "a": "additive_no_u",
+    "b": "benchmark"
+   }
+  },
+  {
+   "file": "exports/top_additive_no_u_20.csv",
+   "headers": {
+    "cache-control": "private, no-store",
+    "content-disposition": "attachment; filename=\"rise_png_screening_top20_additive_no_u.csv\"",
+    "content-type": "text/csv; charset=utf-8",
+    "referrer-policy": "no-referrer",
+    "x-content-type-options": "nosniff",
+    "x-rise-png-decision-use": "research-prototype-only"
+   },
+   "path": "/api/v1/screening/exports/top.csv",
+   "query": {
+    "k": "20",
+    "rule": "additive_no_u"
+   }
+  }
+ ]
+}

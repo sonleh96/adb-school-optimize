@@ -1,0 +1,102 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
+import type { BoundCopy, CopyRuleId, ListedSchool } from "@/lib/screening/copy";
+import { PRIMARY_RULE, isRulePair } from "@/lib/screening/rule-pair";
+import { exampleSchool } from "@/lib/screening/workspace/teaching";
+
+import { Sentence } from "./Sentence";
+import styles from "./screening.module.css";
+
+/**
+ * What changed after a rule change: it answers the click the user just made, at the top of the list.
+ * One agreement framing per screen: the main rule and the urgency sensitivity speak through `urgencyReassurance`, any
+ * other pair through `comparisonSentence`. The example is a teaching school chosen from the loaded data by its role,
+ * never by name.
+ * A comparison that failed to load says so and offers Retry: it never reads as the study having recorded none.
+ */
+export function WhatChanged({
+  copy,
+  from,
+  to,
+  schools,
+  failed,
+  retrying,
+  onRetry,
+  onHide,
+  onBack,
+}: {
+  copy: BoundCopy;
+  from: CopyRuleId;
+  to: CopyRuleId;
+  schools: readonly ListedSchool[];
+  failed: boolean;
+  /** The failed comparison is being asked for again. */
+  retrying: boolean;
+  onRetry: () => void;
+  onHide: () => void;
+  onBack: () => void;
+}) {
+  const { LAYOUT, STRINGS } = copy;
+  const hide = useRef<HTMLButtonElement>(null);
+  const retried = useRef(false);
+  // Retry goes once the comparison is in, so focus moves to Hide, the control that stays.
+  useEffect(() => {
+    if (failed || !retried.current) return;
+    retried.current = false;
+    if (document.activeElement === document.body) hide.current?.focus({ preventScroll: true });
+  }, [failed]);
+
+  const pair = isRulePair(from, to);
+  // The lead names schools only for another pair; names are set apart either way (R18).
+  const lead = failed
+    ? null
+    : pair
+      ? [copy.urgencyReassurance()]
+      : copy.segments.comparisonSentence(from, to);
+  const example = !failed && pair ? exampleSchool(schools, from, to) : null;
+  return (
+    <section className={styles.changed} data-region="what-changed" aria-label={LAYOUT.whatChanged}>
+      <div className={styles.changedTop}>
+        <span className={`${styles.eyebrow} ${styles.eyebrowNavy}`}>{LAYOUT.whatChanged}</span>
+        <button ref={hide} type="button" className={styles.linkButton} onClick={onHide}>
+          {LAYOUT.hideComparison}
+        </button>
+      </div>
+      {lead === null ? (
+        <p className={styles.changedLead} role="alert" data-region="changed-failed">
+          {LAYOUT.loadFailed}{" "}
+          <button
+            type="button"
+            className={styles.linkButton}
+            onClick={() => {
+              retried.current = true;
+              onRetry();
+            }}
+          >
+            {retrying ? LAYOUT.retrying : LAYOUT.retry}
+          </button>
+        </p>
+      ) : (
+        <p className={styles.changedLead} data-region="changed-lead">
+          <Sentence segments={lead} />
+        </p>
+      )}
+      {example ? (
+        <p className={styles.changedExample} data-region="changed-example">
+          <span className={styles.exampleKey}>{LAYOUT.example}</span>
+          <Sentence segments={copy.segments.rangeComparisonSentence(example, from, to)} />
+        </p>
+      ) : null}
+      {failed ? null : <p className={styles.changedSource}>{STRINGS.comparisonSource}</p>}
+      {to !== PRIMARY_RULE ? (
+        <p className={styles.changedActions}>
+          <button type="button" className={styles.linkButton} onClick={onBack}>
+            {LAYOUT.backToMainRule}
+          </button>
+        </p>
+      ) : null}
+    </section>
+  );
+}

@@ -1,0 +1,658 @@
+/**
+ * Maps the screening API's responses into the records the copy reads, so the copy functions stay the prototype's.
+ * The responses are the page's own parsed types (`../types`): one parser per response, so a field is read in one
+ * place and a new one is added there.
+ *
+ * Every mapping is a rename or a regrouping; no figure is computed, filled in or guessed. Where the API cannot
+ * supply something the copy reads, the function says so (a `ParseError` for a broken response, an absent key for
+ * an unknown count) rather than inventing it.
+ *
+ * Three things differ between the API and the study the copy was written for:
+ *  - A school's group is relative to a rule: a school can lack a reading that one rule reads and another does not.
+ *    Each function takes the rule being shown and a school's group is its group under that rule. Its results under
+ *    the other rules are kept as the API gave them, so a sentence about another rule reads that rule's own place
+ *    or range. A result for a school held for verification under that rule is left out.
+ *  - The API names why it holds a school back (`gate_failures`). The reasons about the stored counts and sources
+ *    name no part, so the need parts a record cannot give are read from the need parts that are blank, as the
+ *    study listed them. The other reasons (negative count, district context, reach, urgency) are carried as sent.
+ *  - A rank says what it counts by a scope code, never by its label. A place counts the schools complete under its
+ *    rule; a range counts every school that can be put in order. A rank with any other scope is not used as either.
+ *
+ * Three routes give a school: `schoolFromDetail` (one school's detail), `schoolsFromLists` (every row of a list,
+ * with the bulk stored inputs) and `placedFromResults` (a list alone, for places and names only). Most pages want
+ * `bindCopy` in `./bind`, which takes the responses and does all of it, including the group sizes of each rule.
+ */
+import { ParseError } from "../schema";
+import type {
+  CompareResponse,
+  DetailResult,
+  InputsResponse,
+  ListedRow,
+  ResultsResponse,
+  SchoolDetailResponse,
+  SchoolIdentity,
+} from "../types";
+
+import type {
+  AreaParts,
+  CopyCohort,
+  CopyComponents,
+  CopyCondition,
+  CopyResult,
+  CopyRuleId,
+  CopySchool,
+  CountBag,
+  GateKey,
+  MissingEnv,
+  NeedField,
+  NeedParts,
+  PairwiseRow,
+  PersistenceFlag,
+  PersistenceRule,
+  PersistenceTest,
+  PlacedSchool,
+  RecordedContribution,
+  RecordedRule,
+  ResultsByRule,
+  Top20Change,
+  UnreadableInput,
+  VerifyGroup,
+} from "./model";
+import { countsFrom } from "./counts";
+import { OTHER_GATES } from "./gates";
+import { isCopyRuleId, rule } from "./rules";
+
+type Cohort = ListedRow["cohort"];
+const COHORT: Record<Cohort, CopyCohort> = {
+  complete: "complete",
+  interval: "interval",
+  verification_queue: "queue",
+};
+
+const NEED_FIELD_ORDER: readonly NeedField[] = [
+  "permanent_classroom_deficit",
+  "teacher_housing_deficit",
+  "facility_presence_deficit",
+  "service_deficit",
+  "locality_disadvantage",
+];
+
+const isNeedFirstRule = (id: CopyRuleId): boolean => id === "need_first_u" || id === "need_first_no_u";
+
+function viewRuleOf(response: ResultsResponse): CopyRuleId {
+  const id = response.run.rule_id;
+  if (!isCopyRuleId(id))
+    throw new ParseError(`run.rule_id: the copy has no words for the rule ${JSON.stringify(id)}`);
+  return id;
+}
+
+/** The parts of a result the copy reads as places; a listed row and a school's detail both have them. */
+type Placed = Pick<DetailResult, "scores" | "point_rank" | "rank_bounds">;
+
+function toResult(id: CopyRuleId, r: Placed): CopyResult {
+  const base = {
+    // A place counts the schools complete under its rule, whatever the label says; any other scope is no place.
+    rank_complete120: r.point_rank.scope_code === "complete_under_rule" ? r.point_rank.rank : null,
+    rank_best: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.best : null,
+    rank_worst: r.rank_bounds.scope_code === "eligible" ? r.rank_bounds.worst : null,
+    rank_bounds_scope: r.rank_bounds.scope_code === "eligible" ? "eligible124" : null,
+    score_lower: r.scores.lower,
+    score_upper: r.scores.upper,
+  };
+  // Under the need-first rules the primary sort key is school need and the score is the secondary one.
+  return isNeedFirstRule(id)
+    ? { ...base, school_need: r.scores.sort_key_primary, secondary_score_lower: r.scores.lower }
+    : { ...base, score_point: r.scores.point };
+}
+
+/** A figure the API must give for the copy to say anything true; its absence is a broken response. */
+function present<T>(value: T | null | undefined, path: string): T {
+  if (value == null)
+    throw new ParseError(`${path}: expected a value, got ${value === null ? "null" : "undefined"}`);
+  return value;
+}
+
+/* ----------------------------------------------------------------- one school */
+
+type Inputs = SchoolDetailResponse["inputs"];
+
+/**
+ * One stored input. An entry that is missing is a broken response and fails; a value of the wrong kind spoils that
+ * input of that school only, which is noted in `unreadable` and read as no value.
+ */
+function numberInput(
+  inputs: Inputs,
+  key: string,
+  as: UnreadableInput,
+  unreadable: UnreadableInput[]
+): number | null {
+  if (!(key in inputs)) throw new ParseError(`inputs.${key}: expected a number or null, got undefined`);
+  const v = inputs[key];
+  if (v === null || typeof v === "number") return v;
+  unreadable.push(as);
+  return null;
+}
+
+function textInput(
+  inputs: Inputs,
+  key: string,
+  as: UnreadableInput,
+  unreadable: UnreadableInput[]
+): string | null {
+  if (!(key in inputs)) throw new ParseError(`inputs.${key}: expected a string or null, got undefined`);
+  const v = inputs[key];
+  if (v === null || typeof v === "string") return v;
+  unreadable.push(as);
+  return null;
+}
+
+function conditionFrom(inputs: Inputs, bad: UnreadableInput[]): CopyCondition {
+  const n = (key: string, as: UnreadableInput) => numberInput(inputs, key, as, bad);
+  return {
+    teachers: n("teachers", "teachers"),
+    classrooms_total: n("total_classrooms", "classrooms_total"),
+    classrooms_permanent: n("permanent_classrooms", "classrooms_permanent"),
+    teacher_houses: n("teacher_houses", "teacher_houses"),
+    libraries: n("libraries", "libraries"),
+    workshops: n("workshops", "workshops"),
+    practical_skills: n("practical_skills_buildings", "practical_skills"),
+    home_economics: n("home_economics_buildings", "home_economics"),
+    computer_labs: n("computer_labs", "computer_labs"),
+    specialized_classrooms: n("specialized_classrooms", "specialized_classrooms"),
+    power_source: textInput(inputs, "power_source", "power_source", bad),
+    water_source: textInput(inputs, "water_source", "water_source", bad),
+  };
+}
+
+function areaPartsFrom(a: DetailResult["area_parts"]): AreaParts {
+  return {
+    progression10_deficit: a.progression_g10_deficit,
+    progression12_deficit: a.progression_g12_deficit,
+    secondary_participation_deficit: a.secondary_participation_deficit,
+    activity_deficit: a.activity_scale_deficit,
+    conflict_exposure: a.conflict_exposure,
+    female_disadvantage: a.female_disadvantage,
+  };
+}
+
+/** The rules whose own contributions the copy reads. The others are worded from the school's parts and components. */
+const RECORDED: readonly RecordedRule[] = ["additive_u", "additive_no_u", "bottleneck_u", "bottleneck_no_u"];
+
+/**
+ * What a rule recorded for each input, as the API sent it for that rule (a largest-factor rule's figures already
+ * hold its 60% share of the weighted sum), and for a largest-factor rule the extra share it gives to its largest
+ * factor. Complete and interval schools always have all of it.
+ */
+function recordedContribution(id: RecordedRule, r: DetailResult): RecordedContribution {
+  const at = (component: string) => {
+    const found = r.contributions.find((c) => c.component === component);
+    if (!found) throw new ParseError(`rules.${id}.result.contributions: no entry for component ${component}`);
+    return found;
+  };
+  const parts = present(r.need_part_contributions, `rules.${id}.result.need_part_contributions`);
+  const part = (field: NeedField) =>
+    present(parts[field], `rules.${id}.result.need_part_contributions.${field}`);
+  const q = at("Q"),
+    e = at("E"),
+    l = at("L");
+  const largest = id.startsWith("bottleneck")
+    ? present(r.maximum_term, `rules.${id}.result.maximum_term`)
+    : null;
+  return {
+    ...(largest
+      ? {
+          largest: {
+            factors: largest.attained_by,
+            value: largest.value,
+            share: largest.share,
+            contribution: largest.contribution,
+          },
+        }
+      : {}),
+    components: {
+      permanent_classroom_deficit: part("permanent_classroom_deficit"),
+      teacher_housing_deficit: part("teacher_housing_deficit"),
+      facility_presence_deficit: part("facility_presence_deficit"),
+      service_deficit: part("service_deficit"),
+      locality_disadvantage: part("locality_disadvantage"),
+      area: at("A").lower,
+      ...(rule(id).usesUrgency ? { urgency: at("U").lower } : {}),
+      reach: at("R").lower,
+      aqi_lower: q.lower,
+      aqi_upper: q.upper,
+      emissions_lower: e.lower,
+      emissions_upper: e.upper,
+      land_lower: l.lower,
+      land_upper: l.upper,
+    },
+  };
+}
+
+/**
+ * Why a school is held back, in the copy's terms: the need parts the engine could not work out, then the reasons it
+ * sent that are not a need part, in the engine's order. The codes about counts and sources (`missing_stock_field`,
+ * `nonpositive_denominator`, `unrecognized_service_coding`, `unrecognized_locality`) each leave a need part null, and
+ * the stored inputs say which count, source or category it was, so each part is worded from them (see `partCause`).
+ * A reason this copy has no words for is left out.
+ */
+function gateFailuresOf(sent: readonly string[], needParts: NeedParts): GateKey[] {
+  return [
+    ...NEED_FIELD_ORDER.filter((f) => needParts[f] == null),
+    ...OTHER_GATES.filter((g) => sent.includes(g)),
+  ];
+}
+
+/**
+ * Which of the paper's groups a record to verify is in, from the engine's own reasons: a core detail missing
+ * (`missing_stock_field`, which the engine sends when any of the ten counts or either source is blank), or 0
+ * classrooms recorded (`nonpositive_denominator` with the classroom share unworkable and no count missing or
+ * negative). A record with both is in the first group, as the paper counts it. The list rows carry these, so a record
+ * built from a list alone says what one built from the stored inputs says.
+ */
+export function verifyGroupOf(
+  row: Pick<ListedRow, "gate_failures"> & {
+    readonly need_parts: Pick<ListedRow["need_parts"], "permanent_classroom_deficit">;
+  }
+): VerifyGroup {
+  const sent = row.gate_failures;
+  if (sent.includes("missing_stock_field")) return "missing";
+  return sent.includes("nonpositive_denominator") &&
+    !sent.includes("negative_stock_value") &&
+    row.need_parts.permanent_classroom_deficit == null
+    ? "zero"
+    : "other";
+}
+
+/** A record's group (`verifyGroupOf`), or undefined for a school that can be put in order. */
+function verifyOf(
+  row: Pick<ListedRow, "cohort" | "gate_failures"> & {
+    readonly need_parts: Pick<ListedRow["need_parts"], "permanent_classroom_deficit">;
+  }
+): VerifyGroup | undefined {
+  return row.cohort === "verification_queue" ? verifyGroupOf(row) : undefined;
+}
+
+/** What a rule's stochastic test says about a school. Absent where the rule has no such test. */
+interface Flags {
+  readonly persistent_candidate?: boolean | null;
+  readonly threshold_adjacent?: boolean | null;
+  readonly top20_frequencies?: readonly { readonly setting_id: string; readonly frequency: number }[] | null;
+}
+type FlagsByRule = Partial<Record<PersistenceRule, Flags | undefined>>;
+
+/** The rules the paper's stochastic test ran for. Their lists and details are the ones that carry its flags. */
+export const PERSISTENCE_RULES: readonly PersistenceRule[] = ["additive_no_u", "additive_u"];
+const isPersistenceRule = (id: string): id is PersistenceRule =>
+  (PERSISTENCE_RULES as readonly string[]).includes(id);
+
+/** One school's whole record from its identity, stored inputs and result under every rule that has one. */
+function buildSchool(
+  identity: SchoolIdentity,
+  inputs: Inputs,
+  view: CopyRuleId,
+  entries: ReadonlyMap<CopyRuleId, DetailResult>,
+  flags: FlagsByRule,
+  missingView: string
+): CopySchool {
+  const shown = entries.get(view);
+  if (!shown) throw new ParseError(missingView);
+  const cohort = COHORT[shown.cohort];
+
+  // A school held back under the rule shown can still be in order under another, so keep every result the API
+  // gave for a rule that does not hold it back.
+  const results: ResultsByRule = {};
+  const contributions: NonNullable<CopySchool["contributions"]> = {};
+  for (const [id, r] of entries) if (r.cohort !== "verification_queue") results[id] = toResult(id, r);
+  for (const id of RECORDED) {
+    const r = entries.get(id);
+    if (!r || r.cohort === "verification_queue") continue;
+    try {
+      contributions[id] = recordedContribution(id, r);
+    } catch (error) {
+      // A broken part fails the rule it belongs to, not the whole card: only the rule shown needs its own.
+      if (!(error instanceof ParseError) || view === id) throw error;
+    }
+  }
+
+  // The components do not depend on the rule. Whether urgency is known comes from the stored input, so it does not
+  // depend on which lists are loaded: an unknown value is null, and a known one is the rules' own figure when a rule
+  // that reads it is loaded. The stored value is on its own scale, so it only decides known or unknown and is never
+  // used as the engine's figure: without that figure urgency stays unset.
+  const unreadable: UnreadableInput[] = [];
+  const condition = conditionFrom(inputs, unreadable);
+  const raw = {
+    Q_raw: numberInput(inputs, "aqi_p95_selected", "aqi", unreadable),
+    E_raw: numberInput(inputs, "emissions_co2e_100yr_10km_tonnes", "emissions", unreadable),
+    L_raw: numberInput(inputs, "water_flooded_vegetation_fraction_500m", "land", unreadable),
+  };
+  const stored =
+    "urgency_source_scalar" in inputs
+      ? numberInput(inputs, "urgency_source_scalar", "urgency", unreadable)
+      : undefined;
+  const unknownUrgency = stored === null;
+  const fromRules = [shown, ...entries.values()].map((r) => r.components.U).find((u) => u !== undefined);
+  const urgency = unknownUrgency ? null : fromRules;
+  const { N, A, R, Q, E, L } = shown.components;
+  const components: CopyComponents = { N, A, ...(urgency === undefined ? {} : { U: urgency }), R, Q, E, L };
+
+  const persistence: { -readonly [K in PersistenceRule]?: PersistenceFlag } = {};
+  for (const id of PERSISTENCE_RULES) {
+    const f = flags[id];
+    if (f && f.persistent_candidate !== undefined)
+      persistence[id] = {
+        persistent: f.persistent_candidate === true,
+        adjacent: f.threshold_adjacent === true,
+        ...(f.top20_frequencies
+          ? {
+              frequencies: f.top20_frequencies.map((x) => ({
+                setting: x.setting_id,
+                frequency: x.frequency,
+              })),
+            }
+          : {}),
+      };
+  }
+
+  const needParts: NeedParts = shown.need_parts;
+  return {
+    id: identity.school_key,
+    name: identity.source_school_name,
+    province: identity.province,
+    district: identity.district,
+    locality: identity.locality,
+    cohort,
+    // The engine also nulls a reading that is recorded but out of range, so a missing figure is read off the
+    // components, as the list route reads it, and not off the raw value.
+    missing_env: { aqi: Q === null, emissions: E === null, land: L === null },
+    condition,
+    need_parts: needParts,
+    area_parts: areaPartsFrom(shown.area_parts),
+    components,
+    raw,
+    gate_failures: cohort === "queue" ? gateFailuresOf(shown.gate_failures, needParts) : [],
+    ...(cohort === "queue" ? { verify: verifyOf(shown) } : {}),
+    results,
+    contributions,
+    ...(unreadable.length ? { unreadable } : {}),
+    // Only a list that carries a rule's keys says anything about that rule's flag. Without them the flag is not
+    // false for every school, it is unknown, so the record leaves that rule out.
+    ...(Object.keys(persistence).length ? { persistence } : {}),
+  };
+}
+
+/**
+ * One school with its whole record, as it reads under `view`: the rule the screen is showing.
+ * `detail` is the `/schools/by-key` response, which carries the stored inputs and the result under every rule.
+ */
+export function schoolFromDetail(detail: SchoolDetailResponse, view: CopyRuleId): CopySchool {
+  const entries = new Map<CopyRuleId, DetailResult>();
+  const flags: FlagsByRule = {};
+  for (const entry of detail.rules) {
+    if (!isCopyRuleId(entry.rule.rule_id)) continue;
+    entries.set(entry.rule.rule_id, entry.result);
+    // Only an entry of a rule the stochastic test ran for has the persistence keys.
+    const id: string = entry.rule.rule_id;
+    if (isPersistenceRule(id) && "persistent_candidate" in entry) flags[id] = entry;
+  }
+  return buildSchool(
+    detail.school,
+    detail.inputs,
+    view,
+    entries,
+    flags,
+    `rules: the school has no result under ${view}`
+  );
+}
+
+/* ------------------------------------------------------------------- the lists */
+
+/**
+ * Every school of a list with its whole record, in the list's order: the rows of the rule shown, the bulk stored
+ * inputs, and the other rules' lists. Pass the list of each rule the screen compares (unfiltered, so a school's
+ * place under it is there), the two combined-factors lists for the reasons that name what each input adds, and the
+ * list of each rule the stochastic test ran for (`additive_no_u`, `additive_u`) for its flag. A school missing from
+ * one of those lists simply has no result under that rule. `inputs` must be of the same input version as the lists.
+ */
+export function schoolsFromLists(
+  inputs: InputsResponse,
+  lists: readonly ResultsResponse[],
+  view: CopyRuleId
+): CopySchool[] {
+  const rowsOf = new Map<CopyRuleId, Map<string, ListedRow>>();
+  for (const list of lists) {
+    if (list.run.input_version !== inputs.input_version)
+      throw new ParseError(
+        `lists: the list for ${list.run.rule_id} is of input version ${list.run.input_version}, not ${inputs.input_version}`
+      );
+    rowsOf.set(viewRuleOf(list), new Map(list.rows.map((row) => [row.school.school_key, row])));
+  }
+  const shown = lists.find((l) => viewRuleOf(l) === view);
+  if (!shown) throw new ParseError(`lists: there is no list for ${view}`);
+  const stored = new Map(inputs.schools.map((s) => [s.school_key as string, s.inputs]));
+  return shown.rows.map((row) => {
+    const key = row.school.school_key;
+    const own = stored.get(key);
+    if (!own) throw new ParseError(`inputs: there are no stored inputs for the school ${key}`);
+    const entries = new Map<CopyRuleId, DetailResult>();
+    for (const [id, rows] of rowsOf) {
+      const r = rows.get(key);
+      if (r) entries.set(id, r);
+    }
+    const flags: FlagsByRule = {};
+    for (const id of PERSISTENCE_RULES) flags[id] = rowsOf.get(id)?.get(key);
+    return buildSchool(
+      row.school,
+      own,
+      view,
+      entries,
+      flags,
+      `lists: the school ${key} has no row under ${view}`
+    );
+  });
+}
+
+/**
+ * The schools of a list, for the place sentences, headlines, ties and names. The first response is the rule being
+ * shown and sets each school's group. Pass more responses (other rules, unfiltered) to give each school a result
+ * under those rules too, which `comparisonSentence` needs for the top 10, and `rangeComparisonSentence` for a pair.
+ *
+ * A list row carries no stored inputs, so these are not whole records: the reasons and the missing-detail notes
+ * need `schoolsFromLists` or `schoolFromDetail`. Which readings are missing is read from the components, which are
+ * blank for them.
+ */
+/** A school of a list: what the place sentences read, and which readings are blank. */
+export type ListedSchool = PlacedSchool & { readonly missing_env: MissingEnv };
+
+export function placedFromResults(first: ResultsResponse, ...others: ResultsResponse[]): ListedSchool[] {
+  const view = viewRuleOf(first);
+  const index = (response: ResultsResponse): [CopyRuleId, Map<string, ListedRow>] => [
+    viewRuleOf(response),
+    new Map(response.rows.map((row) => [row.school.school_key, row])),
+  ];
+  const more = others.map(index);
+  return first.rows.map((row) => {
+    const cohort = COHORT[row.cohort];
+    const results: ResultsByRule = {};
+    // A school held back under the rule shown can still be in order under another, so each list gives its own.
+    if (cohort !== "queue") results[view] = toResult(view, row);
+    for (const [id, rows] of more) {
+      const other = rows.get(row.school.school_key);
+      if (other && other.cohort !== "verification_queue") results[id] = toResult(id, other);
+    }
+    return {
+      id: row.school.school_key,
+      name: row.school.source_school_name,
+      province: row.school.province,
+      district: row.school.district,
+      cohort,
+      results,
+      missing_env: {
+        aqi: row.components.Q === null,
+        emissions: row.components.E === null,
+        land: row.components.L === null,
+      },
+      ...(cohort === "queue" ? { verify: verifyOf(row) } : {}),
+    };
+  });
+}
+
+/**
+ * The counts a list response can give. A count it cannot give is left out, and the sentence that would state it
+ * is written without the number:
+ *  - the group sizes come from the run's manifest, so a filtered list still counts every school;
+ *  - how many schools have no air-quality figure, and how many have an urgency rating of 0, come from the rows and
+ *    only when the list is unfiltered and (for urgency) the rule gives the value;
+ *  - how many have no nearby emissions, how many records give only a remoteness category, and how many carry the
+ *    rule's own persistence flag need the whole records of every school (`schools`, from `schoolsFromLists`), and
+ *    are left out without them, with a filtered list, or (for the flag) under a rule the stochastic test did not run for.
+ * Counts belong to the run: they describe the rule shown. The group sizes of other rules are
+ * `countsByRuleFromResults`.
+ */
+export function countsFromResults(response: ResultsResponse, schools?: readonly CopySchool[]): CountBag {
+  const cc = response.manifest.cohort_counts;
+  const out: Record<string, number> = {};
+  const { records, complete, interval, verification_queue: queue } = cc;
+  if (records !== undefined) out.all = records;
+  if (complete !== undefined) out.complete = complete;
+  if (interval !== undefined) out.range = interval;
+  if (queue !== undefined) out.queue = queue;
+  if (complete !== undefined && interval !== undefined) out.ranked = complete + interval;
+
+  const whole =
+    response.returned_schools === response.total_schools && response.rows.length === response.total_schools;
+  if (whole) {
+    const rows = response.rows;
+    out.airMissing = rows.filter((r) => r.cohort !== "verification_queue" && r.components.Q === null).length;
+    if (rows.every((r) => r.components.U !== undefined)) {
+      out.urgencyZero = rows.filter((r) => r.components.U === 0).length;
+    }
+    if (schools && schools.length === rows.length) {
+      const shown = viewRuleOf(response);
+      const test = isPersistenceRule(shown) ? shown : undefined;
+      const c = countsFrom(schools, test);
+      out.emissionsNone = c.emissionsNone;
+      out.remotenessOnly = c.remotenessOnly;
+      out.queueMissing = c.queueMissing;
+      out.queueZero = c.queueZero;
+      if (test && schools.every((s) => s.persistence?.[test] !== undefined))
+        out.flagged = c.flagged as number;
+    }
+  }
+  return out;
+}
+
+/**
+ * The group sizes of each rule's own run, from the lists of those rules, for the sentences that put one school
+ * under two rules. Each rule is counted from its own manifest, because the groups differ between rules.
+ */
+export function countsByRuleFromResults(
+  ...responses: ResultsResponse[]
+): Partial<Record<CopyRuleId, CountBag>> {
+  return Object.fromEntries(responses.map((r) => [viewRuleOf(r), countsFromResults(r)]));
+}
+
+/**
+ * The persistence test's standard error as a fraction, from the provenance block of a list of a rule the test ran
+ * for, for `marginFromResults`. Nothing when the list is another rule's or has no such numbers.
+ */
+export function standardErrorFromResults(response: ResultsResponse): number | undefined {
+  return isPersistenceRule(viewRuleOf(response))
+    ? (response.persistence?.standard_error ?? undefined)
+    : undefined;
+}
+
+/**
+ * How a rule's stochastic test was drawn, from its list's provenance block, for the method details' words and the
+ * drawing of each school's frequencies, with the near-line band when the block gives a standard error. Nothing when the
+ * list is another rule's or the block does not give all of the draws, the threshold and the settings.
+ */
+export function testFromResults(response: ResultsResponse): PersistenceTest | undefined {
+  const block = response.persistence;
+  if (!isPersistenceRule(viewRuleOf(response)) || !block) return undefined;
+  const { draws, threshold, settings } = block;
+  if (draws === undefined || threshold === undefined || !settings || settings.length === 0) return undefined;
+  const band = marginFromResults(response);
+  return {
+    draws,
+    threshold,
+    settings: settings.map((s) => ({
+      ...(s.setting_id === undefined ? {} : { id: s.setting_id }),
+      topLevel: s.top_level_concentration,
+      schoolNeed: s.school_need_concentration,
+    })),
+    ...(band === undefined ? {} : { band }),
+  };
+}
+
+/**
+ * How far above the line a flagged school counts as just above it, as a fraction: the test's standard error times the
+ * number of standard errors its band spans (one for the circulated experiment, two for the revised paper's). Each rule
+ * has its own, from its own list. Nothing when the list is another rule's or has no such numbers; a block that names
+ * no band is read as one standard error, as the circulated experiment's was.
+ */
+export function marginFromResults(response: ResultsResponse): number | undefined {
+  const se = standardErrorFromResults(response);
+  return se === undefined ? undefined : se * (response.persistence?.adjacency_standard_errors ?? 1);
+}
+
+/* ----------------------------------------------------------------- comparison */
+
+const TOP_SIZES = [10, 20, 30, 40] as const;
+
+/**
+ * The research team's recorded comparison of two rules, from `/compare`, in the rows `comparisonSentence` reads.
+ * Both arrays are empty when the response holds no usable comparison (no common school, a rule the copy has
+ * no words for, or ranks that do not count the common cohort of complete schools), so the sentences say none is
+ * recorded. A response without one of the four top-list sizes is broken.
+ */
+export function pairwiseFromCompare(compare: CompareResponse): {
+  pairwise: PairwiseRow[];
+  top20Changes: Top20Change[];
+} {
+  const none = { pairwise: [], top20Changes: [] };
+  const left = compare.run_a.rule_id;
+  const right = compare.run_b.rule_id;
+  if (!isCopyRuleId(left) || !isCopyRuleId(right)) return none;
+  // The sentences name the schools both rules order, so the ranks must count exactly those.
+  if (compare.common_cohort_scope_code !== "common_complete_cohort") return none;
+  if ([...compare.entrants, ...compare.exits].some((c) => c.rank_scope_code !== "common_complete_cohort"))
+    return none;
+  const {
+    n,
+    median_absolute_rank_shift: median,
+    maximum_absolute_rank_shift: maximum,
+    top_k: topK,
+  } = compare.metrics;
+  if (n === 0 || median === null || maximum === null) return none;
+  const overlap = (k: number): number => {
+    const found = topK.find((t) => t.k === k);
+    if (!found) throw new ParseError(`metrics.top_k: no entry for the top ${k}`);
+    return found.overlap;
+  };
+  const [o10, o20, o30, o40] = TOP_SIZES.map(overlap);
+  const change = (c: CompareResponse["entrants"][number]): Top20Change => ({
+    left_rule: left,
+    right_rule: right,
+    status: c.status,
+    left_rank: c.rank_a,
+    right_rank: c.rank_b,
+    "School Name": c.school.source_school_name,
+    school_key: c.school.school_key,
+  });
+  return {
+    pairwise: [
+      {
+        left_rule: left,
+        right_rule: right,
+        n,
+        top10_overlap: o10,
+        top20_overlap: o20,
+        top30_overlap: o30,
+        top40_overlap: o40,
+        median_absolute_rank_shift: median,
+        maximum_absolute_rank_shift: maximum,
+      },
+    ],
+    top20Changes: [...compare.exits.map(change), ...compare.entrants.map(change)],
+  };
+}

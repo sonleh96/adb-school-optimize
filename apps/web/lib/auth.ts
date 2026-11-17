@@ -1,0 +1,78 @@
+export type AuthConfig = {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+};
+
+function csvValues(value: string | undefined): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+export function isAuthRequired(): boolean {
+  return process.env.AUTH_REQUIRED === "true";
+}
+
+export function hasLocalAuthBypass(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.AUTH_BYPASS_LOCAL === "true";
+}
+
+export function shouldEnforceAuth(): boolean {
+  return isAuthRequired() && !hasLocalAuthBypass();
+}
+
+export function getAuthConfig(): AuthConfig | null {
+  const supabaseUrl = process.env.SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY?.trim();
+  return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
+}
+
+export function isAllowedEmail(email: string | null | undefined): boolean {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const allowedEmails = csvValues(process.env.AUTH_ALLOWED_EMAILS);
+  const allowedDomains = csvValues(process.env.AUTH_ALLOWED_EMAIL_DOMAINS);
+  const domain = normalized.split("@")[1] ?? "";
+  return allowedEmails.has(normalized) || allowedDomains.has(domain);
+}
+
+// A backslash (a browser reads `/\evil.com` as `//evil.com`) and the control characters the URL parser strips
+// (a tab or line feed turns `/<tab>/evil.com` into `//evil.com`) can all hide a second slash.
+const HIDES_A_HOST = /[\\\u0000-\u001f\u007f]/;
+// A `%` not followed by two hex digits starts no escape, so no decoding turns it into anything else. `50%25`
+// decodes to `50%`, and that `%` stays a `%` however many times the value is decoded again. The legacy `%u005C`
+// form is not lone: `unescape` reads it as a backslash, so it is left to fail the decoding and be refused.
+const LONE_PERCENT = /%(?![0-9a-fA-F]{2}|u[0-9a-fA-F]{4})/gi;
+
+/** Where a person goes after signing in when no safe path came with them: the list, which is what sign-in is for. */
+const AFTER_SIGN_IN = "/screening";
+
+/**
+ * Where to go after signing in: a path on this origin, or the list. The value comes from the address, so it must not
+ * start a second slash or hold a backslash or control character, written plainly or percent-encoded (checked after
+ * each of up to five decodings, which is more than a hop through the sign-in form and the callback makes). A value
+ * still changing after the fifth decoding is refused, because a later decoding could reveal a host the check missed,
+ * and so is one holding an escape that does not decode.
+ */
+export function safeNextPath(value: string | null | undefined): string {
+  if (!value) return AFTER_SIGN_IN;
+  let form = value;
+  let settled = false;
+  for (let pass = 0; pass < 5 && !settled; pass += 1) {
+    if (!form.startsWith("/") || form.startsWith("//") || HIDES_A_HOST.test(form)) return AFTER_SIGN_IN;
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(form.replace(LONE_PERCENT, "%25"));
+    } catch {
+      return AFTER_SIGN_IN;
+    }
+    if (decoded === form) settled = true;
+    else form = decoded;
+  }
+  if (!settled) return AFTER_SIGN_IN;
+  return new URL(value, "http://origin.invalid").origin === "http://origin.invalid" ? value : AFTER_SIGN_IN;
+}

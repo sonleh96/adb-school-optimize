@@ -1,0 +1,770 @@
+/**
+ * What the two parity suites share: the prototype loader, the design data, and the leaf-by-leaf comparison.
+ * Everything here is test code; the design folder holds real school data and is never committed.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any -- the prototype is a foreign JavaScript module */
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+
+import { expect } from "vitest";
+
+export const ROOT = process.env.RISE_PNG_DESIGN_ROOT;
+export const ready = !!ROOT && existsSync(path.join(ROOT, "prototype/shared/copy.js"));
+
+export type Api = Record<string, any>;
+export type Outcome = { ok: true; value: unknown } | { ok: false; name: string; message: string };
+
+export const run = (fn: () => unknown): Outcome => {
+  try {
+    return { ok: true, value: fn() };
+  } catch (e) {
+    // The class matters as well as the message: a ParseError and an Error are two behaviours for a caller.
+    return e instanceof Error
+      ? { ok: false, name: e.name, message: e.message }
+      : { ok: false, name: typeof e, message: String(e) };
+  }
+};
+
+/** Sample arguments for every function a static object holds, so a new function cannot go unchecked. */
+export const FN_ARGS: Record<string, unknown[][]> = {
+  "LAYOUT.otherRulesCount": [[5], [0]],
+  "LAYOUT.ruleNow": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
+  "LAYOUT.ruleNowShort": [
+    ["additive_u"],
+    ["additive_no_u"],
+    ["need_first_u"],
+    ["need_first_no_u"],
+    ["bottleneck_u"],
+    ["bottleneck_no_u"],
+    ["benchmark"],
+  ],
+  "LAYOUT.keyRamp": [
+    ["1st", "20th"],
+    ["1st", "1st"],
+    ["1st", "131st", 131],
+    ["1st", "1st", 1],
+  ],
+  "LAYOUT.keyRampNote": [
+    [131, 7],
+    [20, 0],
+    [1, 1],
+    [2, 2],
+  ],
+  "LAYOUT.backToCirculated": [["Combined factors, with urgency"], ["x"]],
+  "LAYOUT.notComputedGroup": [["Need first, no urgency", 4]],
+  "LAYOUT.listTitle": [[20, "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.fingerprints": [[15], [1]],
+  "LAYOUT.afterDownload": [["the top list"]],
+  "LAYOUT.viewOf": [[2, 4]],
+  "LAYOUT.placeRange": [["3rd", "12th"]],
+  "LAYOUT.valueRange": [["0.487", "0.537"]],
+  "LAYOUT.underRule": [["Rank in the list", "the combined-factors rule with urgency (S)"]],
+  "LAYOUT.topListFileName": [
+    [20, "Combined factors, with urgency"],
+    [10, 'Équipe / mix (S0): "a" b'],
+  ],
+  "LAYOUT.groupMany": [[2], [5], [1]],
+  "LAYOUT.addedBy": [["School need"], ["Air quality"]],
+  "LAYOUT.tooltipMissing": [["classroom count blank, power source blank"]],
+  "LAYOUT.tipNotComputed": [["Need first"]],
+  "LAYOUT.savedToast": [[3]],
+  "LAYOUT.removeView": [["Top of the list"], ["J"]],
+  "LAYOUT.viewsFull": [[50]],
+  "LAYOUT.viewPartMissing": [
+    [["rule", "school", "hover"]],
+    [["prov"]],
+    [["prov", "dist"]],
+    [["compare", "loc"]],
+    [["school"], "upper"],
+    [["rule"], "lower"],
+  ],
+  "LAYOUT.linkPartMissing": [[["prov"]], [["dist"]], [["prov", "dist"]]],
+  "LAYOUT.partAdds": [["Remoteness"], ["Classrooms not of permanent materials"]],
+  "LAYOUT.listFileName": [
+    ["Combined factors, without urgency", "2026-11-03", null],
+    ["Combined factors, without urgency", "2026-11-03", "Upper Valley"],
+    ['Équipe / mix (S0): "a" b', "2026-01-09", "Écôle Hill"],
+  ],
+  "LAYOUT.listLede": [
+    [0, true],
+    [1, false],
+    [1, true],
+    [2, false],
+    [1284, true],
+  ],
+  "LAYOUT.listMore": [[1], [114]],
+  "LAYOUT.listMade": [
+    ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
+  ],
+  "LAYOUT.dataVersion": [["paper-2026-10-12", "21 October 2026"]],
+  "LAYOUT.queueMade": [
+    ["the main method", "Combined factors, without urgency", "3 November 2026", "paper-2026-10-12"],
+  ],
+  "LAYOUT.researchNote": [[20], [10]],
+  "LAYOUT.findShowing": [
+    [9, 47, "list", { province: "Highlands", district: null, name: null }],
+    [1, 47, "list", { province: "Highlands", district: "Upper Valley", name: null }],
+    [0, 13, "queue", { province: "Highlands", district: null, name: "alder" }],
+    [2, 2, "queue", { province: null, district: null, name: "high school" }],
+    [1, 1, "list", { province: "Highlands", district: null, name: null }],
+    [3, 47, "list", { province: null, district: null, name: null }],
+  ],
+  "METHOD.list.wasUnder": [["14th", "the benchmark"]],
+  "METHOD.list.rankUnder": [["the benchmark", 9]],
+  "METHOD.samePlaceUnder": [["the benchmark"]],
+  "METHOD.moved.eyebrow": [["the benchmark"]],
+  "METHOD.queue.showing": [[3, 9]],
+  "METHOD.compare.table.place": [["Combined"]],
+  "METHOD.compare.pickAria": [["on the left"]],
+  "METHOD.compare.enteringK": [[10], [20]],
+  "METHOD.compare.leavingK": [[10], [20]],
+  "METHOD.compare.slopeMid": [[16], [1], [0], [undefined]],
+  "METHOD.compare.slopeBreak": [
+    [10, 16],
+    [20, 16],
+    [10, undefined],
+    [10, 8],
+  ],
+  "METHOD.compare.rangesSub": [
+    [],
+    [{ ranked: 21 }, { ranked: 21 }],
+    [{ ranked: 21 }, { ranked: 22 }],
+    [{ ranked: 21 }, undefined],
+  ],
+  "METHOD.compare.rangesNote": [[20]],
+  "METHOD.compare.moveWords": [
+    [-1, "the benchmark"],
+    [3, "the benchmark"],
+  ],
+  "METHOD.compare.topBoth": [[10]],
+  "METHOD.compare.topEnters": [[20]],
+  "METHOD.compare.topLeaves": [[20]],
+  "METHOD.compare.legendTitle": [["S", "B"]],
+  "METHOD.compare.legendSub": [[16, 10], [undefined, 10], [4, 4], [16], [undefined]],
+  "METHOD.compare.legendSize": [[10, "S", "B"]],
+  "METHOD.compare.tipMove": [["S", "3rd", "B", "5th", "Up 2 places under B"]],
+  "METHOD.compare.tipRange": [
+    ["S", "3rd to 5th", "B", "4th", { ranked: 21 }, { ranked: 21 }],
+    ["S", "a", "B", "b", { ranked: 21 }, { ranked: 22 }],
+  ],
+  "METHOD.compare.sameTop": [
+    ["S", "B", 10, 16],
+    ["S", "B", 20, undefined],
+  ],
+  "METHOD.compare.shareTop": [
+    ["S", "B", 9, 10, 16],
+    ["S", "B", 9, 10, undefined],
+  ],
+  "METHOD.compare.moveBins": [[], [[2, 9]]],
+  "METHOD.insp.amongComplete": [["the benchmark"]],
+  "METHOD.insp.bestToWorst": [["the benchmark"]],
+  "METHOD.insp.coincide": [["the benchmark"]],
+  "METHOD.insp.noResultUnder": [["the benchmark"]],
+  "METHOD.insp.inputsUnder": [["the benchmark"]],
+  "METHOD.insp.trackNote": [["the benchmark"]],
+  "METHOD.insp.addsBetween": [["0.10", "0.20"]],
+  "METHOD.insp.across": [[], [7], [3]],
+  "METHOD.insp.noSplitBoth": [["the benchmark"]],
+  "METHOD.insp.persistent": [["additive_no_u"], ["additive_u"]],
+  "METHOD.insp.frequencies.title": [["S0"]],
+  "METHOD.insp.frequencies.what": [[3], [1], [2]],
+  "METHOD.insp.frequencies.setting": [
+    // The paper's three settings in order, each by its plain words.
+    ...[0, 1, 2].map((i) => [
+      [
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      i,
+    ]),
+    // Out of order, or another number of settings: by position.
+    [
+      [
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      0,
+    ],
+    [[{ topLevel: 17.5, schoolNeed: 12.5 }], 0],
+  ],
+  "METHOD.insp.frequencies.runs": [["84%"], ["79.99%"]],
+  "METHOD.insp.frequencies.line": [["80%"]],
+  "METHOD.insp.frequencies.reaches": [["80%"]],
+  "METHOD.insp.frequencies.below": [["80%"]],
+  "METHOD.insp.frequencies.band": [["78.9%", "81.1%"]],
+  "METHOD.insp.largestRow": [[["School need"]], [["School need", "District context"]], [[]]],
+  "METHOD.insp.times": [["12/19"]],
+  "METHOD.insp.partRecorded": [["Teacher housing"]],
+  "METHOD.legend.title": [["the benchmark"]],
+  "METHOD.legend.sub": [[10], [3]],
+  "METHOD.layers.items.numerals": [[10], [3]],
+  "METHOD.filter.chipProvince": [["Highlands"]],
+  "METHOD.filter.chipDistrict": [["Upper Valley"]],
+  "METHOD.filter.chipName": [["alder"]],
+  "METHOD.filter.chipLocality": [["Remote"]],
+  "METHOD.segments.sheetTitle": [
+    [20, "Combined"],
+    [10, "J"],
+  ],
+  "METHOD.filter.remove": [["Province: Highlands"]],
+  "METHOD.sheet.title": [[20, "the benchmark"]],
+  "METHOD.sheet.lede": [
+    [20, "the benchmark", true],
+    [20, "the benchmark", false],
+  ],
+  "METHOD.sheet.ledeCompare": [["the benchmark"]],
+  "METHOD.sheet.noneTop": [[20]],
+  "METHOD.sheet.possible": [[20]],
+  "METHOD.sheet.possibleNone": [[20]],
+  "METHOD.sheet.normalizationV": [[25], [undefined]],
+  "METHOD.sheet.showsQueue": [["province"], ["evidence"]],
+  "METHOD.sheet.showsCompare": [["S", "B"]],
+  "METHOD.sheet.comparedWith": [["the benchmark"]],
+  "METHOD.sheet.generatedAt": [["2026-10-21"]],
+  "METHOD.manifest.rule": [["B", "benchmark", "Conventional benchmark"]],
+  "METHOD.manifest.role": [["Reference"]],
+  "METHOD.manifest.formula": [["B = 0.55N"]],
+  "METHOD.manifest.weights": [["N 0.55"]],
+  "METHOD.manifest.urgency": [["additive_u"], ["additive_no_u"]],
+  "METHOD.manifest.shortlist": [[20]],
+  "METHOD.manifest.ranges": [[true], [false]],
+  "METHOD.manifest.filters": [["province Highlands"], [""]],
+  "METHOD.manifest.filterProvince": [["Highlands"]],
+  "METHOD.manifest.filterLocality": [["Remote"]],
+  "METHOD.manifest.compared": [["B", "benchmark"]],
+  "METHOD.manifest.normalization": [[25], [undefined]],
+  "METHOD.manifest.fixture": [["2026-10-21"]],
+  "METHOD.manifest.input": [["schools.json", "abc123"]],
+  "METHOD.shareFraction": [[12, 19]],
+  "METHOD.shareDenominator": [
+    [{ N: 12 / 19, A: 3 / 19, R: 1 / 19 }],
+    [{ N: 0.6, A: 0.15, U: 0.05 }],
+    [{ N: 0.333, A: 0.5 }],
+    [{}],
+  ],
+  // The explore page: every step each part's axis can hold, and counts of the list on both sides of 20 schools.
+  "EXPLORE.scope": [
+    [1, "the main method"],
+    [27, "the main method"],
+    [1284, "the conventional benchmark (B)"],
+  ],
+  "EXPLORE.parts.classrooms.label": [
+    [{ kind: "none" }],
+    [{ kind: "quarter", quarter: 0 }],
+    [{ kind: "quarter", quarter: 1 }],
+    [{ kind: "quarter", quarter: 2 }],
+    [{ kind: "quarter", quarter: 3 }],
+    [{ kind: "whole" }],
+  ],
+  "EXPLORE.parts.classrooms.records": [
+    [{ kind: "none" }],
+    [{ kind: "quarter", quarter: 0 }],
+    [{ kind: "quarter", quarter: 1 }],
+    [{ kind: "quarter", quarter: 2 }],
+    [{ kind: "quarter", quarter: 3 }],
+    [{ kind: "whole" }],
+  ],
+  "EXPLORE.parts.classrooms.edge": [[1], [2], [3]],
+  "EXPLORE.parts.housing.label": [
+    [{ kind: "none" }],
+    [{ kind: "quarter", quarter: 0 }],
+    [{ kind: "quarter", quarter: 1 }],
+    [{ kind: "quarter", quarter: 2 }],
+    [{ kind: "quarter", quarter: 3 }],
+    [{ kind: "whole" }],
+  ],
+  "EXPLORE.parts.housing.records": [
+    [{ kind: "none" }],
+    [{ kind: "quarter", quarter: 0 }],
+    [{ kind: "quarter", quarter: 1 }],
+    [{ kind: "quarter", quarter: 2 }],
+    [{ kind: "quarter", quarter: 3 }],
+    [{ kind: "whole" }],
+  ],
+  "EXPLORE.parts.housing.edge": [[1], [2], [3]],
+  "EXPLORE.parts.facilities.label": [...[0, 1, 2, 3, 4, 5, 6].map((count) => [{ kind: "count", count }])],
+  "EXPLORE.parts.facilities.records": [...[0, 1, 2, 3, 4, 5, 6].map((count) => [{ kind: "count", count }])],
+  "EXPLORE.parts.services.label": [
+    ...[0, 4, 7, 9, 12, 13, 17, 20].map((points) => [{ kind: "points", points }]),
+  ],
+  "EXPLORE.parts.services.records": [
+    ...[0, 4, 7, 9, 12, 13, 17, 20].map((points) => [{ kind: "points", points }]),
+  ],
+  "EXPLORE.parts.locality.label": [...[0, 1, 2, 3, 4, 5].map((index) => [{ kind: "category", index }])],
+  "EXPLORE.parts.locality.records": [...[0, 1, 2, 3, 4, 5].map((index) => [{ kind: "category", index }])],
+  "EXPLORE.most": [
+    ["classrooms", { kind: "none" }, 5, 27],
+    ["housing", { kind: "quarter", quarter: 3 }, 1, 27],
+    ["housing", { kind: "whole" }, 2, 2],
+    ["facilities", { kind: "count", count: 0 }, 1, 1],
+    ["facilities", { kind: "count", count: 6 }, 9, 9],
+    ["services", { kind: "points", points: 12 }, 61, 1284],
+    ["locality", { kind: "category", index: 1 }, 47, 470],
+    ["locality", { kind: "category", index: 5 }, 3, 470],
+    ["classrooms", { kind: "quarter", quarter: 0 }, 19, 20],
+  ],
+  "EXPLORE.unrecorded": [[1], [2], [1284]],
+  // The province section: counts of provinces, schools and records on both sides of each branch.
+  "EXPLORE_PROVINCE.answer": [
+    [22, 21, 0],
+    [5, 4, 1],
+    [3, 3, 0],
+    [2, 2, 0],
+    [1, 1, 0],
+    [22, 21, 2],
+    [2, 0, 3],
+    [2, 0, 0],
+  ],
+  "EXPLORE_PROVINCE.order": [[true], [false]],
+  "EXPLORE_PROVINCE.top": [
+    [130, "additive_no_u"],
+    [130, "additive_u"],
+    [24, "benchmark"],
+    [16, "additive_no_u"],
+    [1, "additive_no_u"],
+    [0, "additive_no_u"],
+  ],
+  "EXPLORE_PROVINCE.ranges": [[0], [1], [2], [4], [12]],
+  "EXPLORE_PROVINCE.reasons": [
+    [0, 0, 0, 0],
+    [90, 54, 36, 0],
+    [8, 4, 2, 2],
+    [1, 0, 1, 0],
+    [1, 1, 0, 0],
+    [1, 0, 0, 1],
+    [2, 2, 0, 0],
+    [9, 0, 0, 9],
+    [3, 2, 0, 1],
+  ],
+  "EXPLORE_PROVINCE.marked": [
+    ["North Province", 1],
+    ["North Province", 9],
+    [null, 1],
+    [null, 2],
+    [null, 3],
+  ],
+  // The province map: no province, one, several with one leader or a tie, one school each; every off-map count.
+  "EXPLORE_MAP.answer": [
+    [0, 22, [], 0],
+    [1, 22, ["Gulf"], 1],
+    [1, 22, ["Gulf"], 20],
+    [10, 22, ["Jiwaka"], 6],
+    [3, 22, ["Hela", "Jiwaka"], 3],
+    [8, 22, ["Enga", "Gulf"], 1],
+  ],
+  "EXPLORE_MAP.marked": [
+    ["Hillside Secondary", "Hela", 0],
+    ["Hillside Secondary", "Hela", 1],
+    ["Hillside Secondary", "Western", 1284],
+  ],
+  "EXPLORE_MAP.markedOff": [["Hillside Secondary"]],
+  "EXPLORE_MAP.offMap": [
+    [1, 0],
+    [1, 1],
+    [3, 0],
+    [3, 1],
+    [3, 2],
+    [3, 3],
+    [1284, 20],
+  ],
+  "EXPLORE_MAP.ranges": [[1], [2], [12]],
+  "DRIVERS.answer": [
+    [22, 22],
+    [1, 1],
+    [21, 22],
+    [0, 22],
+    [0, 0],
+  ],
+  "DRIVERS.bars.lede": [["the main method"], ["the combined-factors rule without urgency (S0)"]],
+  "DRIVERS.bars.largest": [
+    [["Remoteness"], 15, 22],
+    [["Remoteness", "District context"], 8, 22],
+    [["A", "B", "C"], 3, 22],
+    [["A"], 1, 1],
+  ],
+  "DRIVERS.bars.others": [[["District context", "Walking reach", "Air quality"]], [["District context"]]],
+  "DRIVERS.bars.marked": [
+    [["Remoteness"], "0.114"],
+    [["Remoteness", "Missing facility types"], "0.126"],
+  ],
+  "DRIVERS.bars.table.caption": [["the main method"]],
+  "DRIVERS.gaps.line": [
+    [0, 0],
+    [1, 0],
+    [2, 0],
+    [0, 1],
+    [0, 3],
+    [1, 1],
+    [2, 3],
+  ],
+  "DRIVERS.gaps.edge": [[null], ["0.002"], ["under 0.001"]],
+  "DRIVERS.gaps.pair": [
+    [1, 2],
+    [20, 21],
+  ],
+  "DRIVERS.notDrawn.needFirst": [["the main method"]],
+  "DRIVERS.notDrawn.largest": [
+    ["the main method", ["School need", "District context"]],
+    ["x", ["a", "b", "c"]],
+  ],
+  // How stable the list is: counts either side of one and of every school, and every kind of frequency column.
+  "EXPLORE_STABILITY.answer": [
+    ["the main method", 10, "80%", 13, 20, 7],
+    ["the main method", 0, "80%", 0, 20, 7],
+    ["the main method", 1, "80%", 20, 20, 7],
+    ["the main method", 2, "80%", 1, 17, 2],
+    ["the main method", 3, "80%", 1, 1, 7],
+    ["the main method", 4, "80%", 0, 3, 2],
+    ["the main method", 5, "80%", 5, 0, 7],
+    ["the main method", 6, "80%", 2, 20, 1],
+  ],
+  "EXPLORE_STABILITY.frequencies.what": [
+    [5000, 3],
+    [1, 1],
+  ],
+  "EXPLORE_STABILITY.frequencies.persistent": [
+    ["additive_no_u", 0, "80%"],
+    ["additive_u", 1, "80%"],
+    ["additive_no_u", 1284, "75.5%"],
+  ],
+  "EXPLORE_STABILITY.frequencies.notToScale": [
+    ["80%", true],
+    ["80%", false],
+  ],
+  "EXPLORE_STABILITY.frequencies.column": [
+    [{ kind: "none" }],
+    [{ kind: "all" }],
+    [{ kind: "span", from: { at: 0, holds: false }, to: { at: 0.1, holds: false }, band: false }],
+    [{ kind: "span", from: { at: 0.1, holds: true }, to: { at: 0.5, holds: false }, band: false }],
+    [{ kind: "span", from: { at: 0.788686, holds: true }, to: { at: 0.8, holds: false }, band: true }],
+    [{ kind: "span", from: { at: 0.811314, holds: false }, to: { at: 1, holds: false }, band: false }],
+    [{ kind: "span", from: { at: 0.8, holds: true }, to: { at: 1, holds: false }, band: false }],
+  ],
+  "EXPLORE_STABILITY.frequencies.setting": [
+    [
+      [
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      0,
+    ],
+    [
+      [
+        { topLevel: 20, schoolNeed: 15 },
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 100, schoolNeed: 80 },
+      ],
+      2,
+    ],
+    [
+      [
+        { topLevel: 40, schoolNeed: 35 },
+        { topLevel: 20.5, schoolNeed: 15 },
+      ],
+      1,
+    ],
+  ],
+  "EXPLORE_STABILITY.frequencies.runs": [["90%"], ["79.99%"]],
+  "EXPLORE_STABILITY.frequencies.line": [["80%"]],
+  "EXPLORE_STABILITY.frequencies.reaches": [["80%"]],
+  "EXPLORE_STABILITY.frequencies.below": [["80%"]],
+  "EXPLORE_STABILITY.frequencies.band": [["78.9%", "81.1%"]],
+  "EXPLORE_STABILITY.frequencies.bin": [
+    [{ kind: "none" }],
+    [{ kind: "all" }],
+    [{ kind: "span", from: { at: 0, holds: false }, to: { at: 0.7, holds: false }, band: false }],
+    [{ kind: "span", from: { at: 0.788686, holds: true }, to: { at: 0.8, holds: false }, band: true }],
+    [{ kind: "span", from: { at: 0.8, holds: true }, to: { at: 0.811314, holds: true }, band: true }],
+    [{ kind: "span", from: { at: 0.811314, holds: false }, to: { at: 0.9, holds: false }, band: false }],
+    [{ kind: "span", from: { at: 0, holds: false }, to: { at: 0.85, holds: true }, band: true }],
+  ],
+  "EXPLORE_STABILITY.frequencies.undrawn": [[1], [2], [1284]],
+  "EXPLORE_STABILITY.bump.title": [["the main method"]],
+  "EXPLORE_STABILITY.bump.answer": [
+    [13, 20, 7],
+    [20, 20, 7],
+    [1, 1, 7],
+    [0, 17, 7],
+    [1, 20, 3],
+  ],
+  "EXPLORE_STABILITY.bump.what": [["the main method"]],
+  "EXPLORE_STABILITY.bump.closer": [
+    [21, 131],
+    [21, 1284],
+  ],
+  "EXPLORE_STABILITY.bump.below": [["the main method", "45th"]],
+  "EXPLORE_STABILITY.bump.ranged": [["the main method"]],
+  "EXPLORE_STABILITY.bump.reaching": [[1], [2], [1284]],
+  "EXPLORE_STABILITY.bump.table.either": [["5"], ["1,284"]],
+  "SCORE_TREE.lede": [["the main method"], ["the combined-factors rule without urgency (S0)"]],
+  "SCORE_TREE.share": [["63.2"], ["60"], ["100"]],
+  "SCORE_TREE.ofCombined": [["63.2"], ["5"]],
+  "SCORE_TREE.largest": [[["school need"]], [["school need", "district context"]], [["a", "b", "c"]]],
+  "GUIDE.stepCount": [[1], [4]],
+  "GUIDE.startShort": [[5], [1]],
+  "GUIDE.howCount": [[1], [6]],
+  "GUIDE.seenCount": [[2, 5]],
+  "GUIDE.rangeWords": [
+    [5, 6],
+    [5, 5],
+  ],
+  "GUIDE.seedViews.queue.onScreen": [["Not in the list yet"]],
+  "HELP.liveOn": [[25], [1]],
+  "GUIDE.stepOf": [[1, 3]],
+  "GUIDE.stepCounter": [[2, 5, 1, 3]],
+  "GUIDE.pointToCard": [[3], [0], [12], [1]],
+  "GUIDE.needNumbered": [
+    [2, 3],
+    [3, 3],
+    [1, 1],
+    [1, 3],
+  ],
+  "GUIDE.tasks[1].steps[0].title": [
+    ["Alder Junior High School", "1st"],
+    ["Alder Junior High School", null],
+  ],
+  "GUIDE.tasks[1].steps[1].title": [[true], [false]],
+  "GUIDE.tasks[2].steps[0].title": [
+    ["Larch High School", "anywhere from 12th to 18th"],
+    ["Larch High School", null],
+  ],
+  "GUIDE.tasks[2].steps[0].tryIt": [
+    ["A, B and C", 3],
+    ["A, B and C", 0],
+    ["A", 1],
+  ],
+  "GUIDE.tasks[2].steps[1].body": [["Birch", "Alder", "16th", "Hazel", "17th"]],
+  "GUIDE.tasks[2].steps[2].body": [["Birch"]],
+  "GUIDE.tasks[3].steps[0].title": [[31], [1], [0]],
+  "GUIDE.tasks[3].steps[2].title": [["Rowan High"]],
+  "GUIDE.tasks[4].steps[0].title": [[40], [null]],
+  "GUIDE.tasks[4].steps[2].body": [["Larch High School"]],
+  "GUIDE.tasks[4].steps[3].tryIt": [["Combined factors, with urgency"]],
+};
+
+/**
+ * The prototype's value for `key` as the port must say it. Two differences are deliberate, because the port is
+ * not to carry the design data's sizes into module-level copy:
+ *  - an analyst label for a group names its size only when the counts are bound, and names none otherwise;
+ *  - the reason a retired word is banned says "these are", not a count.
+ */
+/** The lines the port binds per rule instead of keeping on the fixed strings. */
+export const SCOPE_KEYS = [
+  "groups",
+  "scopeComplete",
+  "scopeRanked",
+  "scopeShort",
+  "scopeDetail",
+  "filterNote",
+  "listOrder",
+  "listOrderUpper",
+  "notComputedNote",
+] as const;
+
+/** The counts without the sizes of the groups, which belong to one rule; the port words the bound TERMS without them. */
+export const groupFree = (counts: Record<string, number>): Record<string, number> =>
+  Object.fromEntries(
+    Object.entries(counts).filter(([k]) => !["complete", "range", "ranked", "queue"].includes(k))
+  );
+export const withoutScope = (strings: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(Object.entries(strings).filter(([k]) => !(SCOPE_KEYS as readonly string[]).includes(k)));
+
+export function prototypeValue(key: string, value: any, counts?: Record<string, number>): any {
+  if (key === "TERMS") {
+    const groups: Record<string, [string, string]> = {
+      cohort_complete: ["Complete-primary cohort", "complete"],
+      cohort_ranked: ["Condition-eligible cohort", "ranked"],
+      queue: ["Verification queue", "queue"],
+    };
+    const out: Record<string, any> = { ...value };
+    for (const [term, [label, count]] of Object.entries(groups)) {
+      const n = counts?.[count];
+      const suffix =
+        n !== undefined && Number.isInteger(n)
+          ? `, ${n.toLocaleString("en-US")} ${n === 1 ? "school" : "schools"}`
+          : "";
+      out[term] = { ...value[term], technical: `${label}${suffix}` };
+    }
+    return out;
+  }
+  // The port keeps the group lines out of the fixed strings, so that they are said per rule (see `scope`).
+  if (key === "STRINGS" || key === "buildStrings") return withoutScope(value);
+  // The port binds the size of the ranked group per rule (`scope(ruleId).amongAll`).
+  if (key === "LAYOUT") return { ...value, amongAll124: "Among all schools that can be put in order" };
+  if (key === "BANNED") {
+    return value.map((b: any) => ({ ...b, why: b.why.replace(/\bthe \d+ are\b/, "these are") }));
+  }
+  return value;
+}
+
+export const mismatches: string[] = [];
+export const tally = { strings: 0, calls: 0, bothThrew: 0 };
+export const note = (message: string) => {
+  if (mismatches.length < 40) mismatches.push(message);
+};
+export const show = (v: unknown) =>
+  typeof v === "string" ? JSON.stringify(v) : (JSON.stringify(v) ?? String(v));
+
+/** Compares two values leaf by leaf and counts every string compared. */
+export function same(label: string, a: unknown, b: unknown): void {
+  if (typeof a === "function" || typeof b === "function") {
+    if (typeof a !== typeof b) return note(`${label}: one side is a function`);
+    const samples = FN_ARGS[label];
+    if (!samples) return note(`${label}: no sample arguments for this function`);
+    for (const args of samples)
+      same(`${label}(${args.map(show).join(", ")})`, (a as any)(...args), (b as any)(...args));
+    return;
+  }
+  if (typeof a === "string") {
+    tally.strings += 1;
+    if (a !== b) note(`${label}\n   prototype: ${show(a)}\n   port:      ${show(b)}`);
+    return;
+  }
+  if (a instanceof RegExp) {
+    if (!(b instanceof RegExp) || a.source !== b.source || a.flags !== b.flags)
+      note(`${label}: pattern differs`);
+    return;
+  }
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length)
+      return note(`${label}: array length ${a.length} vs ${Array.isArray(b) ? b.length : show(b)}`);
+    a.forEach((x, i) => same(`${label}[${i}]`, x, b[i]));
+    return;
+  }
+  if (a && typeof a === "object") {
+    if (!b || typeof b !== "object") return note(`${label}: ${show(a)} vs ${show(b)}`);
+    const ka = Object.keys(a).sort();
+    const kb = Object.keys(b).sort();
+    if (ka.join("|") !== kb.join("|")) return note(`${label}: keys ${ka.join(",")} vs ${kb.join(",")}`);
+    for (const k of ka) same(label ? `${label}.${k}` : k, (a as any)[k], (b as any)[k]);
+    return;
+  }
+  if (!Object.is(a, b)) note(`${label}: ${show(a)} vs ${show(b)}`);
+}
+
+export function sameOutcome(label: string, a: Outcome, b: Outcome): void {
+  tally.calls += 1;
+  if (a.ok !== b.ok)
+    return note(
+      `${label}: the prototype ${a.ok ? "returned" : "threw"}, the port ${b.ok ? "returned" : "threw"}`
+    );
+  if (a.ok && b.ok) same(label, a.value, b.value);
+  else if (!a.ok && !b.ok) {
+    tally.bothThrew += 1;
+    // Two different throws are two different behaviours, so the class and the message must agree.
+    if (a.name !== b.name)
+      note(`${label}: both threw, with different classes\n   prototype: ${a.name}\n   port:      ${b.name}`);
+    if (a.message !== b.message)
+      note(
+        `${label}: both threw, with different messages\n   prototype: ${show(a.message)}\n   port:      ${show(b.message)}`
+      );
+  }
+}
+
+/**
+ * The prototype is one dependency-free ES module outside this project, with only inline `export`s. Its source is
+ * evaluated as it is, with the keyword dropped, so no loader or transform touches it.
+ */
+export function loadPrototype(file: string): Api {
+  const source = readFileSync(file, "utf8");
+  const names = [...source.matchAll(/^export (?:const|function) (\w+)/gm)].map((m) => m[1]);
+  if (/^export (?!const |function )/m.test(source))
+    throw new Error("copy.js has an export form this loader does not know");
+  const body = source.replace(/^export (const|function) /gm, "$1 ");
+  return new Function(`${body}\nreturn { ${names.join(", ")} };`)() as Api;
+}
+
+const read = (rel: string) => JSON.parse(readFileSync(path.join(ROOT as string, rel), "utf8"));
+
+export interface Dataset {
+  name: string;
+  data: { schools: any[]; pairwise: any[]; top20Changes: any[] };
+}
+export const DATASET_DIRS: [string, string][] = [
+  ["fixture", "data"],
+  ["worst", "data/worst-case"],
+  ["empty", "data/worst-case/empty"],
+  ["one", "data/worst-case/one"],
+  ["huge", "data/worst-case/huge"],
+];
+
+const LARGEST_RULES = ["bottleneck_u", "bottleneck_no_u"] as const;
+
+/**
+ * The record the API sends for a largest-factor rule, built from the design's combined-factors record and
+ * components: 60% of each figure, and the 40% share of the largest of school need, district context and (with
+ * urgency) the urgency rating, naming every factor that ties for it. Undefined where the school lacks a part.
+ */
+export function largestRecord(s: any, id: (typeof LARGEST_RULES)[number]): any {
+  const base = s.contributions?.[id === "bottleneck_u" ? "additive_u" : "additive_no_u"];
+  if (!base || !s.components) return undefined;
+  const { N, A, U } = s.components;
+  const values: Record<string, number> = id === "bottleneck_u" ? { N, A, U } : { N, A };
+  if (Object.values(values).some((v) => typeof v !== "number")) return undefined;
+  const value = Math.max(...Object.values(values));
+  return {
+    components: Object.fromEntries(Object.entries(base.components).map(([k, v]) => [k, 0.6 * (v as number)])),
+    largest: {
+      factors: Object.keys(values).filter((k) => values[k] === value),
+      value,
+      share: 0.4,
+      contribution: 0.4 * value,
+    },
+  };
+}
+
+/** The design data holds the combined-factors records only; the API also sends one for each largest-factor rule. */
+export const withLargestRecords = (s: any): any => {
+  if (s.cohort === "queue" || !s.contributions) return s;
+  const added = LARGEST_RULES.flatMap((id) => {
+    const rec = largestRecord(s, id);
+    return rec ? [[id, rec]] : [];
+  });
+  return { ...s, contributions: { ...s.contributions, ...Object.fromEntries(added) } };
+};
+
+/**
+ * The design records carry the circulated test's flag (`persistent_candidate_circulated`, `threshold_adjacent_circulated`)
+ * and nothing for the revised rule, whose test the design never ran. The port holds a flag per rule, so each record
+ * gets the circulated flag as the circulated rule's and, to exercise the revised rule's words and its absence of
+ * adjacent schools, a made-up flag for the revised rule that depends only on the school's id.
+ */
+export const withPersistence = (s: any): any => {
+  const { persistent_candidate_circulated: persistent, threshold_adjacent_circulated: adjacent, ...rest } = s;
+  if (persistent === undefined) return rest;
+  const h = [...String(s.id)].reduce((total, ch) => total + ch.charCodeAt(0), 0);
+  return {
+    ...rest,
+    persistence: {
+      additive_u: { persistent: persistent === true, adjacent: adjacent === true },
+      additive_no_u: { persistent: h % 3 === 0, adjacent: false },
+    },
+  };
+};
+
+export function loadDatasets(): Dataset[] {
+  return DATASET_DIRS.map(([name, dir]) => ({
+    name,
+    data: {
+      schools: read(`${dir}/schools.json`).schools.map(withLargestRecords).map(withPersistence),
+      pairwise: read(`${dir}/pairwise.json`),
+      top20Changes: read(`${dir}/top20_changes.json`),
+    },
+  }));
+}
+
+export const flush = () => {
+  const found = mismatches.splice(0);
+  expect(found).toEqual([]);
+};

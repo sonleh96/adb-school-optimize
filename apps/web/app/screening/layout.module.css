@@ -1,0 +1,11 @@
+/* The workspace fills the window. A printout flows from page to page instead, so the frame lets go of it in print. */
+.frame {
+  position: absolute;
+  inset: 0;
+}
+
+@media print {
+  .frame {
+    position: static;
+  }
+}

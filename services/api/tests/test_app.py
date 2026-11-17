@@ -1,0 +1,195 @@
+"""The application around the screening routes: health, request tracing, cross-origin policy and the email allowlist.
+
+Failure modes, each with its test:
+1. A health check needs a database or a token, or lacks the headers a platform probe and the logs rely on
+   -> test_healthz, test_request_id_accepts_only_bounded_safe_values, test_request_log_is_structured
+1b. The request log goes through a logger whose formatter cannot take it, so the container prints a traceback
+   instead of the JSON line -> test_a_request_prints_one_json_line_under_uvicorns_logging_config
+2. A request from an origin that is not configured gets a cross-origin grant
+   -> test_random_origin_preflight_is_rejected
+3. The email allowlist stops being enforced once the old routes that tested it are gone
+   -> test_allowlist_admits_its_domain_and_refuses_others
+3b. Sign-in is on but no allowlist is set, so any signed-in account gets through, or sign-in has no Supabase project
+   to check tokens against -> test_sign_in_without_an_allowlist_refuses_to_start,
+   test_sign_in_without_supabase_url_refuses_to_start
+3c. With sign-in off, the database still demands SUPABASE_URL -> test_without_sign_in_the_database_needs_no_supabase_url
+4. A removed Need/Priority route answers again because a router is mounted back by accident
+   -> test_removed_routes_are_not_served
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import logging.config
+import time
+
+import jwt
+import pytest
+import uvicorn.config
+from app import main as app_main
+from app.main import app
+from app.settings import get_settings
+from fastapi.testclient import TestClient
+
+
+def test_healthz(client):
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert response.headers["x-request-id"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_request_id_accepts_only_bounded_safe_values(client):
+    accepted = client.get("/healthz", headers={"X-Request-ID": "briefing_123"})
+    replaced = client.get("/healthz", headers={"X-Request-ID": "bad request id"})
+
+    assert accepted.headers["x-request-id"] == "briefing_123"
+    assert replaced.headers["x-request-id"] != "bad request id"
+
+
+def test_request_log_is_structured(client, caplog):
+    caplog.set_level(logging.INFO, logger="rise_png.http")
+
+    response = client.get("/healthz", headers={"X-Request-ID": "trace-1"})
+
+    records = [json.loads(record.message) for record in caplog.records if record.message.startswith("{")]
+    assert response.status_code == 200
+    assert records[-1] == {
+        "event": "http_request",
+        "request_id": "trace-1",
+        "method": "GET",
+        "path": "/healthz",
+        "status": 200,
+        "duration_ms": records[-1]["duration_ms"],
+    }
+    assert isinstance(records[-1]["duration_ms"], float)
+
+
+def test_a_request_prints_one_json_line_under_uvicorns_logging_config(monkeypatch, capsys):
+    # The container runs uvicorn, which installs its own log config. The line must reach standard output whole,
+    # and no logging error (the ValueError of a record sent through `uvicorn.access`) may reach standard error.
+    logging.config.dictConfig(uvicorn.config.LOGGING_CONFIG)
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+
+    with TestClient(app) as test_client:
+        test_client.get("/healthz?token=secret", headers={"X-Request-ID": "trace-2"})
+
+    captured = capsys.readouterr()
+    lines = [line for line in captured.out.splitlines() if line.startswith("{")]
+    assert len(lines) == 1
+    record = json.loads(lines[0])
+    assert {key: record[key] for key in ("event", "request_id", "method", "path", "status")} == {
+        "event": "http_request",
+        "request_id": "trace-2",
+        "method": "GET",
+        "path": "/healthz",
+        "status": 200,
+    }
+    assert "secret" not in lines[0]
+    assert "Logging error" not in captured.err and "ValueError" not in captured.err
+
+
+def test_random_origin_preflight_is_rejected(client):
+    response = client.options(
+        "/api/v1/screening/rules",
+        headers={
+            "Origin": "https://attacker.example",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_allowlist_admits_its_domain_and_refuses_others(api, monkeypatch):
+    secret = "test-secret-with-sufficient-length"
+    monkeypatch.setenv("AUTH_REQUIRED", "true")
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", secret)
+    monkeypatch.setenv("AUTH_ALLOWED_EMAIL_DOMAINS", "adb.org")
+    get_settings.cache_clear()
+    now = int(time.time())
+
+    def token(email):
+        claims = {
+            "sub": "user-1",
+            "email": email,
+            "aud": "authenticated",
+            "iss": "https://example.supabase.co/auth/v1",
+            "iat": now,
+            "exp": now + 300,
+        }
+        return jwt.encode(claims, secret, algorithm="HS256")
+
+    allowed = api.get(
+        "/api/v1/screening/rules", headers={"Authorization": f"Bearer {token('analyst@adb.org')}"}
+    )
+    denied = api.get(
+        "/api/v1/screening/rules", headers={"Authorization": f"Bearer {token('user@example.org')}"}
+    )
+
+    assert allowed.status_code == 200
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "forbidden"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/schools",
+        "/api/v1/districts/choropleth",
+        "/api/v1/scenarios",
+        "/api/v1/exports/ranked.csv",
+        "/api/v1/meta/layers",
+        "/api/v1/rasters/status",
+    ],
+)
+def test_removed_routes_are_not_served(client, path):
+    assert client.get(path).status_code == 404
+
+
+def _start(monkeypatch, **env):
+    """The app with exactly these sign-in settings, and none from the environment the tests run in."""
+    for name in ("AUTH_REQUIRED", "SUPABASE_URL", "AUTH_ALLOWED_EMAILS", "AUTH_ALLOWED_EMAIL_DOMAINS"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    get_settings.cache_clear()
+    return TestClient(app)
+
+
+@pytest.mark.parametrize("blank", [None, "", " , "])
+def test_sign_in_without_an_allowlist_refuses_to_start(monkeypatch, blank):
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+    env = {"AUTH_REQUIRED": "true", "SUPABASE_URL": "https://example.supabase.co"}
+    if blank is not None:
+        env |= {"AUTH_ALLOWED_EMAILS": blank, "AUTH_ALLOWED_EMAIL_DOMAINS": blank}
+    client = _start(monkeypatch, **env)
+    try:
+        with pytest.raises(ValueError, match="AUTH_ALLOWED_EMAILS or AUTH_ALLOWED_EMAIL_DOMAINS"), client:
+            pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_sign_in_without_supabase_url_refuses_to_start(monkeypatch):
+    monkeypatch.setattr(app_main, "open_pool", lambda _settings=None: None)
+    client = _start(monkeypatch, AUTH_REQUIRED="true", AUTH_ALLOWED_EMAIL_DOMAINS="adb.org")
+    try:
+        with pytest.raises(ValueError, match="SUPABASE_URL"), client:
+            pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_without_sign_in_the_database_needs_no_supabase_url(database_url, monkeypatch):
+    try:
+        with _start(monkeypatch, DATABASE_URL=database_url) as api:
+            response = api.get("/api/v1/screening/rules")
+        assert response.status_code != 500, response.text
+    finally:
+        get_settings.cache_clear()

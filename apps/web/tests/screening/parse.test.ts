@@ -1,0 +1,406 @@
+/**
+ * Failure modes: the app and the API disagree about a response.
+ *  1. The API changes a shape the page reads and the app keeps compiling against the old one.
+ *     Every response the API really sent (saved by the fixture script) must parse with the app's schemas, and a
+ *     request that has no schema here fails the test, so a new endpoint cannot slip through unparsed.
+ *  2. A field is renamed or removed and `undefined` flows into the page. The parse error must name the path.
+ *  3. A row says "interval" but carries one exact place, or says "complete" with none. It is rejected at the
+ *     boundary, so no later code has to wonder.
+ *  4. The API adds a field, or a new member of an enum the page does not branch on. The page must keep working.
+ *  5. The persistence flag appears on a rule it does not describe, or a scope is told apart by its label. The
+ *     parser keeps the flag only where the API sent it (the two rules that have an experiment: `additive_u` and
+ *     `additive_no_u`) and carries the scope code the page branches on.
+ */
+import { describe, expect, it, vi } from "vitest";
+
+import { ParseError, forgetWarnings, parseWith } from "@/lib/screening/schema";
+import {
+  compareResponse,
+  inputsResponse,
+  resultsResponse,
+  rulesResponse,
+  schoolDetailResponse,
+} from "@/lib/screening/types";
+
+import { DATASETS, copy, fixtureIndex, readFixture } from "./fixtures";
+
+const SCHEMAS: Record<string, Parameters<typeof parseWith>[0]> = {
+  "/api/v1/screening/rules": rulesResponse,
+  "/api/v1/screening/results": resultsResponse,
+  "/api/v1/screening/compare": compareResponse,
+  "/api/v1/screening/inputs": inputsResponse,
+};
+
+function schemaFor(requestPath: string) {
+  if (requestPath.startsWith("/api/v1/screening/schools/by-key/")) return schoolDetailResponse;
+  const schema = SCHEMAS[requestPath];
+  if (!schema)
+    throw new Error(`No schema for ${requestPath}: add it to lib/screening/types.ts and this table.`);
+  return schema;
+}
+
+describe.each(DATASETS)("responses the API sent, dataset %j", (dataset) => {
+  const { requests } = fixtureIndex(dataset);
+
+  it("has requests", () => {
+    expect(requests.length).toBeGreaterThan(0);
+  });
+
+  // A download is not JSON; top-csv.test.ts reads those back.
+  const json = requests.filter((r) => !r.headers);
+  it.each(json.map((r) => [r.file, r] as const))("%s parses", (_file, request) => {
+    const body = readFixture(request.file, dataset);
+    if (request.status !== undefined) {
+      // A failed read has no schema of its own: it is the API's error envelope, which the page shows in words.
+      expect(request.status).toBeGreaterThanOrEqual(400);
+      expect(body).toMatchObject({ error: { code: expect.any(String), message: expect.any(String) } });
+      return;
+    }
+    expect(() => parseWith(schemaFor(request.path), body, request.file)).not.toThrow();
+  });
+});
+
+describe("the scope codes and the persistence flag", () => {
+  it("carries the scope code of every rank and of the manifest", () => {
+    const parsed = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    expect(parsed.manifest.point_rank_scope_code).toBe("complete_under_rule");
+    expect(parsed.manifest.rank_bounds_scope_code).toBe("eligible");
+    for (const row of parsed.rows) {
+      expect(row.point_rank.scope_code).toBe("complete_under_rule");
+      expect(row.rank_bounds.scope_code).toBe("eligible");
+    }
+  });
+
+  it("keeps the flag as true, false or null on the two rules that have an experiment and has none on any other", () => {
+    for (const rule of ["additive_u", "additive_no_u"]) {
+      const withExperiment = parseWith(resultsResponse, readFixture(`results/${rule}.json`), rule);
+      const flags = withExperiment.rows.map((row) => row.persistent_candidate);
+      expect(flags, rule).toContain(true);
+      expect(flags, rule).toContain(false);
+      expect(flags, rule).toContain(null);
+    }
+    for (const rule of ["need_first_u", "need_first_no_u", "bottleneck_u", "bottleneck_no_u", "benchmark"]) {
+      const other = parseWith(resultsResponse, readFixture(`results/${rule}.json`), rule);
+      expect(
+        other.rows.every((row) => !("persistent_candidate" in row)),
+        rule
+      ).toBe(true);
+    }
+  });
+
+  it("keeps the margin flag where the flag is, and it agrees with it", () => {
+    const circulated = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    for (const row of circulated.rows) {
+      if (row.persistent_candidate === null) {
+        expect(row.threshold_adjacent).toBeNull();
+      } else {
+        // Adjacent only when persistent, and only when just above the 0.80 line.
+        if (row.threshold_adjacent) expect(row.persistent_candidate).toBe(true);
+        if (row.persistent_candidate === false) expect(row.threshold_adjacent).toBe(false);
+      }
+    }
+    expect(circulated.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
+    expect(circulated.rows.some((row) => row.threshold_adjacent === false)).toBe(true);
+    const revised = parseWith(resultsResponse, readFixture("results/additive_no_u.json"), "results");
+    expect(revised.rows.some((row) => row.threshold_adjacent === true)).toBe(true);
+    const other = parseWith(resultsResponse, readFixture("results/need_first_no_u.json"), "results");
+    expect(other.rows.every((row) => !("threshold_adjacent" in row))).toBe(true);
+  });
+
+  it("carries the scope code of a comparison's ranks and cohort", () => {
+    const compared = parseWith(
+      compareResponse,
+      readFixture("compare/additive_u__additive_no_u.json"),
+      "compare"
+    );
+    expect(compared.common_cohort_scope_code).toBe("common_complete_cohort");
+    for (const rank of [...compared.ranks, ...compared.entrants, ...compared.exits]) {
+      expect(rank.rank_scope_code).toBe("common_complete_cohort");
+    }
+  });
+
+  it("keeps the flag only on the entries of the two rules that have an experiment in a school's detail", () => {
+    const detail = parseWith(
+      schoolDetailResponse,
+      readFixture(fixtureIndex().requests.find((r) => r.path.includes("/by-key/"))!.file),
+      "detail"
+    );
+    const flagged = detail.rules.filter((entry) => "persistent_candidate" in entry);
+    expect(flagged.map((entry) => entry.rule.rule_id)).toEqual(["additive_u", "additive_no_u"]);
+    for (const entry of detail.rules) expect(entry.point_rank_scope_code).toBe("complete_under_rule");
+  });
+
+  it("accepts a scope code the page does not know", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ rank_bounds: { scope_code: string } }>;
+    };
+    body.rows[0].rank_bounds.scope_code = "a_scope_added_later";
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.rows[0].rank_bounds.scope_code).toBe("a_scope_added_later");
+  });
+
+  it("rejects a flag that is not true, false or null", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    body.rows[0].persistent_candidate = "yes";
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      'rows[0].persistent_candidate: expected a boolean, got string "yes"'
+    );
+  });
+});
+
+describe("fields the page does not read", () => {
+  it("are not parsed, so a change to one cannot blank a list", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<Record<string, unknown> & { scores: Record<string, unknown> }>;
+    };
+    for (const row of body.rows) row.lowest_top20_frequency = "a text now";
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.rows).toHaveLength(25);
+    expect(parsed.rows[0]).not.toHaveProperty("lowest_top20_frequency");
+    const inputs = copy(readFixture("inputs.json")) as Record<string, unknown>;
+    delete inputs.input_sha256;
+    expect(() => parseWith(inputsResponse, inputs, "inputs")).not.toThrow();
+  });
+
+  it("include none that the card shows: the engine's score bounds are read, and one that is missing is named", () => {
+    const parsed = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    const range = parsed.rows.find((row) => row.cohort === "interval");
+    expect(range?.scores.lower).toBeLessThan(range?.scores.upper as number);
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ scores: Record<string, unknown> }>;
+    };
+    delete body.rows[2].scores.upper;
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow("rows[2].scores.upper");
+  });
+
+  it("say so once in the console when a block the page can do without has changed, naming the field", () => {
+    forgetWarnings();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = { standard_error: "n/a" };
+      expect(parseWith(resultsResponse, body, "results").rows).toHaveLength(25);
+      parseWith(resultsResponse, body, "results");
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toContain("persistence.standard_error");
+      // A block that is absent, or null, is not a change and says nothing.
+      forgetWarnings();
+      warn.mockClear();
+      const quiet = copy(readFixture("results/additive_no_u.json")) as Record<string, unknown>;
+      parseWith(resultsResponse, quiet, "results");
+      quiet.persistence = null;
+      parseWith(resultsResponse, quiet, "results");
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("include the provenance block, which only adds a margin, so a changed one leaves the list whole", () => {
+    for (const changed of [
+      { standard_error: "n/a" },
+      "a text now",
+      { rule_id: 3, threshold: "x", draws: null },
+      { standard_error: 0.006 },
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+      body.persistence = changed;
+      const parsed = parseWith(resultsResponse, body, "results");
+      expect(parsed.rows, JSON.stringify(changed)).toHaveLength(25);
+    }
+    const body = copy(readFixture("results/additive_u.json")) as Record<string, unknown>;
+    body.persistence = { standard_error: 0.006 };
+    expect(parseWith(resultsResponse, body, "results").persistence?.standard_error).toBe(0.006);
+  });
+});
+
+describe("the bulk inputs", () => {
+  it("holds every school once, with the same inputs as its detail", () => {
+    const bulk = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+    const results = parseWith(resultsResponse, readFixture("results/additive_u.json"), "results");
+    expect(bulk.schools.map((s) => s.school_key).sort()).toEqual(
+      results.rows.map((row) => row.school.school_key).sort()
+    );
+    const request = fixtureIndex().requests.find((r) => r.path.includes("/by-key/"))!;
+    const detail = readFixture(request.file) as { school: { school_key: string }; inputs: unknown };
+    expect(bulk.schools.find((s) => s.school_key === detail.school.school_key)?.inputs).toEqual(
+      detail.inputs
+    );
+  });
+
+  it("keeps an unknown reading as null, never zero", () => {
+    const bulk = parseWith(inputsResponse, readFixture("inputs.json"), "inputs");
+    const values = bulk.schools.flatMap((s) => Object.values(s.inputs));
+    expect(values).toContain(null);
+  });
+
+  it("names the path of a removed key", () => {
+    const body = copy(readFixture("inputs.json")) as { schools: Array<Record<string, unknown>> };
+    delete body.schools[2].school_key;
+    expect(() => parseWith(inputsResponse, body, "Screening inputs")).toThrow(
+      "Screening inputs: schools[2].school_key: expected a string, got undefined"
+    );
+  });
+});
+
+describe("a response that no longer matches", () => {
+  it("names the path of a removed field", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ school: Record<string, unknown> }>;
+    };
+    delete body.rows[3].school.school_key;
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      "Screening results: rows[3].school.school_key: expected a string, got undefined"
+    );
+  });
+
+  it("names the value of a wrong cohort", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    body.rows[0].cohort = "finished";
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      'rows[0].cohort: expected one of "complete", "interval", "verification_queue", got string "finished"'
+    );
+  });
+
+  it("rejects an interval school that carries one exact place", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ cohort: string; point_rank: { rank: number | null } }>;
+    };
+    const index = body.rows.findIndex((row) => row.cohort === "interval");
+    body.rows[index].point_rank.rank = 3;
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      `rows[${index}]: expected ranks that agree with cohort "interval"`
+    );
+  });
+
+  it("rejects a complete school without a place", () => {
+    const body = copy(readFixture("results/additive_u.json")) as {
+      rows: Array<{ point_rank: { rank: number | null } }>;
+    };
+    body.rows[0].point_rank.rank = null;
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(ParseError);
+  });
+});
+
+describe("an additive API change", () => {
+  it("ignores a field the API added", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    body.rows[0].new_field = 1;
+    const parsed = parseWith(resultsResponse, body, "Screening results");
+    expect(parsed.rows[0]).not.toHaveProperty("new_field");
+    expect(parsed.rows).toHaveLength(25);
+  });
+
+  it("does not need fields the page does not read", () => {
+    const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+    for (const row of body.rows) {
+      delete row.placement;
+      delete row.display_order;
+    }
+    expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(25);
+  });
+
+  // The versions' load times only date the line beside the caveat, so no shape of them may block the page.
+  it.each([
+    ["missing", (body: Record<string, unknown>) => delete body.input_versions],
+    ["holding a bad entry", (body: { input_versions: unknown[] }) => body.input_versions.push(7)],
+    [
+      "with a date that is no date",
+      (body: { input_versions: Array<Record<string, unknown>> }) => {
+        body.input_versions[0].created_at = "not a date";
+      },
+    ],
+  ])("still reads the rules with the data versions %s, and reads no load time", (_shape, change) => {
+    const body = copy(readFixture("rules.json")) as never;
+    (change as (b: never) => void)(body);
+    forgetWarnings();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const parsed = parseWith(rulesResponse, body, "Screening rules");
+      expect(parsed.rules.length).toBeGreaterThan(0);
+      expect(parsed.input_versions).toBeUndefined();
+    } finally {
+      warn.mockRestore();
+      forgetWarnings();
+    }
+  });
+
+  it("reads the revised paper's roles and provenance, and tolerates a rule that carries neither", () => {
+    const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
+    body.rules[0].policy_role = "urgency_sensitivity";
+    body.rules[0].provenance = "circulated_paper";
+    body.rules[1].policy_role = "primary";
+    body.rules[1].provenance = "revised_paper";
+    delete body.rules[2].provenance;
+    body.rules[3].provenance = "a_provenance_added_later";
+    const parsed = parseWith(rulesResponse, body, "Screening rules").rules;
+    expect(parsed.slice(0, 4).map((r) => [r.policy_role, r.provenance])).toEqual([
+      ["urgency_sensitivity", "circulated_paper"],
+      ["primary", "revised_paper"],
+      [expect.any(String), undefined],
+      [expect.any(String), "a_provenance_added_later"],
+    ]);
+  });
+
+  it("keeps each rule's own persistence keys and block, so a rule's flag is not read from another's list", () => {
+    const body = copy(readFixture("results/additive_no_u.json")) as {
+      persistence?: unknown;
+      rows: Array<Record<string, unknown>>;
+    };
+    body.persistence = { standard_error: 0.004 };
+    body.rows[0].persistent_candidate = true;
+    body.rows[0].threshold_adjacent = false;
+    const parsed = parseWith(resultsResponse, body, "results");
+    expect(parsed.run.rule_id).toBe("additive_no_u");
+    expect(parsed.persistence).toEqual({ standard_error: 0.004 });
+    expect(parsed.rows[0]).toMatchObject({ persistent_candidate: true, threshold_adjacent: false });
+  });
+
+  it("reads what the copy needs of a listed row, and names the path of what is missing", () => {
+    for (const field of [
+      "gate_failures",
+      "need_parts",
+      "area_parts",
+      "contributions",
+      "need_part_contributions",
+      "maximum_term",
+    ]) {
+      const body = copy(readFixture("results/additive_u.json")) as { rows: Array<Record<string, unknown>> };
+      delete body.rows[3][field];
+      expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(`rows[3].${field}`);
+    }
+  });
+
+  it("rejects a largest-factor term that names no factor, and reads one that names several", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: { attained_by: string[] } | null }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term !== null);
+    expect(at).toBeGreaterThanOrEqual(0);
+
+    const tied = copy(body) as typeof body;
+    tied.rows[at].maximum_term!.attained_by = ["N", "A"];
+    expect(parseWith(resultsResponse, tied, "Screening results").rows[at]).toBeDefined();
+
+    body.rows[at].maximum_term!.attained_by = [];
+    expect(() => parseWith(resultsResponse, body, "Screening results")).toThrow(
+      `rows[${at}].maximum_term.attained_by: expected a non-empty array`
+    );
+  });
+
+  it("accepts a school with no largest term at all", () => {
+    const body = copy(readFixture("results/bottleneck_u.json")) as {
+      rows: Array<{ maximum_term: unknown }>;
+    };
+    const at = body.rows.findIndex((row) => row.maximum_term === null);
+    // A queued school has no score, so it has no largest term; the fixture holds some.
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(parseWith(resultsResponse, body, "Screening results").rows).toHaveLength(body.rows.length);
+  });
+
+  it("accepts a rule role the page does not know", () => {
+    const body = copy(readFixture("rules.json")) as { rules: Array<Record<string, unknown>> };
+    body.rules[0].policy_role = "a_role_added_later";
+    expect(parseWith(rulesResponse, body, "Screening rules").rules[0].policy_role).toBe("a_role_added_later");
+  });
+});

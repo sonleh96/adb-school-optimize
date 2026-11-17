@@ -1,0 +1,78 @@
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse, type NextRequest } from "next/server";
+
+import { getAuthConfig, isAllowedEmail, safeNextPath, shouldEnforceAuth } from "@/lib/auth";
+import { toolAddressFor } from "@/lib/home/toolLink";
+import { SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE } from "@/lib/signInOff";
+
+// The homepage explains the project to anyone, so it stays public when sign-in is required; the tool does not, and
+// neither does the explore page, which charts the same schools. A search engine reads robots.txt before anything
+// else, so it is public too.
+const PUBLIC_PATHS = new Set(["/", "/robots.txt", "/sign-in", "/auth/callback", "/healthz"]);
+
+export async function proxy(request: NextRequest) {
+  // An old link to the tool at `/` goes on to the tool with its query, which then asks for sign-in if it must.
+  const tool = toolAddressFor(request.nextUrl);
+  if (tool) return NextResponse.redirect(new URL(tool, request.url));
+
+  const offCookie = request.cookies.get(SIGN_IN_OFF_COOKIE)?.value;
+  if (!shouldEnforceAuth()) {
+    const response = NextResponse.next();
+    if (offCookie !== SIGN_IN_OFF_VALUE) {
+      response.cookies.set(SIGN_IN_OFF_COOKIE, SIGN_IN_OFF_VALUE, {
+        path: "/",
+        sameSite: "lax",
+        secure: request.nextUrl.protocol === "https:",
+      });
+    }
+    return response;
+  }
+  const response = await enforce(request);
+  if (offCookie !== undefined) response.cookies.delete(SIGN_IN_OFF_COOKIE);
+  return response;
+}
+
+async function enforce(request: NextRequest) {
+  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return NextResponse.next();
+
+  const config = getAuthConfig();
+  if (!config) return signInRedirect(request, "configuration");
+
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(config.supabaseUrl, config.supabaseAnonKey, {
+    cookies: {
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookiesToSet) => {
+        for (const cookie of cookiesToSet) request.cookies.set(cookie.name, cookie.value);
+        response = NextResponse.next({ request });
+        for (const cookie of cookiesToSet) response.cookies.set(cookie.name, cookie.value, cookie.options);
+      },
+    },
+  });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user && isAllowedEmail(user.email)) return response;
+  return signInRedirect(request, user ? "allowlist" : null);
+}
+
+function signInRedirect(request: NextRequest, error: string | null) {
+  const url = request.nextUrl.clone();
+  const next = safeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`);
+  url.pathname = "/sign-in";
+  url.search = "";
+  url.searchParams.set("next", next);
+  if (error) url.searchParams.set("error", error);
+  return NextResponse.redirect(url);
+}
+
+// Every page links the manifest and the icons, the sign-in page included, so they stay public: sent to sign in, the
+// browser reads the sign-in page as the manifest and logs "Manifest: Syntax error". The app's static files all sit at
+// the root (app/icon.svg is /icon.svg), so only a root path with a static extension skips the check; under /api/ or a
+// page, /api/v1/x.png included, every path is checked whatever it ends in.
+export const config = {
+  matcher: [
+    "/((?!_next/static/|_next/image|manifest\\.webmanifest$|[^/]+\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+  ],
+};

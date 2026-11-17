@@ -6,6 +6,21 @@ on:
   pull_request:
 
 jobs:
+  notebooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Saved notebook outputs once leaked real school data into this public repo.
+      - name: Notebooks carry no saved outputs
+        run: |
+          python -m unittest discover -s scripts -p 'test_*.py'
+          python scripts/check_notebooks.py
+
   web:
     runs-on: ubuntu-latest
     defaults:
@@ -16,7 +31,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version-file: apps/web/package.json
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
@@ -24,10 +39,86 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run format:check
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      # The budget is checked on the build that ships, the same one the analysis reads.
       - run: npm run build
+      - run: npm run bundle:check
+      - run: npm run analyze
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: |
+            apps/web/.next/diagnostics/analyze/
+            apps/web/.next/bundle-budget.json
+
+  browser:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: apps/web/package.json
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: apps/web/package.json
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lighthouse
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: apps/web/.lighthouseci/reports/
 
   api:
     runs-on: ubuntu-latest
+    services:
+      # Close to Supabase's Postgres 15 with PostGIS 3.3. The screening database tests create their own databases here.
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_PASSWORD: ci-throwaway
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:ci-throwaway@localhost:5432/postgres
+      # A missing DATABASE_URL or a service that did not start fails the database tests instead of skipping them.
+      REQUIRE_DATABASE_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -52,9 +143,24 @@ jobs:
           uv pip install --system --no-deps -e services/api
           uv pip install --system -r services/api/requirements.lock
 
+      # Supabase provides these roles; a plain PostGIS server does not, and 002_security_lockdown.sql refers to them.
+      - name: Apply database migrations
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "create role anon nologin" -c "create role authenticated nologin"
+          for file in infra/sql/*.sql; do
+            echo "applying $file"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$file"
+          done
+
+      - name: Migrations apply a second time without error
+        run: |
+          for file in infra/sql/*.sql; do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f "$file"
+          done
+
       - name: API tests
         working-directory: services/api
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -rs
 
       - name: Scoring package tests
         working-directory: packages/school_scoring
